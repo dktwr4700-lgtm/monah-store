@@ -4,6 +4,8 @@ import App from "./App.jsx";
 import Register from "./Register.jsx";
 import Login from "./Login.jsx";
 import Dashboard from "./Dashboard.jsx";
+import ProductPage from "./ProductPage.jsx";
+import StorePage from "./StorePage.jsx";
 
 function Root() {
   const [hash, setHash] = React.useState(window.location.hash.replace("#", ""));
@@ -17,6 +19,8 @@ function Root() {
   if (hash === "register") return <Register />;
   if (hash === "login") return <Login />;
   if (hash === "dashboard") return <Dashboard />;
+  if (hash.startsWith("product/")) return <ProductPage productId={hash.split("/")[1]} />;
+  if (hash.startsWith("store/")) return <StorePage sellerId={hash.split("/")[1]} />;
   return <App />;
 }
 
