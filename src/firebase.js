@@ -1,20 +1,17 @@
-{
-  "name": "monah-store",
-  "private": true,
-  "version": "0.0.1",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "firebase": "^10.13.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.1"
-  }
-}
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc",
+  authDomain: "pantry-app-148a7.firebaseapp.com",
+  projectId: "pantry-app-148a7",
+  storageBucket: "pantry-app-148a7.firebasestorage.app",
+  messagingSenderId: "334881660819",
+  appId: "1:334881660819:web:a4500ab3eefb7570a11266",
+  measurementId: "G-B38FS40YJQ"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
