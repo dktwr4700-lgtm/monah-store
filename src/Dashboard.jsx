@@ -5,6 +5,7 @@ import {
   collection, addDoc, query, where, onSnapshot,
   serverTimestamp, doc, setDoc, getDoc
 } from "firebase/firestore";
+import Orders from "./Orders.jsx";
 
 const COLORS = ["#16233F", "#4B6152", "#8B3A3A", "#5B4A8A", "#B9832F"];
 
@@ -218,6 +219,7 @@ export default function Dashboard() {
       <div className="dh-tabs">
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
+        <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
         <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
         <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
       </div>
@@ -300,6 +302,8 @@ export default function Dashboard() {
           </>
         )}
 
+        {tab === "orders" && <Orders ownerId={user.uid} />}
+
         {tab === "design" && (
           <>
             <div className="ds-preview">
@@ -357,4 +361,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-                }
+        }
