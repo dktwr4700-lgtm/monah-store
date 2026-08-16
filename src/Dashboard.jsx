@@ -98,6 +98,7 @@ export default function Dashboard() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [fileUrl, setFileUrl] = useState("");
+  const [category, setCategory] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState("");
@@ -159,12 +160,14 @@ export default function Dashboard() {
         price: Number(price),
         description: description || "",
         fileUrl,
+        category: category || "عام",
         createdAt: serverTimestamp(),
       });
       setName("");
       setPrice("");
       setDescription("");
       setFileUrl("");
+      setCategory("");
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
     }
@@ -264,6 +267,10 @@ export default function Dashboard() {
                   <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
                 </div>
                 <div className="dh-field">
+                  <label>التصنيف (مثل: قوالب، أيقونات، عروض تقديمية)</label>
+                  <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="عام" />
+                </div>
+                <div className="dh-field">
                   <label>وصف مختصر (اختياري)</label>
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
@@ -361,4 +368,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-        }
+}
