@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "./firebase.js";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const styles = `
   .pp-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; }
@@ -22,6 +22,10 @@ const styles = `
   .pp-secure{ text-align:center; margin-top:14px; color:#8A8677; font-size:11px; }
   .pp-note{ text-align:center; margin-top:10px; color:#B0AC9C; font-size:10px; line-height:1.6; }
   .pp-unlocked{ text-align:center; background:#EAF0EB; color:#4B6152; font-size:12.5px; font-weight:700; padding:10px; border-radius:8px; margin-bottom:12px; }
+  .pp-email-field{ margin-bottom:14px; }
+  .pp-email-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
+  .pp-email-field input{ width:100%; padding:12px 14px; border:1px solid #E4E0D3; border-radius:8px; font-size:13px; background:#FFFFFF; font-family:'Cairo', sans-serif; box-sizing:border-box; direction:ltr; text-align:right; }
+  .pp-email-error{ color:#B24C3A; font-size:11px; margin-top:6px; }
   .pp-footer{ text-align:center; padding:26px 20px; color:#B0AC9C; font-size:10.5px; }
   .pp-state{ min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
   .pp-state-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:16px; }
@@ -34,6 +38,8 @@ export default function ProductPage({ productId }) {
   const [status, setStatus] = useState("loading");
   const [paying, setPaying] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     async function fetchProduct() {
@@ -95,16 +101,34 @@ export default function ProductPage({ productId }) {
         </div>
         {!unlocked && (
           <>
+            <div className="pp-email-field">
+              <label>بريدك الإلكتروني</label>
+              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(""); }} placeholder="example@email.com" />
+              {emailError && <div className="pp-email-error">{emailError}</div>}
+            </div>
             <button
               className="pp-btn"
               style={{ background: brandColor }}
               disabled={paying}
               onClick={() => {
+                if (!email || !email.includes("@")) {
+                  setEmailError("أدخل بريدًا إلكترونيًا صحيحًا.");
+                  return;
+                }
                 setPaying(true);
-                setTimeout(() => {
-                  setPaying(false);
-                  setUnlocked(true);
-                }, 900);
+                addDoc(collection(db, "orders"), {
+                  productId,
+                  ownerId: product.ownerId,
+                  productName: product.name,
+                  price: product.price,
+                  buyerEmail: email,
+                  createdAt: serverTimestamp(),
+                }).finally(() => {
+                  setTimeout(() => {
+                    setPaying(false);
+                    setUnlocked(true);
+                  }, 900);
+                });
               }}
             >
               {paying ? "جاري التحقق..." : "ادفع واستلم الملف الآن"}
