@@ -3,7 +3,7 @@ import { auth, db, storage } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection, addDoc, query, where, onSnapshot,
-  serverTimestamp, doc, setDoc, getDoc, getDocs
+  serverTimestamp, doc, setDoc, getDoc, getDocs, writeBatch
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Orders from "./Orders.jsx";
@@ -48,6 +48,10 @@ const styles = `
   .dh-hint{ color:#8A8677; font-size:10.5px; margin-top:6px; line-height:1.6; }
   .dh-btn{ width:100%; background:#16233F; color:#fff; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
   .dh-btn:disabled{ opacity:.6; }
+  .dh-type-toggle{ display:flex; gap:8px; }
+  .dh-type-btn{ flex:1; padding:11px; border:1px solid #E4E0D3; background:#FBFAF7; border-radius:8px; font-size:12.5px; font-weight:700; color:#3D4A66; cursor:pointer; }
+  .dh-type-btn.active{ background:#16233F; color:#fff; border-color:#16233F; }
+  .dh-item-stock{ color:#8A8677; font-size:11px; margin-bottom:8px; }
   .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
   .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
 
@@ -105,6 +109,8 @@ export default function Dashboard() {
   const [description, setDescription] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [category, setCategory] = useState("");
+  const [productType, setProductType] = useState("file");
+  const [codesText, setCodesText] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState("");
@@ -167,26 +173,51 @@ export default function Dashboard() {
   async function handleAddProduct(e) {
     e.preventDefault();
     setError("");
-    if (!name || !price || !fileUrl) {
-      setError("عبّي اسم المنتج والسعر ورابط الملف.");
-      return;
+
+    if (productType === "file") {
+      if (!name || !price || !fileUrl) {
+        setError("عبّي اسم المنتج والسعر ورابط الملف.");
+        return;
+      }
+    } else {
+      const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
+      if (!name || !price || codesList.length === 0) {
+        setError("عبّي اسم المنتج والسعر، وألصقي الأكواد (كود بكل سطر).");
+        return;
+      }
     }
+
     setSaving(true);
     try {
-      await addDoc(collection(db, "products"), {
+      const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
+      const productRef = await addDoc(collection(db, "products"), {
         ownerId: user.uid,
         name,
         price: Number(price),
         description: description || "",
-        fileUrl,
         category: category || "عام",
+        type: productType,
+        fileUrl: productType === "file" ? fileUrl : "",
+        codesCount: productType === "code" ? codesList.length : 0,
         createdAt: serverTimestamp(),
       });
+
+      if (productType === "code" && codesList.length > 0) {
+        const batch = writeBatch(db);
+        codesList.forEach((code) => {
+          const codeRef = doc(collection(db, "products", productRef.id, "codes"));
+          batch.set(codeRef, { code, used: false, usedBy: null, usedAt: null });
+        });
+        await batch.commit();
+      }
+
       setName("");
       setPrice("");
       setDescription("");
       setFileUrl("");
       setCategory("");
+      setCodesText("");
+      setProductType("file");
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
     }
@@ -332,10 +363,37 @@ export default function Dashboard() {
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
                 <div className="dh-field">
-                  <label>رابط الملف (من Google Drive مثلًا)</label>
-                  <input type="text" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://drive.google.com/..." />
-                  <div className="dh-hint">تأكد إن مشاركة الملف مضبوطة على "أي شخص لديه الرابط"</div>
+                  <label>نوع المنتج</label>
+                  <div className="dh-type-toggle">
+                    <button
+                      type="button"
+                      className={"dh-type-btn" + (productType === "file" ? " active" : "")}
+                      onClick={() => setProductType("file")}
+                    >
+                      ملف
+                    </button>
+                    <button
+                      type="button"
+                      className={"dh-type-btn" + (productType === "code" ? " active" : "")}
+                      onClick={() => setProductType("code")}
+                    >
+                      كود / ترخيص
+                    </button>
+                  </div>
                 </div>
+                {productType === "file" ? (
+                  <div className="dh-field">
+                    <label>رابط الملف (من Google Drive مثلًا)</label>
+                    <input type="text" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://drive.google.com/..." />
+                    <div className="dh-hint">تأكد إن مشاركة الملف مضبوطة على "أي شخص لديه الرابط"</div>
+                  </div>
+                ) : (
+                  <div className="dh-field">
+                    <label>الصقي الأكواد (كود بكل سطر)</label>
+                    <textarea rows="5" value={codesText} onChange={(e) => setCodesText(e.target.value)} placeholder={"CODE-001\nCODE-002\nCODE-003"} style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }} />
+                    <div className="dh-hint">كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.</div>
+                  </div>
+                )}
                 <button className="dh-btn" type="submit" disabled={saving}>
                   {saving ? "جاري الحفظ..." : "حفظ المنتج"}
                 </button>
@@ -354,6 +412,9 @@ export default function Dashboard() {
                     <span className="dh-item-name">{p.name}</span>
                     <span className="dh-item-price">{p.price} ر.ع</span>
                   </div>
+                  {p.type === "code" && (
+                    <div className="dh-item-stock">مخزون: {p.codesCount || 0} كود</div>
+                  )}
                   <div className="dh-item-link">
                     <span className="dh-item-link-text">{`#product/${p.id}`}</span>
                     <button className="dh-item-link-btn" onClick={() => copyLink(p.id, "product")}>
