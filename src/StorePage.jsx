@@ -30,7 +30,8 @@ const styles = `
   .st-section-line{ flex:1; height:1px; background:#E4E0D3; }
 
   .st-item{ display:flex; align-items:center; gap:12px; text-decoration:none; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:12px; padding:14px 16px; margin-bottom:10px; }
-  .st-item-icon{ width:38px; height:38px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .st-item-icon{ width:38px; height:38px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+  .st-item-img{ width:100%; height:100%; object-fit:cover; }
   .st-item-body{ flex:1; min-width:0; }
   .st-item-name{ font-weight:700; color:#16233F; font-size:13.5px; margin-bottom:2px; }
   .st-item-price{ color:#B9832F; font-weight:800; font-size:12.5px; font-family:'JetBrains Mono',monospace; }
@@ -147,7 +148,11 @@ export default function StorePage({ sellerId }) {
             </div>
             {groups[cat].map((p) => (
               <a className="st-item" href={`#product/${p.id}`} key={p.id}>
-                <div className="st-item-icon"><FileIcon /></div>
+                <div className="st-item-icon">
+                  {p.images && p.images.length > 0
+                    ? <img src={p.images[0]} alt="" className="st-item-img" />
+                    : <FileIcon />}
+                </div>
                 <div className="st-item-body">
                   <div className="st-item-name">{p.name}</div>
                   <div className="st-item-price mono">{Number(p.price).toFixed(2)} ر.ع</div>
