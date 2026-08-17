@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { auth, db } from "./firebase.js";
+import { auth, db, storage } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection, addDoc, query, where, onSnapshot,
   serverTimestamp, doc, setDoc, getDoc, getDocs
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Orders from "./Orders.jsx";
 
 const COLORS = ["#16233F", "#4B6152", "#8B3A3A", "#5B4A8A", "#B9832F"];
@@ -64,8 +65,13 @@ const styles = `
   .ds-preview-bar{ padding:10px 14px; background:#F6F3EC; border-bottom:1px solid #E4E0D3; font-size:10px; color:#8A8677; font-weight:700; font-family:'JetBrains Mono',monospace; }
   .ds-preview-body{ padding:22px 18px; text-align:center; }
   .ds-preview-logo{ width:52px; height:52px; border-radius:14px; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-weight:800; color:#fff; font-size:20px; }
+  .ds-preview-logo-img{ width:52px; height:52px; border-radius:14px; margin:0 auto 10px; display:block; object-fit:cover; }
   .ds-preview-name{ font-family:'Almarai',sans-serif; font-weight:800; font-size:14px; margin-bottom:4px; }
   .ds-preview-tag{ font-size:11px; color:#8A8677; }
+  .dh-logo-row{ display:flex; align-items:center; gap:12px; }
+  .dh-logo-thumb{ width:52px; height:52px; border-radius:12px; object-fit:cover; flex-shrink:0; }
+  .dh-logo-placeholder{ width:52px; height:52px; border-radius:12px; background:#F6F3EC; border:1.5px dashed #E4E0D3; display:flex; align-items:center; justify-content:center; color:#8A8677; font-family:'Almarai',sans-serif; font-weight:800; flex-shrink:0; }
+  .dh-logo-btn{ border:1px solid #E4E0D3; background:#FFFFFF; padding:9px 14px; border-radius:8px; font-size:11.5px; font-weight:700; color:#16233F; cursor:pointer; }
   .ds-swatches{ display:flex; gap:10px; margin-bottom:16px; }
   .ds-swatch{ width:38px; height:38px; border-radius:10px; position:relative; border:2px solid transparent; cursor:pointer; }
   .ds-swatch.selected{ border-color:#16233F; }
@@ -111,6 +117,9 @@ export default function Dashboard() {
   const [instagram, setInstagram] = useState("");
   const [slug, setSlug] = useState("");
   const [slugError, setSlugError] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState("");
   const [designSaved, setDesignSaved] = useState(false);
   const [designSaving, setDesignSaving] = useState(false);
 
@@ -147,6 +156,7 @@ export default function Dashboard() {
         setWhatsapp(data.whatsapp || "");
         setInstagram(data.instagram || "");
         setSlug(data.slug || "");
+        setLogoUrl(data.logoUrl || "");
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -183,6 +193,26 @@ export default function Dashboard() {
     setSaving(false);
   }
 
+  async function handleLogoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoError("");
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const fileRef = ref(storage, `logos/${user.uid}-${Date.now()}`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      setLogoUrl(url);
+    } catch (err) {
+      setLogoError("تعذر رفع الصورة، حاول مرة ثانية.");
+    }
+    setLogoUploading(false);
+  }
+
   async function handleSaveDesign() {
     setDesignSaving(true);
     setDesignSaved(false);
@@ -206,6 +236,7 @@ export default function Dashboard() {
         whatsapp: whatsapp || "",
         instagram: instagram || "",
         slug: cleanSlug || "",
+        logoUrl: logoUrl || "",
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
       });
@@ -342,7 +373,9 @@ export default function Dashboard() {
             <div className="ds-preview">
               <div className="ds-preview-bar">{`monah-app.com/#store/${slug || user.uid.slice(0, 8) + "..."}`}</div>
               <div className="ds-preview-body">
-                <div className="ds-preview-logo" style={{ background: storeColor }}>{initial}</div>
+                {logoUrl
+                  ? <img src={logoUrl} alt="شعار المتجر" className="ds-preview-logo-img" />
+                  : <div className="ds-preview-logo" style={{ background: storeColor }}>{initial}</div>}
                 <div className="ds-preview-name" style={{ color: storeColor }}>{storeName || "اسم متجرك"}</div>
                 <div className="ds-preview-tag">{tagline || "منتجات رقمية عبر Monah"}</div>
               </div>
@@ -351,6 +384,19 @@ export default function Dashboard() {
             <div className="dh-card">
               {designSaved && <div className="dh-success">تم حفظ تصميم متجرك.</div>}
               {error && <div className="dh-error">{error}</div>}
+              <div className="dh-field">
+                <label>شعار المتجر</label>
+                <div className="dh-logo-row">
+                  {logoUrl
+                    ? <img src={logoUrl} alt="" className="dh-logo-thumb" />
+                    : <div className="dh-logo-placeholder">{initial}</div>}
+                  <label className="dh-logo-btn">
+                    {logoUploading ? "جاري الرفع..." : "رفع شعار جديد"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} disabled={logoUploading} />
+                  </label>
+                </div>
+                {logoError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{logoError}</div>}
+              </div>
               <div className="dh-field">
                 <label>اسم المتجر</label>
                 <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} />
@@ -412,4 +458,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-         }
+}
