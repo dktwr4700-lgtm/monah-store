@@ -9,6 +9,7 @@ const styles = `
   .st-cover{ padding:44px 24px 26px; text-align:center; position:relative; overflow:hidden; }
   .st-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:18px 18px; }
   .st-logo{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:22px; background:#fff; position:relative; z-index:1; }
+  .st-logo-img{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:block; object-fit:cover; position:relative; z-index:1; }
   .st-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#fff; position:relative; z-index:1; }
   .st-sub{ color:rgba(255,255,255,0.75); font-size:12px; margin-top:6px; position:relative; z-index:1; }
   .st-social{ display:flex; justify-content:center; gap:10px; margin-top:16px; position:relative; z-index:1; }
@@ -89,6 +90,7 @@ export default function StorePage({ sellerId }) {
   const tagline = (store && store.tagline) || "منتجات رقمية عبر Monah";
   const whatsapp = store && store.whatsapp;
   const instagram = store && store.instagram;
+  const logoUrl = store && store.logoUrl;
   const initial = brandName.charAt(0);
 
   const groups = {};
@@ -103,7 +105,9 @@ export default function StorePage({ sellerId }) {
     <div className="st-page" dir="rtl" lang="ar">
       <style>{styles}</style>
       <div className="st-cover" style={{ background: brandColor }}>
-        <div className="st-logo">{initial}</div>
+        {logoUrl
+          ? <img src={logoUrl} alt="" className="st-logo-img" />
+          : <div className="st-logo">{initial}</div>}
         <div className="st-brand">{brandName}</div>
         <div className="st-sub">{tagline}</div>
 
