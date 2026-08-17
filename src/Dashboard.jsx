@@ -3,7 +3,8 @@ import { auth, db, storage } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection, addDoc, query, where, onSnapshot,
-  serverTimestamp, doc, setDoc, getDoc, getDocs, writeBatch
+  serverTimestamp, doc, setDoc, getDoc, getDocs, writeBatch,
+  deleteDoc, updateDoc
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Orders from "./Orders.jsx";
@@ -57,6 +58,13 @@ const styles = `
   .dh-image-thumb{ width:64px; height:64px; border-radius:10px; object-fit:cover; display:block; }
   .dh-image-remove{ position:absolute; top:-6px; left:-6px; width:20px; height:20px; border-radius:50%; background:#B24C3A; color:#fff; border:2px solid #FFFFFF; font-size:10px; line-height:1; cursor:pointer; }
   .dh-image-add{ width:64px; height:64px; border-radius:10px; border:1.5px dashed #E4E0D3; background:#FBFAF7; display:flex; align-items:center; justify-content:center; font-size:22px; color:#8A8677; cursor:pointer; flex-shrink:0; }
+  .dh-item-actions{ display:flex; gap:8px; margin-top:8px; }
+  .dh-item-action{ flex:1; text-align:center; padding:8px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #E4E0D3; background:#FBFAF7; color:#3D4A66; cursor:pointer; }
+  .dh-item-action.primary{ background:#16233F; color:#fff; border-color:#16233F; }
+  .dh-item-action.danger{ color:#B24C3A; border-color:#F0D9D3; }
+  .dh-item-action:disabled{ opacity:.6; }
+  .dh-edit-form .dh-field{ margin-bottom:10px; }
+  .dh-edit-actions{ display:flex; gap:8px; margin-top:4px; }
   .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
   .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
 
@@ -119,6 +127,15 @@ export default function Dashboard() {
   const [productImages, setProductImages] = useState([]);
   const [imagesUploading, setImagesUploading] = useState(false);
   const [imagesError, setImagesError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editFileUrl, setEditFileUrl] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState("");
@@ -232,6 +249,51 @@ export default function Dashboard() {
       setError("صار خطأ، حاول مرة ثانية.");
     }
     setSaving(false);
+  }
+
+  function startEdit(p) {
+    setEditingId(p.id);
+    setEditName(p.name);
+    setEditPrice(String(p.price));
+    setEditDescription(p.description || "");
+    setEditCategory(p.category || "");
+    setEditFileUrl(p.fileUrl || "");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(productId) {
+    if (!editName || !editPrice) {
+      setError("عبّي اسم المنتج والسعر.");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      await updateDoc(doc(db, "products", productId), {
+        name: editName,
+        price: Number(editPrice),
+        description: editDescription || "",
+        category: editCategory || "عام",
+        fileUrl: editFileUrl || "",
+      });
+      setEditingId(null);
+    } catch (err) {
+      setError("تعذر حفظ التعديل، حاول مرة ثانية.");
+    }
+    setEditSaving(false);
+  }
+
+  async function confirmDelete(productId) {
+    setDeletingId(productId);
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      setConfirmDeleteId(null);
+    } catch (err) {
+      setError("تعذر حذف المنتج، حاول مرة ثانية.");
+    }
+    setDeletingId(null);
   }
 
   async function handleProductImageUpload(e) {
@@ -464,19 +526,64 @@ export default function Dashboard() {
               {products.length === 0 && <div className="empty-note">ما أضفت أي منتج بعد.</div>}
               {products.map((p) => (
                 <div className="dh-item" key={p.id}>
-                  <div className="dh-item-top">
-                    <span className="dh-item-name">{p.name}</span>
-                    <span className="dh-item-price">{p.price} ر.ع</span>
-                  </div>
-                  {p.type === "code" && (
-                    <div className="dh-item-stock">مخزون: {p.codesCount || 0} كود</div>
+                  {editingId === p.id ? (
+                    <div className="dh-edit-form">
+                      <div className="dh-field">
+                        <label>اسم المنتج</label>
+                        <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                      </div>
+                      <div className="dh-field">
+                        <label>السعر (ر.ع)</label>
+                        <input type="number" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+                      </div>
+                      <div className="dh-field">
+                        <label>التصنيف</label>
+                        <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
+                      </div>
+                      <div className="dh-field">
+                        <label>وصف مختصر</label>
+                        <textarea rows="2" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                      </div>
+                      {p.type !== "code" && (
+                        <div className="dh-field">
+                          <label>رابط الملف</label>
+                          <input type="text" value={editFileUrl} onChange={(e) => setEditFileUrl(e.target.value)} />
+                        </div>
+                      )}
+                      <div className="dh-edit-actions">
+                        <button className="dh-item-action" onClick={cancelEdit} type="button">إلغاء</button>
+                        <button className="dh-item-action primary" onClick={() => saveEdit(p.id)} disabled={editSaving} type="button">
+                          {editSaving ? "جاري الحفظ..." : "حفظ"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="dh-item-top">
+                        <span className="dh-item-name">{p.name}</span>
+                        <span className="dh-item-price">{p.price} ر.ع</span>
+                      </div>
+                      {p.type === "code" && (
+                        <div className="dh-item-stock">مخزون: {p.codesCount || 0} كود</div>
+                      )}
+                      <div className="dh-item-link">
+                        <span className="dh-item-link-text">{`#product/${p.id}`}</span>
+                        <button className="dh-item-link-btn" onClick={() => copyLink(p.id, "product")}>
+                          {copied === "product" + p.id ? "تم" : "نسخ"}
+                        </button>
+                      </div>
+                      <div className="dh-item-actions">
+                        <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
+                        {confirmDeleteId === p.id ? (
+                          <button className="dh-item-action danger" onClick={() => confirmDelete(p.id)} disabled={deletingId === p.id} type="button">
+                            {deletingId === p.id ? "جاري الحذف..." : "تأكيد الحذف؟"}
+                          </button>
+                        ) : (
+                          <button className="dh-item-action danger" onClick={() => setConfirmDeleteId(p.id)} type="button">حذف</button>
+                        )}
+                      </div>
+                    </>
                   )}
-                  <div className="dh-item-link">
-                    <span className="dh-item-link-text">{`#product/${p.id}`}</span>
-                    <button className="dh-item-link-btn" onClick={() => copyLink(p.id, "product")}>
-                      {copied === "product" + p.id ? "تم" : "نسخ"}
-                    </button>
-                  </div>
                 </div>
               ))}
             </div>
