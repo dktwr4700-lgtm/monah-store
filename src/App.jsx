@@ -8,7 +8,8 @@ const styles = `
   .wrap{ max-width:1080px; margin:0 auto; padding:0 20px; }
 
   .nav{ display:flex; justify-content:space-between; align-items:center; padding:20px 0; }
-  .nav-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:20px; }
+  .nav-brand{ display:flex; align-items:center; gap:9px; font-family:'Almarai', sans-serif; font-weight:800; font-size:20px; }
+  .nav-brand img{ width:30px; height:30px; border-radius:8px; display:block; }
   .nav-btns{ display:flex; gap:10px; }
   .nav-btn{ padding:10px 16px; border-radius:9px; font-size:13px; font-weight:700; border:1px solid #E4E0D3; background:#FFFFFF; color:#16233F; cursor:pointer; }
   .nav-btn.primary{ background:#16233F; color:#fff; border:none; }
@@ -133,7 +134,10 @@ export default function App() {
             <a className="nav-btn" href="#login">تسجيل الدخول</a>
             <a className="nav-btn primary" href="#register">ابدأ البيع</a>
           </div>
-          <div className="nav-brand">Monah</div>
+          <div className="nav-brand">
+            <img src="/monah-mark-512.png" alt="Monah" />
+            <span>Monah</span>
+          </div>
         </div>
 
         <div className="hero">
