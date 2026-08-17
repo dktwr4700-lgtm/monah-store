@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { db } from "./firebase.js";
-import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc, getDoc, collection, addDoc, serverTimestamp,
+  query, where, limit, getDocs, runTransaction
+} from "firebase/firestore";
 
 const styles = `
   .pp-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; }
@@ -42,6 +45,9 @@ const styles = `
   .pp-secure{ text-align:center; margin-top:14px; color:#8A8677; font-size:11px; }
   .pp-note{ text-align:center; margin-top:10px; color:#B0AC9C; font-size:10px; line-height:1.6; }
   .pp-unlocked{ text-align:center; background:#EAF0EB; color:#4B6152; font-size:12.5px; font-weight:700; padding:10px; border-radius:8px; margin-bottom:12px; }
+  .pp-code-box{ display:flex; align-items:center; gap:10px; background:#16233F; border-radius:10px; padding:16px 18px; margin-bottom:4px; }
+  .pp-code-value{ flex:1; color:#fff; font-size:16px; font-weight:700; letter-spacing:.03em; word-break:break-all; }
+  .pp-code-copy{ background:rgba(255,255,255,0.16); color:#fff; border:none; padding:8px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
 
   .pp-email-field{ margin-bottom:14px; }
   .pp-email-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
@@ -62,6 +68,9 @@ export default function ProductPage({ productId }) {
   const [unlocked, setUnlocked] = useState(false);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [assignedCode, setAssignedCode] = useState("");
+  const [claimError, setClaimError] = useState("");
+  const [codeCopied, setCodeCopied] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
@@ -105,6 +114,69 @@ export default function ProductPage({ productId }) {
   const brandColor = (store && store.color) || "#16233F";
   const storeName = (store && store.name) || "متجر رقمي";
   const category = product.category || "منتج رقمي";
+  const isCodeProduct = product.type === "code";
+
+  async function claimCode() {
+    const codesRef = collection(db, "products", productId, "codes");
+    const q = query(codesRef, where("used", "==", false), limit(1));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      throw new Error("out_of_stock");
+    }
+    const candidateRef = snap.docs[0].ref;
+    return runTransaction(db, async (tx) => {
+      const freshSnap = await tx.get(candidateRef);
+      if (!freshSnap.exists() || freshSnap.data().used) {
+        throw new Error("retry");
+      }
+      tx.update(candidateRef, { used: true, usedBy: email, usedAt: serverTimestamp() });
+      return freshSnap.data().code;
+    });
+  }
+
+  async function handlePurchase() {
+    if (!email || !email.includes("@")) {
+      setEmailError("أدخل بريدًا إلكترونيًا صحيحًا.");
+      return;
+    }
+    setClaimError("");
+    setPaying(true);
+
+    try {
+      let codeValue = "";
+      if (isCodeProduct) {
+        try {
+          codeValue = await claimCode();
+        } catch (err) {
+          if (err.message === "out_of_stock" || err.message === "retry") {
+            setClaimError("نفدت الكمية المتوفرة من هذا المنتج، تواصلي مع صاحب المتجر.");
+            setPaying(false);
+            return;
+          }
+          throw err;
+        }
+      }
+
+      await addDoc(collection(db, "orders"), {
+        productId,
+        ownerId: product.ownerId,
+        productName: product.name,
+        price: product.price,
+        buyerEmail: email,
+        type: product.type || "file",
+        createdAt: serverTimestamp(),
+      });
+
+      setTimeout(() => {
+        setPaying(false);
+        setAssignedCode(codeValue);
+        setUnlocked(true);
+      }, 900);
+    } catch (err) {
+      setClaimError("صار خطأ، حاول مرة ثانية.");
+      setPaying(false);
+    }
+  }
 
   return (
     <div className="pp-page" dir="rtl" lang="ar">
@@ -144,7 +216,7 @@ export default function ProductPage({ productId }) {
             : <div className="pp-desc-empty">ما فيه وصف إضافي لهذا المنتج.</div>}
           <div className="pp-includes">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#4B6152" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            ملف رقمي يُرسل لك فورًا بعد إتمام الدفع
+            {isCodeProduct ? "كود تفعيل خاص يصلك فورًا بعد إتمام الدفع" : "ملف رقمي يُرسل لك فورًا بعد إتمام الدفع"}
           </div>
         </div>
 
@@ -169,39 +241,21 @@ export default function ProductPage({ productId }) {
               <label>بريدك الإلكتروني</label>
               <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(""); }} placeholder="example@email.com" />
               {emailError && <div className="pp-email-error">{emailError}</div>}
+              {claimError && <div className="pp-email-error">{claimError}</div>}
             </div>
             <button
               className="pp-btn"
               style={{ background: brandColor }}
               disabled={paying}
-              onClick={() => {
-                if (!email || !email.includes("@")) {
-                  setEmailError("أدخل بريدًا إلكترونيًا صحيحًا.");
-                  return;
-                }
-                setPaying(true);
-                addDoc(collection(db, "orders"), {
-                  productId,
-                  ownerId: product.ownerId,
-                  productName: product.name,
-                  price: product.price,
-                  buyerEmail: email,
-                  createdAt: serverTimestamp(),
-                }).finally(() => {
-                  setTimeout(() => {
-                    setPaying(false);
-                    setUnlocked(true);
-                  }, 900);
-                });
-              }}
+              onClick={handlePurchase}
             >
-              {paying ? "جاري التحقق..." : "ادفع واستلم الملف الآن"}
+              {paying ? "جاري التحقق..." : "ادفع واستلم الآن"}
             </button>
             <div className="pp-secure">تسليم فوري تلقائي بعد إتمام الدفع</div>
             <div className="pp-note">الدفع الفعلي لسا قيد التفعيل — هذا زر تجريبي يوريك آلية التسليم</div>
           </>
         )}
-        {unlocked && (
+        {unlocked && !isCodeProduct && (
           <>
             <div className="pp-unlocked">✓ تم الدفع بنجاح</div>
             <a
@@ -214,6 +268,25 @@ export default function ProductPage({ productId }) {
               تحميل الملف الآن
             </a>
             <div className="pp-secure">الرابط أعلاه يفتح ملفك مباشرة</div>
+          </>
+        )}
+        {unlocked && isCodeProduct && (
+          <>
+            <div className="pp-unlocked">✓ تم الدفع بنجاح</div>
+            <div className="pp-code-box">
+              <span className="pp-code-value mono">{assignedCode}</span>
+              <button
+                className="pp-code-copy"
+                onClick={() => {
+                  navigator.clipboard.writeText(assignedCode);
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 1500);
+                }}
+              >
+                {codeCopied ? "تم النسخ" : "نسخ الكود"}
+              </button>
+            </div>
+            <div className="pp-secure">هذا الكود خاص فيك، احتفظي فيه</div>
           </>
         )}
       </div>
