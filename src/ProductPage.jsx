@@ -13,9 +13,11 @@ const styles = `
   .pp-back{ display:flex; align-items:center; gap:6px; color:#8A8677; font-size:12px; text-decoration:none; }
   .pp-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:15px; }
 
-  .pp-cover{ height:120px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
-  .pp-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:16px 16px; }
+  .pp-cover{ height:200px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+  .pp-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:16px 16px; pointer-events:none; }
   .pp-cover-icon{ width:56px; height:56px; border-radius:14px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; position:relative; z-index:1; }
+  .pp-cover.has-image::before{ display:none; }
+  .pp-cover-img{ width:100%; height:100%; object-fit:cover; }
 
   .pp-wrap{ max-width:460px; margin:0 auto; padding:24px 22px 0; }
 
@@ -189,13 +191,17 @@ export default function ProductPage({ productId }) {
         <div className="pp-brand" style={{ color: brandColor }}>Monah</div>
       </div>
 
-      <div className="pp-cover" style={{ background: brandColor }}>
-        <div className="pp-cover-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/>
-            <path d="M14 2v6h6" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/>
-          </svg>
-        </div>
+      <div className={"pp-cover" + (product.images && product.images.length > 0 ? " has-image" : "")} style={{ background: (product.images && product.images.length) ? "transparent" : brandColor }}>
+        {product.images && product.images.length > 0 ? (
+          <img src={product.images[0]} alt={product.name} className="pp-cover-img" />
+        ) : (
+          <div className="pp-cover-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/>
+              <path d="M14 2v6h6" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
       </div>
 
       <div className="pp-wrap">
