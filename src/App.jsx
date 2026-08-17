@@ -82,6 +82,8 @@ const styles = `
   .final-cta p{ color:#8A8677; font-size:13.5px; margin-bottom:20px; }
 
   footer{ text-align:center; padding:24px 20px; color:#B0AC9C; font-size:12px; border-top:1px solid #E4E0D3; }
+  .footer-links{ margin-top:8px; display:flex; gap:14px; justify-content:center; }
+  .footer-links a{ color:#8A8677; font-size:11.5px; }
 `;
 
 const FEATURES = [
@@ -236,7 +238,13 @@ export default function App() {
         <a className="btn fill" href="#register">ابدأ البيع الآن</a>
       </div>
 
-      <footer>© Monah — منصة بيع المنتجات الرقمية</footer>
+      <footer>
+        © Monah — منصة بيع المنتجات الرقمية
+        <div className="footer-links">
+          <a href="#privacy">سياسة الخصوصية</a>
+          <a href="#terms">الشروط والأحكام</a>
+        </div>
+      </footer>
     </div>
   );
 }
