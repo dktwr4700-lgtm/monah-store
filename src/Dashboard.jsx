@@ -3,7 +3,7 @@ import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection, addDoc, query, where, onSnapshot,
-  serverTimestamp, doc, setDoc, getDoc
+  serverTimestamp, doc, setDoc, getDoc, getDocs
 } from "firebase/firestore";
 import Orders from "./Orders.jsx";
 
@@ -106,6 +106,11 @@ export default function Dashboard() {
   // store design
   const [storeName, setStoreName] = useState("");
   const [storeColor, setStoreColor] = useState(COLORS[0]);
+  const [tagline, setTagline] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugError, setSlugError] = useState("");
   const [designSaved, setDesignSaved] = useState(false);
   const [designSaving, setDesignSaving] = useState(false);
 
@@ -138,6 +143,10 @@ export default function Dashboard() {
         const data = snap.data();
         setStoreName(data.name || "");
         setStoreColor(data.color || COLORS[0]);
+        setTagline(data.tagline || "");
+        setWhatsapp(data.whatsapp || "");
+        setInstagram(data.instagram || "");
+        setSlug(data.slug || "");
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -177,13 +186,30 @@ export default function Dashboard() {
   async function handleSaveDesign() {
     setDesignSaving(true);
     setDesignSaved(false);
+    setSlugError("");
     try {
+      const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+      if (cleanSlug) {
+        const q = query(collection(db, "stores"), where("slug", "==", cleanSlug));
+        const snap = await getDocs(q);
+        const takenByOther = snap.docs.some((d) => d.id !== user.uid);
+        if (takenByOther) {
+          setSlugError("هذا الرابط مستخدم من متجر ثاني، جربي رابط مختلف.");
+          setDesignSaving(false);
+          return;
+        }
+      }
       await setDoc(doc(db, "stores", user.uid), {
         name: storeName,
         color: storeColor,
+        tagline: tagline || "",
+        whatsapp: whatsapp || "",
+        instagram: instagram || "",
+        slug: cleanSlug || "",
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
       });
+      setSlug(cleanSlug);
       setDesignSaved(true);
       setTimeout(() => setDesignSaved(false), 2000);
     } catch (err) {
@@ -208,7 +234,7 @@ export default function Dashboard() {
 
   if (checking) return null;
 
-  const storeUrl = `${window.location.origin}${window.location.pathname}#store/${user.uid}`;
+  const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
   const initial = (storeName || "م").charAt(0);
 
   return (
@@ -240,8 +266,8 @@ export default function Dashboard() {
               <div className="dh-store-label">رابط متجرك العام</div>
               <div className="dh-store-row">
                 <span className="dh-store-url">{storeUrl}</span>
-                <button className="dh-copy" onClick={() => copyLink(user.uid, "store")}>
-                  {copied === "store" + user.uid ? "تم" : "نسخ"}
+                <button className="dh-copy" onClick={() => copyLink(slug || user.uid, "store")}>
+                  {copied === "store" + (slug || user.uid) ? "تم" : "نسخ"}
                 </button>
               </div>
             </div>
@@ -314,11 +340,11 @@ export default function Dashboard() {
         {tab === "design" && (
           <>
             <div className="ds-preview">
-              <div className="ds-preview-bar">{`monah-app.com/#store/${user.uid.slice(0, 8)}...`}</div>
+              <div className="ds-preview-bar">{`monah-app.com/#store/${slug || user.uid.slice(0, 8) + "..."}`}</div>
               <div className="ds-preview-body">
                 <div className="ds-preview-logo" style={{ background: storeColor }}>{initial}</div>
                 <div className="ds-preview-name" style={{ color: storeColor }}>{storeName || "اسم متجرك"}</div>
-                <div className="ds-preview-tag">منتجات رقمية عبر Monah</div>
+                <div className="ds-preview-tag">{tagline || "منتجات رقمية عبر Monah"}</div>
               </div>
             </div>
 
@@ -328,6 +354,24 @@ export default function Dashboard() {
               <div className="dh-field">
                 <label>اسم المتجر</label>
                 <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} />
+              </div>
+              <div className="dh-field">
+                <label>جملة تعريفية قصيرة (اختياري)</label>
+                <input type="text" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="مثال: تصاميم أنيقة بلمسة عصرية" />
+              </div>
+              <div className="dh-field">
+                <label>رابط متجرك المختصر</label>
+                <input type="text" value={slug} onChange={(e) => { setSlug(e.target.value); setSlugError(""); }} placeholder="hind" style={{ direction: "ltr", textAlign: "right" }} />
+                {slugError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{slugError}</div>}
+                <div className="dh-hint">أحرف إنجليزية وأرقام فقط، بدون مسافات — مثال: monah-app.com/#store/hind</div>
+              </div>
+              <div className="dh-field">
+                <label>رقم واتساب (اختياري)</label>
+                <input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} />
+              </div>
+              <div className="dh-field">
+                <label>حساب إنستغرام (اختياري)</label>
+                <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="username" style={{ direction: "ltr", textAlign: "right" }} />
               </div>
               <div className="dh-field">
                 <label>لون المتجر الرئيسي</label>
@@ -368,4 +412,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
+         }
