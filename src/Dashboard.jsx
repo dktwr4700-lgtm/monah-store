@@ -52,6 +52,11 @@ const styles = `
   .dh-type-btn{ flex:1; padding:11px; border:1px solid #E4E0D3; background:#FBFAF7; border-radius:8px; font-size:12.5px; font-weight:700; color:#3D4A66; cursor:pointer; }
   .dh-type-btn.active{ background:#16233F; color:#fff; border-color:#16233F; }
   .dh-item-stock{ color:#8A8677; font-size:11px; margin-bottom:8px; }
+  .dh-images-row{ display:flex; gap:10px; }
+  .dh-image-thumb-wrap{ position:relative; width:64px; height:64px; }
+  .dh-image-thumb{ width:64px; height:64px; border-radius:10px; object-fit:cover; display:block; }
+  .dh-image-remove{ position:absolute; top:-6px; left:-6px; width:20px; height:20px; border-radius:50%; background:#B24C3A; color:#fff; border:2px solid #FFFFFF; font-size:10px; line-height:1; cursor:pointer; }
+  .dh-image-add{ width:64px; height:64px; border-radius:10px; border:1.5px dashed #E4E0D3; background:#FBFAF7; display:flex; align-items:center; justify-content:center; font-size:22px; color:#8A8677; cursor:pointer; flex-shrink:0; }
   .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
   .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
 
@@ -111,6 +116,9 @@ export default function Dashboard() {
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState("file");
   const [codesText, setCodesText] = useState("");
+  const [productImages, setProductImages] = useState([]);
+  const [imagesUploading, setImagesUploading] = useState(false);
+  const [imagesError, setImagesError] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState("");
@@ -199,6 +207,7 @@ export default function Dashboard() {
         type: productType,
         fileUrl: productType === "file" ? fileUrl : "",
         codesCount: productType === "code" ? codesList.length : 0,
+        images: productImages,
         createdAt: serverTimestamp(),
       });
 
@@ -218,10 +227,39 @@ export default function Dashboard() {
       setCategory("");
       setCodesText("");
       setProductType("file");
+      setProductImages([]);
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
     }
     setSaving(false);
+  }
+
+  async function handleProductImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImagesError("");
+    if (productImages.length >= 2) {
+      setImagesError("حد أقصى صورتين لكل منتج.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImagesError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      return;
+    }
+    setImagesUploading(true);
+    try {
+      const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      setProductImages((prev) => [...prev, url]);
+    } catch (err) {
+      setImagesError("تعذر رفع الصورة، حاول مرة ثانية.");
+    }
+    setImagesUploading(false);
+  }
+
+  function removeProductImage(url) {
+    setProductImages((prev) => prev.filter((u) => u !== url));
   }
 
   async function handleLogoUpload(e) {
@@ -361,6 +399,24 @@ export default function Dashboard() {
                 <div className="dh-field">
                   <label>وصف مختصر (اختياري)</label>
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
+                </div>
+                <div className="dh-field">
+                  <label>صور المنتج (حتى صورتين، اختياري)</label>
+                  <div className="dh-images-row">
+                    {productImages.map((url) => (
+                      <div className="dh-image-thumb-wrap" key={url}>
+                        <img src={url} alt="" className="dh-image-thumb" />
+                        <button type="button" className="dh-image-remove" onClick={() => removeProductImage(url)}>✕</button>
+                      </div>
+                    ))}
+                    {productImages.length < 2 && (
+                      <label className="dh-image-add">
+                        {imagesUploading ? "..." : "+"}
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleProductImageUpload} disabled={imagesUploading} />
+                      </label>
+                    )}
+                  </div>
+                  {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
                 </div>
                 <div className="dh-field">
                   <label>نوع المنتج</label>
