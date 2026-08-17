@@ -143,7 +143,7 @@ export default function App() {
         <div className="hero">
           <div className="hero-eyebrow">● بدون عمولة على المبيعات</div>
           <h1>متجرك الرقمي جاهز<br/>في <em>دقائق معدودة</em></h1>
-          <p> ارفع ملفاتك الرقمية، شارك رابط كل منتج على واتساب وإنستغرام، والملف يوصل عميلك تلقائيًا بعد الدفع — .</p>
+          <p>ارفع ملفاتك الرقمية، شارك رابط كل منتج على واتساب وإنستغرام، والملف يوصل عميلك تلقائيًا بعد الدفع.</p>
           <div className="hero-cta">
             <a className="btn out" href="#how">شوف كيف تشتغل</a>
             <a className="btn fill" href="#register">ابدأ البيع</a>
