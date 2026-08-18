@@ -166,6 +166,29 @@ export default function Dashboard() {
     return () => unsub();
   }, []);
 
+  // يتأكد إن ملف التاجر موجود بمجموعة sellers (يستخدمه الأدمن)، وينشئه لو ناقص
+  useEffect(() => {
+    if (!user) return;
+    async function ensureSellerProfile() {
+      try {
+        const sellerRef = doc(db, "sellers", user.uid);
+        const snap = await getDoc(sellerRef);
+        if (!snap.exists()) {
+          await setDoc(sellerRef, {
+            storeName: user.email.split("@")[0],
+            email: user.email,
+            createdAt: new Date().toISOString(),
+            plan: "basic",
+            disabled: false,
+          });
+        }
+      } catch (err) {
+        console.error("ensureSellerProfile:", err);
+      }
+    }
+    ensureSellerProfile();
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, "products"), where("ownerId", "==", user.uid));
@@ -371,6 +394,12 @@ export default function Dashboard() {
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
       });
+      // نحدّث اسم المتجر بملف التاجر (sellers) أيضًا عشان يبان صحيح بلوحة الأدمن
+      try {
+        await setDoc(doc(db, "sellers", user.uid), { storeName }, { merge: true });
+      } catch (e) {
+        console.error(e);
+      }
       setSlug(cleanSlug);
       setDesignSaved(true);
       setTimeout(() => setDesignSaved(false), 2000);
