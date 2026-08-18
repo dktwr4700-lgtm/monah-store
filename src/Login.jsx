@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "./firebase.js";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
 
@@ -15,6 +15,9 @@ const styles = `
   .auth-btn{ width:100%; background:#16233F; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:9px; cursor:pointer; margin-top:6px; }
   .auth-btn:disabled{ opacity:.6; }
   .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:8px; margin-bottom:14px; }
+  .auth-success{ background:#EAF0EB; color:#4B6152; font-size:12.5px; padding:10px 12px; border-radius:8px; margin-bottom:14px; }
+  .auth-forgot{ text-align:left; margin-top:-6px; margin-bottom:14px; }
+  .auth-forgot button{ background:none; border:none; color:#8A8677; font-size:12px; font-family:'Cairo'; cursor:pointer; text-decoration:underline; padding:0; }
   .auth-switch{ text-align:center; font-size:12.5px; color:#66655C; margin-top:16px; }
   .auth-switch a{ color:#16233F; font-weight:700; text-decoration:none; }
 `;
@@ -23,11 +26,14 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    setResetMsg("");
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -37,9 +43,32 @@ export default function Login() {
         window.location.hash = "dashboard";
       }
     } catch (err) {
-      setError("البريد أو كلمة المرور غير صحيحة.");
+      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+        setError("ما فيه حساب بهذا البريد. تأكد من الإيميل أو أنشئ حساب جديد.");
+      } else if (err.code === "auth/wrong-password") {
+        setError("كلمة المرور غير صحيحة. تقدر تضغط \"نسيت كلمة المرور؟\" تحت.");
+      } else {
+        setError("البريد أو كلمة المرور غير صحيحة.");
+      }
     }
     setLoading(false);
+  }
+
+  async function handleForgotPassword() {
+    setError("");
+    setResetMsg("");
+    if (!email || !email.includes("@")) {
+      setError("اكتب بريدك الإلكتروني أول بخانة البريد فوق، وبعدين اضغط \"نسيت كلمة المرور؟\".");
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMsg("أرسلنا لك رابط تغيير كلمة المرور على بريدك. تأكد من صندوق الوارد (أو الرسائل غير المرغوبة).");
+    } catch (err) {
+      setError("تعذّر إرسال رابط الاستعادة. تأكد إن البريد صحيح وحاول مرة ثانية.");
+    }
+    setResetLoading(false);
   }
 
   return (
@@ -50,6 +79,7 @@ export default function Login() {
         <div className="auth-title">تسجيل الدخول</div>
 
         {error && <div className="auth-error">{error}</div>}
+        {resetMsg && <div className="auth-success">{resetMsg}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="auth-field">
@@ -59,6 +89,11 @@ export default function Login() {
           <div className="auth-field">
             <label>كلمة المرور</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          <div className="auth-forgot">
+            <button type="button" onClick={handleForgotPassword} disabled={resetLoading}>
+              {resetLoading ? "جاري الإرسال..." : "نسيت كلمة المرور؟"}
+            </button>
           </div>
           <button className="auth-btn" type="submit" disabled={loading}>
             {loading ? "جاري الدخول..." : "تسجيل الدخول"}
