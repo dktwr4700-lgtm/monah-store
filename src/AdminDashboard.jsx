@@ -3,7 +3,7 @@ import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
-const ADMIN_EMAIL = "K1997551@gmail.com";
+const ADMIN_EMAIL = "k1997551@gmail.com";
 
 const styles = `
   .admin-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; color:#16233F; }
