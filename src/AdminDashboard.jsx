@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
 
@@ -24,7 +24,7 @@ const styles = `
   .admin-search{ width:100%; padding:12px 14px; border:1px solid #E4E0D3; border-radius:10px; font-size:13.5px; font-family:'Cairo',sans-serif; margin-bottom:16px; background:#fff; color:#16233F; }
 
   .seller-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:16px 18px; margin-bottom:10px; }
-  .seller-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .seller-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; cursor:pointer; }
   .seller-name{ font-weight:800; font-size:15px; }
   .seller-email{ color:#8A8677; font-size:12.5px; margin-top:2px; }
   .seller-meta{ display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; }
@@ -38,6 +38,19 @@ const styles = `
   .seller-btn{ padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; border:1px solid #E4E0D3; background:#fff; color:#16233F; }
   .seller-btn.warn{ border-color:#E7C9C1; color:#B24C3A; }
   .seller-btn.danger{ background:#B24C3A; color:#fff; border:none; }
+
+  .seller-expand-hint{ font-size:11.5px; color:#B9832F; font-weight:700; margin-top:8px; cursor:pointer; }
+
+  .products-box{ margin-top:14px; padding-top:14px; border-top:1px dashed #E4E0D3; }
+  .products-loading{ color:#8A8677; font-size:12.5px; padding:8px 0; }
+  .product-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-top:1px dashed #EFEBDE; }
+  .product-row:first-child{ border-top:none; }
+  .product-info{ flex:1; }
+  .product-name{ font-size:13px; font-weight:700; color:#16233F; }
+  .product-sub{ font-size:11px; color:#8A8677; margin-top:2px; }
+  .product-del{ background:transparent; border:1px solid #E7C9C1; color:#B24C3A; border-radius:7px; padding:6px 11px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .product-del:disabled{ opacity:.6; }
+  .products-empty{ color:#8A8677; font-size:12.5px; padding:8px 0; }
 
   .empty{ text-align:center; color:#8A8677; font-size:13.5px; padding:40px 0; }
   .loading{ text-align:center; color:#8A8677; font-size:13.5px; padding:40px 0; }
@@ -57,6 +70,11 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState(null);
+
+  const [expandedId, setExpandedId] = useState(null);
+  const [sellerProducts, setSellerProducts] = useState({});
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -110,6 +128,42 @@ export default function AdminDashboard() {
       console.error(e);
     }
     setBusyId(null);
+  }
+
+  async function toggleExpand(sellerId) {
+    if (expandedId === sellerId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(sellerId);
+    if (sellerProducts[sellerId]) return;
+    setProductsLoading(true);
+    try {
+      const q = query(collection(db, "products"), where("ownerId", "==", sellerId));
+      const snap = await getDocs(q);
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setSellerProducts((prev) => ({ ...prev, [sellerId]: list }));
+    } catch (e) {
+      console.error(e);
+      setSellerProducts((prev) => ({ ...prev, [sellerId]: [] }));
+    }
+    setProductsLoading(false);
+  }
+
+  async function deleteProduct(sellerId, product) {
+    const ok = window.confirm(`متأكد تبي تحذف منتج "${product.name}" نهائيًا؟`);
+    if (!ok) return;
+    setDeletingProductId(product.id);
+    try {
+      await deleteDoc(doc(db, "products", product.id));
+      setSellerProducts((prev) => ({
+        ...prev,
+        [sellerId]: prev[sellerId].filter((p) => p.id !== product.id),
+      }));
+    } catch (e) {
+      console.error(e);
+    }
+    setDeletingProductId(null);
   }
 
   if (!authChecked) {
@@ -190,7 +244,7 @@ export default function AdminDashboard() {
         {!loading &&
           filtered.map((s) => (
             <div className="seller-card" key={s.id}>
-              <div className="seller-top">
+              <div className="seller-top" onClick={() => toggleExpand(s.id)}>
                 <div>
                   <div className="seller-name">{s.storeName || "بدون اسم"}</div>
                   <div className="seller-email">{s.email}</div>
@@ -208,6 +262,39 @@ export default function AdminDashboard() {
                   تاريخ التسجيل: <b>{s.createdAt ? new Date(s.createdAt).toLocaleDateString("ar") : "—"}</b>
                 </span>
               </div>
+
+              <div className="seller-expand-hint" onClick={() => toggleExpand(s.id)}>
+                {expandedId === s.id ? "إخفاء المنتجات ▲" : "عرض المنتجات ▼"}
+              </div>
+
+              {expandedId === s.id && (
+                <div className="products-box">
+                  {productsLoading && !sellerProducts[s.id] && (
+                    <div className="products-loading">جاري تحميل المنتجات...</div>
+                  )}
+                  {sellerProducts[s.id] && sellerProducts[s.id].length === 0 && (
+                    <div className="products-empty">ما عنده أي منتج مضاف.</div>
+                  )}
+                  {sellerProducts[s.id] &&
+                    sellerProducts[s.id].map((p) => (
+                      <div className="product-row" key={p.id}>
+                        <div className="product-info">
+                          <div className="product-name">{p.name}</div>
+                          <div className="product-sub">
+                            {p.price} ر.ع · {p.category || "عام"} · {p.type === "code" ? "كود/ترخيص" : "ملف"}
+                          </div>
+                        </div>
+                        <button
+                          className="product-del"
+                          disabled={deletingProductId === p.id}
+                          onClick={() => deleteProduct(s.id, p)}
+                        >
+                          {deletingProductId === p.id ? "جاري الحذف..." : "حذف"}
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
 
               <div className="seller-actions">
                 <button
