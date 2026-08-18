@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Orders from "./Orders.jsx";
 
 const COLORS = ["#16233F", "#4B6152", "#8B3A3A", "#5B4A8A", "#B9832F"];
+const ADMIN_EMAIL = "k1997551@gmail.com";
 
 const styles = `
   .dh-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; }
@@ -18,6 +19,7 @@ const styles = `
   .dh-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:16px; }
   .dh-brand span{ color:#8A8677; font-weight:600; font-size:11.5px; margin-right:6px; }
   .dh-logout{ border:1px solid #E4E0D3; padding:7px 13px; border-radius:8px; font-size:11px; color:#3D4A66; background:none; font-family:'Cairo',sans-serif; cursor:pointer; }
+  .dh-admin-btn{ border:1px solid #B9832F; padding:7px 13px; border-radius:8px; font-size:11px; color:#B9832F; background:none; font-family:'Cairo',sans-serif; cursor:pointer; font-weight:700; margin-left:8px; }
 
   .dh-tabs{ display:flex; gap:6px; padding:12px 16px 0; overflow-x:auto; background:#F6F3EC; }
   .dh-tab{ white-space:nowrap; padding:8px 14px; border-radius:100px; font-size:11.5px; font-weight:700; border:1px solid #E4E0D3; background:#FFFFFF; color:#3D4A66; cursor:pointer; }
@@ -169,6 +171,7 @@ export default function Dashboard() {
   // يتأكد إن ملف التاجر موجود بمجموعة sellers (يستخدمه الأدمن)، وينشئه لو ناقص
   useEffect(() => {
     if (!user) return;
+    if (user.email === ADMIN_EMAIL) return;
     async function ensureSellerProfile() {
       try {
         const sellerRef = doc(db, "sellers", user.uid);
@@ -433,7 +436,12 @@ export default function Dashboard() {
       <style>{styles}</style>
       <div className="dh-header">
         <div className="dh-brand">Monah <span>· {storeName || "متجرك"}</span></div>
-        <button className="dh-logout" onClick={handleLogout}>تسجيل خروج</button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {user.email === ADMIN_EMAIL && (
+            <a href="#admin" className="dh-admin-btn">لوحة الأدمن</a>
+          )}
+          <button className="dh-logout" onClick={handleLogout}>تسجيل خروج</button>
+        </div>
       </div>
 
       <div className="dh-tabs">
