@@ -8,8 +8,10 @@ const styles = `
 
   .st-cover{ padding:44px 24px 26px; text-align:center; position:relative; overflow:hidden; }
   .st-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:18px 18px; }
-  .st-logo{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:22px; background:#fff; position:relative; z-index:1; }
-  .st-logo-img{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:block; object-fit:cover; position:relative; z-index:1; }
+  .st-cover-circle-a{ content:""; position:absolute; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.06); top:-100px; left:-60px; pointer-events:none; }
+  .st-cover-circle-b{ content:""; position:absolute; width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,0.05); bottom:-80px; right:-40px; pointer-events:none; }
+  .st-logo{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:22px; background:#fff; position:relative; z-index:1; box-shadow:0 10px 22px rgba(0,0,0,0.16); }
+  .st-logo-img{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:block; object-fit:cover; position:relative; z-index:1; box-shadow:0 10px 22px rgba(0,0,0,0.16); }
   .st-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#fff; position:relative; z-index:1; }
   .st-sub{ color:rgba(255,255,255,0.75); font-size:12px; margin-top:6px; position:relative; z-index:1; }
   .st-social{ display:flex; justify-content:center; gap:10px; margin-top:16px; position:relative; z-index:1; }
@@ -37,7 +39,12 @@ const styles = `
   .st-item-price{ color:#B9832F; font-weight:800; font-size:12.5px; font-family:'JetBrains Mono',monospace; }
   .st-item-desc{ color:#8A8677; font-size:11px; margin-top:4px; line-height:1.6; }
 
-  .st-empty{ text-align:center; color:#8A8677; font-size:13px; padding:60px 20px; }
+  .st-empty{ text-align:center; padding:56px 24px 30px; }
+  .st-empty-icon{ width:60px; height:60px; border-radius:16px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
+  .st-empty-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; color:#16233F; margin-bottom:8px; }
+  .st-empty-sub{ color:#8A8677; font-size:12px; line-height:1.9; max-width:340px; margin:0 auto 20px; }
+  .st-empty-cta{ display:inline-flex; align-items:center; gap:8px; background:#16233F; color:#fff; padding:11px 20px; border-radius:10px; font-size:12.5px; font-weight:700; text-decoration:none; }
+
   .st-footer{ text-align:center; padding:20px; color:#B0AC9C; font-size:10.5px; }
 `;
 
@@ -46,6 +53,16 @@ function FileIcon() {
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
       <path d="M14 2v6h6" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function EmptyStoreIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M14 2v6h6" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M9 15l2 2 4-4" stroke="#4B6152" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -106,6 +123,8 @@ export default function StorePage({ sellerId }) {
     <div className="st-page" dir="rtl" lang="ar">
       <style>{styles}</style>
       <div className="st-cover" style={{ background: brandColor }}>
+        <div className="st-cover-circle-a"></div>
+        <div className="st-cover-circle-b"></div>
         {logoUrl
           ? <img src={logoUrl} alt="" className="st-logo-img" />
           : <div className="st-logo">{initial}</div>}
@@ -136,7 +155,20 @@ export default function StorePage({ sellerId }) {
 
       <div className="st-wrap">
         {status === "ready" && products.length === 0 && (
-          <div className="st-empty">هذا المتجر ما فيه منتجات معروضة حاليًا.</div>
+          <div className="st-empty">
+            <div className="st-empty-icon"><EmptyStoreIcon /></div>
+            <div className="st-empty-title">التاجر يجهّز متجره الآن</div>
+            <div className="st-empty-sub">
+              صاحب هذا المتجر يضيف منتجاته الرقمية حاليًا. تواصل معه مباشرة لمعرفة إيش يوفر، أو ترقّب المنتجات قريبًا.
+            </div>
+            {whatsapp ? (
+              <a className="st-empty-cta" href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer">
+                💬 راسل التاجر الآن
+              </a>
+            ) : (
+              <span className="st-empty-cta" style={{ opacity: 0.6 }}>المنتجات قريبًا</span>
+            )}
+          </div>
         )}
 
         {categoryNames.map((cat) => (
