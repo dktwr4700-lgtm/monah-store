@@ -7,16 +7,34 @@ const styles = `
   .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#F7F6F2; padding:20px; font-family:'Cairo', sans-serif; }
   .auth-card{ width:100%; max-width:380px; background:#fff; border:1px solid #DFDCD1; border-radius:14px; padding:28px 24px; }
   .auth-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#16233F; text-align:center; margin-bottom:6px; }
-  .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:20px; color:#16181D; }
+  .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:6px; color:#16181D; }
+
+  .auth-steps{ display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:22px; }
+  .auth-step{ display:flex; align-items:center; gap:6px; }
+  .auth-step-dot{ width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; font-family:'Cairo'; }
+  .auth-step-dot.active{ background:#16233F; color:#fff; }
+  .auth-step-dot.pending{ background:#EFEBDE; color:#B0AC9C; }
+  .auth-step-label{ font-size:9.5px; color:#8A8677; }
+  .auth-step-line{ width:16px; height:1px; background:#E4E0D3; }
+
   .auth-field{ margin-bottom:14px; }
   .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#66655C; }
   .auth-field input{ width:100%; padding:12px 14px; border:1px solid #DFDCD1; border-radius:9px; font-family:'Cairo'; font-size:13.5px; }
   .auth-btn{ width:100%; background:#16233F; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:9px; cursor:pointer; margin-top:6px; }
   .auth-btn:disabled{ opacity:.6; }
   .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:8px; margin-bottom:14px; }
+  .auth-error a{ color:#B24C3A; font-weight:700; text-decoration:underline; }
+  .auth-next-hint{ text-align:center; color:#8A8677; font-size:11px; line-height:1.8; margin-top:14px; }
   .auth-switch{ text-align:center; font-size:12.5px; color:#66655C; margin-top:16px; }
   .auth-switch a{ color:#16233F; font-weight:700; text-decoration:none; }
 `;
+
+const STEPS = [
+  { n: "1", label: "الحساب" },
+  { n: "2", label: "الباقة" },
+  { n: "3", label: "المتجر" },
+  { n: "4", label: "أول منتج" },
+];
 
 export default function Register() {
   const [storeName, setStoreName] = useState("");
@@ -42,9 +60,15 @@ export default function Register() {
       });
       window.location.hash = "dashboard";
     } catch (err) {
-      if (err.code === "auth/email-already-in-use") setError("هذا البريد مسجّل من قبل.");
-      else if (err.code === "auth/invalid-email") setError("البريد الإلكتروني غير صحيح.");
-      else setError("صار خطأ، حاول مرة ثانية.");
+      if (err.code === "auth/email-already-in-use") {
+        setError(<>هذا البريد مسجّل من قبل. تبي <a href="#login">تسجّل دخولك</a> بدل كذا؟</>);
+      } else if (err.code === "auth/invalid-email") {
+        setError("البريد الإلكتروني غير صحيح، تأكد من كتابته صح.");
+      } else if (err.code === "auth/weak-password") {
+        setError("كلمة المرور ضعيفة، جرّب كلمة مرور أطول وأقوى.");
+      } else {
+        setError("صار خطأ غير متوقع، حاول مرة ثانية بعد شوي.");
+      }
     }
     setLoading(false);
   }
@@ -55,6 +79,17 @@ export default function Register() {
       <div className="auth-card">
         <div className="auth-brand">Monah</div>
         <div className="auth-title">إنشاء حساب بائع</div>
+
+        <div className="auth-steps">
+          {STEPS.map((s, i) => (
+            <React.Fragment key={s.n}>
+              <div className="auth-step">
+                <div className={"auth-step-dot " + (i === 0 ? "active" : "pending")}>{s.n}</div>
+              </div>
+              {i < STEPS.length - 1 && <div className="auth-step-line"></div>}
+            </React.Fragment>
+          ))}
+        </div>
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -75,6 +110,10 @@ export default function Register() {
             {loading ? "جاري الإنشاء..." : "إنشاء الحساب"}
           </button>
         </form>
+
+        <div className="auth-next-hint">
+          بعد إنشاء الحساب: تختار باقتك ← تضبط شكل متجرك ← ترفع أول منتج
+        </div>
 
         <div className="auth-switch">
           عندك حساب؟ <a href="#login">سجّل دخولك</a>
