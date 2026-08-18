@@ -54,6 +54,19 @@ const styles = `
 
   .empty{ text-align:center; color:#8A8677; font-size:13.5px; padding:40px 0; }
   .loading{ text-align:center; color:#8A8677; font-size:13.5px; padding:40px 0; }
+
+  .admin-tabs{ display:flex; gap:8px; margin-bottom:18px; }
+  .admin-tab{ padding:9px 16px; border-radius:100px; font-size:12.5px; font-weight:700; border:1px solid #E4E0D3; background:#FFFFFF; color:#3D4A66; cursor:pointer; }
+  .admin-tab.active{ background:#16233F; color:#fff; border-color:#16233F; }
+
+  .ap-row{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:14px 16px; margin-bottom:10px; }
+  .ap-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .ap-name{ font-weight:800; font-size:14px; color:#16233F; }
+  .ap-sub{ color:#8A8677; font-size:11.5px; margin-top:3px; }
+  .ap-owner{ color:#8A8677; font-size:11.5px; margin-top:6px; }
+  .ap-owner b{ color:#3D4A66; }
+  .badge-suspended{ background:#F3EBDD; color:#B9832F; }
+  .ap-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
 `;
 
 function planLabel(plan) {
@@ -75,6 +88,12 @@ export default function AdminDashboard() {
   const [sellerProducts, setSellerProducts] = useState({});
   const [productsLoading, setProductsLoading] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState(null);
+
+  const [view, setView] = useState("sellers");
+  const [allProducts, setAllProducts] = useState([]);
+  const [allProductsLoading, setAllProductsLoading] = useState(false);
+  const [allProductsLoaded, setAllProductsLoaded] = useState(false);
+  const [busyProductId, setBusyProductId] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -166,6 +185,51 @@ export default function AdminDashboard() {
     setDeletingProductId(null);
   }
 
+  async function loadAllProducts() {
+    setAllProductsLoading(true);
+    try {
+      const snap = await getDocs(collection(db, "products"));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setAllProducts(list);
+      setAllProductsLoaded(true);
+    } catch (e) {
+      console.error(e);
+    }
+    setAllProductsLoading(false);
+  }
+
+  function openProductsView() {
+    setView("products");
+    if (!allProductsLoaded) loadAllProducts();
+  }
+
+  async function toggleSuspendProduct(product) {
+    setBusyProductId(product.id);
+    try {
+      await updateDoc(doc(db, "products", product.id), { suspended: !product.suspended });
+      setAllProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, suspended: !p.suspended } : p))
+      );
+    } catch (e) {
+      console.error(e);
+    }
+    setBusyProductId(null);
+  }
+
+  async function deleteAnyProduct(product) {
+    const ok = window.confirm(`متأكد تبي تحذف منتج "${product.name}" نهائيًا؟`);
+    if (!ok) return;
+    setBusyProductId(product.id);
+    try {
+      await deleteDoc(doc(db, "products", product.id));
+      setAllProducts((prev) => prev.filter((p) => p.id !== product.id));
+    } catch (e) {
+      console.error(e);
+    }
+    setBusyProductId(null);
+  }
+
   if (!authChecked) {
     return (
       <div className="admin-page">
@@ -228,20 +292,31 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <div className="admin-tabs">
+          <button className={"admin-tab" + (view === "sellers" ? " active" : "")} onClick={() => setView("sellers")}>
+            التجار
+          </button>
+          <button className={"admin-tab" + (view === "products" ? " active" : "")} onClick={openProductsView}>
+            كل المنتجات
+          </button>
+        </div>
+
+        {view === "sellers" && (
         <input
           className="admin-search"
           placeholder="ابحث باسم المتجر أو الإيميل..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        )}
 
-        {loading && <div className="loading">جاري تحميل التجار...</div>}
+        {view === "sellers" && loading && <div className="loading">جاري تحميل التجار...</div>}
 
-        {!loading && filtered.length === 0 && (
+        {view === "sellers" && !loading && filtered.length === 0 && (
           <div className="empty">ما فيه تجار مطابقين</div>
         )}
 
-        {!loading &&
+        {view === "sellers" && !loading &&
           filtered.map((s) => (
             <div className="seller-card" key={s.id}>
               <div className="seller-top" onClick={() => toggleExpand(s.id)}>
@@ -314,7 +389,53 @@ export default function AdminDashboard() {
               </div>
             </div>
           ))}
+
+        {view === "products" && (
+          <>
+            {allProductsLoading && <div className="loading">جاري تحميل كل المنتجات...</div>}
+            {!allProductsLoading && allProducts.length === 0 && (
+              <div className="empty">ما فيه منتجات بالمنصة لسا</div>
+            )}
+            {!allProductsLoading &&
+              allProducts.map((p) => {
+                const owner = sellers.find((s) => s.id === p.ownerId);
+                return (
+                  <div className="ap-row" key={p.id}>
+                    <div className="ap-top">
+                      <div>
+                        <div className="ap-name">{p.name}</div>
+                        <div className="ap-sub">
+                          {p.price} ر.ع · {p.category || "عام"} · {p.type === "code" ? "كود/ترخيص" : "ملف"}
+                        </div>
+                        <div className="ap-owner">
+                          التاجر: <b>{owner ? (owner.storeName || owner.email) : p.ownerId}</b>
+                        </div>
+                      </div>
+                      {p.suspended && <span className="seller-badge badge-suspended">معلّق</span>}
+                    </div>
+                    <div className="ap-actions">
+                      <button
+                        className="seller-btn warn"
+                        disabled={busyProductId === p.id}
+                        onClick={() => toggleSuspendProduct(p)}
+                      >
+                        {p.suspended ? "إلغاء التعليق" : "تعليق مؤقت"}
+                      </button>
+                      <button
+                        className="seller-btn danger"
+                        disabled={busyProductId === p.id}
+                        onClick={() => deleteAnyProduct(p)}
+                      >
+                        حذف نهائي
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </>
+        )}
       </div>
     </div>
   );
 }
+
