@@ -67,13 +67,19 @@ const styles = `
   .usecase b{ display:block; font-size:13.5px; font-weight:700; margin-bottom:4px; }
   .usecase span{ color:#8A8677; font-size:11.5px; line-height:1.6; }
 
+  .billing-toggle{ display:flex; justify-content:center; align-items:center; gap:14px; margin-bottom:30px; }
+  .billing-btn{ padding:10px 20px; border-radius:100px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid #E4E0D3; background:#FFFFFF; color:#3D4A66; }
+  .billing-btn.active{ background:#16233F; color:#fff; border-color:#16233F; }
+  .billing-save-badge{ background:#EAF0EB; color:#4B6152; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:100px; margin-right:6px; }
+
   .pricing{ display:flex; gap:16px; max-width:920px; margin:0 auto 20px; flex-wrap:wrap; justify-content:center; align-items:stretch; }
   .price-card{ flex:1; min-width:230px; max-width:280px; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:16px; padding:30px 24px 26px; position:relative; display:flex; flex-direction:column; }
   .price-card.popular{ border:2px solid #16233F; padding-top:32px; }
   .price-badge{ position:absolute; top:-12px; right:24px; background:#B9832F; color:#fff; font-size:11px; font-weight:700; padding:5px 13px; border-radius:100px; }
   .price-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:15px; margin-bottom:10px; }
-  .price-value{ display:flex; align-items:baseline; gap:6px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:26px; padding-bottom:16px; margin-bottom:16px; border-bottom:1px dashed #E4E0D3; }
+  .price-value{ display:flex; align-items:baseline; gap:6px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:26px; margin-bottom:4px; }
   .price-value span{ font-size:12px; color:#8A8677; font-family:'Cairo', sans-serif; font-weight:400; }
+  .price-yearly-note{ font-size:11px; color:#B9832F; font-weight:700; margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed #E4E0D3; min-height:14px; }
   .price-features{ flex:1; }
   .price-features div{ display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#3D4A66; line-height:1.6; padding:6px 0; }
   .price-btn{ width:100%; margin-top:20px; padding:13px; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; border:1.5px solid #16233F; background:transparent; color:#16233F; display:block; text-align:center; }
@@ -119,9 +125,9 @@ const STEPS = [
 ];
 
 const PACKAGES = [
-  { name: "أساسية", price: "3", features: ["حتى 10 منتجات", "رابط خاص لكل منتج", "تسليم تلقائي"] },
-  { name: "احترافية", price: "6", popular: true, features: ["منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "تقارير مبيعات مفصّلة"] },
-  { name: "متجر متكامل", price: "12", features: ["كل مميزات الاحترافية", "ربط دومينك الخاص", "دعم أولوية"] },
+  { name: "أساسية", monthly: 3, yearly: 30, features: ["حتى 10 منتجات", "رابط خاص لكل منتج", "تسليم تلقائي"] },
+  { name: "احترافية", monthly: 6, yearly: 60, popular: true, features: ["منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "تقارير مبيعات مفصّلة"] },
+  { name: "متجر متكامل", monthly: 12, yearly: 120, features: ["كل مميزات الاحترافية", "ربط دومينك الخاص", "دعم أولوية"] },
 ];
 
 const FAQS = [
@@ -131,6 +137,7 @@ const FAQS = [
   { q: "أقدر أربط دومين خاص فيني؟", a: "نعم، بباقة المتجر المتكامل تقدر تربط دومينك الخاص بخطوات بسيطة من لوحة التحكم." },
   { q: "وش يصير لو ألغيت اشتراكي؟", a: "متجرك يتوقف عن استقبال مبيعات جديدة، لكن بياناتك ومنتجاتك تبقى محفوظة عندنا لو رجعت تشترك لاحقًا." },
   { q: "أقدر أغيّر باقتي بعدين؟", a: "أكيد، تقدر ترقّي أو تنزّل باقتك في أي وقت من لوحة التحكم." },
+  { q: "وش الفرق بين الاشتراك الشهري والسنوي؟", a: "نفس المميزات بالضبط، بس الاشتراك السنوي يوفر لك تكلفة شهرين مجانًا مقارنة بالدفع شهر بشهر." },
 ];
 
 function FaqItem({ q, a }) {
@@ -144,6 +151,8 @@ function FaqItem({ q, a }) {
 }
 
 export default function App() {
+  const [billing, setBilling] = useState("monthly");
+
   return (
     <div className="monah-app" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -248,12 +257,34 @@ export default function App() {
           <div className="section-eyebrow">الاشتراك</div>
           <div className="section-title">اختر باقتك</div>
           <div className="section-sub">تقدر ترقّي أو تنزّل باقتك في أي وقت، وتلغي اشتراكك بدون أي رسوم إضافية</div>
+
+          <div className="billing-toggle">
+            <button
+              className={"billing-btn" + (billing === "monthly" ? " active" : "")}
+              onClick={() => setBilling("monthly")}
+            >
+              شهري
+            </button>
+            <button
+              className={"billing-btn" + (billing === "yearly" ? " active" : "")}
+              onClick={() => setBilling("yearly")}
+            >
+              سنوي <span className="billing-save-badge">وفّر شهرين</span>
+            </button>
+          </div>
+
           <div className="pricing">
             {PACKAGES.map((p) => (
               <div className={"price-card" + (p.popular ? " popular" : "")} key={p.name}>
                 {p.popular && <div className="price-badge">الأكثر طلبًا</div>}
                 <div className="price-name">{p.name}</div>
-                <div className="price-value mono">{p.price} <span>ر.ع / شهريًا</span></div>
+                <div className="price-value mono">
+                  {billing === "monthly" ? p.monthly : p.yearly}
+                  <span>{billing === "monthly" ? "ر.ع / شهريًا" : "ر.ع / سنويًا"}</span>
+                </div>
+                <div className="price-yearly-note">
+                  {billing === "yearly" ? `بدل ${p.monthly * 12} ر.ع — توفير ${p.monthly * 12 - p.yearly} ر.ع بالسنة` : ""}
+                </div>
                 <div className="price-features">
                   {p.features.map((f) => <div key={f}>✓ {f}</div>)}
                 </div>
