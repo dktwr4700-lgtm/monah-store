@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { auth } from "./firebase.js";
 import { signInWithEmailAndPassword } from "firebase/auth";
 
+const ADMIN_EMAIL = "k1997551@gmail.com";
+
 const styles = `
   .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#F7F6F2; padding:20px; font-family:'Cairo', sans-serif; }
   .auth-card{ width:100%; max-width:380px; background:#fff; border:1px solid #DFDCD1; border-radius:14px; padding:28px 24px; }
@@ -28,8 +30,12 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      window.location.hash = "dashboard";
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      if (cred.user.email === ADMIN_EMAIL) {
+        window.location.hash = "admin";
+      } else {
+        window.location.hash = "dashboard";
+      }
     } catch (err) {
       setError("البريد أو كلمة المرور غير صحيحة.");
     }
