@@ -16,8 +16,9 @@ const styles = `
 
   .hero{ padding:30px 0 40px; text-align:center; }
   .hero-eyebrow{ display:inline-flex; align-items:center; gap:6px; background:#EAF0EB; color:#4B6152; font-size:12px; font-weight:700; padding:7px 14px; border-radius:100px; margin-bottom:22px; }
-  .hero h1{ font-family:'Almarai', sans-serif; font-weight:800; font-size:34px; line-height:1.5; margin-bottom:16px; }
+  .hero h1{ font-family:'Almarai', sans-serif; font-weight:800; font-size:33px; line-height:1.5; margin-bottom:14px; }
   .hero h1 em{ font-style:normal; color:#B9832F; }
+  .hero-audience{ color:#8A8677; font-size:13.5px; margin-bottom:16px; }
   .hero p{ color:#3D4A66; font-size:15px; line-height:1.9; max-width:480px; margin:0 auto 26px; }
   .hero-cta{ display:flex; gap:10px; justify-content:center; margin-bottom:20px; flex-wrap:wrap; }
   .btn{ padding:14px 22px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Cairo', sans-serif; }
@@ -26,7 +27,7 @@ const styles = `
   .hero-trust{ color:#8A8677; font-size:13px; }
   .hero-trust b{ color:#16233F; }
 
-  .stats{ display:flex; border-top:1px solid #E4E0D3; border-bottom:1px solid #E4E0D3; max-width:520px; margin:0 auto; }
+  .stats{ display:flex; border-top:1px solid #E4E0D3; border-bottom:1px solid #E4E0D3; max-width:600px; margin:0 auto; }
   .stat{ flex:1; text-align:center; padding:22px 10px; border-inline-start:1px solid #E4E0D3; }
   .stat:first-child{ border-inline-start:none; }
   .stat b{ display:block; font-family:'Almarai', sans-serif; font-weight:800; font-size:20px; }
@@ -40,6 +41,7 @@ const styles = `
   .receipt-row{ display:flex; justify-content:space-between; font-size:13px; padding:6px 0; color:#3D4A66; }
   .receipt-row b{ color:#16233F; }
   .receipt-status{ display:inline-flex; align-items:center; gap:6px; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; margin-top:8px; }
+  .receipt-note{ text-align:center; color:#B0AC9C; font-size:10.5px; margin-top:10px; }
 
   section.section{ padding:52px 0; }
   .section-eyebrow{ text-align:center; font-size:12px; color:#B9832F; font-weight:700; letter-spacing:.04em; margin-bottom:8px; }
@@ -59,7 +61,13 @@ const styles = `
   .feature b{ display:block; font-size:14px; font-weight:700; margin-bottom:6px; }
   .feature span{ color:#8A8677; font-size:12.5px; line-height:1.7; }
 
-  .pricing{ display:flex; gap:16px; max-width:920px; margin:0 auto; flex-wrap:wrap; justify-content:center; align-items:stretch; }
+  .usecases{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; max-width:900px; margin:0 auto; }
+  .usecase{ background:#FBFAF7; border:1px solid #E4E0D3; border-radius:12px; padding:18px; text-align:center; }
+  .usecase-emoji{ font-size:22px; margin-bottom:8px; }
+  .usecase b{ display:block; font-size:13.5px; font-weight:700; margin-bottom:4px; }
+  .usecase span{ color:#8A8677; font-size:11.5px; line-height:1.6; }
+
+  .pricing{ display:flex; gap:16px; max-width:920px; margin:0 auto 20px; flex-wrap:wrap; justify-content:center; align-items:stretch; }
   .price-card{ flex:1; min-width:230px; max-width:280px; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:16px; padding:30px 24px 26px; position:relative; display:flex; flex-direction:column; }
   .price-card.popular{ border:2px solid #16233F; padding-top:32px; }
   .price-badge{ position:absolute; top:-12px; right:24px; background:#B9832F; color:#fff; font-size:11px; font-weight:700; padding:5px 13px; border-radius:100px; }
@@ -70,6 +78,7 @@ const styles = `
   .price-features div{ display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#3D4A66; line-height:1.6; padding:6px 0; }
   .price-btn{ width:100%; margin-top:20px; padding:13px; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; border:1.5px solid #16233F; background:transparent; color:#16233F; display:block; text-align:center; }
   .price-card.popular .price-btn{ background:#16233F; color:#fff; border:none; }
+  .pricing-note{ text-align:center; color:#8A8677; font-size:12px; max-width:480px; margin:0 auto; line-height:1.8; }
 
   .faq{ max-width:640px; margin:0 auto; }
   .faq-item{ border-top:1px solid #E4E0D3; padding:18px 0; cursor:pointer; }
@@ -82,7 +91,9 @@ const styles = `
   .final-cta h3{ font-family:'Almarai', sans-serif; font-weight:800; font-size:20px; margin-bottom:8px; }
   .final-cta p{ color:#8A8677; font-size:13.5px; margin-bottom:20px; }
 
-  footer{ text-align:center; padding:24px 20px; color:#B0AC9C; font-size:12px; border-top:1px solid #E4E0D3; }
+  footer{ text-align:center; padding:28px 20px; color:#B0AC9C; font-size:12px; border-top:1px solid #E4E0D3; }
+  .footer-contact{ color:#3D4A66; font-size:12.5px; margin-bottom:8px; }
+  .footer-contact a{ color:#16233F; font-weight:700; }
   .footer-links{ margin-top:8px; display:flex; gap:14px; justify-content:center; }
   .footer-links a{ color:#8A8677; font-size:11.5px; }
 `;
@@ -92,6 +103,13 @@ const FEATURES = [
   { title: "رابط لكل منتج", desc: "كل منتج له رابط خاص فيه، تشاركه بأي مكان تحب.", icon: <path d="M12 3v18M3 12h18" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/> },
   { title: "تقارير مبيعات", desc: "تابع إيراداتك وأداء منتجاتك أول بأول.", icon: <><rect x="3" y="4" width="18" height="14" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 9h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
   { title: "إعداد بدقائق", desc: "بدون خبرة تقنية، وبدون كمبيوتر أو استضافة خارجية.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+];
+
+const USECASES = [
+  { emoji: "🎨", title: "المصممين", desc: "قوالب، فونتات، ملفات تصميم جاهزة" },
+  { emoji: "💻", title: "المبرمجين", desc: "أكواد، سكربتات، قوالب برمجية" },
+  { emoji: "📚", title: "المعلّمين", desc: "دورات، ملفات تعليمية، ملخصات" },
+  { emoji: "✍️", title: "صنّاع المحتوى", desc: "برستات، قوالب سوشيال ميديا" },
 ];
 
 const STEPS = [
@@ -111,6 +129,8 @@ const FAQS = [
   { q: "وش أنواع الملفات المسموحة؟", a: "أي ملف رقمي: PDF، تصاميم، أكواد، فيديوهات، وغيرها." },
   { q: "فيه عمولة على مبيعاتي؟", a: "لا. تدفع الاشتراك الشهري بس، وتحتفظ بكامل سعر بيعك." },
   { q: "أقدر أربط دومين خاص فيني؟", a: "نعم، بباقة المتجر المتكامل تقدر تربط دومينك الخاص بخطوات بسيطة من لوحة التحكم." },
+  { q: "وش يصير لو ألغيت اشتراكي؟", a: "متجرك يتوقف عن استقبال مبيعات جديدة، لكن بياناتك ومنتجاتك تبقى محفوظة عندنا لو رجعت تشترك لاحقًا." },
+  { q: "أقدر أغيّر باقتي بعدين؟", a: "أكيد، تقدر ترقّي أو تنزّل باقتك في أي وقت من لوحة التحكم." },
 ];
 
 function FaqItem({ q, a }) {
@@ -132,7 +152,7 @@ export default function App() {
         <div className="nav">
           <div className="nav-btns">
             <a className="nav-btn" href="#login">تسجيل الدخول</a>
-            <a className="nav-btn primary" href="#register">ابدأ البيع</a>
+            <a className="nav-btn primary" href="#register">أنشئ متجرك الآن</a>
           </div>
           <div className="nav-brand">
             <img src="/monah-mark-512.png" alt="Monah" />
@@ -142,19 +162,20 @@ export default function App() {
 
         <div className="hero">
           <div className="hero-eyebrow">● بدون عمولة على المبيعات</div>
-          <h1>متجرك الرقمي جاهز<br/>في <em>دقائق معدودة</em></h1>
+          <h1>بيع منتجك الرقمي<br/>من <em>رابط واحد</em></h1>
+          <div className="hero-audience">للمصممين، المبرمجين، المعلّمين، وصنّاع المحتوى في عُمان والخليج</div>
           <p>ارفع ملفاتك الرقمية، شارك رابط كل منتج على واتساب وإنستغرام، والملف يوصل عميلك تلقائيًا بعد الدفع.</p>
           <div className="hero-cta">
-            <a className="btn out" href="#how">شوف كيف تشتغل</a>
-            <a className="btn fill" href="#register">ابدأ البيع</a>
+            <a className="btn fill" href="#register">أنشئ متجرك الآن</a>
+            <a className="btn out" href="#how">شاهد كيف تعمل</a>
           </div>
         </div>
       </div>
 
       <div className="stats">
+        <div className="stat"><b>٤</b><span>متاجر نشطة</span></div>
         <div className="stat"><b>٪٠</b><span>عمولة على البيع</span></div>
         <div className="stat"><b>فوري</b><span>تسليم الملف</span></div>
-        <div className="stat"><b>رابط</b><span>خاص لكل منتج</span></div>
       </div>
 
       <div className="wrap">
@@ -170,6 +191,7 @@ export default function App() {
             <div className="receipt-status">✓ تم الدفع والتسليم</div>
           </div>
         </div>
+        <div className="receipt-note">مثال توضيحي لشكل عملية البيع على المنصة</div>
       </div>
 
       <section className="section" id="how">
@@ -189,6 +211,22 @@ export default function App() {
 
       <section className="section" style={{ background: "#FFFFFF" }}>
         <div className="wrap">
+          <div className="section-eyebrow">لمين المنصة</div>
+          <div className="section-title">مصممة لكل صانع محتوى رقمي</div>
+          <div className="usecases">
+            {USECASES.map((u) => (
+              <div className="usecase" key={u.title}>
+                <div className="usecase-emoji">{u.emoji}</div>
+                <b>{u.title}</b>
+                <span>{u.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="wrap">
           <div className="section-eyebrow">المميزات</div>
           <div className="section-title">كل شي تحتاجه لبيع منتجك</div>
           <div className="features">
@@ -205,11 +243,11 @@ export default function App() {
         </div>
       </section>
 
-      <section className="section" id="pricing">
+      <section className="section" id="pricing" style={{ background: "#FFFFFF" }}>
         <div className="wrap">
           <div className="section-eyebrow">الاشتراك</div>
           <div className="section-title">اختر باقتك</div>
-          <div className="section-sub">تقدر تلغي أو تغيّر باقتك في أي وقت</div>
+          <div className="section-sub">تقدر ترقّي أو تنزّل باقتك في أي وقت، وتلغي اشتراكك بدون أي رسوم إضافية</div>
           <div className="pricing">
             {PACKAGES.map((p) => (
               <div className={"price-card" + (p.popular ? " popular" : "")} key={p.name}>
@@ -223,10 +261,11 @@ export default function App() {
               </div>
             ))}
           </div>
+          <div className="pricing-note">الأسعار كاملة وشاملة، بدون رسوم خفية أو مصاريف إضافية. لو ألغيت اشتراكك، ما يُخصم منك أي مبلغ إضافي.</div>
         </div>
       </section>
 
-      <section className="section" style={{ background: "#FFFFFF" }}>
+      <section className="section">
         <div className="wrap">
           <div className="section-eyebrow">أسئلة</div>
           <div className="section-title">أسئلة شائعة</div>
@@ -238,11 +277,14 @@ export default function App() {
 
       <div className="final-cta">
         <h3>جاهز تبدأ متجرك؟</h3>
-        <p>سجّل الحين وابدأ البيع خلال دقائق</p>
-        <a className="btn fill" href="#register">ابدأ البيع الآن</a>
+        <p>سجّل الحين وابدأ البيع خلال دقائق. لن يُخصم أي مبلغ قبل تأكيد اختيارك للباقة.</p>
+        <a className="btn fill" href="#register">أنشئ متجرك الآن</a>
       </div>
 
       <footer>
+        <div className="footer-contact">
+          تواصل معنا مباشرة على واتساب: <a href="https://wa.me/96876630905" target="_blank" rel="noopener noreferrer">76630905</a>
+        </div>
         © Monah — منصة بيع المنتجات الرقمية
         <div className="footer-links">
           <a href="#privacy">سياسة الخصوصية</a>
