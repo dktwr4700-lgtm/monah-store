@@ -80,6 +80,10 @@ export default function ProductPage({ productId }) {
         const snap = await getDoc(doc(db, "products", productId));
         if (snap.exists()) {
           const data = snap.data();
+          if (data.suspended) {
+            setStatus("suspended");
+            return;
+          }
           setProduct(data);
           const storeSnap = await getDoc(doc(db, "stores", data.ownerId));
           if (storeSnap.exists()) setStore(storeSnap.data());
@@ -109,6 +113,16 @@ export default function ProductPage({ productId }) {
         <style>{styles}</style>
         <div className="pp-state-title">هذا المنتج غير متوفر</div>
         <div className="pp-state-sub">تأكد من صحة الرابط وحاول مرة ثانية.</div>
+      </div>
+    );
+  }
+
+  if (status === "suspended") {
+    return (
+      <div className="pp-state" dir="rtl" lang="ar">
+        <style>{styles}</style>
+        <div className="pp-state-title">هذا المنتج غير متاح حاليًا</div>
+        <div className="pp-state-sub">تواصل مع صاحب المتجر لمزيد من التفاصيل.</div>
       </div>
     );
   }
