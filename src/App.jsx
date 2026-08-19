@@ -127,6 +127,12 @@ const FEATURES = [
   { title: "إعداد بدقائق", desc: "بدون خبرة تقنية، وبدون كمبيوتر أو استضافة خارجية.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
 ];
 
+const FILE_PROTECTION = [
+  { title: "روابط تحميل مؤقتة", desc: "كل رابط تحميل يصلح لفترة محدودة وينتهي تلقائيًا بعدها، فما يبقى صالح للاستخدام إلى الأبد.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3.5 2" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { title: "تشفير كامل", desc: "ملفاتك مخزّنة ومحمية بتشفير قوي من لحظة الرفع إلى لحظة التحميل، ما يقدر أحد يوصلها غير عميلك.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 018 0v3" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
+  { title: "منع إعادة المشاركة", desc: "بعد أول تحميل ناجح، الرابط ينغلق ولا يشتغل بعدها، فملفك ما يتوزع مجانًا بروابط متداولة.", icon: <><path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/><path d="M9 12l2 2 4-4" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></> },
+];
+
 const USECASES = [
   { emoji: "🎨", title: "المصممين", desc: "قوالب، فونتات، ملفات تصميم جاهزة" },
   { emoji: "💻", title: "المبرمجين", desc: "أكواد، سكربتات، قوالب برمجية" },
@@ -299,6 +305,25 @@ export default function App() {
           <div className="section-title">كل شي تحتاجه لبيع منتجك</div>
           <div className="features">
             {FEATURES.map((f) => (
+              <div className="feature" key={f.title}>
+                <div className="feature-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24">{f.icon}</svg>
+                </div>
+                <b>{f.title}</b>
+                <span>{f.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" id="protection">
+        <div className="wrap">
+          <div className="section-eyebrow">الأمان</div>
+          <div className="section-title">حماية ملفاتك من الألف إلى الياء</div>
+          <div className="section-sub">ما نكتفي بمنعك من دفع عمولة، نحمي منتجك الرقمي نفسه من السرقة والتوزيع غير المصرّح فيه</div>
+          <div className="features">
+            {FILE_PROTECTION.map((f) => (
               <div className="feature" key={f.title}>
                 <div className="feature-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24">{f.icon}</svg>
