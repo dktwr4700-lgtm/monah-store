@@ -8,6 +8,8 @@ const styles = `
 
   .st-cover{ padding:44px 24px 26px; text-align:center; position:relative; overflow:hidden; }
   .st-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:18px 18px; }
+  .st-cover-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.35; }
+  .st-cover-overlay{ position:absolute; inset:0; background:inherit; opacity:0.55; }
   .st-cover-circle-a{ content:""; position:absolute; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.06); top:-100px; left:-60px; pointer-events:none; }
   .st-cover-circle-b{ content:""; position:absolute; width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,0.05); bottom:-80px; right:-40px; pointer-events:none; }
   .st-logo{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:22px; background:#fff; position:relative; z-index:1; box-shadow:0 10px 22px rgba(0,0,0,0.16); }
@@ -109,6 +111,7 @@ export default function StorePage({ sellerId }) {
   const whatsapp = store && store.whatsapp;
   const instagram = store && store.instagram;
   const logoUrl = store && store.logoUrl;
+  const coverUrl = store && store.coverUrl;
   const initial = brandName.charAt(0);
 
   const groups = {};
@@ -123,6 +126,8 @@ export default function StorePage({ sellerId }) {
     <div className="st-page" dir="rtl" lang="ar">
       <style>{styles}</style>
       <div className="st-cover" style={{ background: brandColor }}>
+        {coverUrl && <img src={coverUrl} alt="" className="st-cover-img" />}
+        {coverUrl && <div className="st-cover-overlay" style={{ background: brandColor }}></div>}
         <div className="st-cover-circle-a"></div>
         <div className="st-cover-circle-b"></div>
         {logoUrl
