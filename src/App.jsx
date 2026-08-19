@@ -67,24 +67,33 @@ const styles = `
   .usecase b{ display:block; font-size:13.5px; font-weight:700; margin-bottom:4px; }
   .usecase span{ color:#8A8677; font-size:11.5px; line-height:1.6; }
 
-  .billing-toggle{ display:flex; justify-content:center; align-items:center; gap:14px; margin-bottom:30px; }
+  .billing-toggle{ display:flex; justify-content:center; align-items:center; gap:14px; margin-bottom:14px; }
   .billing-btn{ padding:10px 20px; border-radius:100px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid #E4E0D3; background:#FFFFFF; color:#3D4A66; }
   .billing-btn.active{ background:#16233F; color:#fff; border-color:#16233F; }
   .billing-save-badge{ background:#EAF0EB; color:#4B6152; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:100px; margin-right:6px; }
+
+  .common-features{ text-align:center; color:#8A8677; font-size:12px; max-width:640px; margin:0 auto 30px; line-height:2; }
+  .common-features b{ color:#16233F; }
 
   .pricing{ display:flex; gap:16px; max-width:920px; margin:0 auto 20px; flex-wrap:wrap; justify-content:center; align-items:stretch; }
   .price-card{ flex:1; min-width:230px; max-width:280px; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:16px; padding:30px 24px 26px; position:relative; display:flex; flex-direction:column; }
   .price-card.popular{ border:2px solid #16233F; padding-top:32px; }
   .price-badge{ position:absolute; top:-12px; right:24px; background:#B9832F; color:#fff; font-size:11px; font-weight:700; padding:5px 13px; border-radius:100px; }
-  .price-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:15px; margin-bottom:10px; }
+  .price-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:15px; margin-bottom:6px; }
+  .price-desc{ color:#8A8677; font-size:11.5px; line-height:1.7; margin-bottom:14px; min-height:32px; }
   .price-value{ display:flex; align-items:baseline; gap:6px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:26px; margin-bottom:4px; }
   .price-value span{ font-size:12px; color:#8A8677; font-family:'Cairo', sans-serif; font-weight:400; }
   .price-yearly-note{ font-size:11px; color:#B9832F; font-weight:700; margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed #E4E0D3; min-height:14px; }
   .price-features{ flex:1; }
   .price-features div{ display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#3D4A66; line-height:1.6; padding:6px 0; }
+  .price-soon{ margin-top:8px; padding-top:8px; border-top:1px dashed #E4E0D3; }
+  .price-soon-label{ color:#B9832F; font-size:10px; font-weight:700; margin-bottom:4px; }
+  .price-soon div{ font-size:11px; color:#B0AC9C; padding:2px 0; }
   .price-btn{ width:100%; margin-top:20px; padding:13px; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; border:1.5px solid #16233F; background:transparent; color:#16233F; display:block; text-align:center; }
   .price-card.popular .price-btn{ background:#16233F; color:#fff; border:none; }
   .pricing-note{ text-align:center; color:#8A8677; font-size:12px; max-width:480px; margin:0 auto; line-height:1.8; }
+  .pricing-compare{ text-align:center; margin-top:14px; }
+  .pricing-compare a{ color:#8A8677; font-size:12px; text-decoration:underline; }
 
   .faq{ max-width:640px; margin:0 auto; }
   .faq-item{ border-top:1px solid #E4E0D3; padding:18px 0; cursor:pointer; }
@@ -124,17 +133,42 @@ const STEPS = [
   { n: "03", title: "تشارك الرابط وتستلم كامل السعر", desc: "ما فيه عمولة على أي عملية بيع تسويها." },
 ];
 
+const COMMON_FEATURES = [
+  "بدون عمولة على المبيعات",
+  "تسليم تلقائي بعد الدفع",
+  "صفحة متوافقة مع الجوال",
+  "رابط خاص لكل منتج",
+  "ترقية أو تخفيض أو إلغاء في أي وقت",
+];
+
 const PACKAGES = [
-  { name: "أساسية", monthly: 3, yearly: 30, features: ["حتى 10 منتجات", "رابط خاص لكل منتج", "تسليم تلقائي"] },
-  { name: "احترافية", monthly: 6, yearly: 60, popular: true, features: ["منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "تقارير مبيعات مفصّلة"] },
-  { name: "متجر متكامل", monthly: 12, yearly: 120, features: ["كل مميزات الاحترافية", "ربط دومينك الخاص", "دعم أولوية"] },
+  {
+    name: "أساسية", monthly: 3, yearly: 30,
+    desc: "مناسبة لمن يريد البدء ببيع أول منتجاته الرقمية.",
+    btn: "ابدأ متجرك",
+    features: ["حتى 10 منتجات", "صفحة متجر جاهزة", "بيع ملفات وأكواد/تراخيص"],
+  },
+  {
+    name: "احترافية", monthly: 6, yearly: 60, popular: true,
+    desc: "مناسبة لمن يريد تنمية مبيعاته وتخصيص متجره.",
+    btn: "نمِّ متجرك",
+    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "كوبونات خصم"],
+    soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"],
+  },
+  {
+    name: "متجر متكامل", monthly: 12, yearly: 120,
+    desc: "مناسبة لمن يريد بناء علامة رقمية مستقلة.",
+    btn: "ابنِ علامتك",
+    features: ["كل مميزات الاحترافية"],
+    soon: ["ربط دومينك الخاص", "إزالة شعار Monah من واجهة المتجر", "حماية متقدمة لروابط التحميل", "تحليلات مصادر الزيارات", "دعم أولوية"],
+  },
 ];
 
 const FAQS = [
   { q: "هل أحتاج خبرة تقنية؟", a: "أبدًا. ترفع ملفك وتحدد السعر، والباقي تتكفل به المنصة." },
   { q: "وش أنواع الملفات المسموحة؟", a: "أي ملف رقمي: PDF، تصاميم، أكواد، فيديوهات، وغيرها." },
   { q: "فيه عمولة على مبيعاتي؟", a: "لا. تدفع الاشتراك الشهري بس، وتحتفظ بكامل سعر بيعك." },
-  { q: "أقدر أربط دومين خاص فيني؟", a: "نعم، بباقة المتجر المتكامل تقدر تربط دومينك الخاص بخطوات بسيطة من لوحة التحكم." },
+  { q: "أقدر أربط دومين خاص فيني؟", a: "هذي ميزة قادمة قريبًا للباقة المتكاملة، لسا قيد التطوير." },
   { q: "وش يصير لو ألغيت اشتراكي؟", a: "متجرك يتوقف عن استقبال مبيعات جديدة، لكن بياناتك ومنتجاتك تبقى محفوظة عندنا لو رجعت تشترك لاحقًا." },
   { q: "أقدر أغيّر باقتي بعدين؟", a: "أكيد، تقدر ترقّي أو تنزّل باقتك في أي وقت من لوحة التحكم." },
   { q: "وش الفرق بين الاشتراك الشهري والسنوي؟", a: "نفس المميزات بالضبط، بس الاشتراك السنوي يوفر لك تكلفة شهرين مجانًا مقارنة بالدفع شهر بشهر." },
@@ -273,11 +307,16 @@ export default function App() {
             </button>
           </div>
 
+          <div className="common-features">
+            <b>كل الباقات تشمل:</b> {COMMON_FEATURES.join(" · ")}
+          </div>
+
           <div className="pricing">
             {PACKAGES.map((p) => (
               <div className={"price-card" + (p.popular ? " popular" : "")} key={p.name}>
                 {p.popular && <div className="price-badge">الأكثر طلبًا</div>}
                 <div className="price-name">{p.name}</div>
+                <div className="price-desc">{p.desc}</div>
                 <div className="price-value mono">
                   {billing === "monthly" ? p.monthly : p.yearly}
                   <span>{billing === "monthly" ? "ر.ع / شهريًا" : "ر.ع / سنويًا"}</span>
@@ -288,7 +327,13 @@ export default function App() {
                 <div className="price-features">
                   {p.features.map((f) => <div key={f}>✓ {f}</div>)}
                 </div>
-                <a className="price-btn" href="#register">ابدأ بهذي الباقة</a>
+                {p.soon && (
+                  <div className="price-soon">
+                    <div className="price-soon-label">قادم قريبًا:</div>
+                    {p.soon.map((f) => <div key={f}>○ {f}</div>)}
+                  </div>
+                )}
+                <a className="price-btn" href="#register">{p.btn}</a>
               </div>
             ))}
           </div>
