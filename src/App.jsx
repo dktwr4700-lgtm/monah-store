@@ -95,6 +95,19 @@ const styles = `
   .pricing-compare{ text-align:center; margin-top:14px; }
   .pricing-compare a{ color:#8A8677; font-size:12px; text-decoration:underline; }
 
+  .compare{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; max-width:760px; margin:0 auto; align-items:start; }
+  .compare-col{ background:#FFFFFF; border-radius:16px; padding:24px 20px; border:1px solid #E4E0D3; }
+  .compare-col.monah{ background:#16233F; border-color:#16233F; }
+  .compare-head{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px dashed #E4E0D3; color:#16233F; }
+  .compare-col.monah .compare-head{ color:#fff; border-bottom-color:rgba(255,255,255,0.2); }
+  .compare-row{ padding:9px 0; border-top:1px dashed #E4E0D3; }
+  .compare-row:first-of-type{ border-top:none; }
+  .compare-col.monah .compare-row{ border-top-color:rgba(255,255,255,0.14); }
+  .compare-label{ display:block; font-size:10.5px; font-weight:700; color:#B9832F; margin-bottom:3px; }
+  .compare-col.monah .compare-label{ color:#D8B074; }
+  .compare-value{ display:block; font-size:12.5px; line-height:1.7; color:#3D4A66; }
+  .compare-col.monah .compare-value{ color:#E4E8F0; }
+
   .faq{ max-width:640px; margin:0 auto; }
   .faq-item{ border-top:1px solid #E4E0D3; padding:18px 0; cursor:pointer; }
   .faq-item:last-child{ border-bottom:1px solid #E4E0D3; }
@@ -175,6 +188,13 @@ const PACKAGES = [
     features: ["كل مميزات الاحترافية"],
     soon: ["ربط دومينك الخاص", "إزالة شعار Monah من واجهة المتجر", "حماية متقدمة لروابط التحميل", "تحليلات مصادر الزيارات", "دعم أولوية"],
   },
+];
+
+const COMPARE_ROWS = [
+  { label: "العمولة على المبيعات", traditional: "نسبة تُقتطع من كل عملية بيع", monah: "بدون عمولة، اشتراك شهري ثابت فقط" },
+  { label: "الرسوم الإضافية", traditional: "رسوم معالجة دفع أو سحب غير معلنة", monah: "سعر واضح وشامل من البداية" },
+  { label: "سرعة وصول أرباحك", traditional: "تنتظر أيام حتى تُحوَّل أرباحك", monah: "أرباحك توصلك مباشرة من عميلك" },
+  { label: "حماية ملفك", traditional: "غالبًا بدون حماية حقيقية من إعادة التوزيع", monah: "روابط تحميل مؤقتة ومشفّرة تنغلق بعد أول استخدام" },
 ];
 
 const FAQS = [
@@ -333,6 +353,34 @@ export default function App() {
                 <span>{f.desc}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" id="compare" style={{ background: "#FFFFFF" }}>
+        <div className="wrap">
+          <div className="section-eyebrow">المقارنة</div>
+          <div className="section-title">ليش تفرق عن المنصات التقليدية؟</div>
+          <div className="section-sub">مقارنة بسيطة بين طريقة عمل Monah وطريقة عمل المنصات التي تقتطع عمولة من كل عملية بيع</div>
+          <div className="compare">
+            <div className="compare-col monah">
+              <div className="compare-head">Monah</div>
+              {COMPARE_ROWS.map((r) => (
+                <div className="compare-row" key={r.label}>
+                  <span className="compare-label">{r.label}</span>
+                  <span className="compare-value">{r.monah}</span>
+                </div>
+              ))}
+            </div>
+            <div className="compare-col">
+              <div className="compare-head">منصات تقليدية بعمولة</div>
+              {COMPARE_ROWS.map((r) => (
+                <div className="compare-row" key={r.label}>
+                  <span className="compare-label">{r.label}</span>
+                  <span className="compare-value">{r.traditional}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
