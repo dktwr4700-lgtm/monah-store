@@ -108,6 +108,17 @@ const styles = `
   .compare-value{ display:block; font-size:12.5px; line-height:1.7; color:#3D4A66; }
   .compare-col.monah .compare-value{ color:#E4E8F0; }
 
+  .showcase{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; max-width:900px; margin:0 auto 14px; }
+  .showcase-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; overflow:hidden; }
+  .showcase-thumb{ height:100px; display:flex; align-items:center; justify-content:center; font-size:30px; background:#EAF0EB; }
+  .showcase-body{ padding:14px 16px 16px; }
+  .showcase-seller{ color:#B9832F; font-size:10.5px; font-weight:700; margin-bottom:4px; }
+  .showcase-title{ font-size:13px; font-weight:700; line-height:1.5; margin-bottom:10px; min-height:38px; }
+  .showcase-row{ display:flex; justify-content:space-between; align-items:center; }
+  .showcase-price{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px; }
+  .showcase-badge{ background:#F6F3EC; color:#8A8677; font-size:10px; font-weight:700; padding:4px 9px; border-radius:100px; }
+  .showcase-disclaimer{ text-align:center; color:#B0AC9C; font-size:11px; }
+
   .faq{ max-width:640px; margin:0 auto; }
   .faq-item{ border-top:1px solid #E4E0D3; padding:18px 0; cursor:pointer; }
   .faq-item:last-child{ border-bottom:1px solid #E4E0D3; }
@@ -195,6 +206,13 @@ const COMPARE_ROWS = [
   { label: "الرسوم الإضافية", traditional: "رسوم معالجة دفع أو سحب غير معلنة", monah: "سعر واضح وشامل من البداية" },
   { label: "سرعة وصول أرباحك", traditional: "تنتظر أيام حتى تُحوَّل أرباحك", monah: "أرباحك توصلك مباشرة من عميلك" },
   { label: "حماية ملفك", traditional: "غالبًا بدون حماية حقيقية من إعادة التوزيع", monah: "روابط تحميل مؤقتة ومشفّرة تنغلق بعد أول استخدام" },
+];
+
+const SHOWCASE_PRODUCTS = [
+  { emoji: "🎨", title: "رزمة قوالب سيرة ذاتية", seller: "هند للتصاميم", price: "٥.٠٠ ر.ع" },
+  { emoji: "💻", title: "سكربت أتمتة مهام بايثون", seller: "سالم للأكواد", price: "٨.٠٠ ر.ع" },
+  { emoji: "📚", title: "دورة أساسيات التصميم الجرافيكي", seller: "أكاديمية نور", price: "١٥.٠٠ ر.ع" },
+  { emoji: "✍️", title: "حزمة برستات إنستغرام", seller: "مؤثرة كوين", price: "٤.٠٠ ر.ع" },
 ];
 
 const FAQS = [
@@ -317,6 +335,30 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="section" id="showcase">
+        <div className="wrap">
+          <div className="section-eyebrow">أمثلة</div>
+          <div className="section-title">منتجات مميزة على المنصة</div>
+          <div className="section-sub">عرض تجريبي يوريك شكل صفحة المنتج — الأسعار والمنتجات هنا وهمية لأغراض التوضيح فقط</div>
+          <div className="showcase">
+            {SHOWCASE_PRODUCTS.map((p) => (
+              <div className="showcase-card" key={p.title}>
+                <div className="showcase-thumb">{p.emoji}</div>
+                <div className="showcase-body">
+                  <div className="showcase-seller">{p.seller}</div>
+                  <div className="showcase-title">{p.title}</div>
+                  <div className="showcase-row">
+                    <span className="showcase-price mono">{p.price}</span>
+                    <span className="showcase-badge">تسليم فوري</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="showcase-disclaimer">* منتجات توضيحية وهمية، مو منتجات حقيقية معروضة للبيع</div>
         </div>
       </section>
 
