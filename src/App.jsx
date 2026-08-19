@@ -49,9 +49,11 @@ const styles = `
   .section-sub{ text-align:center; color:#8A8677; font-size:14px; margin-bottom:36px; }
 
   .steps{ max-width:640px; margin:0 auto; }
-  .step{ display:flex; gap:18px; padding:20px 0; border-top:1px dashed #E4E0D3; }
+  .step{ display:flex; align-items:flex-start; gap:14px; padding:20px 0; border-top:1px dashed #E4E0D3; }
   .step:first-child{ border-top:none; }
-  .step-num{ font-family:'JetBrains Mono', monospace; font-weight:700; color:#B9832F; font-size:15px; padding-top:2px; min-width:24px; }
+  .step-icon{ width:36px; height:36px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .step-num{ font-family:'JetBrains Mono', monospace; font-weight:700; color:#B9832F; font-size:15px; padding-top:8px; min-width:24px; }
+  .step-text{ padding-top:6px; }
   .step-text b{ display:block; font-size:15px; font-weight:700; margin-bottom:4px; }
   .step-text span{ color:#8A8677; font-size:13px; line-height:1.8; }
 
@@ -165,9 +167,11 @@ const USECASES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "تسجّل وتشترك بباقة شهرية", desc: "تدخل بياناتك وتختار الباقة المناسبة لك." },
-  { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه." },
-  { n: "03", title: "تشارك الرابط وتستلم كامل السعر", desc: "ما فيه عمولة على أي عملية بيع تسويها." },
+  { n: "01", title: "تسجّل وتشترك بباقة شهرية", desc: "تدخل بياناتك وتختار الباقة المناسبة لك.", icon: <><circle cx="12" cy="8" r="4" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه.", icon: <><path d="M12 16V4M7 9l5-5 5 5" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { n: "03", title: "تحدد السعر وتشارك الرابط", desc: "رابط خاص لكل منتج، تشاركه على واتساب أو إنستغرام.", icon: <><circle cx="8" cy="12" r="3" stroke="#4B6152" strokeWidth="2" fill="none"/><circle cx="18" cy="6" r="3" stroke="#4B6152" strokeWidth="2" fill="none"/><circle cx="18" cy="18" r="3" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M10.7 10.7L15.3 7.3M10.7 13.3l4.6 3.4" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { n: "04", title: "عميلك يدفع بأمان", desc: "بوابة دفع آمنة ومباشرة، بدون وسيط ياخذ نسبة.", icon: <><rect x="3" y="6" width="18" height="13" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 10h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
+  { n: "05", title: "يستلم ملفه وتستلم كامل السعر", desc: "تسليم تلقائي فوري، وما فيه عمولة على أي عملية بيع تسويها.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
 ];
 
 const COMMON_FEATURES = [
@@ -314,6 +318,9 @@ export default function App() {
           <div className="steps">
             {STEPS.map((s) => (
               <div className="step" key={s.n}>
+                <div className="step-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24">{s.icon}</svg>
+                </div>
                 <div className="step-num mono">{s.n}</div>
                 <div className="step-text"><b>{s.title}</b><span>{s.desc}</span></div>
               </div>
