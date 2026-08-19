@@ -221,6 +221,7 @@ export default function ProductPage({ productId }) {
   async function handleDownload() {
     setDownloading(true);
     setDownloadError("");
+    const newTab = window.open("", "_blank");
     try {
       let url;
       if (product.filePath) {
@@ -230,9 +231,14 @@ export default function ProductPage({ productId }) {
         // توافق مؤقت مع منتجات قديمة رُفعت قبل تفعيل نظام الحماية
         url = product.fileUrl;
       }
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (newTab) {
+        newTab.location.href = url;
+      } else {
+        window.location.href = url;
+      }
     } catch (err) {
-      setDownloadError("خطأ تشخيصي مؤقت: " + (err.code || "") + " - " + (err.message || String(err)));
+      if (newTab) newTab.close();
+      setDownloadError("انتهت صلاحية رابط التحميل أو صار خطأ. تواصل مع صاحب المتجر.");
     }
     setDownloading(false);
   }
