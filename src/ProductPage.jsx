@@ -219,6 +219,7 @@ export default function ProductPage({ productId }) {
   // يطلب رابط تحميل آمن مباشرة من Firebase Storage
   // الرابط يشتغل فقط لو عندنا تصريح دخول صالح (unlocks) — وإلا يرفضه Firebase تلقائيًا
   async function handleDownload() {
+    alert("تم الضغط على الزر"); // تشخيص مؤقت
     setDownloading(true);
     setDownloadError("");
     const newTab = window.open("", "_blank");
@@ -238,6 +239,7 @@ export default function ProductPage({ productId }) {
       }
     } catch (err) {
       if (newTab) newTab.close();
+      alert("خطأ: " + (err.code || "") + " - " + (err.message || String(err))); // تشخيص مؤقت
       setDownloadError("انتهت صلاحية رابط التحميل أو صار خطأ. تواصل مع صاحب المتجر.");
     }
     setDownloading(false);
