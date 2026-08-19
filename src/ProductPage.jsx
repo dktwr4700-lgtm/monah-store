@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { db } from "./firebase.js";
+import { db, storage, ensureAnonymousAuth } from "./firebase.js";
 import {
-  doc, getDoc, collection, addDoc, serverTimestamp,
+  doc, getDoc, setDoc, collection, addDoc, serverTimestamp,
   query, where, limit, getDocs, runTransaction
 } from "firebase/firestore";
+import { ref, getDownloadURL } from "firebase/storage";
+
+const UNLOCK_VALID_DAYS = 30;
 
 const styles = `
   .pp-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; }
@@ -73,6 +76,8 @@ export default function ProductPage({ productId }) {
   const [assignedCode, setAssignedCode] = useState("");
   const [claimError, setClaimError] = useState("");
   const [codeCopied, setCodeCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   useEffect(() => {
     async function fetchProduct() {
@@ -150,6 +155,21 @@ export default function ProductPage({ productId }) {
     });
   }
 
+  // يسجّل تصريح دخول للملف الرقمي، صالح لمدة محدودة، مربوط بجلسة المشتري
+  // هذا هو الجزء اللي بعدين -بعد تفعيل بوابة الدفع- بنستدعيه فقط بعد تأكيد الدفع الفعلي
+  async function grantFileAccess() {
+    const uid = await ensureAnonymousAuth();
+    const unlockId = `${uid}_${productId}`;
+    const expiresAt = new Date(Date.now() + UNLOCK_VALID_DAYS * 24 * 60 * 60 * 1000);
+    await setDoc(doc(db, "unlocks", unlockId), {
+      productId,
+      uid,
+      buyerEmail: email,
+      createdAt: serverTimestamp(),
+      expiresAt,
+    });
+  }
+
   async function handlePurchase() {
     if (!email || !email.includes("@")) {
       setEmailError("أدخل بريدًا إلكترونيًا صحيحًا.");
@@ -171,6 +191,8 @@ export default function ProductPage({ productId }) {
           }
           throw err;
         }
+      } else {
+        await grantFileAccess();
       }
 
       await addDoc(collection(db, "orders"), {
@@ -192,6 +214,27 @@ export default function ProductPage({ productId }) {
       setClaimError("صار خطأ، حاول مرة ثانية.");
       setPaying(false);
     }
+  }
+
+  // يطلب رابط تحميل آمن مباشرة من Firebase Storage
+  // الرابط يشتغل فقط لو عندنا تصريح دخول صالح (unlocks) — وإلا يرفضه Firebase تلقائيًا
+  async function handleDownload() {
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      let url;
+      if (product.filePath) {
+        const fileRef = ref(storage, product.filePath);
+        url = await getDownloadURL(fileRef);
+      } else {
+        // توافق مؤقت مع منتجات قديمة رُفعت قبل تفعيل نظام الحماية
+        url = product.fileUrl;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setDownloadError("خطأ تشخيصي مؤقت: " + (err.code || "") + " - " + (err.message || String(err)));
+    }
+    setDownloading(false);
   }
 
   return (
@@ -278,16 +321,16 @@ export default function ProductPage({ productId }) {
         {unlocked && !isCodeProduct && (
           <>
             <div className="pp-unlocked">✓ تم الدفع بنجاح</div>
-            <a
+            <button
               className="pp-btn"
-              style={{ background: brandColor, display: "block", textAlign: "center", textDecoration: "none" }}
-              href={product.fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              style={{ background: brandColor }}
+              disabled={downloading}
+              onClick={handleDownload}
             >
-              تحميل الملف الآن
-            </a>
-            <div className="pp-secure">الرابط أعلاه يفتح ملفك مباشرة</div>
+              {downloading ? "جاري تجهيز الرابط..." : "تحميل الملف الآن"}
+            </button>
+            {downloadError && <div className="pp-email-error" style={{ textAlign: "center", marginTop: "10px" }}>{downloadError}</div>}
+            <div className="pp-secure">رابط التحميل صالح لمدة {UNLOCK_VALID_DAYS} يوم من الآن</div>
           </>
         )}
         {unlocked && isCodeProduct && (
