@@ -233,8 +233,10 @@ export default function ProductPage({ productId }) {
         url = product.fileUrl;
       }
       if (newTab) {
+        alert("الرابط: " + url); // تشخيص مؤقت
         newTab.location.href = url;
       } else {
+        alert("نافذة محجوبة، بنستخدم نفس الصفحة. الرابط: " + url); // تشخيص مؤقت
         window.location.href = url;
       }
     } catch (err) {
