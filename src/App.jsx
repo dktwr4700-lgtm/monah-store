@@ -63,9 +63,15 @@ const styles = `
 
   .usecases{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; max-width:900px; margin:0 auto; }
   .usecase{ background:#FBFAF7; border:1px solid #E4E0D3; border-radius:12px; padding:18px; text-align:center; }
-  .usecase-emoji{ font-size:22px; margin-bottom:8px; }
+  .usecase-icon{ width:34px; height:34px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; }
   .usecase b{ display:block; font-size:13.5px; font-weight:700; margin-bottom:4px; }
   .usecase span{ color:#8A8677; font-size:11.5px; line-height:1.6; }
+
+  .protection{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; max-width:900px; margin:0 auto; }
+  .protection-item{ background:#FBFAF7; border:1px solid #E4E0D3; border-radius:14px; padding:22px; }
+  .protection-icon{ width:36px; height:36px; border-radius:9px; background:#F3E9D6; display:flex; align-items:center; justify-content:center; margin-bottom:14px; }
+  .protection-item b{ display:block; font-size:14px; font-weight:700; margin-bottom:6px; }
+  .protection-item span{ color:#8A8677; font-size:12.5px; line-height:1.7; }
 
   .billing-toggle{ display:flex; justify-content:center; align-items:center; gap:14px; margin-bottom:14px; }
   .billing-btn{ padding:10px 20px; border-radius:100px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid #E4E0D3; background:#FFFFFF; color:#3D4A66; }
@@ -120,11 +126,17 @@ const FEATURES = [
   { title: "إعداد بدقائق", desc: "بدون خبرة تقنية، وبدون كمبيوتر أو استضافة خارجية.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
 ];
 
+const PROTECTION = [
+  { title: "روابط تحميل مؤقتة", desc: "رابط تحميل كل منتج له صلاحية محدودة، ما يبقى صالح للأبد لأي شخص.", icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { title: "تشفير الملفات", desc: "ملفاتك محفوظة بشكل مشفّر، ما يقدر أي طرف يوصلها إلا العميل المخوّل بعد الدفع.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: "منع إعادة الاستخدام", desc: "رابط التحميل يُستخدم مرة، فما يقدر أحد يشارك نفس الرابط ويوزع منتجك مجانًا.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+];
+
 const USECASES = [
-  { emoji: "🎨", title: "المصممين", desc: "قوالب، فونتات، ملفات تصميم جاهزة" },
-  { emoji: "💻", title: "المبرمجين", desc: "أكواد، سكربتات، قوالب برمجية" },
-  { emoji: "📚", title: "المعلّمين", desc: "دورات، ملفات تعليمية، ملخصات" },
-  { emoji: "✍️", title: "صنّاع المحتوى", desc: "برستات، قوالب سوشيال ميديا" },
+  { title: "المصممين", desc: "قوالب، فونتات، ملفات تصميم جاهزة", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M9 12l2 2 4-4" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></> },
+  { title: "المبرمجين", desc: "أكواد، سكربتات، قوالب برمجية", icon: <path d="M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/> },
+  { title: "المعلّمين", desc: "دورات، ملفات تعليمية، ملخصات", icon: <><path d="M4 6a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 2V6z" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M20 6a2 2 0 0 0-2-2h-6v16h6a2 2 0 0 1 2 2V6z" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
+  { title: "صنّاع المحتوى", desc: "برستات، قوالب سوشيال ميديا", icon: <><path d="M12 3v12" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/><path d="M8 8l4-5 4 5" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
 ];
 
 const STEPS = [
@@ -259,7 +271,9 @@ export default function App() {
           <div className="usecases">
             {USECASES.map((u) => (
               <div className="usecase" key={u.title}>
-                <div className="usecase-emoji">{u.emoji}</div>
+                <div className="usecase-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24">{u.icon}</svg>
+                </div>
                 <b>{u.title}</b>
                 <span>{u.desc}</span>
               </div>
@@ -280,6 +294,25 @@ export default function App() {
                 </div>
                 <b>{f.title}</b>
                 <span>{f.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" style={{ background: "#FFFFFF" }}>
+        <div className="wrap">
+          <div className="section-eyebrow">الحماية</div>
+          <div className="section-title">حمايتك من الألف للياء</div>
+          <div className="section-sub">منتجك الرقمي يستحق الحماية، وإحنا نتكفل فيها</div>
+          <div className="protection">
+            {PROTECTION.map((p) => (
+              <div className="protection-item" key={p.title}>
+                <div className="protection-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24">{p.icon}</svg>
+                </div>
+                <b>{p.title}</b>
+                <span>{p.desc}</span>
               </div>
             ))}
           </div>
