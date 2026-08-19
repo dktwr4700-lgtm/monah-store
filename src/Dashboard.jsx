@@ -47,7 +47,7 @@ const styles = `
 
   .dh-field{ margin-bottom:12px; }
   .dh-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
-  .dh-field input, .dh-field textarea{ width:100%; padding:11px 13px; border:1px solid #E4E0D3; border-radius:8px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; }
+  .dh-field input, .dh-field textarea, .dh-field select{ width:100%; padding:11px 13px; border:1px solid #E4E0D3; border-radius:8px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; }
   .dh-hint{ color:#8A8677; font-size:10.5px; margin-top:6px; line-height:1.6; }
   .dh-btn{ width:100%; background:#16233F; color:#fff; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
   .dh-btn:disabled{ opacity:.6; }
@@ -104,12 +104,44 @@ const styles = `
   .pk-price span{ font-size:11px; color:#8A8677; font-family:'Cairo',sans-serif; }
   .pk-features div{ font-size:12px; color:#3D4A66; padding:3px 0; }
   .pk-current-tag{ display:inline-block; margin-top:10px; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; }
+
+  .cp-item{ padding:12px 0; border-top:1px dashed #E4E0D3; }
+  .cp-item:first-child{ border-top:none; }
+  .cp-item-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .cp-code{ font-family:'JetBrains Mono',monospace; font-weight:800; color:#16233F; font-size:14px; letter-spacing:.02em; }
+  .cp-percent{ background:#F3EBDD; color:#B9832F; font-size:11px; font-weight:700; padding:4px 10px; border-radius:100px; }
+  .cp-scope{ color:#8A8677; font-size:11px; margin-bottom:8px; }
 `;
 
+const COMMON_FEATURES = [
+  "بدون عمولة على المبيعات",
+  "تسليم تلقائي للمنتج بعد الدفع",
+  "صفحة متوافقة مع الجوال",
+  "رابط خاص لكل منتج",
+  "ترقية أو تخفيض الباقة أو الإلغاء في أي وقت",
+];
+
 const PACKAGES = [
-  { id: "basic", name: "أساسية", price: "3", features: ["حتى 10 منتجات", "رابط خاص لكل منتج", "تسليم تلقائي"] },
-  { id: "pro", name: "احترافية", price: "6", popular: true, features: ["منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "تقارير مبيعات مفصّلة"] },
-  { id: "full", name: "متجر متكامل", price: "12", features: ["كل مميزات الاحترافية", "ربط دومينك الخاص", "دعم أولوية"] },
+  {
+    id: "basic", name: "أساسية", price: "3",
+    desc: "مناسبة لمن يريد البدء ببيع أول منتجاته الرقمية.",
+    btn: "ابدأ متجرك",
+    features: ["حتى 10 منتجات", "صفحة متجر جاهزة", "بيع ملفات وأكواد/تراخيص"],
+  },
+  {
+    id: "pro", name: "احترافية", price: "6", popular: true,
+    desc: "مناسبة لمن يريد تنمية مبيعاته وتخصيص متجره.",
+    btn: "نمِّ متجرك",
+    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "كوبونات خصم"],
+    soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"],
+  },
+  {
+    id: "full", name: "متجر متكامل", price: "12",
+    desc: "مناسبة لمن يريد بناء علامة رقمية مستقلة.",
+    btn: "ابنِ علامتك",
+    features: ["كل مميزات الاحترافية"],
+    soon: ["ربط دومينك الخاص", "إزالة شعار Monah من واجهة المتجر", "حماية متقدمة لروابط التحميل", "تحليلات مصادر الزيارات", "دعم أولوية", "مساعدة في إعداد المتجر"],
+  },
 ];
 
 export default function Dashboard() {
@@ -125,6 +157,7 @@ export default function Dashboard() {
   const [fileUrl, setFileUrl] = useState("");
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState("file");
+  const [sellerPlan, setSellerPlan] = useState("basic");
   const [codesText, setCodesText] = useState("");
   const [productImages, setProductImages] = useState([]);
   const [imagesUploading, setImagesUploading] = useState(false);
@@ -155,6 +188,15 @@ export default function Dashboard() {
   const [logoError, setLogoError] = useState("");
   const [designSaved, setDesignSaved] = useState(false);
   const [designSaving, setDesignSaving] = useState(false);
+
+  // coupons
+  const [coupons, setCoupons] = useState([]);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponPercent, setCouponPercent] = useState("");
+  const [couponScope, setCouponScope] = useState("all");
+  const [couponSaving, setCouponSaving] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const [deletingCouponId, setDeletingCouponId] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -194,9 +236,33 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
+    async function loadSellerPlan() {
+      try {
+        const snap = await getDoc(doc(db, "sellers", user.uid));
+        if (snap.exists()) {
+          setSellerPlan(snap.data().plan || "basic");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadSellerPlan();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, "products"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsub();
   }, [user]);
@@ -397,7 +463,6 @@ export default function Dashboard() {
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
       });
-      // نحدّث اسم المتجر بملف التاجر (sellers) أيضًا عشان يبان صحيح بلوحة الأدمن
       try {
         await setDoc(doc(db, "sellers", user.uid), { storeName }, { merge: true });
       } catch (e) {
@@ -410,6 +475,65 @@ export default function Dashboard() {
       setError("تعذر حفظ التصميم، حاول مرة ثانية.");
     }
     setDesignSaving(false);
+  }
+
+  async function handleAddCoupon(e) {
+    e.preventDefault();
+    setCouponError("");
+    if (sellerPlan === "basic") {
+      setCouponError("كوبونات الخصم متاحة من الباقة الاحترافية فأعلى.");
+      return;
+    }
+    const cleanCode = couponCode.trim().toUpperCase().replace(/\s+/g, "");
+    const percentNum = Number(couponPercent);
+
+    if (!cleanCode) {
+      setCouponError("اكتب كود الخصم.");
+      return;
+    }
+    if (!percentNum || percentNum <= 0 || percentNum > 90) {
+      setCouponError("نسبة الخصم لازم تكون بين 1 و 90.");
+      return;
+    }
+    const exists = coupons.some((c) => c.code === cleanCode);
+    if (exists) {
+      setCouponError("عندك كود بنفس الاسم من قبل، اختر اسم ثاني.");
+      return;
+    }
+
+    setCouponSaving(true);
+    try {
+      await addDoc(collection(db, "coupons"), {
+        ownerId: user.uid,
+        code: cleanCode,
+        discountPercent: percentNum,
+        productId: couponScope === "all" ? null : couponScope,
+        active: true,
+        createdAt: serverTimestamp(),
+      });
+      setCouponCode("");
+      setCouponPercent("");
+      setCouponScope("all");
+    } catch (err) {
+      setCouponError("صار خطأ، حاول مرة ثانية.");
+    }
+    setCouponSaving(false);
+  }
+
+  async function deleteCoupon(couponId) {
+    setDeletingCouponId(couponId);
+    try {
+      await deleteDoc(doc(db, "coupons", couponId));
+    } catch (err) {
+      console.error(err);
+    }
+    setDeletingCouponId(null);
+  }
+
+  function couponScopeLabel(c) {
+    if (!c.productId) return "على كل منتجاتك";
+    const p = products.find((pr) => pr.id === c.productId);
+    return p ? `على منتج: ${p.name}` : "على منتج محذوف";
   }
 
   function handleLogout() {
@@ -447,6 +571,7 @@ export default function Dashboard() {
       <div className="dh-tabs">
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
+        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>الخصومات</button>
         <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
         <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
         <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
@@ -627,6 +752,81 @@ export default function Dashboard() {
           </>
         )}
 
+        {tab === "coupons" && sellerPlan === "basic" && (
+          <div className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
+            <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
+            <div className="dh-title" style={{ marginBottom: 8 }}>كوبونات الخصم متاحة من الباقة الاحترافية</div>
+            <div className="dh-hint" style={{ marginBottom: 16 }}>رقّي باقتك عشان تقدر تسوي أكواد خصم لمنتجاتك.</div>
+            <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 220, margin: "0 auto" }}>
+              شوف الباقات
+            </button>
+          </div>
+        )}
+
+        {tab === "coupons" && sellerPlan !== "basic" && (
+          <>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>
+              {couponError && <div className="dh-error">{couponError}</div>}
+              <form onSubmit={handleAddCoupon}>
+                <div className="dh-field">
+                  <label>كود الخصم</label>
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="مثال: EID20"
+                    style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }}
+                  />
+                  <div className="dh-hint">أحرف إنجليزية وأرقام، بدون مسافات. العميل يكتب هذا الكود وقت الشراء.</div>
+                </div>
+                <div className="dh-field">
+                  <label>نسبة الخصم (%)</label>
+                  <input type="number" value={couponPercent} onChange={(e) => setCouponPercent(e.target.value)} placeholder="20" />
+                </div>
+                <div className="dh-field">
+                  <label>ينطبق على</label>
+                  <select value={couponScope} onChange={(e) => setCouponScope(e.target.value)}>
+                    <option value="all">كل منتجاتك</option>
+                    {products.map((p) => (
+                      <option value={p.id} key={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button className="dh-btn" type="submit" disabled={couponSaving}>
+                  {couponSaving ? "جاري الحفظ..." : "إنشاء الكود"}
+                </button>
+              </form>
+            </div>
+
+            <div className="dh-card">
+              <div className="dh-title-row">
+                <div className="dh-title">أكوادك الحالية</div>
+                <div className="dh-title-count mono">{coupons.length}</div>
+              </div>
+              {coupons.length === 0 && <div className="empty-note">ما أضفت أي كود خصم بعد.</div>}
+              {coupons.map((c) => (
+                <div className="cp-item" key={c.id}>
+                  <div className="cp-item-top">
+                    <span className="cp-code">{c.code}</span>
+                    <span className="cp-percent">خصم {c.discountPercent}٪</span>
+                  </div>
+                  <div className="cp-scope">{couponScopeLabel(c)}</div>
+                  <div className="dh-item-actions">
+                    <button
+                      className="dh-item-action danger"
+                      disabled={deletingCouponId === c.id}
+                      onClick={() => deleteCoupon(c.id)}
+                    >
+                      {deletingCouponId === c.id ? "جاري الحذف..." : "حذف الكود"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {tab === "orders" && <Orders ownerId={user.uid} />}
 
         {tab === "design" && (
@@ -702,14 +902,26 @@ export default function Dashboard() {
 
         {tab === "subscription" && (
           <>
+            <div className="dh-hint" style={{ marginBottom: 14, lineHeight: 1.9 }}>
+              كل الباقات تشمل: {COMMON_FEATURES.join(" · ")}
+            </div>
             {PACKAGES.map((pkg) => (
               <div className={"pk-card" + (pkg.id === "basic" ? " current" : "")} key={pkg.id}>
                 {pkg.popular && <div className="pk-badge">الأكثر طلبًا</div>}
                 <div className="pk-name">{pkg.name}</div>
+                <div className="dh-hint" style={{ marginBottom: 10 }}>{pkg.desc}</div>
                 <div className="pk-price">{pkg.price} <span>ر.ع / شهريًا</span></div>
                 <div className="pk-features">
                   {pkg.features.map((f) => <div key={f}>✓ {f}</div>)}
                 </div>
+                {pkg.soon && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #E4E0D3" }}>
+                    <div style={{ color: "#B9832F", fontSize: 10.5, fontWeight: 700, marginBottom: 4 }}>قادم قريبًا:</div>
+                    {pkg.soon.map((f) => (
+                      <div key={f} style={{ fontSize: 11.5, color: "#B0AC9C" }}>○ {f}</div>
+                    ))}
+                  </div>
+                )}
                 {pkg.id === "basic" && <div className="pk-current-tag">باقتك الحالية (تجريبية)</div>}
               </div>
             ))}
