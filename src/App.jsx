@@ -73,6 +73,31 @@ const styles = `
   .protection-item b{ display:block; font-size:14px; font-weight:700; margin-bottom:6px; }
   .protection-item span{ color:#8A8677; font-size:12.5px; line-height:1.7; }
 
+  .why{ display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; max-width:900px; margin:0 auto; }
+  .why-item{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:24px 20px; text-align:center; }
+  .why-icon{ width:40px; height:40px; border-radius:10px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+  .why-item b{ display:block; font-size:14px; font-weight:700; margin-bottom:6px; }
+  .why-item span{ color:#8A8677; font-size:12.5px; line-height:1.7; }
+
+  .compare{ max-width:600px; margin:0 auto; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:16px; overflow:hidden; }
+  .compare-row{ display:grid; grid-template-columns:1.3fr 1fr 1fr; align-items:center; padding:14px 18px; border-top:1px solid #E4E0D3; }
+  .compare-row:first-child{ border-top:none; background:#FBFAF7; }
+  .compare-row:first-child span{ font-size:11px; font-weight:700; color:#8A8677; }
+  .compare-label{ color:#3D4A66; font-size:13px; }
+  .compare-monah{ text-align:center; color:#4B6152; font-weight:700; font-size:13px; }
+  .compare-other{ text-align:center; color:#B0AC9C; font-size:13px; }
+
+  .products{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; max-width:900px; margin:0 auto; }
+  .product-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; overflow:hidden; }
+  .product-thumb{ height:100px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; }
+  .product-info{ padding:14px 16px 16px; }
+  .product-info b{ display:block; font-size:13px; font-weight:700; margin-bottom:3px; }
+  .product-info span{ color:#8A8677; font-size:11.5px; }
+  .product-price{ margin-top:8px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; color:#16233F; }
+  .products-note{ text-align:center; color:#B0AC9C; font-size:11.5px; margin-top:16px; }
+
+  .step-icon{ width:34px; height:34px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
   .billing-toggle{ display:flex; justify-content:center; align-items:center; gap:14px; margin-bottom:14px; }
   .billing-btn{ padding:10px 20px; border-radius:100px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid #E4E0D3; background:#FFFFFF; color:#3D4A66; }
   .billing-btn.active{ background:#16233F; color:#fff; border-color:#16233F; }
@@ -132,6 +157,24 @@ const PROTECTION = [
   { title: "منع إعادة الاستخدام", desc: "رابط التحميل يُستخدم مرة، فما يقدر أحد يشارك نفس الرابط ويوزع منتجك مجانًا.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
 ];
 
+const WHY = [
+  { title: "احتفظ بـ١٠٠٪ من أرباحك", desc: "بدون عمولة على أي عملية بيع، تدفع الاشتراك الشهري بس ولا شي غيره.", icon: <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/> },
+  { title: "حماية كاملة لمنتجك", desc: "روابط تحميل مؤقتة وتشفير يحميان ملفك من النسخ والمشاركة.", icon: <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+  { title: "يدعم كل أنواع الملفات", desc: "PDF، ZIP، صور، فيديوهات، أكواد، وأي ملف رقمي تبيعه.", icon: <><path d="M7 3h7l4 4v14H7z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/><path d="M14 3v4h4" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/></> },
+  { title: "تسليم فوري تلقائي", desc: "العميل يستلم منتجه لحظة إتمام الدفع، بدون أي تدخل منك.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+];
+
+const COMPARE = [
+  { label: "العمولة على المبيعات", monah: "٪٠", other: "١٠٪ – ٣٠٪" },
+  { label: "رسوم الاشتراك", monah: "ثابتة وواضحة", other: "غالبًا متغيّرة" },
+];
+
+const FEATURED_PRODUCTS = [
+  { title: "رزمة قوالب سيرة ذاتية", store: "متجر هند للتصاميم", price: "٥.٠٠ ر.ع" },
+  { title: "كورس أساسيات البرمجة", store: "متجر سالم التقني", price: "٨.٠٠ ر.ع" },
+  { title: "باقة برستات تصوير", store: "متجر مريم", price: "٣.٥٠ ر.ع" },
+];
+
 const USECASES = [
   { title: "المصممين", desc: "قوالب، فونتات، ملفات تصميم جاهزة", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M9 12l2 2 4-4" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></> },
   { title: "المبرمجين", desc: "أكواد، سكربتات، قوالب برمجية", icon: <path d="M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/> },
@@ -140,9 +183,9 @@ const USECASES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "تسجّل وتشترك بباقة شهرية", desc: "تدخل بياناتك وتختار الباقة المناسبة لك." },
-  { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه." },
-  { n: "03", title: "تشارك الرابط وتستلم كامل السعر", desc: "ما فيه عمولة على أي عملية بيع تسويها." },
+  { n: "01", title: "تسجّل وتشترك بباقة شهرية", desc: "تدخل بياناتك وتختار الباقة المناسبة لك.", icon: <><circle cx="12" cy="8" r="3.5" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه.", icon: <><path d="M12 16V4M7 9l5-5 5 5" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { n: "03", title: "تشارك الرابط وتستلم كامل السعر", desc: "ما فيه عمولة على أي عملية بيع تسويها.", icon: <path d="M12 3v18M3 12h18" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" fill="none"/> },
 ];
 
 const COMMON_FEATURES = [
@@ -249,6 +292,24 @@ export default function App() {
         <div className="receipt-note">مثال توضيحي لشكل عملية البيع على المنصة</div>
       </div>
 
+      <section className="section">
+        <div className="wrap">
+          <div className="section-eyebrow">لماذا Monah</div>
+          <div className="section-title">منصة مبنية لصالحك أنت</div>
+          <div className="why">
+            {WHY.map((w) => (
+              <div className="why-item" key={w.title}>
+                <div className="why-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24">{w.icon}</svg>
+                </div>
+                <b>{w.title}</b>
+                <span>{w.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="section" id="how">
         <div className="wrap">
           <div className="section-eyebrow">البداية</div>
@@ -257,6 +318,9 @@ export default function App() {
             {STEPS.map((s) => (
               <div className="step" key={s.n}>
                 <div className="step-num mono">{s.n}</div>
+                <div className="step-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24">{s.icon}</svg>
+                </div>
                 <div className="step-text"><b>{s.title}</b><span>{s.desc}</span></div>
               </div>
             ))}
@@ -316,6 +380,49 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="wrap">
+          <div className="section-eyebrow">المقارنة</div>
+          <div className="section-title">وش الفرق؟</div>
+          <div className="section-sub">مقارنة بسيطة بين Monah والمنصات التقليدية</div>
+          <div className="compare">
+            <div className="compare-row">
+              <span></span><span style={{ textAlign: "center" }}>Monah</span><span style={{ textAlign: "center" }}>منصات تقليدية</span>
+            </div>
+            {COMPARE.map((c) => (
+              <div className="compare-row" key={c.label}>
+                <div className="compare-label">{c.label}</div>
+                <div className="compare-monah">✓ {c.monah}</div>
+                <div className="compare-other">{c.other}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" style={{ background: "#FFFFFF" }}>
+        <div className="wrap">
+          <div className="section-eyebrow">أمثلة</div>
+          <div className="section-title">منتجات على المنصة</div>
+          <div className="section-sub">نماذج توضيحية لأنواع المنتجات اللي تُباع على Monah</div>
+          <div className="products">
+            {FEATURED_PRODUCTS.map((p) => (
+              <div className="product-card" key={p.title}>
+                <div className="product-thumb">
+                  <svg width="26" height="26" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/><path d="M14 3v4h4" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/></svg>
+                </div>
+                <div className="product-info">
+                  <b>{p.title}</b>
+                  <span>{p.store}</span>
+                  <div className="product-price mono">{p.price}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="products-note">أمثلة توضيحية — منتجات البائعين الحقيقيين تظهر هنا بعد الإطلاق</div>
         </div>
       </section>
 
