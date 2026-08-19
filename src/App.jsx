@@ -113,6 +113,13 @@ const styles = `
   .footer-links a{ color:#8A8677; font-size:11.5px; }
 `;
 
+const WHY_MONAH = [
+  { title: "بدون عمولة", desc: "تحتفظ بكامل سعر بيعك، وتدفع فقط اشتراك شهري ثابت مهما زادت مبيعاتك.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M8 8l8 8M9 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM15 17.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" stroke="#4B6152" strokeWidth="1.6" fill="none"/></> },
+  { title: "حماية الملفات", desc: "روابط تحميل مشفّرة ومحمية، ما تنسرق ملفاتك أو تتوزع بدون علمك.", icon: <path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+  { title: "دعم كل الصيغ", desc: "PDF، تصاميم، أكواد، فيديوهات، أو أي ملف رقمي — ارفعه بدون قيود.", icon: <><rect x="4" y="3" width="10" height="13" rx="1.5" stroke="#4B6152" strokeWidth="2" fill="none"/><rect x="9" y="8" width="11" height="13" rx="1.5" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
+  { title: "تسليم فوري", desc: "الملف يوصل عميلك تلقائيًا لحظة الدفع، ٢٤ ساعة و٧ أيام بالأسبوع.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+];
+
 const FEATURES = [
   { title: "تسليم تلقائي", desc: "الملف يوصل العميل فورًا بعد الدفع، بدون أي تدخل منك.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
   { title: "رابط لكل منتج", desc: "كل منتج له رابط خاص فيه، تشاركه بأي مكان تحب.", icon: <path d="M12 3v18M3 12h18" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/> },
@@ -236,6 +243,24 @@ export default function App() {
         </div>
         <div className="receipt-note">مثال توضيحي لشكل عملية البيع على المنصة</div>
       </div>
+
+      <section className="section" id="why" style={{ background: "#FFFFFF" }}>
+        <div className="wrap">
+          <div className="section-eyebrow">لماذا Monah</div>
+          <div className="section-title">ليش تختار Monah؟</div>
+          <div className="features">
+            {WHY_MONAH.map((f) => (
+              <div className="feature" key={f.title}>
+                <div className="feature-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24">{f.icon}</svg>
+                </div>
+                <b>{f.title}</b>
+                <span>{f.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section className="section" id="how">
         <div className="wrap">
