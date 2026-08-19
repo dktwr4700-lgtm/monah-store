@@ -96,6 +96,21 @@ const styles = `
   .ds-swatch.selected{ border-color:#16233F; }
   .ds-swatch.selected::after{ content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; }
 
+  .ds-cover-preview{ height:80px; position:relative; overflow:hidden; }
+  .ds-cover-preview img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .ds-preview-body{ position:relative; margin-top:-30px; }
+  .ds-cover-row{ display:flex; align-items:center; gap:12px; }
+  .ds-cover-thumb{ width:80px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+  .ds-cover-placeholder{ width:80px; height:44px; border-radius:8px; background:#F6F3EC; border:1.5px dashed #E4E0D3; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#B0AC9C; font-size:10px; }
+
+  .ds-view-btn{ display:inline-flex; align-items:center; gap:6px; color:#16233F; font-size:11.5px; font-weight:700; text-decoration:none; border:1px solid #E4E0D3; padding:8px 14px; border-radius:8px; background:#FFFFFF; }
+
+  .ds-save-bar{ position:sticky; bottom:0; background:#FFFFFF; border-top:1px solid #E4E0D3; padding:12px 18px; margin:0 -18px; display:flex; align-items:center; gap:12px; }
+  .ds-save-status{ flex:1; font-size:11.5px; color:#8A8677; }
+  .ds-save-status.unsaved{ color:#B9832F; font-weight:700; }
+  .ds-save-btn{ background:#16233F; color:#fff; border:none; padding:11px 22px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .ds-save-btn:disabled{ opacity:.6; }
+
   .pk-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:18px; margin-bottom:12px; position:relative; }
   .pk-card.current{ border:2px solid #16233F; }
   .pk-badge{ position:absolute; top:-9px; right:16px; background:#B9832F; color:#fff; font-size:10px; font-weight:700; padding:3px 10px; border-radius:100px; }
@@ -186,8 +201,12 @@ export default function Dashboard() {
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverError, setCoverError] = useState("");
   const [designSaved, setDesignSaved] = useState(false);
   const [designSaving, setDesignSaving] = useState(false);
+  const [designDirty, setDesignDirty] = useState(false);
 
   // coupons
   const [coupons, setCoupons] = useState([]);
@@ -280,6 +299,7 @@ export default function Dashboard() {
         setInstagram(data.instagram || "");
         setSlug(data.slug || "");
         setLogoUrl(data.logoUrl || "");
+        setCoverUrl(data.coverUrl || "");
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -436,6 +456,27 @@ export default function Dashboard() {
     setLogoUploading(false);
   }
 
+  async function handleCoverUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCoverError("");
+    if (file.size > 5 * 1024 * 1024) {
+      setCoverError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      return;
+    }
+    setCoverUploading(true);
+    try {
+      const fileRef = ref(storage, `covers/${user.uid}-${Date.now()}`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      setCoverUrl(url);
+      setDesignDirty(true);
+    } catch (err) {
+      setCoverError("تعذر رفع الصورة، حاول مرة ثانية.");
+    }
+    setCoverUploading(false);
+  }
+
   async function handleSaveDesign() {
     setDesignSaving(true);
     setDesignSaved(false);
@@ -460,6 +501,7 @@ export default function Dashboard() {
         instagram: instagram || "",
         slug: cleanSlug || "",
         logoUrl: logoUrl || "",
+        coverUrl: coverUrl || "",
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
       });
@@ -470,6 +512,7 @@ export default function Dashboard() {
       }
       setSlug(cleanSlug);
       setDesignSaved(true);
+      setDesignDirty(false);
       setTimeout(() => setDesignSaved(false), 2000);
     } catch (err) {
       setError("تعذر حفظ التصميم، حاول مرة ثانية.");
@@ -832,7 +875,17 @@ export default function Dashboard() {
         {tab === "design" && (
           <>
             <div className="ds-preview">
-              <div className="ds-preview-bar">{`monah-app.com/#store/${slug || user.uid.slice(0, 8) + "..."}`}</div>
+              <div className="ds-preview-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>{`monah-app.com/#store/${slug || user.uid.slice(0, 8) + "..."}`}</span>
+                <a className="ds-view-btn" style={{ padding: "4px 10px", fontSize: 10 }} href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer">
+                  عرض المتجر ↗
+                </a>
+              </div>
+              {coverUrl && (
+                <div className="ds-cover-preview">
+                  <img src={coverUrl} alt="غلاف المتجر" />
+                </div>
+              )}
               <div className="ds-preview-body">
                 {logoUrl
                   ? <img src={logoUrl} alt="شعار المتجر" className="ds-preview-logo-img" />
@@ -845,6 +898,22 @@ export default function Dashboard() {
             <div className="dh-card">
               {designSaved && <div className="dh-success">تم حفظ تصميم متجرك.</div>}
               {error && <div className="dh-error">{error}</div>}
+
+              <div className="dh-field">
+                <label>غلاف المتجر (اختياري)</label>
+                <div className="ds-cover-row">
+                  {coverUrl
+                    ? <img src={coverUrl} alt="" className="ds-cover-thumb" />
+                    : <div className="ds-cover-placeholder">بدون غلاف</div>}
+                  <label className="dh-logo-btn">
+                    {coverUploading ? "جاري الرفع..." : "رفع صورة غلاف"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} disabled={coverUploading} />
+                  </label>
+                </div>
+                <div className="dh-hint">صورة عريضة تظهر أعلى صفحة متجرك، فوق الشعار.</div>
+                {coverError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{coverError}</div>}
+              </div>
+
               <div className="dh-field">
                 <label>شعار المتجر</label>
                 <div className="dh-logo-row">
@@ -853,32 +922,32 @@ export default function Dashboard() {
                     : <div className="dh-logo-placeholder">{initial}</div>}
                   <label className="dh-logo-btn">
                     {logoUploading ? "جاري الرفع..." : "رفع شعار جديد"}
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} disabled={logoUploading} />
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { handleLogoUpload(e); setDesignDirty(true); }} disabled={logoUploading} />
                   </label>
                 </div>
                 {logoError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{logoError}</div>}
               </div>
               <div className="dh-field">
                 <label>اسم المتجر</label>
-                <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} />
+                <input type="text" value={storeName} onChange={(e) => { setStoreName(e.target.value); setDesignDirty(true); }} />
               </div>
               <div className="dh-field">
-                <label>جملة تعريفية قصيرة (اختياري)</label>
-                <input type="text" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="مثال: تصاميم أنيقة بلمسة عصرية" />
+                <label>عرّف الزوار بمتجرك في جملة واحدة</label>
+                <input type="text" value={tagline} onChange={(e) => { setTagline(e.target.value); setDesignDirty(true); }} placeholder="مثال: قوالب وتصاميم تساعدك تنجز شغلك بشكل أسرع" />
               </div>
               <div className="dh-field">
-                <label>رابط متجرك المختصر</label>
-                <input type="text" value={slug} onChange={(e) => { setSlug(e.target.value); setSlugError(""); }} placeholder="hind" style={{ direction: "ltr", textAlign: "right" }} />
+                <label>اختر رابط متجرك</label>
+                <input type="text" value={slug} onChange={(e) => { setSlug(e.target.value); setSlugError(""); setDesignDirty(true); }} placeholder="hind" style={{ direction: "ltr", textAlign: "right" }} />
                 {slugError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{slugError}</div>}
-                <div className="dh-hint">أحرف إنجليزية وأرقام فقط، بدون مسافات — مثال: monah-app.com/#store/hind</div>
+                <div className="dh-hint">سيظهر متجرك على: monah-app.com/#store/{slug || "اسمك"}</div>
               </div>
               <div className="dh-field">
                 <label>رقم واتساب (اختياري)</label>
-                <input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} />
+                <input type="text" value={whatsapp} onChange={(e) => { setWhatsapp(e.target.value); setDesignDirty(true); }} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} />
               </div>
               <div className="dh-field">
                 <label>حساب إنستغرام (اختياري)</label>
-                <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="username" style={{ direction: "ltr", textAlign: "right" }} />
+                <input type="text" value={instagram} onChange={(e) => { setInstagram(e.target.value); setDesignDirty(true); }} placeholder="username" style={{ direction: "ltr", textAlign: "right" }} />
               </div>
               <div className="dh-field">
                 <label>لون المتجر الرئيسي</label>
@@ -888,13 +957,19 @@ export default function Dashboard() {
                       key={c}
                       className={"ds-swatch" + (storeColor === c ? " selected" : "")}
                       style={{ background: c }}
-                      onClick={() => setStoreColor(c)}
+                      onClick={() => { setStoreColor(c); setDesignDirty(true); }}
                     />
                   ))}
                 </div>
               </div>
-              <button className="dh-btn" onClick={handleSaveDesign} disabled={designSaving}>
-                {designSaving ? "جاري الحفظ..." : "حفظ التصميم"}
+            </div>
+
+            <div className="ds-save-bar">
+              <span className={"ds-save-status" + (designDirty ? " unsaved" : "")}>
+                {designDirty ? "عندك تغييرات غير محفوظة" : "كل شي محفوظ"}
+              </span>
+              <button className="ds-save-btn" onClick={handleSaveDesign} disabled={designSaving}>
+                {designSaving ? "جاري الحفظ..." : "حفظ ونشر التغييرات"}
               </button>
             </div>
           </>
