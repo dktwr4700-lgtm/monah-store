@@ -219,10 +219,8 @@ export default function ProductPage({ productId }) {
   // يطلب رابط تحميل آمن مباشرة من Firebase Storage
   // الرابط يشتغل فقط لو عندنا تصريح دخول صالح (unlocks) — وإلا يرفضه Firebase تلقائيًا
   async function handleDownload() {
-    alert("تم الضغط على الزر"); // تشخيص مؤقت
     setDownloading(true);
     setDownloadError("");
-    const newTab = window.open("", "_blank");
     try {
       let url;
       if (product.filePath) {
@@ -232,16 +230,8 @@ export default function ProductPage({ productId }) {
         // توافق مؤقت مع منتجات قديمة رُفعت قبل تفعيل نظام الحماية
         url = product.fileUrl;
       }
-      if (newTab) {
-        alert("الرابط: " + url); // تشخيص مؤقت
-        newTab.location.href = url;
-      } else {
-        alert("نافذة محجوبة، بنستخدم نفس الصفحة. الرابط: " + url); // تشخيص مؤقت
-        window.location.href = url;
-      }
+      window.location.href = url;
     } catch (err) {
-      if (newTab) newTab.close();
-      alert("خطأ: " + (err.code || "") + " - " + (err.message || String(err))); // تشخيص مؤقت
       setDownloadError("انتهت صلاحية رابط التحميل أو صار خطأ. تواصل مع صاحب المتجر.");
     }
     setDownloading(false);
