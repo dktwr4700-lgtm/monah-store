@@ -42,6 +42,22 @@ const styles = `
   .dh-quick{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
   .dh-quick-btn{ flex:1; min-width:130px; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:12px; padding:14px; text-align:center; font-size:12px; font-weight:700; color:#16233F; cursor:pointer; }
   .dh-quick-btn:hover{ background:#FBFAF7; }
+
+  .pv-overlay{ position:fixed; inset:0; background:rgba(22,35,63,0.6); z-index:100; display:flex; align-items:flex-end; justify-content:center; }
+  .pv-sheet{ background:#F6F3EC; width:100%; max-width:460px; max-height:90vh; overflow-y:auto; border-radius:20px 20px 0 0; position:relative; }
+  .pv-close{ position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; background:#FFFFFF; padding:14px 18px; border-bottom:1px solid #E4E0D3; }
+  .pv-close-label{ font-family:'Almarai', sans-serif; font-weight:800; font-size:13px; color:#16233F; }
+  .pv-close-btn{ background:#F2EEE7; border:none; width:30px; height:30px; border-radius:50%; color:#16233F; font-size:14px; cursor:pointer; }
+  .pv-body{ padding:20px; }
+  .pv-cover{ height:150px; border-radius:14px; background:#16233F; display:flex; align-items:center; justify-content:center; margin-bottom:18px; overflow:hidden; }
+  .pv-cover img{ width:100%; height:100%; object-fit:cover; }
+  .pv-cat{ display:inline-flex; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; margin-bottom:12px; }
+  .pv-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#16233F; margin-bottom:14px; }
+  .pv-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; overflow:hidden; margin-bottom:14px; }
+  .pv-price-row{ display:flex; justify-content:space-between; padding:16px 18px; border-bottom:1px dashed #E4E0D3; }
+  .pv-desc{ padding:16px 18px; color:#3D4A66; font-size:13px; line-height:1.9; }
+  .pv-btn{ width:100%; background:#16233F; color:#fff; border:none; padding:15px; border-radius:10px; font-weight:700; font-size:13.5px; text-align:center; }
+  .pv-note{ text-align:center; color:#B0AC9C; font-size:11px; margin-top:14px; }
   .dh-stat{ flex:1; background:#16233F; padding:16px 10px; text-align:center; }
   .dh-stat:nth-child(2){ background:#1C2C4D; }
   .dh-stat:nth-child(3){ background:#22355A; }
@@ -205,6 +221,10 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [copied, setCopied] = useState("");
+  const [productQuery, setProductQuery] = useState("");
+  const [productFilter, setProductFilter] = useState("all");
+  const [togglingHiddenId, setTogglingHiddenId] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -472,6 +492,25 @@ export default function Dashboard() {
     }
     setDeletingId(null);
   }
+
+  async function toggleHidden(productId, currentlyHidden) {
+    setTogglingHiddenId(productId);
+    try {
+      await updateDoc(doc(db, "products", productId), { hidden: !currentlyHidden });
+    } catch (err) {
+      setError("تعذر تحديث حالة المنتج، حاول مرة ثانية.");
+    }
+    setTogglingHiddenId(null);
+  }
+
+  const filteredProducts = products.filter((p) => {
+    const matchesQuery = p.name.toLowerCase().includes(productQuery.trim().toLowerCase());
+    const matchesFilter =
+      productFilter === "all" ||
+      (productFilter === "visible" && !p.hidden) ||
+      (productFilter === "hidden" && p.hidden);
+    return matchesQuery && matchesFilter;
+  });
 
   async function handleProductImageUpload(e) {
     const file = e.target.files[0];
@@ -821,9 +860,14 @@ export default function Dashboard() {
                     <div className="dh-hint">كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.</div>
                   </div>
                 )}
-                <button className="dh-btn" type="submit" disabled={saving}>
-                  {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري الحفظ...") : "حفظ المنتج"}
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || !price} style={{ flex: 1 }}>
+                    معاينة المنتج
+                  </button>
+                  <button className="dh-btn" type="submit" disabled={saving} style={{ flex: 2 }}>
+                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري الحفظ...") : "حفظ المنتج"}
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -832,8 +876,29 @@ export default function Dashboard() {
                 <div className="dh-title">منتجاتك</div>
                 <div className="dh-title-count mono">{products.length} منتج</div>
               </div>
+
+              {products.length > 0 && (
+                <>
+                  <div className="dh-field">
+                    <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="ابحث باسم المنتج" />
+                  </div>
+                  <div className="dh-type-toggle" style={{ marginBottom: 14 }}>
+                    <button type="button" className={"dh-type-btn" + (productFilter === "all" ? " active" : "")} onClick={() => setProductFilter("all")}>
+                      الكل ({products.length})
+                    </button>
+                    <button type="button" className={"dh-type-btn" + (productFilter === "visible" ? " active" : "")} onClick={() => setProductFilter("visible")}>
+                      منشور ({products.filter((p) => !p.hidden).length})
+                    </button>
+                    <button type="button" className={"dh-type-btn" + (productFilter === "hidden" ? " active" : "")} onClick={() => setProductFilter("hidden")}>
+                      مخفي ({products.filter((p) => p.hidden).length})
+                    </button>
+                  </div>
+                </>
+              )}
+
               {products.length === 0 && <div className="empty-note">ما أضفت أي منتج بعد.</div>}
-              {products.map((p) => (
+              {products.length > 0 && filteredProducts.length === 0 && <div className="empty-note">ما فيه منتج يطابق البحث أو الفلتر.</div>}
+              {filteredProducts.map((p) => (
                 <div className="dh-item" key={p.id}>
                   {editingId === p.id ? (
                     <div className="dh-edit-form">
@@ -868,7 +933,7 @@ export default function Dashboard() {
                   ) : (
                     <>
                       <div className="dh-item-top">
-                        <span className="dh-item-name">{p.name}</span>
+                        <span className="dh-item-name">{p.name}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
                         <span className="dh-item-price">{p.price} ر.ع</span>
                       </div>
                       {p.type === "code" && (
@@ -882,6 +947,9 @@ export default function Dashboard() {
                       </div>
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
+                        <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
+                          {togglingHiddenId === p.id ? "..." : (p.hidden ? "إظهار" : "إخفاء")}
+                        </button>
                         {confirmDeleteId === p.id ? (
                           <button className="dh-item-action danger" onClick={() => confirmDelete(p.id)} disabled={deletingId === p.id} type="button">
                             {deletingId === p.id ? "جاري الحذف..." : "تأكيد الحذف؟"}
@@ -973,7 +1041,7 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "orders" && <Orders ownerId={user.uid} />}
+        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} />}
 
         {tab === "design" && (
           <>
@@ -1159,6 +1227,35 @@ export default function Dashboard() {
         )}
 
       </div>
+
+      {previewOpen && (
+        <div className="pv-overlay" onClick={() => setPreviewOpen(false)}>
+          <div className="pv-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="pv-close">
+              <span className="pv-close-label">معاينة — هكذا يشوفها العميل</span>
+              <button className="pv-close-btn" onClick={() => setPreviewOpen(false)}>✕</button>
+            </div>
+            <div className="pv-body">
+              <div className="pv-cover">
+                {productImages[0]
+                  ? <img src={productImages[0]} alt="" />
+                  : <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/><path d="M14 2v6h6" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/></svg>}
+              </div>
+              <div className="pv-cat">{category || "عام"}</div>
+              <div className="pv-name">{name || "اسم المنتج"}</div>
+              <div className="pv-card">
+                <div className="pv-price-row">
+                  <span style={{ color: "#8A8677", fontSize: 11.5 }}>السعر</span>
+                  <b className="mono" style={{ fontSize: 20 }}>{price ? Number(price).toFixed(2) : "0.00"} ر.ع</b>
+                </div>
+                <div className="pv-desc">{description || "ما فيه وصف إضافي لهذا المنتج."}</div>
+              </div>
+              <div className="pv-btn">ادفع واستلم الآن</div>
+              <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
