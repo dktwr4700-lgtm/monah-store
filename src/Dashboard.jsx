@@ -706,6 +706,22 @@ export default function Dashboard() {
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
   const initial = (storeName || "م").charAt(0);
 
+  const assistantContext = {
+    storeName,
+    tagline,
+    plan: sellerPlan,
+    productsCount: products.length,
+    products: products.slice(0, 20).map((p) => ({
+      name: p.name,
+      price: p.price,
+      category: p.category,
+      description: p.description,
+      hidden: !!p.hidden,
+    })),
+    ordersCount: sellerOrders.length,
+    totalSales: sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0),
+  };
+
   return (
     <div className="dh-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -1258,8 +1274,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <GrowthAssistant />
+      <GrowthAssistant storeData={assistantContext} />
     </div>
   );
 }
-
