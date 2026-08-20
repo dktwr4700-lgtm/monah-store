@@ -5,6 +5,12 @@ export default async function handler(req, res) {
 
   const { question, storeData, actionType } = req.body;
 
+  // حماية إضافية بجانب حماية الواجهة — فقط باقة "متجر متكامل" تقدر تستخدم المساعد فعليًا
+  const REQUIRED_PLAN = 'full';
+  if (!storeData || storeData.plan !== REQUIRED_PLAN) {
+    return res.status(403).json({ error: 'هذي الميزة متاحة فقط لباقة متجر متكامل.' });
+  }
+
   const type = actionType || 'chat';
 
   function buildStoreContext(data) {
@@ -36,7 +42,6 @@ export default async function handler(req, res) {
   const hasOneProduct = (storeData?.products?.length || 0) === 1;
   const hasNoProducts = (storeData?.products?.length || 0) === 0;
 
-  // تعليمات إضافية خاصة بكل نوع إجراء — كل نوع يضيف سلوكًا محددًا فوق التعليمات العامة
   const ACTION_INSTRUCTIONS = {
     'improve-product': `
 مهمتك الآن: تحسين اسم ووصف منتج معين للتاجر.
@@ -110,7 +115,6 @@ ${actionInstruction}`;
     const data = await response.json();
     const reply = data.content?.[0]?.text || 'ما قدرت أطلع رد، حاول مرة ثانية';
 
-    // suggestion: مكان محجوز لمرحلة قادمة (اقتراح نص جاهز للتطبيق مباشرة على منتج معين)
     res.status(200).json({ reply, suggestion: null });
   } catch (error) {
     res.status(500).json({ error: 'حصل خطأ، حاول مرة ثانية' });
