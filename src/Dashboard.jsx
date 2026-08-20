@@ -220,6 +220,9 @@ export default function Dashboard() {
   const [couponError, setCouponError] = useState("");
   const [deletingCouponId, setDeletingCouponId] = useState(null);
 
+  // overview: sales
+  const [sellerOrders, setSellerOrders] = useState([]);
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       if (!u) {
@@ -285,6 +288,25 @@ export default function Dashboard() {
     const unsub = onSnapshot(q, (snap) => {
       setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "orders"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        list.sort((a, b) => {
+          const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+          const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+          return tb - ta;
+        });
+        setSellerOrders(list);
+      },
+      () => setSellerOrders([])
+    );
     return () => unsub();
   }, [user]);
 
@@ -650,8 +672,8 @@ export default function Dashboard() {
           <>
             <div className="dh-stats">
               <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
-              <div className="dh-stat"><b className="mono">0</b><span>عملية بيع</span></div>
-              <div className="dh-stat"><b className="mono">0.00</b><span>ر.ع إجمالي</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
             </div>
             <div className="dh-store-link">
               <div className="dh-store-label">رابط متجرك العام</div>
@@ -664,7 +686,18 @@ export default function Dashboard() {
             </div>
             <div className="dh-card">
               <div className="dh-title">مبيعاتك</div>
-              <div className="empty-note">ما فيه عمليات بيع لسا. أول عملية بيع بتظهر لك هنا تلقائيًا.</div>
+              {sellerOrders.length === 0 && (
+                <div className="empty-note">ما فيه عمليات بيع لسا. أول عملية بيع بتظهر لك هنا تلقائيًا.</div>
+              )}
+              {sellerOrders.slice(0, 5).map((o) => (
+                <div className="dh-item" key={o.id}>
+                  <div className="dh-item-top">
+                    <span className="dh-item-name">{o.productName}</span>
+                    <span className="dh-item-price">{Number(o.price).toFixed(2)} ر.ع</span>
+                  </div>
+                  <div className="dh-item-stock">{o.buyerEmail}</div>
+                </div>
+              ))}
             </div>
           </>
         )}
