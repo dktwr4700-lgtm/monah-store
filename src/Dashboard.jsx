@@ -1274,7 +1274,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <GrowthAssistant storeData={assistantContext} />
+      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} />
     </div>
   );
 }
