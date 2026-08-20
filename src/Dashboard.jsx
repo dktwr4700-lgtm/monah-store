@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Orders from "./Orders.jsx";
+import GrowthAssistant from "./GrowthAssistant.jsx";
 
 const COLORS = ["#16233F", "#4B6152", "#8B3A3A", "#5B4A8A", "#B9832F"];
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -1256,6 +1257,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <GrowthAssistant />
     </div>
   );
 }
+
