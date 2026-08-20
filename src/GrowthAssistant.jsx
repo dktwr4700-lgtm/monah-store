@@ -103,7 +103,7 @@ export default function GrowthAssistant() {
           style={{
             position: "fixed",
             bottom: 24,
-            insetInlineEnd: 20,
+            insetInlineStart: 20,
             width: 56,
             height: 56,
             borderRadius: "50%",
@@ -126,7 +126,7 @@ export default function GrowthAssistant() {
           style={{
             position: "fixed",
             bottom: 0,
-            insetInlineEnd: 0,
+            insetInlineStart: 0,
             width: "100%",
             maxWidth: 380,
             height: "min(560px, 85vh)",
