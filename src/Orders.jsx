@@ -31,6 +31,7 @@ const styles = `
   .ord-empty{ text-align:center; padding:50px 20px; color:#B0AC9C; }
   .ord-empty b{ display:block; color:#16233F; font-family:'Almarai',sans-serif; font-size:14px; margin-bottom:6px; }
   .ord-empty span{ font-size:12.5px; }
+  .ord-empty-btn{ display:inline-flex; align-items:center; gap:6px; background:#16233F; color:#fff; border:none; padding:11px 20px; border-radius:10px; font-weight:700; font-size:12.5px; cursor:pointer; margin-top:16px; font-family:'Cairo', sans-serif; }
   .ord-error{ background:#F6E9E5; color:#B24C3A; padding:12px 16px; border-radius:10px; font-size:12.5px; margin-bottom:14px; line-height:1.7; }
 `;
 
@@ -40,7 +41,7 @@ function formatDate(ts) {
   return d.toLocaleDateString("ar-OM", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function Orders({ ownerId }) {
+export default function Orders({ ownerId, onAddProduct }) {
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
   const [loadError, setLoadError] = useState("");
@@ -86,8 +87,11 @@ export default function Orders({ ownerId }) {
 
       {status === "ready" && orders.length === 0 && !loadError && (
         <div className="ord-empty">
-          <b>ما فيه طلبات لسا</b>
-          <span>No orders yet — أول عملية بيع بتظهر هنا تلقائيًا</span>
+          <b>أول طلب لك قريب</b>
+          <span>أضف منتجك وشارك رابطه على واتساب وإنستغرام لتبدأ استقبال المبيعات</span>
+          {onAddProduct && (
+            <button className="ord-empty-btn" onClick={onAddProduct}>+ أضف منتج</button>
+          )}
         </div>
       )}
 
