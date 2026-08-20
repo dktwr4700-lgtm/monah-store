@@ -29,6 +29,19 @@ const styles = `
   .dh-wrap{ padding:18px; max-width:560px; margin:0 auto; }
 
   .dh-stats{ display:flex; gap:1px; background:#E4E0D3; border-radius:12px; overflow:hidden; margin-bottom:16px; }
+
+  .dh-next{ position:relative; overflow:hidden; background:#16233F; border-radius:16px; padding:22px 20px; margin-bottom:16px; color:#fff; }
+  .dh-next-badge{ display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.1); color:#E8BD69; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; margin-bottom:14px; }
+  .dh-next-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:16px; line-height:1.6; margin-bottom:8px; }
+  .dh-next-text{ color:rgba(255,255,255,0.7); font-size:12.5px; line-height:1.8; max-width:280px; margin-bottom:16px; }
+  .dh-next-bar{ height:6px; background:rgba(255,255,255,0.1); border-radius:100px; overflow:hidden; margin-bottom:6px; }
+  .dh-next-bar-fill{ height:100%; background:#B9832F; border-radius:100px; }
+  .dh-next-step{ color:rgba(255,255,255,0.5); font-size:11px; margin-bottom:16px; }
+  .dh-next-btn{ display:inline-flex; align-items:center; gap:6px; background:#fff; color:#16233F; border:none; padding:11px 18px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; }
+
+  .dh-quick{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .dh-quick-btn{ flex:1; min-width:130px; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:12px; padding:14px; text-align:center; font-size:12px; font-weight:700; color:#16233F; cursor:pointer; }
+  .dh-quick-btn:hover{ background:#FBFAF7; }
   .dh-stat{ flex:1; background:#16233F; padding:16px 10px; text-align:center; }
   .dh-stat:nth-child(2){ background:#1C2C4D; }
   .dh-stat:nth-child(3){ background:#22355A; }
@@ -203,6 +216,9 @@ export default function Dashboard() {
   const [slugError, setSlugError] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("platform");
+  const [payoutInfo, setPayoutInfo] = useState("");
+  const [payoutWhatsapp, setPayoutWhatsapp] = useState("");
   const [logoError, setLogoError] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
@@ -324,6 +340,9 @@ export default function Dashboard() {
         setSlug(data.slug || "");
         setLogoUrl(data.logoUrl || "");
         setCoverUrl(data.coverUrl || "");
+        setPaymentMethod(data.paymentMethod || "platform");
+        setPayoutInfo(data.payoutInfo || "");
+        setPayoutWhatsapp(data.payoutWhatsapp || "");
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -548,6 +567,9 @@ export default function Dashboard() {
         slug: cleanSlug || "",
         logoUrl: logoUrl || "",
         coverUrl: coverUrl || "",
+        paymentMethod: paymentMethod,
+        payoutInfo: paymentMethod === "manual" ? payoutInfo || "" : "",
+        payoutWhatsapp: paymentMethod === "manual" ? payoutWhatsapp || "" : "",
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
       });
@@ -670,11 +692,31 @@ export default function Dashboard() {
 
         {tab === "overview" && (
           <>
+            {products.length === 0 && (
+              <div className="dh-next">
+                <span className="dh-next-badge">✦ خطوة البداية</span>
+                <div className="dh-next-title">منتجك الأول أقرب مما تتوقع</div>
+                <div className="dh-next-text">أضف منتجاً، راجعه، ثم شارك الرابط مع جمهورك.</div>
+                <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: storeName ? "66%" : "33%" }} /></div>
+                <div className="dh-next-step">{storeName ? "خطوة واحدة من 2 مكتملة" : "٠ من ٢ خطوات مكتملة"}</div>
+                <button className="dh-next-btn" onClick={() => setTab("products")}>+ أضف أول منتج</button>
+              </div>
+            )}
+
             <div className="dh-stats">
-              <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
-              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
               <div className="dh-stat"><b className="mono">{sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
+              <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
             </div>
+
+            <div className="dh-quick">
+              <button className="dh-quick-btn" onClick={() => setTab("products")}>+ أضف منتج</button>
+              <button className="dh-quick-btn" onClick={() => setTab("design")}>تصميم المتجر</button>
+              <button className="dh-quick-btn" onClick={() => copyLink(slug || user.uid, "store")}>
+                {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط ✓" : "نسخ رابط المتجر"}
+              </button>
+            </div>
+
             <div className="dh-store-link">
               <div className="dh-store-label">رابط متجرك العام</div>
               <div className="dh-store-row">
@@ -685,9 +727,9 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="dh-card">
-              <div className="dh-title">مبيعاتك</div>
+              <div className="dh-title">آخر الطلبات</div>
               {sellerOrders.length === 0 && (
-                <div className="empty-note">ما فيه عمليات بيع لسا. أول عملية بيع بتظهر لك هنا تلقائيًا.</div>
+                <div className="empty-note">أضف منتجك الأول، ثم شارك رابطه على واتساب أو إنستغرام لتبدأ استقبال المبيعات.</div>
               )}
               {sellerOrders.slice(0, 5).map((o) => (
                 <div className="dh-item" key={o.id}>
@@ -1023,6 +1065,58 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+
+              <div className="dh-field">
+                <label>طريقة استلام المدفوعات</label>
+                <div className="dh-type-toggle">
+                  <button
+                    type="button"
+                    className={"dh-type-btn" + (paymentMethod === "platform" ? " active" : "")}
+                    onClick={() => { setPaymentMethod("platform"); setDesignDirty(true); }}
+                  >
+                    تلقائي عبر المنصة
+                  </button>
+                  <button
+                    type="button"
+                    className={"dh-type-btn" + (paymentMethod === "manual" ? " active" : "")}
+                    onClick={() => { setPaymentMethod("manual"); setDesignDirty(true); }}
+                  >
+                    يدوي (تحويل + واتساب)
+                  </button>
+                </div>
+                <div className="dh-hint">
+                  {paymentMethod === "platform"
+                    ? "العميل يضغط زر الدفع، ويستلم منتجه تلقائيًا مباشرة من الموقع."
+                    : "العميل يحوّل المبلغ مباشرة لحسابك، ويرسل لك إثبات التحويل عبر واتساب، وترسل له المنتج بنفسك."}
+                </div>
+              </div>
+
+              {paymentMethod === "manual" && (
+                <>
+                  <div className="dh-field">
+                    <label>رقم الحساب أو الجوال لاستلام التحويل</label>
+                    <input
+                      type="text"
+                      value={payoutInfo}
+                      onChange={(e) => { setPayoutInfo(e.target.value); setDesignDirty(true); }}
+                      placeholder="OM00 0000 0000 0000 0000 000 أو 9689xxxxxxx"
+                      style={{ direction: "ltr", textAlign: "right" }}
+                    />
+                    <div className="dh-hint">هذا اللي يشوفه العميل قبل الشراء عشان يحوّل عليه مباشرة.</div>
+                  </div>
+                  <div className="dh-field">
+                    <label>رقم واتساب لاستقبال إثبات الدفع</label>
+                    <input
+                      type="text"
+                      value={payoutWhatsapp}
+                      onChange={(e) => { setPayoutWhatsapp(e.target.value); setDesignDirty(true); }}
+                      placeholder="96891234567"
+                      style={{ direction: "ltr", textAlign: "right" }}
+                    />
+                    <div className="dh-hint">العميل بيُطلب منه يحتفظ بإيصال التحويل ويرسله لك على هذا الرقم لتأكيد الدفع.</div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="ds-save-bar">
