@@ -28,7 +28,7 @@ function formatText(text) {
     });
   }
 
-  lines.forEach((line, idx) => {
+  lines.forEach((line) => {
     const trimmed = line.trim();
     if (trimmed === "---" || trimmed === "") {
       flushList();
@@ -61,7 +61,17 @@ function formatText(text) {
   return elements;
 }
 
-export default function GrowthAssistant() {
+// أزرار الإجراءات الجاهزة — محجوزة للمرحلة القادمة، تفعّل لاحقًا بإضافتها هنا
+const QUICK_ACTIONS = [
+  // { id: "improve-product", label: "حسّن هذا المنتج" },
+  // { id: "caption", label: "اكتب لي كابشن" },
+  // { id: "reel-idea", label: "فكرة ريلز" },
+  // { id: "audit-store", label: "افحص متجري" },
+  // { id: "coupon-idea", label: "أنشئ كود خصم" },
+  // { id: "what-today", label: "ماذا أفعل اليوم؟" },
+];
+
+export default function GrowthAssistant({ storeData }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
@@ -74,8 +84,7 @@ export default function GrowthAssistant() {
     }
   }, [messages, loading]);
 
-  async function handleAsk() {
-    const q = question.trim();
+  async function sendToAssistant(q, actionType) {
     if (!q || loading) return;
     setMessages((prev) => [...prev, { role: "user", text: q }]);
     setQuestion("");
@@ -84,14 +93,27 @@ export default function GrowthAssistant() {
       const res = await fetch("/api/growth-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, storeData: {} }),
+        body: JSON.stringify({
+          question: q,
+          storeData: storeData || {},
+          actionType: actionType || "chat",
+        }),
       });
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", text: data.reply || data.error || "ما وصل رد" }]);
+      // data.suggestion محجوز لمرحلة "تطبيق التعديل" القادمة
     } catch (err) {
       setMessages((prev) => [...prev, { role: "assistant", text: "صار خطأ بالاتصال، حاول مرة ثانية" }]);
     }
     setLoading(false);
+  }
+
+  function handleAsk() {
+    sendToAssistant(question.trim(), "chat");
+  }
+
+  function handleQuickAction(action) {
+    sendToAssistant(action.label, action.id);
   }
 
   return (
@@ -162,9 +184,33 @@ export default function GrowthAssistant() {
           {/* الرسائل */}
           <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, background: "#FAFAF7" }}>
             {messages.length === 0 && (
-              <p style={{ color: "#8A8677", fontSize: 13.5, textAlign: "center", marginTop: 30 }}>
-                اسألني عن أي شي يخص تطوير متجرك ومبيعاتك 👋
-              </p>
+              <>
+                <p style={{ color: "#8A8677", fontSize: 13.5, textAlign: "center", marginTop: 20, marginBottom: 16 }}>
+                  اسألني عن أي شي يخص تطوير متجرك ومبيعاتك 👋
+                </p>
+                {QUICK_ACTIONS.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+                    {QUICK_ACTIONS.map((action) => (
+                      <button
+                        key={action.id}
+                        onClick={() => handleQuickAction(action)}
+                        style={{
+                          padding: "7px 12px",
+                          borderRadius: 100,
+                          border: "1px solid #E4E0D3",
+                          background: "#fff",
+                          color: "#16233F",
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
             {messages.map((m, i) => (
               <div
