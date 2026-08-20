@@ -21,10 +21,47 @@
     <meta name="twitter:image" content="/og-image.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@700;800&family=Cairo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+      /* شاشة التحميل الأولية — تظهر فوراً قبل ما يجهز كود الموقع، وتُستبدل تلقائيًا لما React يشتغل */
+      #boot-loader {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: #F6F3EC;
+        font-family: 'Cairo', sans-serif;
+      }
+      #boot-loader .boot-mark {
+        font-family: 'Almarai', sans-serif;
+        font-weight: 800;
+        font-size: 20px;
+        color: #16233F;
+      }
+      #boot-loader .boot-spinner {
+        width: 26px;
+        height: 26px;
+        border: 3px solid #E4E0D3;
+        border-top-color: #16233F;
+        border-radius: 50%;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      @keyframes boot-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-loader">
+        <div class="boot-spinner"></div>
+        <div class="boot-mark">Monah</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
