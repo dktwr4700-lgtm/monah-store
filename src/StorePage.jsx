@@ -1,206 +1,160 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { db } from "./firebase.js";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+
+/*
+  MONAH CUSTOMER STORE PAGE — DROP-IN REPLACEMENT
+  هذا الملف يحافظ على نفس تكامل Firestore في الكود السابق:
+  stores/{sellerId} أو البحث باستخدام stores.slug
+  products where ownerId == sellerId
+*/
 
 const styles = `
-  .st-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; }
-  .mono{ font-family:'JetBrains Mono', monospace; }
-
-  .st-cover{ padding:44px 24px 26px; text-align:center; position:relative; overflow:hidden; }
-  .st-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:18px 18px; }
-  .st-cover-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.35; }
-  .st-cover-overlay{ position:absolute; inset:0; background:inherit; opacity:0.55; }
-  .st-cover-circle-a{ content:""; position:absolute; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.06); top:-100px; left:-60px; pointer-events:none; }
-  .st-cover-circle-b{ content:""; position:absolute; width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,0.05); bottom:-80px; right:-40px; pointer-events:none; }
-  .st-logo{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:22px; background:#fff; position:relative; z-index:1; box-shadow:0 10px 22px rgba(0,0,0,0.16); }
-  .st-logo-img{ width:58px; height:58px; border-radius:16px; margin:0 auto 14px; display:block; object-fit:cover; position:relative; z-index:1; box-shadow:0 10px 22px rgba(0,0,0,0.16); }
-  .st-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#fff; position:relative; z-index:1; }
-  .st-sub{ color:rgba(255,255,255,0.75); font-size:12px; margin-top:6px; position:relative; z-index:1; }
-  .st-social{ display:flex; justify-content:center; gap:10px; margin-top:16px; position:relative; z-index:1; }
-  .st-social a{ width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; text-decoration:none; }
-
-  .st-stats{ display:flex; background:#FFFFFF; margin:-16px 20px 0; border-radius:12px; border:1px solid #E4E0D3; position:relative; z-index:2; box-shadow:0 8px 20px rgba(22,35,63,0.08); }
-  .st-stat{ flex:1; text-align:center; padding:14px 6px; border-inline-start:1px solid #E4E0D3; }
-  .st-stat:first-child{ border-inline-start:none; }
-  .st-stat b{ display:block; font-family:'JetBrains Mono',monospace; font-weight:700; color:#16233F; font-size:15px; }
-  .st-stat span{ display:block; color:#8A8677; font-size:9.5px; margin-top:3px; }
-
-  .st-wrap{ max-width:520px; margin:0 auto; padding:22px 20px 28px; }
-
-  .st-section{ margin-bottom:28px; }
-  .st-section-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-  .st-section-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14px; color:#16233F; }
-  .st-section-count{ color:#B0AC9C; font-size:11px; font-family:'JetBrains Mono', monospace; }
-  .st-section-line{ flex:1; height:1px; background:#E4E0D3; }
-
-  .st-item{ display:flex; align-items:center; gap:12px; text-decoration:none; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:12px; padding:14px 16px; margin-bottom:10px; }
-  .st-item-icon{ width:38px; height:38px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
-  .st-item-img{ width:100%; height:100%; object-fit:cover; }
-  .st-item-body{ flex:1; min-width:0; }
-  .st-item-name{ font-weight:700; color:#16233F; font-size:13.5px; margin-bottom:2px; }
-  .st-item-price{ color:#B9832F; font-weight:800; font-size:12.5px; font-family:'JetBrains Mono',monospace; }
-  .st-item-desc{ color:#8A8677; font-size:11px; margin-top:4px; line-height:1.6; }
-
-  .st-empty{ text-align:center; padding:56px 24px 30px; }
-  .st-empty-icon{ width:60px; height:60px; border-radius:16px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
-  .st-empty-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; color:#16233F; margin-bottom:8px; }
-  .st-empty-sub{ color:#8A8677; font-size:12px; line-height:1.9; max-width:340px; margin:0 auto 20px; }
-  .st-empty-cta{ display:inline-flex; align-items:center; gap:8px; background:#16233F; color:#fff; padding:11px 20px; border-radius:10px; font-size:12.5px; font-weight:700; text-decoration:none; }
-
-  .st-footer{ text-align:center; padding:20px; color:#B0AC9C; font-size:10.5px; }
+  .mc-page{min-height:100vh;background:#F7F4EC;color:#172747;font-family:'Cairo',sans-serif;}
+  .mc-page *{box-sizing:border-box}.mc-mono{font-family:'JetBrains Mono',monospace}.mc-display{font-family:'Almarai',sans-serif}
+  .mc-top{position:sticky;top:0;z-index:20;background:rgba(247,244,236,.94);backdrop-filter:blur(12px);border-bottom:1px solid #E5DED2}
+  .mc-top-in{max-width:860px;margin:auto;padding:13px 20px;display:flex;align-items:center;justify-content:space-between}.mc-wordmark{display:flex;align-items:center;gap:9px;font-weight:800;font-size:13px}.mc-monah-mark{width:31px;height:31px;display:flex;align-items:center;justify-content:center;background:#172747;border-radius:10px;color:#fff;font-family:'Almarai',sans-serif;font-weight:900}.mc-gold-dot{width:5px;height:5px;border-radius:50%;background:#C58D2C;display:inline-block}.mc-top-actions{display:flex;gap:8px}.mc-icon-btn{width:34px;height:34px;border-radius:10px;border:1px solid #E2DACD;background:#fff;color:#172747;display:flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer}
+  .mc-shell{max-width:860px;margin:auto;padding:22px 20px 38px}.mc-store{background:#172747;color:#fff;border-radius:20px;padding:23px 22px;position:relative;overflow:hidden;box-shadow:0 18px 35px rgba(23,39,71,.14)}.mc-store:before{content:"";position:absolute;width:210px;height:210px;border:1px solid rgba(255,255,255,.11);border-radius:50%;top:-100px;left:-60px}.mc-store:after{content:"";position:absolute;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.05);bottom:-72px;right:-35px}.mc-store-content{position:relative;z-index:1;display:flex;align-items:center;gap:14px}.mc-logo{width:60px;height:60px;border-radius:17px;overflow:hidden;background:#fff;color:#172747;display:flex;align-items:center;justify-content:center;font-size:22px;font-family:'Almarai',sans-serif;font-weight:800;box-shadow:0 9px 18px rgba(0,0,0,.16);flex-shrink:0}.mc-logo img{width:100%;height:100%;object-fit:cover}.mc-store-name{font-family:'Almarai',sans-serif;font-size:18px;font-weight:800}.mc-store-tagline{font-size:11.5px;color:rgba(255,255,255,.72);margin-top:6px;line-height:1.7}.mc-store-socials{display:flex;gap:7px;margin-top:11px}.mc-social{width:31px;height:31px;border-radius:9px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;text-decoration:none}.mc-social svg{width:15px;height:15px}
+  .mc-assurances{display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border:1px solid #E4DDD1;border-radius:15px;margin:-10px 15px 0;position:relative;z-index:2;box-shadow:0 11px 20px rgba(23,39,71,.07)}.mc-assurance{padding:11px 6px;text-align:center;border-inline-start:1px solid #E9E2D7}.mc-assurance:first-child{border-inline-start:0}.mc-assurance strong{font-size:12px;display:block}.mc-assurance span{font-size:9.5px;color:#88837A;display:block;margin-top:3px}
+  .mc-catalog-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:30px 0 12px}.mc-eyebrow{font-size:10px;color:#A77A2C;font-weight:800}.mc-title{font-size:17px;font-family:'Almarai',sans-serif;font-weight:800;margin:5px 0 0;line-height:1.7}.mc-count{font-size:11px;color:#8B867D;white-space:nowrap}.mc-tools{display:flex;gap:8px;padding:12px 0;border-top:1px solid #E3DCD0;border-bottom:1px solid #E3DCD0;align-items:center}.mc-search{position:relative;flex:1}.mc-search input{width:100%;border:1px solid #DDD5C8;border-radius:11px;background:#fff;color:#172747;padding:10px 35px 10px 11px;font-family:inherit;font-size:12px;outline:none}.mc-search svg{position:absolute;right:11px;top:50%;transform:translateY(-50%)}.mc-filter{border:1px solid #DDD5C8;background:#fff;color:#172747;border-radius:11px;padding:10px 11px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}.mc-categories{display:flex;gap:7px;overflow-x:auto;padding:13px 0 3px}.mc-category{border:1px solid #DED6CA;background:#fff;color:#72736E;border-radius:100px;padding:8px 13px;font-family:inherit;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}.mc-category.active{background:#172747;color:#fff;border-color:#172747}
+  .mc-section{margin-top:25px}.mc-section-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}.mc-section-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.mc-section-line{height:1px;background:#E4DDD2;flex:1}.mc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.mc-product{display:block;background:#fff;border:1px solid #E5DED3;border-radius:15px;padding:10px;text-decoration:none;color:#172747;box-shadow:0 9px 22px rgba(23,39,71,.04);transition:transform .18s ease,box-shadow .18s ease}.mc-product:hover{transform:translateY(-2px);box-shadow:0 15px 28px rgba(23,39,71,.09)}.mc-product-img{height:128px;border-radius:11px;background:#EAF0EB;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}.mc-product-img img{width:100%;height:100%;object-fit:cover}.mc-file-card{width:55%;height:72%;background:#FFFDF8;box-shadow:0 10px 18px rgba(23,39,71,.12);border-radius:9px;transform:rotate(-6deg);padding:10px}.mc-file-card b{display:block;width:65%;height:6px;border-radius:8px;background:#C58D2C}.mc-file-card i{display:block;height:4px;background:#E0DAD0;border-radius:7px;margin-top:8px}.mc-file-card i:nth-child(3){width:80%}.mc-file-card i:nth-child(4){width:92%}.mc-file-card em{display:block;height:19px;background:#E8F0E6;border-radius:5px;margin-top:11px}.mc-product-type{font-size:9.5px;color:#A77A2C;font-weight:800;margin-top:10px}.mc-product-name{font-size:12px;font-weight:800;margin-top:3px;line-height:1.6}.mc-product-desc{font-size:10px;color:#89847B;line-height:1.6;margin-top:2px;min-height:31px}.mc-product-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:8px}.mc-price{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800}.mc-view{font-size:10px;color:#172747;font-weight:800;background:#F2EEE6;border-radius:7px;padding:6px 8px}
+  .mc-empty{background:#fff;border:1px solid #E4DDD2;border-radius:18px;padding:35px 22px;text-align:center;margin-top:18px}.mc-empty-icon{width:54px;height:54px;border-radius:16px;background:#EAF0EB;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}.mc-empty-title{font-family:'Almarai',sans-serif;font-size:14px;font-weight:800}.mc-empty-sub{font-size:12px;color:#847F76;line-height:1.9;max-width:320px;margin:8px auto 18px}.mc-empty-cta{display:inline-flex;gap:7px;align-items:center;border-radius:10px;padding:11px 16px;background:#172747;color:#fff;text-decoration:none;font-size:12px;font-weight:800}
+  .mc-reassurance{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #E4DDD2;background:#fff;border-radius:15px;overflow:hidden;margin-top:28px}.mc-reassurance div{padding:12px 9px;border-inline-start:1px solid #E8E1D5}.mc-reassurance div:first-child{border-inline-start:0}.mc-reassurance b{font-size:10.5px;display:block}.mc-reassurance span{display:block;font-size:9.5px;color:#8A867D;line-height:1.55;margin-top:4px}.mc-footer{text-align:center;color:#AAA598;font-size:10px;margin-top:27px}.mc-footer b{color:#172747}
+  @media(min-width:680px){.mc-shell{padding-top:34px}.mc-store{padding:30px}.mc-logo{width:72px;height:72px}.mc-store-name{font-size:21px}.mc-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.mc-product-img{height:150px}.mc-product{padding:12px}.mc-reassurance{max-width:680px}.mc-assurances{margin-left:25px;margin-right:25px}.mc-tools{max-width:520px}.mc-catalog-head{margin-top:38px}}
 `;
 
-function FileIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
-      <path d="M14 2v6h6" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
-    </svg>
-  );
-}
+function SearchIcon(){return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6" stroke="#7B7A74" strokeWidth="1.7"/><path d="M16 16l4 4" stroke="#7B7A74" strokeWidth="1.7" strokeLinecap="round"/></svg>}
+function CartIcon(){return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 4h2l2 11h10l2-8H6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="20" r="1" fill="currentColor"/><circle cx="17" cy="20" r="1" fill="currentColor"/></svg>}
+function WhatsappIcon(){return <svg viewBox="0 0 24 24" fill="none"><path d="M17 14c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z" fill="#fff"/><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" stroke="#fff" strokeWidth="1.3"/></svg>}
+function InstagramIcon(){return <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#fff" strokeWidth="1.6"/><circle cx="12" cy="12" r="4" stroke="#fff" strokeWidth="1.6"/><circle cx="17.5" cy="6.5" r="1.1" fill="#fff"/></svg>}
+function FileIcon(){return <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#4B6152" strokeWidth="1.6"/><path d="M14 2v6h6M9 15l2 2 4-4" stroke="#4B6152" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
 
-function EmptyStoreIcon() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
-      <path d="M14 2v6h6" stroke="#4B6152" strokeWidth="1.6" strokeLinejoin="round"/>
-      <path d="M9 15l2 2 4-4" stroke="#4B6152" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+function safeSocialUrl(value, type){
+  if(!value) return "";
+  const raw = String(value).trim();
+  if(type === "whatsapp") return `https://wa.me/${raw.replace(/\D/g, "")}`;
+  if(/^https?:\/\//i.test(raw)) return raw;
+  return `https://instagram.com/${raw.replace(/^@/, "")}`;
 }
 
 export default function StorePage({ sellerId }) {
   const [products, setProducts] = useState([]);
   const [store, setStore] = useState(null);
   const [status, setStatus] = useState("loading");
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("الكل");
 
   useEffect(() => {
     async function fetchData() {
       try {
         let storeData = null;
         let resolvedOwnerId = sellerId;
-
         const directSnap = await getDoc(doc(db, "stores", sellerId));
         if (directSnap.exists()) {
           storeData = directSnap.data();
         } else {
-          const q = query(collection(db, "stores"), where("slug", "==", sellerId));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            storeData = snap.docs[0].data();
-            resolvedOwnerId = snap.docs[0].id;
+          const storeQuery = query(collection(db, "stores"), where("slug", "==", sellerId));
+          const storeSnap = await getDocs(storeQuery);
+          if (!storeSnap.empty) {
+            storeData = storeSnap.docs[0].data();
+            resolvedOwnerId = storeSnap.docs[0].id;
           }
         }
-
         setStore(storeData);
-
-        const q2 = query(collection(db, "products"), where("ownerId", "==", resolvedOwnerId));
-        const snap2 = await getDocs(q2);
-        setProducts(snap2.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setStatus("ready");
-      } catch (err) {
+        const productQuery = query(collection(db, "products"), where("ownerId", "==", resolvedOwnerId));
+        const productSnap = await getDocs(productQuery);
+        const allProducts = productSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
+        // نستبعد المنتجات اللي البائع أخفاها من لوحة تحكمه — ما تظهر للعميل هنا
+        setProducts(allProducts.filter((product) => !product.hidden));
+      } catch (error) {
+        console.error("Unable to load store", error);
+      } finally {
         setStatus("ready");
       }
     }
     fetchData();
   }, [sellerId]);
 
-  const brandColor = (store && store.color) || "#16233F";
-  const brandName = (store && store.name) || "متجر رقمي";
-  const tagline = (store && store.tagline) || "منتجات رقمية عبر Monah";
-  const whatsapp = store && store.whatsapp;
-  const instagram = store && store.instagram;
-  const logoUrl = store && store.logoUrl;
-  const coverUrl = store && store.coverUrl;
-  const initial = brandName.charAt(0);
-
-  const groups = {};
-  products.forEach((p) => {
-    const cat = p.category || "عام";
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(p);
-  });
-  const categoryNames = Object.keys(groups);
+  const brandColor = store?.color || "#172747";
+  const brandName = store?.name || "متجر رقمي";
+  const tagline = store?.tagline || "منتجات رقمية جاهزة للتحميل";
+  const logoUrl = store?.logoUrl;
+  const whatsappUrl = safeSocialUrl(store?.whatsapp, "whatsapp");
+  const instagramUrl = safeSocialUrl(store?.instagram, "instagram");
+  const categories = useMemo(() => ["الكل", ...Array.from(new Set(products.map((product) => product.category || "عام")))], [products]);
+  const shownProducts = useMemo(() => products.filter((product) => {
+    const text = `${product.name || ""} ${product.description || ""}`.toLowerCase();
+    const matchSearch = text.includes(search.trim().toLowerCase());
+    const matchCategory = activeCategory === "الكل" || (product.category || "عام") === activeCategory;
+    return matchSearch && matchCategory;
+  }), [products, search, activeCategory]);
 
   return (
-    <div className="st-page" dir="rtl" lang="ar">
+    <div className="mc-page" dir="rtl" lang="ar">
       <style>{styles}</style>
-      <div className="st-cover" style={{ background: brandColor }}>
-        {coverUrl && <img src={coverUrl} alt="" className="st-cover-img" />}
-        {coverUrl && <div className="st-cover-overlay" style={{ background: brandColor }}></div>}
-        <div className="st-cover-circle-a"></div>
-        <div className="st-cover-circle-b"></div>
-        {logoUrl
-          ? <img src={logoUrl} alt="" className="st-logo-img" />
-          : <div className="st-logo">{initial}</div>}
-        <div className="st-brand">{brandName}</div>
-        <div className="st-sub">{tagline}</div>
-
-        {(whatsapp || instagram) && (
-          <div className="st-social">
-            {whatsapp && (
-              <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" title="واتساب">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 14c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z" fill="#fff"/><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" stroke="#fff" strokeWidth="1.3"/></svg>
-              </a>
-            )}
-            {instagram && (
-              <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noopener noreferrer" title="إنستغرام">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#fff" strokeWidth="1.5"/><circle cx="12" cy="12" r="4" stroke="#fff" strokeWidth="1.5"/><circle cx="17.5" cy="6.5" r="1.2" fill="#fff"/></svg>
-              </a>
-            )}
+      <header className="mc-top">
+        <div className="mc-top-in">
+          <div className="mc-wordmark"><span className="mc-monah-mark">م</span><span>{brandName}</span><span className="mc-gold-dot" /></div>
+          <div className="mc-top-actions">
+            <a className="mc-icon-btn" href="#products" title="المنتجات"><SearchIcon /></a>
+            <a className="mc-icon-btn" href="#products" title="المشتريات"><CartIcon /></a>
           </div>
-        )}
-      </div>
+        </div>
+      </header>
 
-      <div className="st-stats">
-        <div className="st-stat"><b className="mono">{products.length}</b><span>منتجات</span></div>
-        <div className="st-stat"><b>فوري</b><span>تسليم الملف</span></div>
-        <div className="st-stat"><b>٪0</b><span>رسوم إضافية</span></div>
-      </div>
-
-      <div className="st-wrap">
-        {status === "ready" && products.length === 0 && (
-          <div className="st-empty">
-            <div className="st-empty-icon"><EmptyStoreIcon /></div>
-            <div className="st-empty-title">التاجر يجهّز متجره الآن</div>
-            <div className="st-empty-sub">
-              صاحب هذا المتجر يضيف منتجاته الرقمية حاليًا. تواصل معه مباشرة لمعرفة إيش يوفر، أو ترقّب المنتجات قريبًا.
+      <main className="mc-shell">
+        <section className="mc-store" style={{ background: brandColor }}>
+          <div className="mc-store-content">
+            <div className="mc-logo">{logoUrl ? <img src={logoUrl} alt={`شعار ${brandName}`} /> : brandName.charAt(0)}</div>
+            <div>
+              <div className="mc-store-name">{brandName}</div>
+              <div className="mc-store-tagline">{tagline}</div>
+              {(whatsappUrl || instagramUrl) && <div className="mc-store-socials">
+                {whatsappUrl && <a className="mc-social" href={whatsappUrl} target="_blank" rel="noopener noreferrer" title="واتساب"><WhatsappIcon /></a>}
+                {instagramUrl && <a className="mc-social" href={instagramUrl} target="_blank" rel="noopener noreferrer" title="إنستغرام"><InstagramIcon /></a>}
+              </div>}
             </div>
-            {whatsapp ? (
-              <a className="st-empty-cta" href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer">
-                💬 راسل التاجر الآن
-              </a>
-            ) : (
-              <span className="st-empty-cta" style={{ opacity: 0.6 }}>المنتجات قريبًا</span>
-            )}
           </div>
-        )}
+        </section>
 
-        {categoryNames.map((cat) => (
-          <div className="st-section" key={cat}>
-            <div className="st-section-head">
-              <span className="st-section-title">{cat}</span>
-              <span className="st-section-count mono">{groups[cat].length}</span>
-              <div className="st-section-line"></div>
-            </div>
-            {groups[cat].map((p) => (
-              <a className="st-item" href={`#product/${p.id}`} key={p.id}>
-                <div className="st-item-icon">
-                  {p.images && p.images.length > 0
-                    ? <img src={p.images[0]} alt="" className="st-item-img" />
-                    : <FileIcon />}
-                </div>
-                <div className="st-item-body">
-                  <div className="st-item-name">{p.name}</div>
-                  <div className="st-item-price mono">{Number(p.price).toFixed(2)} ر.ع</div>
-                  {p.description && <div className="st-item-desc">{p.description}</div>}
-                </div>
-              </a>
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="st-footer">مدعوم عبر منصة Monah</div>
+        <section className="mc-assurances" aria-label="مزايا الشراء">
+          <div className="mc-assurance"><strong className="mc-mono">{products.length}</strong><span>منتجات رقمية</span></div>
+          <div className="mc-assurance"><strong>فوري</strong><span>تسليم بعد الدفع</span></div>
+          <div className="mc-assurance"><strong>واضح</strong><span>بلا رسوم إضافية</span></div>
+        </section>
+
+        {status === "loading" ? <div className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">نجهّز لك المتجر</div><div className="mc-empty-sub">لحظات ونظهر المنتجات المتاحة.</div></div> : <>
+          {products.length === 0 ? <section className="mc-empty">
+            <div className="mc-empty-icon"><FileIcon /></div>
+            <div className="mc-empty-title">أول مجموعة رقمية في الطريق.</div>
+            <div className="mc-empty-sub">صاحب المتجر يجهّز منتجاته الآن. تابع المتجر أو راسله لمعرفة وقت نزول المنتجات الجديدة.</div>
+            {whatsappUrl ? <a className="mc-empty-cta" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><WhatsappIcon /> راسل التاجر</a> : <span className="mc-empty-cta" style={{opacity:.55}}>المنتجات قريباً</span>}
+          </section> : <>
+            <section className="mc-catalog-head" id="products">
+              <div><div className="mc-eyebrow"><span className="mc-gold-dot" /> منتجات المتجر</div><h1 className="mc-title">اختر المنتج وابدأ شغلك اليوم.</h1></div>
+              <div className="mc-count">{shownProducts.length} متاح الآن</div>
+            </section>
+            <div className="mc-tools"><div className="mc-search"><SearchIcon /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث باسم المنتج" /></div><button className="mc-filter" onClick={() => setActiveCategory("الكل")}>الكل</button></div>
+            <div className="mc-categories">{categories.map((category) => <button key={category} className={`mc-category ${activeCategory === category ? "active" : ""}`} onClick={() => setActiveCategory(category)}>{category}</button>)}</div>
+            <section className="mc-section">
+              {shownProducts.length ? <div className="mc-grid">{shownProducts.map((product) => <a className="mc-product" href={`#product/${product.id}`} key={product.id}>
+                <div className="mc-product-img">{product.images?.[0] ? <img src={product.images[0]} alt={product.name || "منتج رقمي"} /> : <div className="mc-file-card"><b></b><i></i><i></i><i></i><em></em></div>}</div>
+                <div className="mc-product-type"><span className="mc-gold-dot" /> {product.category || "منتج رقمي"}</div>
+                <div className="mc-product-name">{product.name || "منتج رقمي"}</div>
+                <div className="mc-product-desc">{product.description || "ملف رقمي جاهز للتحميل فور إتمام الدفع."}</div>
+                <div className="mc-product-bottom"><span className="mc-price">{Number(product.price || 0).toFixed(2)} ر.ع</span><span className="mc-view">عرض المنتج</span></div>
+              </a>)}</div> : <div className="mc-empty"><div className="mc-empty-title">ما وجدنا منتجاً بهذا الاسم.</div><div className="mc-empty-sub">جرّب كلمة مختلفة أو ارجع لكل المنتجات.</div><button className="mc-filter" onClick={() => {setSearch(""); setActiveCategory("الكل");}}>عرض الكل</button></div>}
+            </section>
+          </>}
+        </>}
+
+        <section className="mc-reassurance" aria-label="معلومات الشراء">
+          <div><b>تسليم فوري</b><span>رابط المنتج يصل بعد الدفع.</span></div>
+          <div><b>سعر واضح</b><span>بدون رسوم مفاجئة.</span></div>
+          <div><b>دعم قبل الشراء</b><span>راسل التاجر إذا احتجت مساعدة.</span></div>
+        </section>
+        <footer className="mc-footer">متجر <b>{brandName}</b> · مدعوم عبر <b>مُونَة</b></footer>
+      </main>
     </div>
   );
 }
