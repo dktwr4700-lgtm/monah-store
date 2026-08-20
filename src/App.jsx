@@ -154,18 +154,18 @@ const FEATURES = [
 const PROTECTION = [
   { title: "روابط تحميل مؤقتة", desc: "رابط تحميل كل منتج له صلاحية محدودة، ما يبقى صالح للأبد لأي شخص.", icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
   { title: "تشفير الملفات", desc: "ملفاتك محفوظة بشكل مشفّر، ما يقدر أي طرف يوصلها إلا العميل المخوّل بعد الدفع.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
-  { title: "منع إعادة الاستخدام", desc: "رابط التحميل يُستخدم مرة، فما يقدر أحد يشارك نفس الرابط ويوزع منتجك مجانًا.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: "حماية الرابط من المشاركة", desc: "رابط التحميل مرتبط بك وحدك، فما يقدر أي شخص ثاني يستخدم نفس الرابط لتحميل منتجك.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
 ];
 
 const WHY = [
   { title: "احتفظ بـ١٠٠٪ من أرباحك", desc: "بدون عمولة على أي عملية بيع، تدفع الاشتراك الشهري بس ولا شي غيره.", icon: <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/> },
-  { title: "حماية كاملة لمنتجك", desc: "روابط تحميل مؤقتة وتشفير يحميان ملفك من النسخ والمشاركة.", icon: <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+  { title: "حماية أفضل لمنتجك", desc: "روابط تحميل مؤقتة وتشفير يحميان ملفك من المشاركة غير المصرح بها.", icon: <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
   { title: "يدعم كل أنواع الملفات", desc: "PDF، ZIP، صور، فيديوهات، أكواد، وأي ملف رقمي تبيعه.", icon: <><path d="M7 3h7l4 4v14H7z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/><path d="M14 3v4h4" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/></> },
   { title: "تسليم فوري تلقائي", desc: "العميل يستلم منتجه لحظة إتمام الدفع، بدون أي تدخل منك.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
 ];
 
 const COMPARE = [
-  { label: "العمولة على المبيعات", monah: "٪٠", other: "١٠٪ – ٣٠٪" },
+  { label: "العمولة على المبيعات", monah: "٪٠", other: "نسبة من كل عملية بيع" },
   { label: "رسوم الاشتراك", monah: "ثابتة وواضحة", other: "غالبًا متغيّرة" },
 ];
 
@@ -214,8 +214,8 @@ const PACKAGES = [
     name: "متجر متكامل", monthly: 12, yearly: 120,
     desc: "مناسبة لمن يريد بناء علامة رقمية مستقلة.",
     btn: "ابنِ علامتك",
-    features: ["كل مميزات الاحترافية"],
-    soon: ["ربط دومينك الخاص", "إزالة شعار Monah من واجهة المتجر", "حماية متقدمة لروابط التحميل", "تحليلات مصادر الزيارات", "دعم أولوية"],
+    features: ["كل مميزات الاحترافية", "دعم أولوية عبر واتساب"],
+    soon: ["ربط دومينك الخاص", "إزالة شعار Monah من واجهة المتجر", "حماية متقدمة لروابط التحميل", "تحليلات مصادر الزيارات"],
   },
 ];
 
@@ -271,7 +271,7 @@ export default function App() {
       </div>
 
       <div className="stats">
-        <div className="stat"><b>٤</b><span>متاجر نشطة</span></div>
+        <div className="stat"><b>جديدة</b><span>منصة جاهزة الآن</span></div>
         <div className="stat"><b>٪٠</b><span>عمولة على البيع</span></div>
         <div className="stat"><b>فوري</b><span>تسليم الملف</span></div>
       </div>
@@ -477,7 +477,7 @@ export default function App() {
               </div>
             ))}
           </div>
-          <div className="pricing-note">الأسعار كاملة وشاملة، بدون رسوم خفية أو مصاريف إضافية. لو ألغيت اشتراكك، ما يُخصم منك أي مبلغ إضافي.</div>
+          <div className="pricing-note">الأسعار كاملة وشاملة، بدون أي عمولة أو رسوم خفية من Monah. قد تُطبَّق رسوم بسيطة من مزود الدفع حسب وسيلة الدفع المستخدمة. لو ألغيت اشتراكك، ما يُخصم منك أي مبلغ إضافي.</div>
         </div>
       </section>
 
