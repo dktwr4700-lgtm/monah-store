@@ -63,12 +63,12 @@ function formatText(text) {
 
 // أزرار الإجراءات الجاهزة — محجوزة للمرحلة القادمة، تفعّل لاحقًا بإضافتها هنا
 const QUICK_ACTIONS = [
-  // { id: "improve-product", label: "حسّن هذا المنتج" },
-  // { id: "caption", label: "اكتب لي كابشن" },
-  // { id: "reel-idea", label: "فكرة ريلز" },
-  // { id: "audit-store", label: "افحص متجري" },
-  // { id: "coupon-idea", label: "أنشئ كود خصم" },
-  // { id: "what-today", label: "ماذا أفعل اليوم؟" },
+  { id: "improve-product", label: "حسّن هذا المنتج" },
+  { id: "caption", label: "اكتب لي كابشن" },
+  { id: "reel-idea", label: "فكرة ريلز" },
+  { id: "audit-store", label: "افحص متجري" },
+  { id: "coupon-idea", label: "أنشئ كود خصم" },
+  { id: "what-today", label: "ماذا أفعل اليوم؟" },
 ];
 
 export default function GrowthAssistant({ storeData }) {
