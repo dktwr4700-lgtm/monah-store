@@ -61,7 +61,6 @@ function formatText(text) {
   return elements;
 }
 
-// أزرار الإجراءات الجاهزة — محجوزة للمرحلة القادمة، تفعّل لاحقًا بإضافتها هنا
 const QUICK_ACTIONS = [
   { id: "improve-product", label: "حسّن هذا المنتج" },
   { id: "caption", label: "اكتب لي كابشن" },
@@ -71,12 +70,17 @@ const QUICK_ACTIONS = [
   { id: "what-today", label: "ماذا أفعل اليوم؟" },
 ];
 
-export default function GrowthAssistant({ storeData }) {
+// الباقة الوحيدة المسموح لها باستخدام المساعد فعليًا (تحكّم بالتكلفة)
+const REQUIRED_PLAN = "full";
+
+export default function GrowthAssistant({ storeData, plan, onUpgradeClick }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+
+  const hasAccess = plan === REQUIRED_PLAN;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -85,7 +89,7 @@ export default function GrowthAssistant({ storeData }) {
   }, [messages, loading]);
 
   async function sendToAssistant(q, actionType) {
-    if (!q || loading) return;
+    if (!q || loading || !hasAccess) return;
     setMessages((prev) => [...prev, { role: "user", text: q }]);
     setQuestion("");
     setLoading(true);
@@ -101,7 +105,6 @@ export default function GrowthAssistant({ storeData }) {
       });
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", text: data.reply || data.error || "ما وصل رد" }]);
-      // data.suggestion محجوز لمرحلة "تطبيق التعديل" القادمة
     } catch (err) {
       setMessages((prev) => [...prev, { role: "assistant", text: "صار خطأ بالاتصال، حاول مرة ثانية" }]);
     }
@@ -142,8 +145,73 @@ export default function GrowthAssistant({ storeData }) {
         </button>
       )}
 
-      {/* نافذة المحادثة */}
-      {open && (
+      {/* نافذة قفل الميزة — لغير المشتركين بباقة متجر متكامل */}
+      {open && !hasAccess && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            insetInlineStart: 0,
+            width: "100%",
+            maxWidth: 380,
+            background: "#fff",
+            borderRadius: "16px 16px 0 0",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.2)",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              padding: "14px 16px",
+              background: "#16233F",
+              color: "#fff",
+              borderRadius: "16px 16px 0 0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: 15 }}>مساعد نمو متجرك ✦</span>
+            <button
+              onClick={() => setOpen(false)}
+              style={{ background: "none", border: "none", color: "#fff", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ padding: 24, textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
+            <div style={{ fontFamily: "'Almarai', sans-serif", fontWeight: 800, color: "#16233F", fontSize: 15, marginBottom: 8 }}>
+              مساعد نمو متجرك حصري لباقة متجر متكامل
+            </div>
+            <div style={{ color: "#8A8677", fontSize: 12.5, lineHeight: 1.8, marginBottom: 18 }}>
+              رقّي باقتك عشان تقدر تستخدم المساعد الذكي لتحسين منتجاتك وكتابة المحتوى وأفكار التسويق.
+            </div>
+            <button
+              onClick={() => {
+                setOpen(false);
+                if (onUpgradeClick) onUpgradeClick();
+              }}
+              style={{
+                width: "100%",
+                background: "#16233F",
+                color: "#fff",
+                border: "none",
+                padding: 13,
+                borderRadius: 8,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              شوف باقة متجر متكامل
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة المحادثة — فقط لمشتركي باقة متجر متكامل */}
+      {open && hasAccess && (
         <div
           style={{
             position: "fixed",
@@ -160,7 +228,6 @@ export default function GrowthAssistant({ storeData }) {
             zIndex: 1000,
           }}
         >
-          {/* الهيدر */}
           <div
             style={{
               padding: "14px 16px",
@@ -181,35 +248,32 @@ export default function GrowthAssistant({ storeData }) {
             </button>
           </div>
 
-          {/* الرسائل */}
           <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, background: "#FAFAF7" }}>
             {messages.length === 0 && (
               <>
                 <p style={{ color: "#8A8677", fontSize: 13.5, textAlign: "center", marginTop: 20, marginBottom: 16 }}>
                   اسألني عن أي شي يخص تطوير متجرك ومبيعاتك 👋
                 </p>
-                {QUICK_ACTIONS.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
-                    {QUICK_ACTIONS.map((action) => (
-                      <button
-                        key={action.id}
-                        onClick={() => handleQuickAction(action)}
-                        style={{
-                          padding: "7px 12px",
-                          borderRadius: 100,
-                          border: "1px solid #E4E0D3",
-                          background: "#fff",
-                          color: "#16233F",
-                          fontSize: 11.5,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+                  {QUICK_ACTIONS.map((action) => (
+                    <button
+                      key={action.id}
+                      onClick={() => handleQuickAction(action)}
+                      style={{
+                        padding: "7px 12px",
+                        borderRadius: 100,
+                        border: "1px solid #E4E0D3",
+                        background: "#fff",
+                        color: "#16233F",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
               </>
             )}
             {messages.map((m, i) => (
@@ -240,7 +304,6 @@ export default function GrowthAssistant({ storeData }) {
             )}
           </div>
 
-          {/* خانة الكتابة */}
           <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #E4E0D3" }}>
             <input
               value={question}
