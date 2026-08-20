@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "./firebase.js";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 const styles = `
   .ord-wrap{ padding:4px 0; }
@@ -31,6 +31,7 @@ const styles = `
   .ord-empty{ text-align:center; padding:50px 20px; color:#B0AC9C; }
   .ord-empty b{ display:block; color:#16233F; font-family:'Almarai',sans-serif; font-size:14px; margin-bottom:6px; }
   .ord-empty span{ font-size:12.5px; }
+  .ord-error{ background:#F6E9E5; color:#B24C3A; padding:12px 16px; border-radius:10px; font-size:12.5px; margin-bottom:14px; line-height:1.7; }
 `;
 
 function formatDate(ts) {
@@ -42,21 +43,30 @@ function formatDate(ts) {
 export default function Orders({ ownerId }) {
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     if (!ownerId) return;
-    const q = query(
-      collection(db, "orders"),
-      where("ownerId", "==", ownerId),
-      orderBy("createdAt", "desc")
-    );
+    // ملاحظة: بدون orderBy هنا عمدًا — نرتب النتائج يدويًا بالأسفل
+    // عشان نتجنب الحاجة لإنشاء فهرس مركب (composite index) بلوحة Firebase
+    const q = query(collection(db, "orders"), where("ownerId", "==", ownerId));
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        list.sort((a, b) => {
+          const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+          const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+          return tb - ta;
+        });
+        setOrders(list);
         setStatus("ready");
+        setLoadError("");
       },
-      () => setStatus("ready")
+      (err) => {
+        setStatus("ready");
+        setLoadError("تعذر تحميل الطلبات: " + (err.message || String(err)));
+      }
     );
     return () => unsub();
   }, [ownerId]);
@@ -72,7 +82,9 @@ export default function Orders({ ownerId }) {
         <div className="ord-count mono">{orders.length}</div>
       </div>
 
-      {status === "ready" && orders.length === 0 && (
+      {loadError && <div className="ord-error">{loadError}</div>}
+
+      {status === "ready" && orders.length === 0 && !loadError && (
         <div className="ord-empty">
           <b>ما فيه طلبات لسا</b>
           <span>No orders yet — أول عملية بيع بتظهر هنا تلقائيًا</span>
