@@ -712,6 +712,7 @@ export default function Dashboard() {
     plan: sellerPlan,
     productsCount: products.length,
     products: products.slice(0, 20).map((p) => ({
+      id: p.id,
       name: p.name,
       price: p.price,
       category: p.category,
@@ -721,6 +722,30 @@ export default function Dashboard() {
     ordersCount: sellerOrders.length,
     totalSales: sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0),
   };
+
+  // يطبّق اقتراح المساعد الذكي بعد ما التاجر يضغط زر "تطبيق" — الكتابة الفعلية بقاعدة البيانات تصير هنا فقط
+  async function handleApplySuggestion(suggestion) {
+    if (suggestion.kind === "improve-product") {
+      await updateDoc(doc(db, "products", suggestion.productId), {
+        name: suggestion.name,
+        description: suggestion.description,
+      });
+      return;
+    }
+    if (suggestion.kind === "coupon-idea") {
+      const exists = coupons.some((c) => c.code === suggestion.code);
+      if (exists) throw new Error("duplicate_code");
+      await addDoc(collection(db, "coupons"), {
+        ownerId: user.uid,
+        code: suggestion.code,
+        discountPercent: suggestion.percent,
+        productId: null,
+        active: true,
+        createdAt: serverTimestamp(),
+      });
+      return;
+    }
+  }
 
   return (
     <div className="dh-page" dir="rtl" lang="ar">
@@ -1274,7 +1299,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} />
+      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} onApplySuggestion={handleApplySuggestion} />
     </div>
   );
 }
