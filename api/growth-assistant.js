@@ -23,10 +23,10 @@ export default async function handler(req, res) {
     lines.push(`الباقة الحالية: ${data.plan || 'أساسية'}`);
     lines.push(`عدد المنتجات: ${data.productsCount ?? 0}`);
     if (data.products && data.products.length > 0) {
-      lines.push('المنتجات:');
+      lines.push('المنتجات (استخدم قيمة id بالضبط لو بنيت اقتراح تطبيق):');
       data.products.forEach((p) => {
         lines.push(
-          `- ${p.name} | السعر: ${p.price} ر.ع | التصنيف: ${p.category || 'عام'} | ${p.hidden ? 'مخفي' : 'منشور'} | الوصف: ${p.description ? p.description : 'بدون وصف'}`
+          `- id: ${p.id} | ${p.name} | السعر: ${p.price} ر.ع | التصنيف: ${p.category || 'عام'} | ${p.hidden ? 'مخفي' : 'منشور'} | الوصف: ${p.description ? p.description : 'بدون وصف'}`
         );
       });
     } else {
@@ -42,13 +42,23 @@ export default async function handler(req, res) {
   const hasOneProduct = (storeData?.products?.length || 0) === 1;
   const hasNoProducts = (storeData?.products?.length || 0) === 0;
 
+  const SUGGESTION_FORMAT_NOTE = `
+إذا حددت بوضوح منتجًا واحدًا بالذات للتحسين (تعرف id بتاعه من بيانات المتجر أعلاه)، أضف بنهاية ردك تمامًا، بسطر منفصل، كتلة بهذا الشكل بالضبط (بدون أي نص إضافي حولها، وبدون علامات markdown):
+[[SUGGESTION]]{"productId":"<id المنتج بالضبط>","name":"<الاسم المقترح أو نفس الاسم الحالي لو ما تغيّر>","description":"<الوصف المقترح الجديد>"}[[/SUGGESTION]]
+لا تضف هذي الكتلة إلا لو متأكد من هوية المنتج بالضبط (يعني عنده منتج واحد، أو حدد التاجر أي منتج بوضوح خلال المحادثة). إذا لسا تسأله أي منتج يقصد، لا تضف الكتلة.`;
+
+  const COUPON_FORMAT_NOTE = `
+بعد ما تقترح كود الخصم، أضف بنهاية ردك تمامًا، بسطر منفصل، كتلة بهذا الشكل بالضبط (بدون أي نص إضافي حولها):
+[[SUGGESTION]]{"code":"<الكود المقترح بأحرف إنجليزية وأرقام فقط>","percent":<رقم النسبة بدون علامة %>}[[/SUGGESTION]]`;
+
   const ACTION_INSTRUCTIONS = {
     'improve-product': `
 مهمتك الآن: تحسين اسم ووصف منتج معين للتاجر.
 ${hasNoProducts ? 'التاجر ما عنده أي منتج بعد — قل له يحتاج يضيف منتج أول قبل ما تقدر تحسّنه.' : ''}
-${hasMultipleProducts ? 'عنده أكثر من منتج — إذا ما حدد التاجر اسم المنتج بسؤاله، اسأله أي منتج بالضبط يبي يحسّن (اذكر أسماء منتجاته الحالية بسؤالك).' : ''}
+${hasMultipleProducts ? 'عنده أكثر من منتج — إذا ما حدد التاجر اسم المنتج بسؤاله، اسأله أي منتج بالضبط يبي يحسّن (اذكر أسماء منتجاته الحالية بسؤالك)، ولا تضف كتلة الاقتراح حتى يحدد.' : ''}
 ${hasOneProduct ? 'عنده منتج واحد فقط — اشتغل عليه مباشرة بدون ما تسأل.' : ''}
-لما تحدد المنتج، اكتب له: اسم مقترح محسّن (لو يحتاج)، ووصف مقترح جديد أوضح وأقوى بيعيًا (٢-٤ جمل)، بأسلوب يبرز الفائدة للمشتري.`,
+لما تحدد المنتج، اكتب له بأسلوب طبيعي: اسم مقترح محسّن (لو يحتاج)، ووصف مقترح جديد أوضح وأقوى بيعيًا (٢-٤ جمل)، بأسلوب يبرز الفائدة للمشتري.
+${hasNoProducts ? '' : SUGGESTION_FORMAT_NOTE}`,
 
     caption: `
 مهمتك الآن: كتابة كابشن جاهز لمنصات التواصل (واتساب/إنستغرام) لمنتج معين.
@@ -71,7 +81,7 @@ ${hasOneProduct ? 'عنده منتج واحد — اكتب الفكرة له م�
 
     'coupon-idea': `
 مهمتك الآن: اقتراح كود خصم مناسب للتاجر بناءً على وضع متجره.
-${hasNoProducts ? 'التاجر ما عنده منتجات بعد، فكود الخصم مو مفيد الآن — قل له يضيف منتج أول.' : `اقترح: اسم كود قصير وسهل التذكر (أحرف إنجليزية وأرقام)، نسبة خصم مناسبة (بين 10% و30% حسب حجم متجره)، ومدة مقترحة للعرض (مثلاً أسبوع أو أسبوعين). اشرح باختصار سبب اختيارك لهذي النسبة والمدة.`}`,
+${hasNoProducts ? 'التاجر ما عنده منتجات بعد، فكود الخصم مو مفيد الآن — قل له يضيف منتج أول ولا تضف كتلة الاقتراح.' : `اقترح: اسم كود قصير وسهل التذكر (أحرف إنجليزية وأرقام)، نسبة خصم مناسبة (بين 10% و30% حسب حجم متجره)، ومدة مقترحة للعرض (مثلاً أسبوع أو أسبوعين). اشرح باختصار سبب اختيارك لهذي النسبة والمدة.${COUPON_FORMAT_NOTE}`}`,
 
     'what-today': `
 مهمتك الآن: اقتراح مهمة واحدة أو اثنتين بسيطتين يقدر التاجر يسويهم اليوم لتحسين متجره، بناءً على وضعه الحالي بالضبط.
@@ -91,7 +101,7 @@ ${storeContext}
 - ردودك دائمًا مبنية على بيانات هذا المتجر تحديدًا، لا نصائح عامة فقط.
 - إذا المتجر فارغ من المنتجات، وجّه التاجر لإضافة أول منتج بدل إعطاء نصائح تسويقية عامة.
 - كن مختصرًا ومباشرًا، لا تطوّل بدون داعٍ.
-- أنت لا تقدر تعدّل أي شيء في المتجر مباشرة، فقط تقترح نصوصًا يقدر التاجر ينسخها أو يطبقها بنفسه لاحقًا.
+- أنت لا تقدر تعدّل أي شيء في المتجر مباشرة بنفسك؛ التاجر هو اللي يضغط زر التطبيق يدويًا لو وافق على اقتراحك.
 ${actionInstruction}`;
 
   const userMessage = question || 'ساعدني';
@@ -113,9 +123,27 @@ ${actionInstruction}`;
     });
 
     const data = await response.json();
-    const reply = data.content?.[0]?.text || 'ما قدرت أطلع رد، حاول مرة ثانية';
+    const rawReply = data.content?.[0]?.text || 'ما قدرت أطلع رد، حاول مرة ثانية';
 
-    res.status(200).json({ reply, suggestion: null });
+    // نستخرج كتلة الاقتراح المنظّمة (لو موجودة) ونشيلها من النص المعروض للتاجر
+    let reply = rawReply;
+    let suggestion = null;
+    const match = rawReply.match(/\[\[SUGGESTION\]\]([\s\S]*?)\[\[\/SUGGESTION\]\]/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        if (type === 'improve-product' && parsed.productId) {
+          suggestion = { kind: 'improve-product', productId: parsed.productId, name: parsed.name, description: parsed.description };
+        } else if (type === 'coupon-idea' && parsed.code && parsed.percent) {
+          suggestion = { kind: 'coupon-idea', code: String(parsed.code).toUpperCase().replace(/\s+/g, ''), percent: Number(parsed.percent) };
+        }
+      } catch (e) {
+        suggestion = null;
+      }
+      reply = rawReply.replace(match[0], '').trim();
+    }
+
+    res.status(200).json({ reply, suggestion });
   } catch (error) {
     res.status(500).json({ error: 'حصل خطأ، حاول مرة ثانية' });
   }
