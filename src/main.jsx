@@ -20,7 +20,7 @@ function Root() {
 
   if (hash === "register") return <Register />;
   if (hash === "login") return <Login />;
-  if (hash === "dashboard") return <Dashboard />;
+  if (hash === "dashboard" || hash.startsWith("dashboard/")) return <Dashboard />;
   if (hash === "privacy") return <LegalPage type="privacy" />;
   if (hash === "terms") return <LegalPage type="terms" />;
   if (hash === "admin") return <AdminDashboard />;
