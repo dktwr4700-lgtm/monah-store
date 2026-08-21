@@ -101,6 +101,10 @@ export default function ProductPage({ productId }) {
             setStatus("suspended");
             return;
           }
+          if (data.hidden) {
+            setStatus("notfound");
+            return;
+          }
           setProduct(data);
           const storeSnap = await getDoc(doc(db, "stores", data.ownerId));
           if (storeSnap.exists()) setStore(storeSnap.data());
