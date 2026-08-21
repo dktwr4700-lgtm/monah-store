@@ -720,7 +720,7 @@ export default function Dashboard() {
       hidden: !!p.hidden,
     })),
     ordersCount: sellerOrders.length,
-    totalSales: sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0),
+    totalSales: sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0),
   };
 
   // يحدد أهم خطوة ناقصة بمتجر التاجر حاليًا — تُستخدم ببطاقة "خطوتك التالية" وبترحيب المساعد الذكي
@@ -860,7 +860,7 @@ export default function Dashboard() {
             </div>
 
             <div className="dh-stats">
-              <div className="dh-stat"><b className="mono">{sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
               <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
               <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
             </div>
