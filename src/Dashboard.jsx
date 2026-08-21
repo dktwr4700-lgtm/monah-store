@@ -723,6 +723,83 @@ export default function Dashboard() {
     totalSales: sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0),
   };
 
+  // يحدد أهم خطوة ناقصة بمتجر التاجر حاليًا — تُستخدم ببطاقة "خطوتك التالية" وبترحيب المساعد الذكي
+  function getNextStep() {
+    const hasProduct = products.length > 0;
+    const hasTagline = !!tagline;
+    const hasContact = !!(whatsapp || instagram);
+    const allDescribed = products.every((p) => !!p.description);
+    const hasCoupon = coupons.length > 0;
+    const stepsDone = [hasProduct, hasTagline, hasContact, hasProduct ? allDescribed : false, sellerPlan === "basic" ? true : hasCoupon].filter(Boolean).length;
+
+    if (!hasProduct) {
+      return {
+        key: "add-product",
+        badge: "✦ خطوة البداية",
+        title: "منتجك الأول أقرب مما تتوقع",
+        text: "أضف منتجاً، راجعه، ثم شارك الرابط مع جمهورك.",
+        cta: "+ أضف أول منتج",
+        onClick: () => setTab("products"),
+        progress: stepsDone,
+      };
+    }
+    if (!hasTagline) {
+      return {
+        key: "add-tagline",
+        badge: "✦ خطوتك التالية",
+        title: "عرّف الزوار بمتجرك",
+        text: "جملة وصف بسيطة تزيد ثقة العملاء وتوضح لهم وش تبيع.",
+        cta: "أضف وصف المتجر",
+        onClick: () => setTab("design"),
+        progress: stepsDone,
+      };
+    }
+    if (!hasContact) {
+      return {
+        key: "add-contact",
+        badge: "✦ خطوتك التالية",
+        title: "خلّ عملاءك يقدرون يتواصلون معك",
+        text: "أضف رقم واتساب أو حساب إنستغرام في تصميم متجرك.",
+        cta: "أضف وسيلة تواصل",
+        onClick: () => setTab("design"),
+        progress: stepsDone,
+      };
+    }
+    if (!allDescribed) {
+      return {
+        key: "describe-product",
+        badge: "✦ خطوتك التالية",
+        title: "منتجاتك تستاهل وصف أوضح",
+        text: "وصف جيد يرفع ثقة المشتري ويزيد فرص البيع.",
+        cta: "حسّن وصف منتج",
+        onClick: () => setTab("products"),
+        progress: stepsDone,
+      };
+    }
+    if (sellerPlan !== "basic" && !hasCoupon) {
+      return {
+        key: "add-coupon",
+        badge: "✦ خطوتك التالية",
+        title: "جرب أول كود خصم لك",
+        text: "كوبونات الخصم تشجع الزوار يسوون قرار الشراء بسرعة أكبر.",
+        cta: "أنشئ كود خصم",
+        onClick: () => setTab("coupons"),
+        progress: stepsDone,
+      };
+    }
+    return {
+      key: "share-store",
+      badge: "✦ جاهز للانطلاق",
+      title: "متجرك جاهز، حان وقت المشاركة",
+      text: "شارك رابط متجرك على واتساب وإنستغرام لتبدأ استقبال الزيارات والمبيعات.",
+      cta: "نسخ رابط المتجر",
+      onClick: () => copyLink(slug || user.uid, "store"),
+      progress: stepsDone,
+    };
+  }
+
+  const nextStep = getNextStep();
+
   // يطبّق اقتراح المساعد الذكي بعد ما التاجر يضغط زر "تطبيق" — الكتابة الفعلية بقاعدة البيانات تصير هنا فقط
   async function handleApplySuggestion(suggestion) {
     if (suggestion.kind === "improve-product") {
@@ -773,16 +850,14 @@ export default function Dashboard() {
 
         {tab === "overview" && (
           <>
-            {products.length === 0 && (
-              <div className="dh-next">
-                <span className="dh-next-badge">✦ خطوة البداية</span>
-                <div className="dh-next-title">منتجك الأول أقرب مما تتوقع</div>
-                <div className="dh-next-text">أضف منتجاً، راجعه، ثم شارك الرابط مع جمهورك.</div>
-                <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: storeName ? "66%" : "33%" }} /></div>
-                <div className="dh-next-step">{storeName ? "خطوة واحدة من 2 مكتملة" : "٠ من ٢ خطوات مكتملة"}</div>
-                <button className="dh-next-btn" onClick={() => setTab("products")}>+ أضف أول منتج</button>
-              </div>
-            )}
+            <div className="dh-next">
+              <span className="dh-next-badge">{nextStep.badge}</span>
+              <div className="dh-next-title">{nextStep.title}</div>
+              <div className="dh-next-text">{nextStep.text}</div>
+              <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: `${(nextStep.progress / 5) * 100}%` }} /></div>
+              <div className="dh-next-step">{nextStep.progress} من 5 خطوات مكتملة</div>
+              <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
+            </div>
 
             <div className="dh-stats">
               <div className="dh-stat"><b className="mono">{sellerOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
@@ -1299,7 +1374,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} onApplySuggestion={handleApplySuggestion} />
+      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} onApplySuggestion={handleApplySuggestion} nextStep={nextStep} />
     </div>
   );
 }
