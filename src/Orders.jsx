@@ -52,6 +52,7 @@ export default function Orders({ ownerId, onAddProduct }) {
   const [status, setStatus] = useState("loading");
   const [loadError, setLoadError] = useState("");
   const [confirmingId, setConfirmingId] = useState(null);
+  const [confirmError, setConfirmError] = useState({});
 
   useEffect(() => {
     if (!ownerId) return;
@@ -81,13 +82,14 @@ export default function Orders({ ownerId, onAddProduct }) {
 
   async function confirmDelivered(orderId) {
     setConfirmingId(orderId);
+    setConfirmError((prev) => ({ ...prev, [orderId]: "" }));
     try {
       await updateDoc(doc(db, "orders", orderId), {
         status: "fulfilled",
         fulfilledAt: serverTimestamp(),
       });
     } catch (err) {
-      console.error(err);
+      setConfirmError((prev) => ({ ...prev, [orderId]: "تعذر التأكيد: " + (err.message || String(err)) }));
     }
     setConfirmingId(null);
   }
@@ -157,6 +159,9 @@ export default function Orders({ ownerId, onAddProduct }) {
                 >
                   {confirmingId === o.id ? "جاري التأكيد..." : "تأكيد التسليم"}
                 </button>
+                {confirmError[o.id] && (
+                  <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 8, lineHeight: 1.6 }}>{confirmError[o.id]}</div>
+                )}
               </div>
             )}
           </div>
