@@ -194,7 +194,20 @@ const PACKAGES = [
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [tab, setTab] = useState("overview");
+  function getTabFromHash() {
+    const parts = window.location.hash.replace("#", "").split("/");
+    const t = parts[1];
+    return ["overview", "products", "coupons", "orders", "design", "subscription"].includes(t) ? t : "overview";
+  }
+  const [tab, setTabState] = useState(getTabFromHash);
+
+  function setTab(newTab) {
+    setTabState(newTab);
+    const newHash = "#dashboard/" + newTab;
+    if (window.location.hash !== newHash) {
+      window.location.hash = newHash;
+    }
+  }
 
   // products
   const [products, setProducts] = useState([]);
@@ -259,6 +272,14 @@ export default function Dashboard() {
 
   // overview: sales
   const [sellerOrders, setSellerOrders] = useState([]);
+
+  useEffect(() => {
+    function onHashChange() {
+      setTabState(getTabFromHash());
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
