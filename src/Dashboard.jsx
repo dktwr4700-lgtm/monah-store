@@ -383,7 +383,7 @@ export default function Dashboard() {
     setProductFile(file);
   }
 
-  async function handleAddProduct(e) {
+  async function handleAddProduct(e, publish) {
     e.preventDefault();
     setError("");
 
@@ -413,6 +413,7 @@ export default function Dashboard() {
         filePath: "",
         codesCount: productType === "code" ? codesList.length : 0,
         images: productImages,
+        hidden: !publish,
         createdAt: serverTimestamp(),
       });
 
@@ -905,7 +906,7 @@ export default function Dashboard() {
             <div className="dh-card">
               <div className="dh-title" style={{ marginBottom: 16 }}>أضف منتج جديد</div>
               {error && <div className="dh-error">{error}</div>}
-              <form onSubmit={handleAddProduct}>
+              <form onSubmit={(e) => e.preventDefault()}>
                 <div className="dh-field">
                   <label>اسم المنتج</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
@@ -977,13 +978,19 @@ export default function Dashboard() {
                     <div className="dh-hint">كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.</div>
                   </div>
                 )}
+                <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || !price} style={{ width: "100%", marginBottom: 8 }}>
+                  معاينة المنتج
+                </button>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || !price} style={{ flex: 1 }}>
-                    معاينة المنتج
+                  <button className="dh-item-action" type="button" onClick={(e) => handleAddProduct(e, false)} disabled={saving} style={{ flex: 1 }}>
+                    {saving ? "..." : "حفظ كمسودة"}
                   </button>
-                  <button className="dh-btn" type="submit" disabled={saving} style={{ flex: 2 }}>
-                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري الحفظ...") : "حفظ المنتج"}
+                  <button className="dh-btn" type="button" onClick={(e) => handleAddProduct(e, true)} disabled={saving} style={{ flex: 1 }}>
+                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري النشر...") : "نشر المنتج"}
                   </button>
+                </div>
+                <div className="dh-hint" style={{ marginTop: 8, textAlign: "center" }}>
+                  "حفظ كمسودة" يحفظ المنتج مخفيًا عن الزوار — تقدر تنشره بعدين من قائمة منتجاتك.
                 </div>
               </form>
             </div>
