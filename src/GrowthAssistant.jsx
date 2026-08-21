@@ -73,7 +73,77 @@ const QUICK_ACTIONS = [
 // الباقة الوحيدة المسموح لها باستخدام المساعد فعليًا (تحكّم بالتكلفة)
 const REQUIRED_PLAN = "full";
 
-export default function GrowthAssistant({ storeData, plan, onUpgradeClick }) {
+function SuggestionCard({ suggestion, storeData, onApply }) {
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleApply() {
+    if (!onApply || applying || applied) return;
+    setApplying(true);
+    setError("");
+    try {
+      await onApply(suggestion);
+      setApplied(true);
+    } catch (err) {
+      setError("تعذر تطبيق التعديل، حاول مرة ثانية.");
+    }
+    setApplying(false);
+  }
+
+  if (suggestion.kind === "improve-product") {
+    const product = (storeData?.products || []).find((p) => p.id === suggestion.productId);
+    return (
+      <div style={{ marginTop: 6, marginBottom: 10, background: "#fff", border: "1px solid #E4E0D3", borderRadius: 12, padding: 12 }}>
+        <div style={{ fontSize: 11, color: "#8A8677", fontWeight: 700, marginBottom: 6 }}>
+          اقتراح تعديل{product ? ` — ${product.name}` : ""}
+        </div>
+        {applied ? (
+          <div style={{ color: "#4B6152", fontSize: 12.5, fontWeight: 700 }}>✓ تم التطبيق على المنتج</div>
+        ) : (
+          <>
+            <button
+              onClick={handleApply}
+              disabled={applying}
+              style={{ width: "100%", background: "#16233F", color: "#fff", border: "none", padding: "9px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              {applying ? "جاري التطبيق..." : `تطبيق على ${product ? product.name : "المنتج"}`}
+            </button>
+            {error && <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 6 }}>{error}</div>}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (suggestion.kind === "coupon-idea") {
+    return (
+      <div style={{ marginTop: 6, marginBottom: 10, background: "#fff", border: "1px solid #E4E0D3", borderRadius: 12, padding: 12 }}>
+        <div style={{ fontSize: 11, color: "#8A8677", fontWeight: 700, marginBottom: 6 }}>
+          اقتراح كود خصم — {suggestion.code} ({suggestion.percent}٪)
+        </div>
+        {applied ? (
+          <div style={{ color: "#4B6152", fontSize: 12.5, fontWeight: 700 }}>✓ تم إنشاء الكود</div>
+        ) : (
+          <>
+            <button
+              onClick={handleApply}
+              disabled={applying}
+              style={{ width: "100%", background: "#16233F", color: "#fff", border: "none", padding: "9px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              {applying ? "جاري الإنشاء..." : `إنشاء كود ${suggestion.code}`}
+            </button>
+            {error && <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 6 }}>{error}</div>}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApplySuggestion }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
@@ -104,7 +174,10 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick }) {
         }),
       });
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", text: data.reply || data.error || "ما وصل رد" }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: data.reply || data.error || "ما وصل رد", suggestion: data.suggestion || null },
+      ]);
     } catch (err) {
       setMessages((prev) => [...prev, { role: "assistant", text: "صار خطأ بالاتصال، حاول مرة ثانية" }]);
     }
@@ -277,26 +350,33 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick }) {
               </>
             )}
             {messages.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  marginBottom: 10,
-                  display: "flex",
-                  justifyContent: m.role === "user" ? "flex-start" : "flex-end",
-                }}
-              >
+              <div key={i} style={{ marginBottom: 10 }}>
                 <div
                   style={{
-                    maxWidth: "85%",
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    background: m.role === "user" ? "#E4E0D3" : "#EAF0EB",
-                    color: "#16233F",
-                    fontSize: 13.5,
+                    display: "flex",
+                    justifyContent: m.role === "user" ? "flex-start" : "flex-end",
                   }}
                 >
-                  {m.role === "assistant" ? formatText(m.text) : m.text}
+                  <div
+                    style={{
+                      maxWidth: "85%",
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      background: m.role === "user" ? "#E4E0D3" : "#EAF0EB",
+                      color: "#16233F",
+                      fontSize: 13.5,
+                    }}
+                  >
+                    {m.role === "assistant" ? formatText(m.text) : m.text}
+                  </div>
                 </div>
+                {m.role === "assistant" && m.suggestion && (
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <div style={{ maxWidth: "85%", width: "85%" }}>
+                      <SuggestionCard suggestion={m.suggestion} storeData={storeData} onApply={onApplySuggestion} />
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {loading && (
