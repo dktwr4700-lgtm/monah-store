@@ -143,7 +143,7 @@ function SuggestionCard({ suggestion, storeData, onApply }) {
   return null;
 }
 
-export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApplySuggestion }) {
+export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApplySuggestion, nextStep }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
@@ -325,7 +325,9 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApp
             {messages.length === 0 && (
               <>
                 <p style={{ color: "#8A8677", fontSize: 13.5, textAlign: "center", marginTop: 20, marginBottom: 16 }}>
-                  اسألني عن أي شي يخص تطوير متجرك ومبيعاتك 👋
+                  {nextStep
+                    ? `${nextStep.title} — اسألني وأساعدك فيها، أو اختر من الأزرار تحت 👇`
+                    : "اسألني عن أي شي يخص تطوير متجرك ومبيعاتك 👋"}
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
                   {QUICK_ACTIONS.map((action) => (
