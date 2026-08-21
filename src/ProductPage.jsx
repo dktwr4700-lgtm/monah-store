@@ -59,6 +59,16 @@ const styles = `
   .pp-email-field input{ width:100%; padding:12px 14px; border:1px solid #E4E0D3; border-radius:8px; font-size:13px; background:#FFFFFF; font-family:'Cairo', sans-serif; box-sizing:border-box; direction:ltr; text-align:right; }
   .pp-email-error{ color:#B24C3A; font-size:11px; margin-top:6px; }
 
+  .pp-manual-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:18px 20px; margin-bottom:16px; }
+  .pp-manual-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:13.5px; margin-bottom:10px; }
+  .pp-manual-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px dashed #E4E0D3; }
+  .pp-manual-row:first-of-type{ border-top:none; }
+  .pp-manual-label{ color:#8A8677; font-size:11.5px; }
+  .pp-manual-value{ display:flex; align-items:center; gap:8px; color:#16233F; font-weight:700; font-size:13px; font-family:'JetBrains Mono',monospace; direction:ltr; }
+  .pp-manual-copy{ background:#F2EEE7; color:#16233F; border:none; padding:5px 9px; border-radius:6px; font-size:10px; font-weight:700; cursor:pointer; font-family:'Cairo', sans-serif; }
+  .pp-manual-steps{ color:#3D4A66; font-size:12px; line-height:2; margin-top:10px; padding-top:10px; border-top:1px dashed #E4E0D3; }
+  .pp-pending{ text-align:center; background:#F3EBDD; color:#B9832F; font-size:12.5px; font-weight:700; padding:14px; border-radius:8px; margin-bottom:12px; line-height:1.8; }
+
   .pp-footer{ text-align:center; padding:26px 20px; color:#B0AC9C; font-size:10.5px; }
   .pp-state{ min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
   .pp-state-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:16px; }
@@ -78,6 +88,8 @@ export default function ProductPage({ productId }) {
   const [codeCopied, setCodeCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  const [manualPending, setManualPending] = useState(false);
+  const [manualCopied, setManualCopied] = useState("");
 
   useEffect(() => {
     async function fetchProduct() {
@@ -136,6 +148,7 @@ export default function ProductPage({ productId }) {
   const storeName = (store && store.name) || "متجر رقمي";
   const category = product.category || "منتج رقمي";
   const isCodeProduct = product.type === "code";
+  const isManualPayment = store && store.paymentMethod === "manual";
 
   async function claimCode() {
     const codesRef = collection(db, "products", productId, "codes");
@@ -202,6 +215,8 @@ export default function ProductPage({ productId }) {
         price: product.price,
         buyerEmail: email,
         type: product.type || "file",
+        paymentMethod: "platform",
+        status: "instant",
         createdAt: serverTimestamp(),
       });
 
@@ -214,6 +229,50 @@ export default function ProductPage({ productId }) {
       setClaimError("صار خطأ، حاول مرة ثانية.");
       setPaying(false);
     }
+  }
+
+  // مسار الدفع اليدوي: يسجّل الطلب كـ"بانتظار تأكيد الدفع" ثم يفتح واتساب صاحب المتجر
+  // ما يفتح الملف/الكود تلقائيًا — صاحب المتجر يتأكد من التحويل ويسلّم المنتج بنفسه
+  async function handleManualPurchase() {
+    if (!email || !email.includes("@")) {
+      setEmailError("أدخل بريدًا إلكترونيًا صحيحًا.");
+      return;
+    }
+    setClaimError("");
+    setPaying(true);
+
+    try {
+      await addDoc(collection(db, "orders"), {
+        productId,
+        ownerId: product.ownerId,
+        productName: product.name,
+        price: product.price,
+        buyerEmail: email,
+        type: product.type || "file",
+        paymentMethod: "manual",
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+
+      const waNumber = (store.payoutWhatsapp || "").replace(/[^0-9]/g, "");
+      const message = `مرحبًا، حوّلت مبلغ ${Number(product.price).toFixed(2)} ر.ع مقابل منتج "${product.name}" من متجركم على Monah. بريدي: ${email}`;
+      const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
+
+      setPaying(false);
+      setManualPending(true);
+      if (waNumber) {
+        window.open(waUrl, "_blank");
+      }
+    } catch (err) {
+      setClaimError("صار خطأ، حاول مرة ثانية.");
+      setPaying(false);
+    }
+  }
+
+  function copyManual(value, key) {
+    navigator.clipboard.writeText(value);
+    setManualCopied(key);
+    setTimeout(() => setManualCopied(""), 1500);
   }
 
   // يطلب رابط تحميل آمن مباشرة من Firebase Storage
@@ -298,7 +357,56 @@ export default function ProductPage({ productId }) {
           </div>
         </div>
 
-        {!unlocked && (
+        {/* مسار الدفع اليدوي */}
+        {isManualPayment && !manualPending && (
+          <>
+            <div className="pp-manual-card">
+              <div className="pp-manual-title">طريقة الدفع لهذا المتجر: تحويل مباشر</div>
+              {store.payoutInfo && (
+                <div className="pp-manual-row">
+                  <span className="pp-manual-label">حوّل المبلغ إلى</span>
+                  <div className="pp-manual-value">
+                    {store.payoutInfo}
+                    <button className="pp-manual-copy" onClick={() => copyManual(store.payoutInfo, "info")}>
+                      {manualCopied === "info" ? "تم" : "نسخ"}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="pp-manual-steps">
+                ١. حوّل مبلغ {Number(product.price).toFixed(2)} ر.ع على الحساب أعلاه.<br/>
+                ٢. اضغط الزر تحت — بيفتح واتساب صاحب المتجر تلقائيًا برسالة جاهزة.<br/>
+                ٣. أرفق لقطة شاشة التحويل بنفس محادثة الواتساب.<br/>
+                ٤. صاحب المتجر يرسل لك منتجك مباشرة بعد تأكيد التحويل.
+              </div>
+            </div>
+            <div className="pp-email-field">
+              <label>بريدك الإلكتروني</label>
+              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(""); }} placeholder="example@email.com" />
+              {emailError && <div className="pp-email-error">{emailError}</div>}
+              {claimError && <div className="pp-email-error">{claimError}</div>}
+            </div>
+            <button
+              className="pp-btn"
+              style={{ background: brandColor }}
+              disabled={paying}
+              onClick={handleManualPurchase}
+            >
+              {paying ? "جاري التسجيل..." : "حوّلت المبلغ، تواصل مع البائع"}
+            </button>
+            <div className="pp-secure">يفتح محادثة واتساب مباشرة مع صاحب المتجر</div>
+          </>
+        )}
+
+        {isManualPayment && manualPending && (
+          <div className="pp-pending">
+            تم تسجيل طلبك ✓<br/>
+            بعد ما يتأكد صاحب المتجر من التحويل، بيرسل لك منتجك مباشرة على واتساب أو بريدك الإلكتروني.
+          </div>
+        )}
+
+        {/* مسار الدفع التلقائي (تجريبي، بانتظار تفعيل بوابة دفع حقيقية) */}
+        {!isManualPayment && !unlocked && (
           <>
             <div className="pp-email-field">
               <label>بريدك الإلكتروني</label>
@@ -318,7 +426,7 @@ export default function ProductPage({ productId }) {
             <div className="pp-note">الدفع الفعلي لسا قيد التفعيل — هذا زر تجريبي يوريك آلية التسليم</div>
           </>
         )}
-        {unlocked && !isCodeProduct && (
+        {!isManualPayment && unlocked && !isCodeProduct && (
           <>
             <div className="pp-unlocked">✓ تم الدفع بنجاح</div>
             <button
@@ -333,7 +441,7 @@ export default function ProductPage({ productId }) {
             <div className="pp-secure">رابط التحميل صالح لمدة {UNLOCK_VALID_DAYS} يوم من الآن</div>
           </>
         )}
-        {unlocked && isCodeProduct && (
+        {!isManualPayment && unlocked && isCodeProduct && (
           <>
             <div className="pp-unlocked">✓ تم الدفع بنجاح</div>
             <div className="pp-code-box">
