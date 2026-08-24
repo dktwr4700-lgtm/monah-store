@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { db } from "./firebase.js";
-import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db, storage } from "./firebase.js";
+import {
+  collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp,
+  getDoc, getDocs, limit,
+} from "firebase/firestore";
+import { ref, getDownloadURL } from "firebase/storage";
 
 const styles = `
   .ord-wrap{ padding:4px 0; }
@@ -29,6 +33,12 @@ const styles = `
   .ord-date{ color:#B0AC9C; font-size:11px; }
   .ord-price{ font-family:'JetBrains Mono', monospace; font-weight:700; color:#16233F; font-size:14.5px; }
 
+  .ord-actions{ display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed #E4E0D3; }
+  .ord-action-btn{ flex:1; text-align:center; padding:8px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #E4E0D3; background:#FBFAF7; color:#3D4A66; cursor:pointer; font-family:'Cairo', sans-serif; }
+  .ord-action-btn:disabled{ opacity:.6; }
+  .ord-action-note{ color:#4B6152; font-size:11px; margin-top:8px; text-align:center; }
+  .ord-action-error{ color:#B24C3A; font-size:11px; margin-top:8px; text-align:center; }
+
   .ord-confirm-row{ margin-top:12px; padding-top:12px; border-top:1px dashed #E4E0D3; }
   .ord-confirm-note{ color:#7A5A17; font-size:11.5px; line-height:1.7; margin-bottom:10px; }
   .ord-confirm-btn{ width:100%; background:#16233F; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Cairo', sans-serif; }
@@ -53,6 +63,9 @@ export default function Orders({ ownerId, onAddProduct }) {
   const [loadError, setLoadError] = useState("");
   const [confirmingId, setConfirmingId] = useState(null);
   const [confirmError, setConfirmError] = useState({});
+  const [copiedEmailId, setCopiedEmailId] = useState("");
+  const [resendingId, setResendingId] = useState(null);
+  const [resendResult, setResendResult] = useState({});
 
   useEffect(() => {
     if (!ownerId) return;
@@ -94,6 +107,45 @@ export default function Orders({ ownerId, onAddProduct }) {
     setConfirmingId(null);
   }
 
+  function copyBuyerEmail(order) {
+    navigator.clipboard.writeText(order.buyerEmail);
+    setCopiedEmailId(order.id);
+    setTimeout(() => setCopiedEmailId(""), 1500);
+  }
+
+  // يجهّز رابط تحميل الملف (أو الكود المخصص للمشتري) وينسخه، عشان التاجر يرسله يدويًا للعميل
+  async function resendDelivery(order) {
+    setResendingId(order.id);
+    setResendResult((prev) => ({ ...prev, [order.id]: null }));
+    try {
+      if (order.type === "code") {
+        const codesRef = collection(db, "products", order.productId, "codes");
+        const q = query(codesRef, where("usedBy", "==", order.buyerEmail), limit(1));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          setResendResult((prev) => ({ ...prev, [order.id]: { ok: false, msg: "ما لقينا كود مرتبط بهذا الطلب." } }));
+        } else {
+          const codeValue = snap.docs[0].data().code;
+          navigator.clipboard.writeText(codeValue);
+          setResendResult((prev) => ({ ...prev, [order.id]: { ok: true, msg: "تم نسخ الكود، الصقه بمحادثتك مع العميل." } }));
+        }
+      } else {
+        const productSnap = await getDoc(doc(db, "products", order.productId));
+        if (!productSnap.exists() || !productSnap.data().filePath) {
+          setResendResult((prev) => ({ ...prev, [order.id]: { ok: false, msg: "تعذر إيجاد ملف هذا المنتج." } }));
+        } else {
+          const fileRef = ref(storage, productSnap.data().filePath);
+          const url = await getDownloadURL(fileRef);
+          navigator.clipboard.writeText(url);
+          setResendResult((prev) => ({ ...prev, [order.id]: { ok: true, msg: "تم نسخ رابط التحميل، الصقه بمحادثتك مع العميل." } }));
+        }
+      }
+    } catch (err) {
+      setResendResult((prev) => ({ ...prev, [order.id]: { ok: false, msg: "صار خطأ، حاول مرة ثانية." } }));
+    }
+    setResendingId(null);
+  }
+
   const pendingCount = orders.filter((o) => o.status === "pending").length;
 
   return (
@@ -127,6 +179,7 @@ export default function Orders({ ownerId, onAddProduct }) {
 
       {orders.map((o) => {
         const isPending = o.status === "pending";
+        const result = resendResult[o.id];
         return (
           <div className={"ord-card" + (isPending ? " pending" : "")} key={o.id}>
             <div className="ord-card-top">
@@ -147,6 +200,21 @@ export default function Orders({ ownerId, onAddProduct }) {
               <span className="ord-date">{formatDate(o.createdAt)}</span>
               <span className="ord-price mono">{Number(o.price).toFixed(2)} ر.ع</span>
             </div>
+
+            <div className="ord-actions">
+              <button className="ord-action-btn" onClick={() => copyBuyerEmail(o)}>
+                {copiedEmailId === o.id ? "تم النسخ ✓" : "نسخ بريد العميل"}
+              </button>
+              {!isPending && (
+                <button className="ord-action-btn" disabled={resendingId === o.id} onClick={() => resendDelivery(o)}>
+                  {resendingId === o.id ? "جاري التجهيز..." : "إعادة إرسال التسليم"}
+                </button>
+              )}
+            </div>
+            {result && (
+              <div className={result.ok ? "ord-action-note" : "ord-action-error"}>{result.msg}</div>
+            )}
+
             {isPending && (
               <div className="ord-confirm-row">
                 <div className="ord-confirm-note">
