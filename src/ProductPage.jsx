@@ -9,69 +9,69 @@ import { ref, getDownloadURL } from "firebase/storage";
 const UNLOCK_VALID_DAYS = 30;
 
 const styles = `
-  .pp-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; }
+  .pp-page{ min-height:100vh; background:#FFFFFF; font-family:'Cairo', sans-serif; }
   .mono{ font-family:'JetBrains Mono', monospace; }
 
-  .pp-header{ padding:18px 22px; border-bottom:1px solid #E4E0D3; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:2; }
+  .pp-header{ padding:18px 22px; border-bottom:1px solid #EDEAE0; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:2; }
   .pp-back{ display:flex; align-items:center; gap:6px; color:#8A8677; font-size:12px; text-decoration:none; }
-  .pp-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:15px; }
+  .pp-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:15px; }
 
   .pp-cover{ height:200px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
   .pp-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:16px 16px; pointer-events:none; }
-  .pp-cover-icon{ width:56px; height:56px; border-radius:14px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; position:relative; z-index:1; }
+  .pp-cover-icon{ width:56px; height:56px; border-radius:16px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; position:relative; z-index:1; }
   .pp-cover.has-image::before{ display:none; }
   .pp-cover-img{ width:100%; height:100%; object-fit:cover; }
 
   .pp-wrap{ max-width:460px; margin:0 auto; padding:24px 22px 0; }
 
   .pp-cat{ display:inline-flex; align-items:center; gap:6px; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; margin-bottom:16px; }
-  .pp-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:23px; color:#16233F; line-height:1.4; margin-bottom:8px; }
+  .pp-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:23px; color:#0B0B0C; line-height:1.4; margin-bottom:8px; }
   .pp-by{ color:#8A8677; font-size:12.5px; margin-bottom:22px; }
-  .pp-by a{ color:#16233F; font-weight:700; text-decoration:none; }
+  .pp-by a{ color:#0B0B0C; font-weight:700; text-decoration:none; }
 
-  .pp-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; overflow:hidden; box-shadow:0 10px 24px rgba(22,35,63,0.06); margin-bottom:16px; }
-  .pp-price-row{ display:flex; align-items:baseline; justify-content:space-between; padding:18px 20px; border-bottom:1px dashed #E4E0D3; }
+  .pp-card{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; overflow:hidden; box-shadow:0 10px 24px rgba(11,11,12,0.05); margin-bottom:16px; }
+  .pp-price-row{ display:flex; align-items:baseline; justify-content:space-between; padding:18px 20px; border-bottom:1px dashed #EDEAE0; }
   .pp-price-label{ color:#8A8677; font-size:11.5px; font-weight:600; }
   .pp-price-value{ display:flex; align-items:baseline; gap:6px; }
-  .pp-price{ color:#16233F; font-weight:800; font-size:26px; font-family:'JetBrains Mono',monospace; }
+  .pp-price{ color:#0B0B0C; font-weight:800; font-size:26px; font-family:'JetBrains Mono',monospace; }
   .pp-currency{ color:#8A8677; font-size:13px; }
   .pp-desc{ padding:18px 20px; color:#3D4A66; font-size:13.5px; line-height:2; }
   .pp-desc-empty{ padding:18px 20px; color:#B0AC9C; font-size:12.5px; }
   .pp-includes{ display:flex; align-items:center; gap:8px; padding:0 20px 18px; color:#3D4A66; font-size:12px; }
 
-  .pp-trust{ display:flex; margin-bottom:20px; border:1px solid #E4E0D3; border-radius:12px; overflow:hidden; background:#FFFFFF; }
-  .pp-trust-item{ flex:1; text-align:center; padding:12px 6px; border-inline-start:1px solid #E4E0D3; }
+  .pp-trust{ display:flex; margin-bottom:20px; border:1px solid #EDEAE0; border-radius:14px; overflow:hidden; background:#FFFFFF; }
+  .pp-trust-item{ flex:1; text-align:center; padding:12px 6px; border-inline-start:1px solid #EDEAE0; }
   .pp-trust-item:first-child{ border-inline-start:none; }
   .pp-trust-item svg{ margin-bottom:5px; }
   .pp-trust-item span{ display:block; color:#3D4A66; font-size:10px; font-weight:600; }
 
-  .pp-btn{ width:100%; background:#16233F; color:#fff; border:none; padding:16px; border-radius:10px; font-weight:700; font-size:14px; font-family:'Cairo', sans-serif; cursor:pointer; }
+  .pp-btn{ width:100%; background:#0B0B0C; color:#fff; border:none; padding:16px; border-radius:100px; font-weight:700; font-size:14px; font-family:'Cairo', sans-serif; cursor:pointer; }
   .pp-btn:disabled{ opacity:.6; }
   .pp-secure{ text-align:center; margin-top:14px; color:#8A8677; font-size:11px; }
   .pp-note{ text-align:center; margin-top:10px; color:#B0AC9C; font-size:10px; line-height:1.6; }
-  .pp-unlocked{ text-align:center; background:#EAF0EB; color:#4B6152; font-size:12.5px; font-weight:700; padding:10px; border-radius:8px; margin-bottom:12px; }
-  .pp-code-box{ display:flex; align-items:center; gap:10px; background:#16233F; border-radius:10px; padding:16px 18px; margin-bottom:4px; }
+  .pp-unlocked{ text-align:center; background:#EAF0EB; color:#4B6152; font-size:12.5px; font-weight:700; padding:10px; border-radius:10px; margin-bottom:12px; }
+  .pp-code-box{ display:flex; align-items:center; gap:10px; background:linear-gradient(135deg, #0E3B2C, #163F2E); border-radius:14px; padding:16px 18px; margin-bottom:4px; }
   .pp-code-value{ flex:1; color:#fff; font-size:16px; font-weight:700; letter-spacing:.03em; word-break:break-all; }
-  .pp-code-copy{ background:rgba(255,255,255,0.16); color:#fff; border:none; padding:8px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .pp-code-copy{ background:rgba(214,243,92,0.16); color:#D6F35C; border:none; padding:8px 12px; border-radius:100px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
 
   .pp-email-field{ margin-bottom:14px; }
   .pp-email-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
-  .pp-email-field input{ width:100%; padding:12px 14px; border:1px solid #E4E0D3; border-radius:8px; font-size:13px; background:#FFFFFF; font-family:'Cairo', sans-serif; box-sizing:border-box; direction:ltr; text-align:right; }
+  .pp-email-field input{ width:100%; padding:12px 14px; border:1px solid #EDEAE0; border-radius:10px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; direction:ltr; text-align:right; }
   .pp-email-error{ color:#B24C3A; font-size:11px; margin-top:6px; }
 
-  .pp-manual-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:18px 20px; margin-bottom:16px; }
-  .pp-manual-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:13.5px; margin-bottom:10px; }
-  .pp-manual-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px dashed #E4E0D3; }
+  .pp-manual-card{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; padding:18px 20px; margin-bottom:16px; }
+  .pp-manual-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:13.5px; margin-bottom:10px; }
+  .pp-manual-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px dashed #EDEAE0; }
   .pp-manual-row:first-of-type{ border-top:none; }
   .pp-manual-label{ color:#8A8677; font-size:11.5px; }
-  .pp-manual-value{ display:flex; align-items:center; gap:8px; color:#16233F; font-weight:700; font-size:13px; font-family:'JetBrains Mono',monospace; direction:ltr; }
-  .pp-manual-copy{ background:#F2EEE7; color:#16233F; border:none; padding:5px 9px; border-radius:6px; font-size:10px; font-weight:700; cursor:pointer; font-family:'Cairo', sans-serif; }
-  .pp-manual-steps{ color:#3D4A66; font-size:12px; line-height:2; margin-top:10px; padding-top:10px; border-top:1px dashed #E4E0D3; }
-  .pp-pending{ text-align:center; background:#F3EBDD; color:#B9832F; font-size:12.5px; font-weight:700; padding:14px; border-radius:8px; margin-bottom:12px; line-height:1.8; }
+  .pp-manual-value{ display:flex; align-items:center; gap:8px; color:#0B0B0C; font-weight:700; font-size:13px; font-family:'JetBrains Mono',monospace; direction:ltr; }
+  .pp-manual-copy{ background:#F1F0EA; color:#0B0B0C; border:none; padding:5px 9px; border-radius:100px; font-size:10px; font-weight:700; cursor:pointer; font-family:'Cairo', sans-serif; }
+  .pp-manual-steps{ color:#3D4A66; font-size:12px; line-height:2; margin-top:10px; padding-top:10px; border-top:1px dashed #EDEAE0; }
+  .pp-pending{ text-align:center; background:#F3EBDD; color:#B9832F; font-size:12.5px; font-weight:700; padding:14px; border-radius:10px; margin-bottom:12px; line-height:1.8; }
 
   .pp-footer{ text-align:center; padding:26px 20px; color:#B0AC9C; font-size:10.5px; }
   .pp-state{ min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
-  .pp-state-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:16px; }
+  .pp-state-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:16px; }
   .pp-state-sub{ color:#8A8677; font-size:13px; }
 `;
 
@@ -148,7 +148,7 @@ export default function ProductPage({ productId }) {
     );
   }
 
-  const brandColor = (store && store.color) || "#16233F";
+  const brandColor = (store && store.color) || "#0B0B0C";
   const storeName = (store && store.name) || "متجر رقمي";
   const category = product.category || "منتج رقمي";
   const isCodeProduct = product.type === "code";
