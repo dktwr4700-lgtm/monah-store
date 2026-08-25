@@ -38,7 +38,7 @@ ${productContext}
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-3.6-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const response = await fetch(url, {
@@ -57,10 +57,10 @@ ${productContext}
     const data = await response.json();
     const reply =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      `[تشخيص مؤقت] status:${response.status} — ${JSON.stringify(data).slice(0, 500)}`;
+      'ما قدرت أطلع رد، حاول مرة ثانية.';
 
     res.status(200).json({ reply });
   } catch (error) {
-    res.status(500).json({ error: `[تشخيص مؤقت] ${error.message || String(error)}` });
+    res.status(500).json({ error: 'حصل خطأ، حاول مرة ثانية' });
   }
 }
