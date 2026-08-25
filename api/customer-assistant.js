@@ -57,10 +57,10 @@ ${productContext}
     const data = await response.json();
     const reply =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      'ما قدرت أطلع رد، حاول مرة ثانية.';
+      `[تشخيص مؤقت] status:${response.status} — ${JSON.stringify(data).slice(0, 500)}`;
 
     res.status(200).json({ reply });
   } catch (error) {
-    res.status(500).json({ error: 'حصل خطأ، حاول مرة ثانية' });
+    res.status(500).json({ error: `[تشخيص مؤقت] ${error.message || String(error)}` });
   }
 }
