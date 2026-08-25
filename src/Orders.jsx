@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { db, storage } from "./firebase.js";
+import { db, auth } from "./firebase.js";
 import {
   collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp,
   getDoc, getDocs, limit,
 } from "firebase/firestore";
-import { ref, getDownloadURL } from "firebase/storage";
 
 const styles = `
   .ord-wrap{ padding:4px 0; }
@@ -134,10 +133,19 @@ export default function Orders({ ownerId, onAddProduct }) {
         if (!productSnap.exists() || !productSnap.data().filePath) {
           setResendResult((prev) => ({ ...prev, [order.id]: { ok: false, msg: "تعذر إيجاد ملف هذا المنتج." } }));
         } else {
-          const fileRef = ref(storage, productSnap.data().filePath);
-          const url = await getDownloadURL(fileRef);
-          navigator.clipboard.writeText(url);
-          setResendResult((prev) => ({ ...prev, [order.id]: { ok: true, msg: "تم نسخ رابط التحميل، الصقه بمحادثتك مع العميل." } }));
+          const idToken = await auth.currentUser.getIdToken();
+          const res = await fetch("/api/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ productId: order.productId }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.url) {
+            setResendResult((prev) => ({ ...prev, [order.id]: { ok: false, msg: data.error || "تعذر تجهيز رابط التحميل." } }));
+          } else {
+            navigator.clipboard.writeText(data.url);
+            setResendResult((prev) => ({ ...prev, [order.id]: { ok: true, msg: "تم نسخ رابط التحميل (صالح ١٠ دقايق)، الصقه بمحادثتك مع العميل بسرعة." } }));
+          }
         }
       }
     } catch (err) {
