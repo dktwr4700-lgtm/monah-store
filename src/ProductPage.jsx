@@ -5,6 +5,7 @@ import {
   query, where, limit, getDocs, runTransaction
 } from "firebase/firestore";
 import { ref, getDownloadURL } from "firebase/storage";
+import CustomerAssistant from "./CustomerAssistant.jsx";
 
 const UNLOCK_VALID_DAYS = 30;
 
@@ -466,6 +467,19 @@ export default function ProductPage({ productId }) {
         )}
       </div>
       <div className="pp-footer">هذا المتجر مدعوم عبر منصة Monah</div>
+
+      <CustomerAssistant
+        productData={{
+          storeName,
+          storeTagline: store && store.tagline,
+          productName: product.name,
+          productType: product.type,
+          price: product.price,
+          category,
+          description: product.description,
+          paymentMethod: store && store.paymentMethod,
+        }}
+      />
     </div>
   );
 }
