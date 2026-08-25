@@ -5,21 +5,21 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/aut
 const ADMIN_EMAIL = "k1997551@gmail.com";
 
 const styles = `
-  .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#F7F6F2; padding:20px; font-family:'Cairo', sans-serif; }
-  .auth-card{ width:100%; max-width:380px; background:#fff; border:1px solid #DFDCD1; border-radius:14px; padding:28px 24px; }
-  .auth-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#16233F; text-align:center; margin-bottom:6px; }
-  .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:20px; color:#16181D; }
+  .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#FFFFFF; padding:20px; font-family:'Cairo', sans-serif; }
+  .auth-card{ width:100%; max-width:380px; background:#fff; border:1px solid #EDEAE0; border-radius:20px; padding:28px 24px; }
+  .auth-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#0B0B0C; text-align:center; margin-bottom:6px; }
+  .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:20px; color:#0B0B0C; }
   .auth-field{ margin-bottom:14px; }
-  .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#66655C; }
-  .auth-field input{ width:100%; padding:12px 14px; border:1px solid #DFDCD1; border-radius:9px; font-family:'Cairo'; font-size:13.5px; }
-  .auth-btn{ width:100%; background:#16233F; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:9px; cursor:pointer; margin-top:6px; }
+  .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#8A8677; }
+  .auth-field input{ width:100%; padding:12px 14px; border:1px solid #EDEAE0; border-radius:10px; font-family:'Cairo'; font-size:13.5px; background:#FBFAF7; box-sizing:border-box; }
+  .auth-btn{ width:100%; background:#0B0B0C; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:100px; cursor:pointer; margin-top:6px; }
   .auth-btn:disabled{ opacity:.6; }
-  .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:8px; margin-bottom:14px; }
-  .auth-success{ background:#EAF0EB; color:#4B6152; font-size:12.5px; padding:10px 12px; border-radius:8px; margin-bottom:14px; }
+  .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px; }
+  .auth-success{ background:#EAF0EB; color:#4B6152; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px; }
   .auth-forgot{ text-align:left; margin-top:-6px; margin-bottom:14px; }
   .auth-forgot button{ background:none; border:none; color:#8A8677; font-size:12px; font-family:'Cairo'; cursor:pointer; text-decoration:underline; padding:0; }
-  .auth-switch{ text-align:center; font-size:12.5px; color:#66655C; margin-top:16px; }
-  .auth-switch a{ color:#16233F; font-weight:700; text-decoration:none; }
+  .auth-switch{ text-align:center; font-size:12.5px; color:#8A8677; margin-top:16px; }
+  .auth-switch a{ color:#0B0B0C; font-weight:700; text-decoration:none; }
 `;
 
 export default function Login() {
@@ -43,10 +43,12 @@ export default function Login() {
         window.location.hash = "dashboard";
       }
     } catch (err) {
-      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+      if (err.code === "auth/user-not-found") {
         setError("ما فيه حساب بهذا البريد. تأكد من الإيميل أو أنشئ حساب جديد.");
       } else if (err.code === "auth/wrong-password") {
         setError("كلمة المرور غير صحيحة. تقدر تضغط \"نسيت كلمة المرور؟\" تحت.");
+      } else if (err.code === "auth/invalid-credential") {
+        setError("البريد أو كلمة المرور غير صحيحة. تأكد منهما، أو اضغط \"نسيت كلمة المرور؟\" تحت.");
       } else {
         setError("البريد أو كلمة المرور غير صحيحة.");
       }
