@@ -38,7 +38,7 @@ ${productContext}
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    const model = 'gemini-2.5-flash-lite';
+    const model = 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const response = await fetch(url, {
@@ -64,4 +64,3 @@ ${productContext}
     res.status(500).json({ error: 'حصل خطأ، حاول مرة ثانية' });
   }
 }
-
