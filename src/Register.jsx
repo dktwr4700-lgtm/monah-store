@@ -4,29 +4,29 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 
 const styles = `
-  .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#F7F6F2; padding:20px; font-family:'Cairo', sans-serif; }
-  .auth-card{ width:100%; max-width:380px; background:#fff; border:1px solid #DFDCD1; border-radius:14px; padding:28px 24px; }
-  .auth-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#16233F; text-align:center; margin-bottom:6px; }
-  .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:6px; color:#16181D; }
+  .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#FFFFFF; padding:20px; font-family:'Cairo', sans-serif; }
+  .auth-card{ width:100%; max-width:380px; background:#fff; border:1px solid #EDEAE0; border-radius:20px; padding:28px 24px; }
+  .auth-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#0B0B0C; text-align:center; margin-bottom:6px; }
+  .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:6px; color:#0B0B0C; }
 
   .auth-steps{ display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:22px; }
   .auth-step{ display:flex; align-items:center; gap:6px; }
   .auth-step-dot{ width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; font-family:'Cairo'; }
-  .auth-step-dot.active{ background:#16233F; color:#fff; }
-  .auth-step-dot.pending{ background:#EFEBDE; color:#B0AC9C; }
+  .auth-step-dot.active{ background:#0B0B0C; color:#fff; }
+  .auth-step-dot.pending{ background:#F1F0EA; color:#B0AC9C; }
   .auth-step-label{ font-size:9.5px; color:#8A8677; }
-  .auth-step-line{ width:16px; height:1px; background:#E4E0D3; }
+  .auth-step-line{ width:16px; height:1px; background:#EDEAE0; }
 
   .auth-field{ margin-bottom:14px; }
-  .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#66655C; }
-  .auth-field input{ width:100%; padding:12px 14px; border:1px solid #DFDCD1; border-radius:9px; font-family:'Cairo'; font-size:13.5px; }
-  .auth-btn{ width:100%; background:#16233F; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:9px; cursor:pointer; margin-top:6px; }
+  .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#8A8677; }
+  .auth-field input{ width:100%; padding:12px 14px; border:1px solid #EDEAE0; border-radius:10px; font-family:'Cairo'; font-size:13.5px; background:#FBFAF7; box-sizing:border-box; }
+  .auth-btn{ width:100%; background:#0B0B0C; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:100px; cursor:pointer; margin-top:6px; }
   .auth-btn:disabled{ opacity:.6; }
-  .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:8px; margin-bottom:14px; }
+  .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px; }
   .auth-error a{ color:#B24C3A; font-weight:700; text-decoration:underline; }
   .auth-next-hint{ text-align:center; color:#8A8677; font-size:11px; line-height:1.8; margin-top:14px; }
-  .auth-switch{ text-align:center; font-size:12.5px; color:#66655C; margin-top:16px; }
-  .auth-switch a{ color:#16233F; font-weight:700; text-decoration:none; }
+  .auth-switch{ text-align:center; font-size:12.5px; color:#8A8677; margin-top:16px; }
+  .auth-switch a{ color:#0B0B0C; font-weight:700; text-decoration:none; }
 `;
 
 const STEPS = [
