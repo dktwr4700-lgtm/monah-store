@@ -50,7 +50,7 @@ ${productContext}
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: String(question).trim() }] }],
-        generationConfig: { maxOutputTokens: 400 },
+        generationConfig: { maxOutputTokens: 800 },
       }),
     });
 
