@@ -1,19 +1,19 @@
 import React from "react";
 
 const styles = `
-  .lg-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; }
-  .lg-header{ padding:20px 22px; border-bottom:1px solid #E4E0D3; display:flex; justify-content:space-between; align-items:center; }
-  .lg-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:16px; text-decoration:none; }
+  .lg-page{ min-height:100vh; background:#FFFFFF; font-family:'Cairo', sans-serif; }
+  .lg-header{ padding:20px 22px; border-bottom:1px solid #EDEAE0; display:flex; justify-content:space-between; align-items:center; }
+  .lg-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:16px; text-decoration:none; }
   .lg-back{ color:#8A8677; font-size:12px; text-decoration:none; }
   .lg-wrap{ max-width:600px; margin:0 auto; padding:32px 22px 60px; }
-  .lg-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:22px; margin-bottom:6px; }
+  .lg-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:22px; margin-bottom:6px; }
   .lg-updated{ color:#8A8677; font-size:11.5px; margin-bottom:28px; }
   .lg-section{ margin-bottom:24px; }
-  .lg-section h3{ font-family:'Almarai', sans-serif; font-weight:800; color:#16233F; font-size:14.5px; margin-bottom:8px; }
+  .lg-section h3{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:14.5px; margin-bottom:8px; }
   .lg-section p{ color:#3D4A66; font-size:13.5px; line-height:2; margin-bottom:6px; }
   .lg-section ul{ margin: 0; padding-inline-start: 20px; }
   .lg-section li{ color:#3D4A66; font-size:13.5px; line-height:1.9; margin-bottom:4px; }
-  .lg-note{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:10px; padding:14px 16px; color:#8A8677; font-size:12px; line-height:1.8; margin-top:8px; }
+  .lg-note{ background:#FBFAF7; border:1px solid #EDEAE0; border-radius:12px; padding:14px 16px; color:#8A8677; font-size:12px; line-height:1.8; margin-top:8px; }
 `;
 
 const PRIVACY = {
