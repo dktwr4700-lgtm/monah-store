@@ -1,0 +1,91 @@
+import admin from 'firebase-admin';
+
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: 'pantry-app-148a7.firebasestorage.app',
+  });
+}
+
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
+
+// صلاحية الرابط الموقّع نفسه: قصيرة جدًا عمدًا (10 دقايق)
+// هذا مختلف عن صلاحية "unlock" الأطول (30 يوم) — كل ضغطة على "تحميل" تولّد رابط جديد
+const SIGNED_URL_TTL_MS = 10 * 60 * 1000;
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { productId } = req.body || {};
+  if (!productId) {
+    return res.status(400).json({ error: 'productId مطلوب.' });
+  }
+
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) {
+    return res.status(401).json({ error: 'غير مصرّح — سجّل دخولك وحاول مرة ثانية.' });
+  }
+
+  let uid;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch (err) {
+    return res.status(401).json({ error: 'جلستك غير صالحة، حاول مرة ثانية.' });
+  }
+
+  try {
+    const productSnap = await db.collection('products').doc(productId).get();
+    if (!productSnap.exists) {
+      return res.status(404).json({ error: 'المنتج غير موجود.' });
+    }
+    const product = productSnap.data();
+    if (!product.filePath) {
+      return res.status(404).json({ error: 'ما فيه ملف مرتبط بهذا المنتج.' });
+    }
+    if (product.suspended) {
+      return res.status(403).json({ error: 'هذا المنتج غير متاح حاليًا.' });
+    }
+
+    // المسار (أ): المستخدم هو مالك المنتج (تاجر يعيد إرسال التسليم)
+    const isOwner = product.ownerId === uid;
+
+    // المسار (ب): المستخدم مشترٍ عنده تصريح unlock صالح لهذا المنتج بالذات
+    let hasValidUnlock = false;
+    if (!isOwner) {
+      const unlockSnap = await db.collection('unlocks').doc(`${uid}_${productId}`).get();
+      if (unlockSnap.exists) {
+        const unlock = unlockSnap.data();
+        const expiresAt = unlock.expiresAt && unlock.expiresAt.toDate
+          ? unlock.expiresAt.toDate()
+          : new Date(unlock.expiresAt);
+        hasValidUnlock = expiresAt > new Date();
+      }
+    }
+
+    if (!isOwner && !hasValidUnlock) {
+      return res.status(403).json({ error: 'ما عندك صلاحية تحميل هذا الملف. تأكد إنك أتممت الشراء.' });
+    }
+
+    const file = bucket.file(product.filePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      return res.status(404).json({ error: 'تعذر إيجاد ملف المنتج على السيرفر.' });
+    }
+
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + SIGNED_URL_TTL_MS,
+    });
+
+    return res.status(200).json({ url: signedUrl });
+  } catch (err) {
+    console.error('download endpoint error:', err);
+    return res.status(500).json({ error: 'صار خطأ، حاول مرة ثانية.' });
+  }
+}
