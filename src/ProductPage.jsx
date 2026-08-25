@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { db, storage, ensureAnonymousAuth } from "./firebase.js";
+import { db, auth, ensureAnonymousAuth } from "./firebase.js";
 import {
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp,
   query, where, limit, getDocs, runTransaction
 } from "firebase/firestore";
-import { ref, getDownloadURL } from "firebase/storage";
 import CustomerAssistant from "./CustomerAssistant.jsx";
 
 const UNLOCK_VALID_DAYS = 30;
@@ -280,21 +279,32 @@ export default function ProductPage({ productId }) {
     setTimeout(() => setManualCopied(""), 1500);
   }
 
-  // يطلب رابط تحميل آمن مباشرة من Firebase Storage
-  // الرابط يشتغل فقط لو عندنا تصريح دخول صالح (unlocks) — وإلا يرفضه Firebase تلقائيًا
+  // يطلب رابط تحميل موقّع (Signed URL) قصير الصلاحية من السيرفر — مو من Firebase مباشرة
+  // السيرفر يتحقق أول من وجود unlock صالح قبل ما يولّد أي رابط
   async function handleDownload() {
     setDownloading(true);
     setDownloadError("");
     try {
-      let url;
-      if (product.filePath) {
-        const fileRef = ref(storage, product.filePath);
-        url = await getDownloadURL(fileRef);
-      } else {
+      if (!product.filePath) {
         // توافق مؤقت مع منتجات قديمة رُفعت قبل تفعيل نظام الحماية
-        url = product.fileUrl;
+        window.location.href = product.fileUrl;
+        setDownloading(false);
+        return;
       }
-      window.location.href = url;
+      const uid = await ensureAnonymousAuth();
+      const idToken = await auth.currentUser.getIdToken();
+      const res = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ productId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setDownloadError(data.error || "انتهت صلاحية رابط التحميل أو صار خطأ. تواصل مع صاحب المتجر.");
+        setDownloading(false);
+        return;
+      }
+      window.location.href = data.url;
     } catch (err) {
       setDownloadError("انتهت صلاحية رابط التحميل أو صار خطأ. تواصل مع صاحب المتجر.");
     }
