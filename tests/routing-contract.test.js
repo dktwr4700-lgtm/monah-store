@@ -92,4 +92,62 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(payoutMigration).toContain("FieldValue.delete()");
     expect(payoutMigration).toContain("payoutWhatsapp");
   });
+
+  it("يعرض هوية التاجر ومشاركة المتجر دون إعادة شعار مُونَة في الواجهة العامة", async () => {
+    const store = await source("src/StorePage.jsx");
+    const product = await source("src/ProductPage.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(store).toContain("navigator.share");
+    expect(store).toContain("مدعوم من مُونَة");
+    expect(product).toContain("مدعوم من مُونَة");
+    expect(product).toContain("text: `شاهد ${name} من ${storeName}`");
+    expect(dashboard).toContain("function shareStore()");
+    expect(dashboard).toContain("اختر مظهر متجرك");
+  });
+
+  it("يشرح الباقات كخيارات نمو دون ادعاء شعبية غير موثق", async () => {
+    const landing = await source("src/App.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(landing).toContain("خيار النمو");
+    expect(dashboard).toContain("خيار النمو");
+    expect(landing).not.toContain("الأكثر طلبًا");
+    expect(dashboard).not.toContain("الأكثر طلبًا");
+  });
+
+  it("يعرض أدوات التاجر المهمة مباشرة داخل لوحة التحكم", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("مساحتك الخاصة");
+    expect(dashboard).toContain("مركز مشاركة المتجر");
+    expect(dashboard).toContain("حالة منتجاتك");
+    expect(dashboard).toContain("مظهر {selectedStoreStyle.name}");
+    expect(dashboard).toContain("واتساب");
+  });
+
+  it("يوفر أدوات QR وتثبيت وترتيب المنتجات وأسئلة المتجر بهوية التاجر", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const store = await source("src/StorePage.jsx");
+    const product = await source("src/ProductPage.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(dashboard).toContain("QRCodeSVG");
+    expect(dashboard).toContain("رمز متجرك");
+    expect(dashboard).toContain("toggleFeatured");
+    expect(dashboard).toContain("moveProduct");
+    expect(dashboard).toContain("أسئلة وأجوبة للزائر");
+    expect(store).toContain("اختيارات التاجر");
+    expect(store).toContain("أسئلة شائعة");
+    expect(product).toContain("منتجات أخرى من {storeName}");
+    expect(product).toContain("أسئلة عن المتجر");
+    expect(rules).toContain("'featured', 'sortOrder'");
+    expect(rules).toContain("'coverUrl', 'about', 'faqs', 'updatedAt'");
+  });
+
+  it("يحفظ تصميم المتجر بالدمج حتى لا تتعطل المتاجر التي لديها حقول قديمة", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("}, { merge: true });");
+  });
 });

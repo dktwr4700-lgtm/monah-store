@@ -7,6 +7,7 @@ import {
   deleteDoc, updateDoc
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import GrowthAssistant from "./GrowthAssistant.jsx";
 
@@ -28,7 +29,14 @@ class DebugErrorBoundary extends React.Component {
   }
 }
 
-const COLORS = ["#16233F", "#4B6152", "#8B3A3A", "#5B4A8A", "#B9832F"];
+const STORE_STYLES = [
+  { color: "#16233F", name: "كلاسيكي", hint: "هادئ ورسمي" },
+  { color: "#4B6152", name: "طبيعي", hint: "ناعم وقريب" },
+  { color: "#8B3A3A", name: "جريء", hint: "دافئ ولافت" },
+  { color: "#5B4A8A", name: "إبداعي", hint: "مناسب للمحتوى" },
+  { color: "#B9832F", name: "ذهبي", hint: "أنِق وفاخر" },
+];
+const COLORS = STORE_STYLES.map((style) => style.color);
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const MAX_PRODUCT_FILE_MB = 50;
 
@@ -61,6 +69,16 @@ const styles = `
   .dh-quick{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
   .dh-quick-btn{ flex:1; min-width:130px; background:#FFFFFF; border:1px solid #EDEAE0; border-radius:14px; padding:14px; text-align:center; font-size:12px; font-weight:700; color:#0B0B0C; cursor:pointer; }
   .dh-quick-btn:hover{ background:#FBFAF7; }
+
+  .dh-studio{ position:relative; overflow:hidden; border-radius:22px; padding:20px; margin-bottom:16px; color:#fff; background:linear-gradient(135deg,var(--studio-color,#163F2E),#10281E); box-shadow:0 16px 30px rgba(15,51,37,.15); }
+  .dh-studio::after{ content:""; position:absolute; width:180px; height:180px; border:1px solid rgba(255,255,255,.16); border-radius:50%; left:-70px; top:-92px; }
+  .dh-studio-kicker{ position:relative; z-index:1; display:inline-flex; padding:5px 10px; border-radius:100px; background:rgba(255,255,255,.12); color:#D6F35C; font-size:10px; font-weight:800; }
+  .dh-studio-head{ position:relative; z-index:1; display:flex; align-items:center; gap:12px; margin-top:13px; }.dh-studio-logo{ width:52px; height:52px; flex:0 0 52px; border-radius:16px; background:#fff; color:var(--studio-color,#163F2E); overflow:hidden; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-size:18px; font-weight:800; box-shadow:0 8px 16px rgba(0,0,0,.18); }.dh-studio-logo img{width:100%;height:100%;object-fit:cover}.dh-studio-name{font-family:'Almarai',sans-serif;font-size:16px;font-weight:800}.dh-studio-tag{font-size:11px;line-height:1.6;color:rgba(255,255,255,.7);margin-top:4px;max-width:300px}.dh-studio-meta{font-size:10px;color:rgba(255,255,255,.65);margin-top:5px}
+  .dh-studio-actions{ position:relative; z-index:1; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; }.dh-studio-action{ min-height:56px; border:1px solid rgba(255,255,255,.13); border-radius:13px; background:rgba(255,255,255,.1); color:#fff; padding:8px 6px; font-family:'Cairo',sans-serif; font-size:10.5px; font-weight:700; cursor:pointer; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }.dh-studio-action span{font-size:16px;line-height:1}.dh-studio-action.primary{background:#D6F35C;color:#143226;border-color:#D6F35C}
+  .dh-share-card{ background:#fff; border:1px solid #EDEAE0; border-radius:17px; padding:16px; margin-bottom:14px; }.dh-share-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.dh-share-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-share-sub{font-size:10.5px;color:#8A8677;line-height:1.7}.dh-share-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.dh-share-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:12px;padding:10px 6px;color:#22372C;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer;text-decoration:none;text-align:center}.dh-share-btn.primary{background:#0E3B2C;color:#fff;border-color:#0E3B2C}
+  .dh-qr{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px}.dh-qr-code{width:86px;height:86px;background:#fff;border:1px solid #EDEAE0;border-radius:12px;padding:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.dh-qr-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-qr-sub{font-size:10.5px;color:#748178;line-height:1.75;margin-top:6px}.dh-qr-actions{display:flex;gap:7px;margin-top:10px}.dh-mini-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:100px;padding:7px 10px;font-family:'Cairo',sans-serif;color:#163F2E;font-weight:800;font-size:10px;cursor:pointer}
+  .dh-product-health{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px}.dh-health-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.dh-health-number{border-radius:12px;background:#F4F7F2;padding:11px}.dh-health-number b{display:block;font-family:'JetBrains Mono',monospace;font-size:18px;color:#163F2E}.dh-health-number span{font-size:10px;color:#748178}.dh-health-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px dashed #EDEAE0}.dh-health-name{font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}.dh-health-state{font-size:9.5px;font-weight:800;border-radius:100px;padding:4px 8px}.dh-health-state.live{background:#EAF0EB;color:#37724B}.dh-health-state.hidden{background:#F3EBDD;color:#9C6D1F}.dh-health-manage{border:0;background:none;color:#163F2E;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer;padding:4px}
+  .dh-featured-tag{display:inline-flex;background:#F3EBDD;color:#9C6D1F;border-radius:100px;padding:3px 7px;font-size:9px;font-weight:800;margin-right:6px}.dh-sort-actions{display:flex;gap:5px;margin-top:8px}.dh-sort-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:9px;padding:6px 8px;font-family:'Cairo',sans-serif;font-size:10px;font-weight:800;color:#163F2E;cursor:pointer}
 
   .pv-overlay{ position:fixed; inset:0; background:rgba(11,11,12,0.55); z-index:100; display:flex; align-items:flex-end; justify-content:center; }
   .pv-sheet{ background:#FFFFFF; width:100%; max-width:460px; max-height:90vh; overflow-y:auto; border-radius:22px 22px 0 0; position:relative; }
@@ -152,6 +170,7 @@ const styles = `
   .ds-cover-row{ display:flex; align-items:center; gap:12px; }
   .ds-cover-thumb{ width:80px; height:44px; border-radius:10px; object-fit:cover; flex-shrink:0; }
   .ds-cover-placeholder{ width:80px; height:44px; border-radius:10px; background:#FBFAF7; border:1.5px dashed #EDEAE0; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#B0AC9C; font-size:10px; }
+  .ds-faq{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:13px;padding:12px;margin-bottom:9px}.ds-faq input,.ds-faq textarea{background:#fff}.ds-faq-actions{display:flex;justify-content:space-between;align-items:center;margin-top:7px}.ds-remove{border:0;background:none;color:#B24C3A;font-family:'Cairo',sans-serif;font-size:10px;font-weight:800;cursor:pointer}.ds-add{width:100%;border:1.5px dashed #C9C3B7;background:#fff;border-radius:11px;padding:10px;color:#163F2E;font-family:'Cairo',sans-serif;font-size:11px;font-weight:800;cursor:pointer}
 
   .ds-view-btn{ display:inline-flex; align-items:center; gap:6px; color:#0B0B0C; font-size:11.5px; font-weight:700; text-decoration:none; border:1px solid #EDEAE0; padding:8px 14px; border-radius:100px; background:#FFFFFF; }
 
@@ -193,23 +212,23 @@ const COMMON_FEATURES = [
 const PACKAGES = [
   {
     id: "basic", name: "أساسية", price: "5",
-    desc: "مناسبة لمن يريد البدء ببيع أول منتجاته الرقمية.",
+    desc: "لبداية بسيطة: متجر واضح ورابط جاهز لمشاركة منتجاتك.",
     btn: "ابدأ متجرك",
-    features: ["حتى 10 منتجات", "صفحة متجر جاهزة", "بيع ملفات وأكواد/تراخيص"],
+    features: ["حتى 10 منتجات", "صفحة متجر أصلية", "رابط ومشاركة للمنتجات"],
   },
   {
-    id: "pro", name: "احترافية", price: "10", popular: true,
-    desc: "مناسبة لمن يريد تنمية مبيعاته وتخصيص متجره.",
+    id: "pro", name: "احترافية", price: "10", highlight: "خيار النمو",
+    desc: "لمن يريد هوية واضحة للمتجر وتجربة أقوى للزائر.",
     btn: "نمِّ متجرك",
-    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "كوبونات خصم"],
+    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "شعار وغلاف وألوان المتجر", "كوبونات خصم"],
     soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"],
   },
   {
     id: "full", name: "متجر متكامل", price: "15",
-    desc: "مناسبة لمن يريد بناء علامة رقمية مستقلة.",
+    desc: "لمن يريد متجرًا بهويته الخاصة وتجربة أقرب لموقعه المستقل.",
     btn: "ابنِ علامتك",
-    features: ["كل مميزات الاحترافية"],
-    soon: ["ربط دومينك الخاص", "إزالة شعار Monah من واجهة المتجر", "حماية متقدمة لروابط التحميل", "تحليلات مصادر الزيارات", "دعم أولوية", "مساعدة في إعداد المتجر"],
+    features: ["كل مميزات الاحترافية", "هوية متجر خاصة", "تذييل هادئ مدعوم من مُونَة"],
+    soon: ["ربط دومينك الخاص", "تحليلات مصادر الزيارات", "دعم أولوية", "مساعدة في إعداد المتجر"],
   },
 ];
 
@@ -279,6 +298,8 @@ export default function Dashboard() {
   const [designSaved, setDesignSaved] = useState(false);
   const [designSaving, setDesignSaving] = useState(false);
   const [designDirty, setDesignDirty] = useState(false);
+  const [storeAbout, setStoreAbout] = useState("");
+  const [storeFaqs, setStoreFaqs] = useState([]);
 
   // coupons
   const [coupons, setCoupons] = useState([]);
@@ -400,6 +421,8 @@ export default function Dashboard() {
         setSlug(data.slug || "");
         setLogoUrl(data.logoUrl || "");
         setCoverUrl(data.coverUrl || "");
+        setStoreAbout(data.about || "");
+        setStoreFaqs(Array.isArray(data.faqs) ? data.faqs : []);
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -458,6 +481,8 @@ export default function Dashboard() {
         images: productImages,
         hidden: true,
         suspended: false,
+        featured: false,
+        sortOrder: Date.now(),
         createdAt: serverTimestamp(),
       });
 
@@ -558,6 +583,33 @@ export default function Dashboard() {
     setTogglingHiddenId(null);
   }
 
+  async function toggleFeatured(productId, currentlyFeatured) {
+    setTogglingHiddenId(productId);
+    try {
+      await updateDoc(doc(db, "products", productId), { featured: !currentlyFeatured });
+    } catch (err) {
+      setError("تعذر تثبيت المنتج الآن، حاول مرة ثانية.");
+    }
+    setTogglingHiddenId(null);
+  }
+
+  async function moveProduct(productId, direction) {
+    const ordered = [...products].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const index = ordered.findIndex((product) => product.id === productId);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) return;
+    const current = ordered[index];
+    const target = ordered[targetIndex];
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "products", current.id), { sortOrder: target.sortOrder || Date.now() + targetIndex });
+      batch.update(doc(db, "products", target.id), { sortOrder: current.sortOrder || Date.now() + index });
+      await batch.commit();
+    } catch (err) {
+      setError("تعذر ترتيب المنتجات الآن، حاول مرة ثانية.");
+    }
+  }
+
   const filteredProducts = products.filter((p) => {
     const matchesQuery = p.name.toLowerCase().includes(productQuery.trim().toLowerCase());
     const matchesFilter =
@@ -566,6 +618,7 @@ export default function Dashboard() {
       (productFilter === "hidden" && p.hidden);
     return matchesQuery && matchesFilter;
   });
+  const orderedProducts = [...filteredProducts].sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
 
   async function handleProductImageUpload(e) {
     const file = e.target.files[0];
@@ -684,9 +737,11 @@ export default function Dashboard() {
         slug: cleanSlug || "",
         logoUrl: logoUrl || "",
         coverUrl: coverUrl || "",
+        about: storeAbout.trim(),
+        faqs: storeFaqs.filter((faq) => faq.question?.trim() && faq.answer?.trim()).slice(0, 5),
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
-      });
+      }, { merge: true });
       try {
         await setDoc(doc(db, "sellers", user.uid), { storeName: cleanStoreName }, { merge: true });
       } catch (e) {
@@ -775,10 +830,45 @@ export default function Dashboard() {
     });
   }
 
+  async function shareStore() {
+    const shareData = { title: storeName || "متجري", text: `تصفح منتجات ${storeName || "متجري"}`, url: storeUrl };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+      await navigator.clipboard.writeText(storeUrl);
+      setCopied("share-store");
+      setTimeout(() => setCopied(""), 1500);
+    } catch (err) {
+      if (err?.name !== "AbortError") setError("تعذرت المشاركة الآن، جرب نسخ الرابط.");
+    }
+  }
+
+  function updateFaq(index, field, value) {
+    setStoreFaqs((items) => items.map((faq, itemIndex) => itemIndex === index ? { ...faq, [field]: value } : faq));
+    setDesignDirty(true);
+  }
+
+  function addFaq() {
+    if (storeFaqs.length >= 5) return;
+    setStoreFaqs((items) => [...items, { question: "", answer: "" }]);
+    setDesignDirty(true);
+  }
+
+  function removeFaq(index) {
+    setStoreFaqs((items) => items.filter((_, itemIndex) => itemIndex !== index));
+    setDesignDirty(true);
+  }
+
   if (checking) return null;
 
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
   const initial = (storeName || "م").charAt(0);
+  const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
+  const hiddenProducts = products.filter((product) => product.hidden || product.suspended);
+  const selectedStoreStyle = STORE_STYLES.find((style) => style.color === storeColor) || STORE_STYLES[0];
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`تصفح منتجات ${storeName || "متجري"}: ${storeUrl}`)}`;
 
   const assistantContext = {
     storeName,
@@ -903,7 +993,7 @@ export default function Dashboard() {
     <div className="dh-page" dir="rtl" lang="ar">
       <style>{styles}</style>
       <div className="dh-header">
-        <div className="dh-brand">Monah <span>· {storeName || "متجرك"}</span></div>
+        <div className="dh-brand">{storeName || "متجرك"} <span>· لوحة التاجر</span></div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {user.email === ADMIN_EMAIL && (
             <a href="#admin" className="dh-admin-btn">لوحة الأدمن</a>
@@ -925,6 +1015,23 @@ export default function Dashboard() {
 
         {tab === "overview" && (
           <>
+            <section className="dh-studio" style={{ "--studio-color": storeColor }}>
+              <div className="dh-studio-kicker">مساحتك الخاصة</div>
+              <div className="dh-studio-head">
+                <div className="dh-studio-logo">{logoUrl ? <img src={logoUrl} alt="" /> : initial}</div>
+                <div>
+                  <div className="dh-studio-name">{storeName || "اسم متجرك"}</div>
+                  <div className="dh-studio-tag">{tagline || "أضف وصفًا بسيطًا ليعرف الزائر وش تبيع."}</div>
+                  <div className="dh-studio-meta">مظهر {selectedStoreStyle.name} · متجر بهويتك</div>
+                </div>
+              </div>
+              <div className="dh-studio-actions">
+                <a className="dh-studio-action primary" href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer"><span>↗</span>افتح متجرك</a>
+                <button className="dh-studio-action" onClick={shareStore}><span>⌁</span>{copied === "share-store" ? "تم النسخ" : "شارك المتجر"}</button>
+                <button className="dh-studio-action" onClick={() => setTab("design")}><span>✦</span>عدّل المظهر</button>
+              </div>
+            </section>
+
             <div className="dh-next">
               <span className="dh-next-badge">{nextStep.badge}</span>
               <div className="dh-next-title">{nextStep.title}</div>
@@ -946,7 +1053,59 @@ export default function Dashboard() {
               <button className="dh-quick-btn" onClick={() => copyLink(slug || user.uid, "store")}>
                 {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط ✓" : "نسخ رابط المتجر"}
               </button>
+              <button className="dh-quick-btn" onClick={shareStore}>
+                {copied === "share-store" ? "تم نسخ الرابط ✓" : "مشاركة المتجر"}
+              </button>
             </div>
+
+            <section className="dh-share-card">
+              <div className="dh-share-head">
+                <div>
+                  <div className="dh-share-title">مركز مشاركة المتجر</div>
+                  <div className="dh-share-sub">انشر رابط متجرك في المكان الذي فيه عملاؤك.</div>
+                </div>
+                <span style={{ fontSize: 18 }}>↗</span>
+              </div>
+              <div className="dh-share-actions">
+                <button className="dh-share-btn primary" onClick={shareStore}>مشاركة</button>
+                <a className="dh-share-btn" href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">واتساب</a>
+                <button className="dh-share-btn" onClick={() => copyLink(slug || user.uid, "store")}>{copied === "store" + (slug || user.uid) ? "تم النسخ" : "نسخ الرابط"}</button>
+              </div>
+            </section>
+
+            <section className="dh-qr">
+              <div className="dh-qr-code"><QRCodeSVG value={storeUrl} size={70} bgColor="#ffffff" fgColor={storeColor} level="M" /></div>
+              <div>
+                <div className="dh-qr-title">رمز متجرك</div>
+                <div className="dh-qr-sub">خله عندك في المعرض أو المطبوعات، والعميل يفتحه بكاميرا جواله.</div>
+                <div className="dh-qr-actions">
+                  <button className="dh-mini-btn" onClick={() => copyLink(slug || user.uid, "store")}>نسخ الرابط</button>
+                  <button className="dh-mini-btn" onClick={shareStore}>مشاركة</button>
+                </div>
+              </div>
+            </section>
+
+            <section className="dh-product-health">
+              <div className="dh-share-head">
+                <div>
+                  <div className="dh-share-title">حالة منتجاتك</div>
+                  <div className="dh-share-sub">تعرف مباشرة ما الذي يراه الزائر وما يحتاج منك مراجعة.</div>
+                </div>
+                <button className="dh-health-manage" onClick={() => setTab("products")}>إدارة المنتجات</button>
+              </div>
+              <div className="dh-health-summary">
+                <div className="dh-health-number"><b>{publishedProducts.length}</b><span>منتجات منشورة</span></div>
+                <div className="dh-health-number"><b>{hiddenProducts.length}</b><span>مسودات أو مخفية</span></div>
+              </div>
+              {products.length === 0 ? (
+                <button className="dh-share-btn primary" style={{ width: "100%" }} onClick={() => setTab("products")}>أضف أول منتج</button>
+              ) : products.slice(0, 3).map((product) => (
+                <div className="dh-health-row" key={product.id}>
+                  <span className="dh-health-name">{product.name}</span>
+                  <span className={`dh-health-state ${product.hidden || product.suspended ? "hidden" : "live"}`}>{product.hidden || product.suspended ? "مخفي" : "منشور"}</span>
+                </div>
+              ))}
+            </section>
 
             <div className="dh-store-link">
               <div className="dh-store-label">رابط متجرك العام</div>
@@ -1096,7 +1255,7 @@ export default function Dashboard() {
 
               {products.length === 0 && <div className="empty-note">ما أضفت أي منتج بعد.</div>}
               {products.length > 0 && filteredProducts.length === 0 && <div className="empty-note">ما فيه منتج يطابق البحث أو الفلتر.</div>}
-              {filteredProducts.map((p) => (
+              {orderedProducts.map((p) => (
                 <div className="dh-item" key={p.id}>
                   {editingId === p.id ? (
                     <div className="dh-edit-form">
@@ -1131,7 +1290,7 @@ export default function Dashboard() {
                   ) : (
                     <>
                       <div className="dh-item-top">
-                        <span className="dh-item-name">{p.name}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
+                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">مميز</span>}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
                         <span className="dh-item-price">{p.price} ر.ع</span>
                       </div>
                       {p.type === "code" && (
@@ -1148,6 +1307,9 @@ export default function Dashboard() {
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
                           {togglingHiddenId === p.id ? "..." : (p.hidden ? "إظهار" : "إخفاء")}
                         </button>
+                        <button className="dh-item-action" onClick={() => toggleFeatured(p.id, !!p.featured)} disabled={togglingHiddenId === p.id} type="button">
+                          {p.featured ? "إلغاء التثبيت" : "تثبيت"}
+                        </button>
                         {confirmDeleteId === p.id ? (
                           <button className="dh-item-action danger" onClick={() => confirmDelete(p.id)} disabled={deletingId === p.id} type="button">
                             {deletingId === p.id ? "جاري الحذف..." : "تأكيد الحذف؟"}
@@ -1155,6 +1317,10 @@ export default function Dashboard() {
                         ) : (
                           <button className="dh-item-action danger" onClick={() => setConfirmDeleteId(p.id)} type="button">حذف</button>
                         )}
+                      </div>
+                      <div className="dh-sort-actions">
+                        <button className="dh-sort-btn" onClick={() => moveProduct(p.id, -1)} type="button">↑ قدّمه</button>
+                        <button className="dh-sort-btn" onClick={() => moveProduct(p.id, 1)} type="button">↓ أخّره</button>
                       </div>
                     </>
                   )}
@@ -1319,17 +1485,36 @@ export default function Dashboard() {
                 <input type="text" value={instagram} onChange={(e) => { setInstagram(e.target.value); setDesignDirty(true); }} placeholder="username" style={{ direction: "ltr", textAlign: "right" }} />
               </div>
               <div className="dh-field">
-                <label>لون المتجر الرئيسي</label>
+                <label>نبذة عن المتجر (اختياري)</label>
+                <textarea rows="3" value={storeAbout} onChange={(e) => { setStoreAbout(e.target.value); setDesignDirty(true); }} placeholder="عرّف الزوار عن منتجاتك أو أسلوب عملك." />
+              </div>
+              <div className="dh-field">
+                <label>أسئلة وأجوبة للزائر (اختياري)</label>
+                <div className="dh-hint">أضف حتى 5 أسئلة تساعد العميل قبل ما يتواصل معك.</div>
+                {storeFaqs.map((faq, index) => (
+                  <div className="ds-faq" key={index}>
+                    <input value={faq.question || ""} onChange={(e) => updateFaq(index, "question", e.target.value)} placeholder="السؤال" />
+                    <textarea rows="2" value={faq.answer || ""} onChange={(e) => updateFaq(index, "answer", e.target.value)} placeholder="الإجابة" style={{ marginTop: 7 }} />
+                    <div className="ds-faq-actions"><span className="dh-hint">سؤال {index + 1}</span><button type="button" className="ds-remove" onClick={() => removeFaq(index)}>إزالة</button></div>
+                  </div>
+                ))}
+                {storeFaqs.length < 5 && <button type="button" className="ds-add" onClick={addFaq}>+ أضف سؤالًا</button>}
+              </div>
+              <div className="dh-field">
+                <label>اختر مظهر متجرك</label>
+                <div className="dh-hint">خلّ متجرك بالأصلي أو اختر مظهرًا يناسب علامتك. الشعار والاسم والغلاف يبقون باسمك أنت.</div>
                 <div className="ds-swatches">
-                  {COLORS.map((c) => (
+                  {STORE_STYLES.map((style) => (
                     <div
-                      key={c}
-                      className={"ds-swatch" + (storeColor === c ? " selected" : "")}
-                      style={{ background: c }}
-                      onClick={() => { setStoreColor(c); setDesignDirty(true); }}
+                      key={style.color}
+                      className={"ds-swatch" + (storeColor === style.color ? " selected" : "")}
+                      style={{ background: style.color }}
+                      onClick={() => { setStoreColor(style.color); setDesignDirty(true); }}
+                      title={`${style.name} — ${style.hint}`}
                     />
                   ))}
                 </div>
+                <div className="dh-hint">{STORE_STYLES.find((style) => style.color === storeColor)?.name || "مظهر المتجر"} · {STORE_STYLES.find((style) => style.color === storeColor)?.hint || ""}</div>
               </div>
 
               <div className="dh-field">
@@ -1356,7 +1541,7 @@ export default function Dashboard() {
             </div>
             {PACKAGES.map((pkg) => (
               <div className={"pk-card" + (pkg.id === sellerPlan ? " current" : "")} key={pkg.id}>
-                {pkg.popular && <div className="pk-badge">الأكثر طلبًا</div>}
+                {pkg.highlight && <div className="pk-badge">{pkg.highlight}</div>}
                 <div className="pk-name">{pkg.name}</div>
                 <div className="dh-hint" style={{ marginBottom: 10 }}>{pkg.desc}</div>
                 <div className="pk-price">{pkg.price} <span>ر.ع / شهريًا</span></div>
