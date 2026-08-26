@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.email == 'k1997551@gmail.com'; }
+    function owns(uid) { return signedIn() && request.auth.uid == uid; }
+    function ownsExistingProduct() { return signedIn() && resource.data.ownerId == request.auth.uid; }
+    function ownsProduct(productId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/products/$(productId)).data.ownerId == request.auth.uid;
+    }
+    function productIsPublic() {
+      return resource.data.hidden == false && resource.data.get('suspended', false) == false;
+    }
+
+    match /shared/{docId} { allow read, write: if false; }
+
+    match /products/{productId} {
+      allow get, list: if productIsPublic() || ownsExistingProduct() || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.hidden == true
+        && request.resource.data.suspended == false
+        && request.resource.data.price is number
+        && request.resource.data.price > 0
+        && request.resource.data.keys().hasOnly([
+          'ownerId', 'name', 'price', 'description', 'category', 'type',
+          'filePath', 'codesCount', 'images', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt'
+        ]);
+      allow update: if isAdmin() || (
+        ownsExistingProduct()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'price', 'description', 'category', 'filePath', 'codesCount',
+          'images', 'hidden', 'featured', 'sortOrder'
+        ])
+      );
+      allow delete: if ownsExistingProduct() || isAdmin();
+
+      match /codes/{codeId} {
+        allow get, list: if ownsProduct(productId) || isAdmin();
+        allow create: if ownsProduct(productId)
+          && request.resource.data.used == false
+          && request.resource.data.usedBy == null
+          && request.resource.data.usedAt == null
+          && request.resource.data.keys().hasOnly(['code', 'used', 'usedBy', 'usedAt']);
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /stores/{ownerId} {
+      allow read: if true;
+      allow create: if owns(ownerId)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'ownerId', 'name', 'color', 'tagline', 'whatsapp', 'instagram', 'slug',
+          'logoUrl', 'coverUrl', 'about', 'faqs', 'featureSelections',
+          'featureSelectionUpdatedAt', 'updatedAt'
+        ]);
+      allow update: if isAdmin() || (
+        owns(ownerId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'color', 'tagline', 'whatsapp', 'instagram', 'slug', 'logoUrl',
+          'coverUrl', 'about', 'faqs', 'featureSelections',
+          'featureSelectionUpdatedAt', 'updatedAt'
+        ])
+      );
+      allow delete: if owns(ownerId) || isAdmin();
+    }
+
+    match /sellers/{sellerId} {
+      allow get: if owns(sellerId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if owns(sellerId)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasOnly(['storeName', 'email', 'createdAt', 'plan']);
+      allow update: if isAdmin() || (
+        owns(sellerId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['storeName'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      allow get, list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.active == true
+        && request.resource.data.discountPercent is number
+        && request.resource.data.discountPercent > 0
+        && request.resource.data.discountPercent <= 90
+        && request.resource.data.keys().hasOnly([
+          'ownerId', 'code', 'discountPercent', 'productId', 'active', 'createdAt'
+        ]);
+      allow update, delete: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow get, list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /unlocks/{unlockId} {
+      allow get: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow list, create, update, delete: if false;
+    }
+  }
+}
