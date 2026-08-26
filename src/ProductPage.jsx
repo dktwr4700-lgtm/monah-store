@@ -1,495 +1,532 @@
-import React, { useState, useEffect } from "react";
-import { db, auth, ensureAnonymousAuth } from "./firebase.js";
-import {
-  doc, getDoc, setDoc, collection, addDoc, serverTimestamp,
-  query, where, limit, getDocs, runTransaction
-} from "firebase/firestore";
-import CustomerAssistant from "./CustomerAssistant.jsx";
+import React, { useState, useRef, useEffect } from "react";
 
-const UNLOCK_VALID_DAYS = 30;
+function formatText(text) {
+  const lines = text.split("\n");
+  const elements = [];
+  let listItems = [];
 
-const styles = `
-  .pp-page{ min-height:100vh; background:#FFFFFF; font-family:'Cairo', sans-serif; }
-  .mono{ font-family:'JetBrains Mono', monospace; }
+  function flushList() {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={elements.length} style={{ margin: "6px 0", paddingInlineStart: 20 }}>
+          {listItems.map((item, i) => (
+            <li key={i} style={{ marginBottom: 4 }}>{formatInline(item)}</li>
+          ))}
+        </ul>
+      );
+      listItems = [];
+    }
+  }
 
-  .pp-header{ padding:18px 22px; border-bottom:1px solid #EDEAE0; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:2; }
-  .pp-back{ display:flex; align-items:center; gap:6px; color:#8A8677; font-size:12px; text-decoration:none; }
-  .pp-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:15px; }
+  function formatInline(str) {
+    const parts = str.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  }
 
-  .pp-cover{ height:200px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
-  .pp-cover::before{ content:""; position:absolute; inset:0; opacity:.08; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size:16px 16px; pointer-events:none; }
-  .pp-cover-icon{ width:56px; height:56px; border-radius:16px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; position:relative; z-index:1; }
-  .pp-cover.has-image::before{ display:none; }
-  .pp-cover-img{ width:100%; height:100%; object-fit:cover; }
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed === "---" || trimmed === "") {
+      flushList();
+      if (trimmed === "") elements.push(<div key={elements.length} style={{ height: 6 }} />);
+      return;
+    }
+    if (trimmed.startsWith("### ")) {
+      flushList();
+      elements.push(<h4 key={elements.length} style={{ margin: "10px 0 4px", fontSize: 15 }}>{formatInline(trimmed.slice(4))}</h4>);
+      return;
+    }
+    if (trimmed.startsWith("## ")) {
+      flushList();
+      elements.push(<h3 key={elements.length} style={{ margin: "12px 0 6px", fontSize: 16 }}>{formatInline(trimmed.slice(3))}</h3>);
+      return;
+    }
+    if (trimmed.startsWith("# ")) {
+      flushList();
+      elements.push(<h3 key={elements.length} style={{ margin: "12px 0 6px", fontSize: 17 }}>{formatInline(trimmed.slice(2))}</h3>);
+      return;
+    }
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      listItems.push(trimmed.slice(2));
+      return;
+    }
+    flushList();
+    elements.push(<p key={elements.length} style={{ margin: "4px 0", lineHeight: 1.7 }}>{formatInline(trimmed)}</p>);
+  });
+  flushList();
+  return elements;
+}
 
-  .pp-wrap{ max-width:460px; margin:0 auto; padding:24px 22px 0; }
+const QUICK_ACTIONS = [
+  { id: "improve-product", label: "حسّن هذا المنتج" },
+  { id: "caption", label: "اكتب لي كابشن" },
+  { id: "reel-idea", label: "فكرة ريلز" },
+  { id: "audit-store", label: "افحص متجري" },
+  { id: "coupon-idea", label: "أنشئ كود خصم" },
+  { id: "what-today", label: "ماذا أفعل اليوم؟" },
+];
 
-  .pp-cat{ display:inline-flex; align-items:center; gap:6px; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; margin-bottom:16px; }
-  .pp-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:23px; color:#0B0B0C; line-height:1.4; margin-bottom:8px; }
-  .pp-by{ color:#8A8677; font-size:12.5px; margin-bottom:22px; }
-  .pp-by a{ color:#0B0B0C; font-weight:700; text-decoration:none; }
+// الباقة الوحيدة المسموح لها باستخدام المساعد فعليًا (تحكّم بالتكلفة)
+const REQUIRED_PLAN = "full";
 
-  .pp-card{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; overflow:hidden; box-shadow:0 10px 24px rgba(11,11,12,0.05); margin-bottom:16px; }
-  .pp-price-row{ display:flex; align-items:baseline; justify-content:space-between; padding:18px 20px; border-bottom:1px dashed #EDEAE0; }
-  .pp-price-label{ color:#8A8677; font-size:11.5px; font-weight:600; }
-  .pp-price-value{ display:flex; align-items:baseline; gap:6px; }
-  .pp-price{ color:#0B0B0C; font-weight:800; font-size:26px; font-family:'JetBrains Mono',monospace; }
-  .pp-currency{ color:#8A8677; font-size:13px; }
-  .pp-desc{ padding:18px 20px; color:#3D4A66; font-size:13.5px; line-height:2; }
-  .pp-desc-empty{ padding:18px 20px; color:#B0AC9C; font-size:12.5px; }
-  .pp-includes{ display:flex; align-items:center; gap:8px; padding:0 20px 18px; color:#3D4A66; font-size:12px; }
+function SuggestionCard({ suggestion, storeData, onApply }) {
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [error, setError] = useState("");
 
-  .pp-trust{ display:flex; margin-bottom:20px; border:1px solid #EDEAE0; border-radius:14px; overflow:hidden; background:#FFFFFF; }
-  .pp-trust-item{ flex:1; text-align:center; padding:12px 6px; border-inline-start:1px solid #EDEAE0; }
-  .pp-trust-item:first-child{ border-inline-start:none; }
-  .pp-trust-item svg{ margin-bottom:5px; }
-  .pp-trust-item span{ display:block; color:#3D4A66; font-size:10px; font-weight:600; }
+  async function handleApply() {
+    if (!onApply || applying || applied) return;
+    setApplying(true);
+    setError("");
+    try {
+      await onApply(suggestion);
+      setApplied(true);
+    } catch (err) {
+      setError("تعذر تطبيق التعديل، حاول مرة ثانية.");
+    }
+    setApplying(false);
+  }
 
-  .pp-btn{ width:100%; background:#0B0B0C; color:#fff; border:none; padding:16px; border-radius:100px; font-weight:700; font-size:14px; font-family:'Cairo', sans-serif; cursor:pointer; }
-  .pp-btn:disabled{ opacity:.6; }
-  .pp-secure{ text-align:center; margin-top:14px; color:#8A8677; font-size:11px; }
-  .pp-note{ text-align:center; margin-top:10px; color:#B0AC9C; font-size:10px; line-height:1.6; }
-  .pp-unlocked{ text-align:center; background:#EAF0EB; color:#4B6152; font-size:12.5px; font-weight:700; padding:10px; border-radius:10px; margin-bottom:12px; }
-  .pp-code-box{ display:flex; align-items:center; gap:10px; background:linear-gradient(135deg, #0E3B2C, #163F2E); border-radius:14px; padding:16px 18px; margin-bottom:4px; }
-  .pp-code-value{ flex:1; color:#fff; font-size:16px; font-weight:700; letter-spacing:.03em; word-break:break-all; }
-  .pp-code-copy{ background:rgba(214,243,92,0.16); color:#D6F35C; border:none; padding:8px 12px; border-radius:100px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  if (suggestion.kind === "improve-product") {
+    const product = (storeData?.products || []).find((p) => p.id === suggestion.productId);
+    return (
+      <div style={{ marginTop: 6, marginBottom: 10, background: "#fff", border: "1px solid #EDEAE0", borderRadius: 14, padding: 12 }}>
+        <div style={{ fontSize: 11, color: "#8A8677", fontWeight: 700, marginBottom: 6 }}>
+          اقتراح تعديل{product ? ` — ${product.name}` : ""}
+        </div>
+        {applied ? (
+          <div style={{ color: "#4B6152", fontSize: 12.5, fontWeight: 700 }}>✓ تم التطبيق على المنتج</div>
+        ) : (
+          <>
+            <button
+              onClick={handleApply}
+              disabled={applying}
+              style={{ width: "100%", background: "#0B0B0C", color: "#fff", border: "none", padding: "9px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              {applying ? "جاري التطبيق..." : `تطبيق على ${product ? product.name : "المنتج"}`}
+            </button>
+            {error && <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 6 }}>{error}</div>}
+          </>
+        )}
+      </div>
+    );
+  }
 
-  .pp-email-field{ margin-bottom:14px; }
-  .pp-email-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
-  .pp-email-field input{ width:100%; padding:12px 14px; border:1px solid #EDEAE0; border-radius:10px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; direction:ltr; text-align:right; }
-  .pp-email-error{ color:#B24C3A; font-size:11px; margin-top:6px; }
+  if (suggestion.kind === "coupon-idea") {
+    return (
+      <div style={{ marginTop: 6, marginBottom: 10, background: "#fff", border: "1px solid #EDEAE0", borderRadius: 14, padding: 12 }}>
+        <div style={{ fontSize: 11, color: "#8A8677", fontWeight: 700, marginBottom: 6 }}>
+          اقتراح كود خصم — {suggestion.code} ({suggestion.percent}٪)
+        </div>
+        {applied ? (
+          <div style={{ color: "#4B6152", fontSize: 12.5, fontWeight: 700 }}>✓ تم إنشاء الكود</div>
+        ) : (
+          <>
+            <button
+              onClick={handleApply}
+              disabled={applying}
+              style={{ width: "100%", background: "#0B0B0C", color: "#fff", border: "none", padding: "9px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              {applying ? "جاري الإنشاء..." : `إنشاء كود ${suggestion.code}`}
+            </button>
+            {error && <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 6 }}>{error}</div>}
+          </>
+        )}
+      </div>
+    );
+  }
 
-  .pp-manual-card{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; padding:18px 20px; margin-bottom:16px; }
-  .pp-manual-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:13.5px; margin-bottom:10px; }
-  .pp-manual-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px dashed #EDEAE0; }
-  .pp-manual-row:first-of-type{ border-top:none; }
-  .pp-manual-label{ color:#8A8677; font-size:11.5px; }
-  .pp-manual-value{ display:flex; align-items:center; gap:8px; color:#0B0B0C; font-weight:700; font-size:13px; font-family:'JetBrains Mono',monospace; direction:ltr; }
-  .pp-manual-copy{ background:#F1F0EA; color:#0B0B0C; border:none; padding:5px 9px; border-radius:100px; font-size:10px; font-weight:700; cursor:pointer; font-family:'Cairo', sans-serif; }
-  .pp-manual-steps{ color:#3D4A66; font-size:12px; line-height:2; margin-top:10px; padding-top:10px; border-top:1px dashed #EDEAE0; }
-  .pp-pending{ text-align:center; background:#F3EBDD; color:#B9832F; font-size:12.5px; font-weight:700; padding:14px; border-radius:10px; margin-bottom:12px; line-height:1.8; }
+  return null;
+}
 
-  .pp-footer{ text-align:center; padding:26px 20px; color:#B0AC9C; font-size:10.5px; }
-  .pp-state{ min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
-  .pp-state-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:16px; }
-  .pp-state-sub{ color:#8A8677; font-size:13px; }
-`;
+export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApplySuggestion, nextStep }) {
+  const [open, setOpen] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
+  const panelRef = useRef(null);
 
-export default function ProductPage({ productId }) {
-  const [product, setProduct] = useState(null);
-  const [store, setStore] = useState(null);
-  const [status, setStatus] = useState("loading");
-  const [paying, setPaying] = useState(false);
-  const [unlocked, setUnlocked] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [assignedCode, setAssignedCode] = useState("");
-  const [claimError, setClaimError] = useState("");
-  const [codeCopied, setCodeCopied] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState("");
-  const [manualPending, setManualPending] = useState(false);
-  const [manualCopied, setManualCopied] = useState("");
+  // ===== زنبرك قابل للمقاطعة — نفس منطق مهارة apple-design =====
+  const currentY = useRef(0);
+  const targetY = useRef(0);
+  const velocity = useRef(0);
+  const rafId = useRef(null);
+  const panelHeight = useRef(560);
+
+  function renderSheet() {
+    if (panelRef.current) panelRef.current.style.transform = `translateY(${currentY.current}px)`;
+  }
+  function springStep(damping, response) {
+    const stiffness = (2 * Math.PI / response) ** 2;
+    const dampingCoef = 2 * damping * Math.sqrt(stiffness);
+    function step() {
+      const displacement = currentY.current - targetY.current;
+      const accel = -stiffness * displacement - dampingCoef * velocity.current;
+      velocity.current += accel * (1 / 60);
+      currentY.current += velocity.current * (1 / 60);
+      renderSheet();
+      if (Math.abs(velocity.current) > 0.5 || Math.abs(currentY.current - targetY.current) > 0.5) {
+        rafId.current = requestAnimationFrame(step);
+      } else {
+        currentY.current = targetY.current;
+        velocity.current = 0;
+        renderSheet();
+        rafId.current = null;
+        if (targetY.current > 0) setOpen(false);
+      }
+    }
+    return step;
+  }
+  function animateTo(target, opts = {}) {
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    targetY.current = target;
+    if (opts.velocity !== undefined) velocity.current = opts.velocity;
+    rafId.current = requestAnimationFrame(springStep(opts.damping ?? 1.0, opts.response ?? 0.4));
+  }
+  function openPanel() {
+    setOpen(true);
+    requestAnimationFrame(() => {
+      if (panelRef.current) panelHeight.current = panelRef.current.offsetHeight;
+      currentY.current = panelHeight.current;
+      renderSheet();
+      animateTo(0, { damping: 0.86, response: 0.42 });
+    });
+  }
+  function closePanel(withVelocity) {
+    animateTo(panelHeight.current, { damping: 1.0, response: 0.35, velocity: withVelocity || 0 });
+  }
 
   useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const snap = await getDoc(doc(db, "products", productId));
-        if (snap.exists()) {
-          const data = snap.data();
-          if (data.suspended) {
-            setStatus("suspended");
-            return;
-          }
-          if (data.hidden) {
-            setStatus("notfound");
-            return;
-          }
-          setProduct(data);
-          const storeSnap = await getDoc(doc(db, "stores", data.ownerId));
-          if (storeSnap.exists()) setStore(storeSnap.data());
-          setStatus("ready");
-        } else {
-          setStatus("notfound");
-        }
-      } catch (err) {
-        setStatus("notfound");
+    const panel = panelRef.current;
+    if (!panel || !open) return;
+    let dragging = false, startY = 0, startCurrentY = 0, lastMoveY = 0, lastMoveT = 0, pointerVelocity = 0;
+    function onDown(e) {
+      if (e.target.closest("button") || e.target.closest("input")) return;
+      dragging = true;
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      panel.setPointerCapture(e.pointerId);
+      startY = e.clientY; startCurrentY = currentY.current;
+      lastMoveY = e.clientY; lastMoveT = performance.now(); pointerVelocity = 0;
+    }
+    function onMove(e) {
+      if (!dragging) return;
+      let newY = startCurrentY + (e.clientY - startY);
+      if (newY < 0) {
+        const over = -newY;
+        newY = -((over * panelHeight.current * 0.55) / (panelHeight.current + 0.55 * Math.abs(over)));
       }
+      currentY.current = newY;
+      renderSheet();
+      const now = performance.now();
+      const dt = now - lastMoveT;
+      if (dt > 0) pointerVelocity = ((e.clientY - lastMoveY) / dt) * 1000;
+      lastMoveY = e.clientY; lastMoveT = now;
     }
-    fetchProduct();
-  }, [productId]);
-
-  if (status === "loading") {
-    return (
-      <div className="pp-state" dir="rtl" lang="ar">
-        <style>{styles}</style>
-        <div className="pp-state-sub">جاري التحميل...</div>
-      </div>
-    );
-  }
-
-  if (status === "notfound") {
-    return (
-      <div className="pp-state" dir="rtl" lang="ar">
-        <style>{styles}</style>
-        <div className="pp-state-title">هذا المنتج غير متوفر</div>
-        <div className="pp-state-sub">تأكد من صحة الرابط وحاول مرة ثانية.</div>
-      </div>
-    );
-  }
-
-  if (status === "suspended") {
-    return (
-      <div className="pp-state" dir="rtl" lang="ar">
-        <style>{styles}</style>
-        <div className="pp-state-title">هذا المنتج غير متاح حاليًا</div>
-        <div className="pp-state-sub">تواصل مع صاحب المتجر لمزيد من التفاصيل.</div>
-      </div>
-    );
-  }
-
-  const brandColor = (store && store.color) || "#0B0B0C";
-  const storeName = (store && store.name) || "متجر رقمي";
-  const category = product.category || "منتج رقمي";
-  const isCodeProduct = product.type === "code";
-  const isManualPayment = store && store.paymentMethod === "manual";
-
-  async function claimCode() {
-    const codesRef = collection(db, "products", productId, "codes");
-    const q = query(codesRef, where("used", "==", false), limit(1));
-    const snap = await getDocs(q);
-    if (snap.empty) {
-      throw new Error("out_of_stock");
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      const projected = currentY.current + (pointerVelocity / 1000) * 0.998 / (1 - 0.998);
+      if (projected > panelHeight.current * 0.35) closePanel(pointerVelocity);
+      else animateTo(0, { damping: 0.9, response: 0.35, velocity: pointerVelocity });
     }
-    const candidateRef = snap.docs[0].ref;
-    return runTransaction(db, async (tx) => {
-      const freshSnap = await tx.get(candidateRef);
-      if (!freshSnap.exists() || freshSnap.data().used) {
-        throw new Error("retry");
-      }
-      tx.update(candidateRef, { used: true, usedBy: email, usedAt: serverTimestamp() });
-      return freshSnap.data().code;
-    });
-  }
+    panel.addEventListener("pointerdown", onDown);
+    panel.addEventListener("pointermove", onMove);
+    panel.addEventListener("pointerup", onUp);
+    return () => {
+      panel.removeEventListener("pointerdown", onDown);
+      panel.removeEventListener("pointermove", onMove);
+      panel.removeEventListener("pointerup", onUp);
+    };
+  }, [open]);
 
-  // يسجّل تصريح دخول للملف الرقمي، صالح لمدة محدودة، مربوط بجلسة المشتري
-  // هذا هو الجزء اللي بعدين -بعد تفعيل بوابة الدفع- بنستدعيه فقط بعد تأكيد الدفع الفعلي
-  async function grantFileAccess() {
-    const uid = await ensureAnonymousAuth();
-    const unlockId = `${uid}_${productId}`;
-    const expiresAt = new Date(Date.now() + UNLOCK_VALID_DAYS * 24 * 60 * 60 * 1000);
-    await setDoc(doc(db, "unlocks", unlockId), {
-      productId,
-      uid,
-      buyerEmail: email,
-      createdAt: serverTimestamp(),
-      expiresAt,
-    });
-  }
+  const hasAccess = plan === REQUIRED_PLAN;
 
-  async function handlePurchase() {
-    if (!email || !email.includes("@")) {
-      setEmailError("أدخل بريدًا إلكترونيًا صحيحًا.");
-      return;
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-    setClaimError("");
-    setPaying(true);
+  }, [messages, loading]);
 
+  async function sendToAssistant(q, actionType) {
+    if (!q || loading || !hasAccess) return;
+    setMessages((prev) => [...prev, { role: "user", text: q }]);
+    setQuestion("");
+    setLoading(true);
     try {
-      let codeValue = "";
-      if (isCodeProduct) {
-        try {
-          codeValue = await claimCode();
-        } catch (err) {
-          if (err.message === "out_of_stock" || err.message === "retry") {
-            setClaimError("نفدت الكمية المتوفرة من هذا المنتج، تواصلي مع صاحب المتجر.");
-            setPaying(false);
-            return;
-          }
-          throw err;
-        }
-      } else {
-        await grantFileAccess();
-      }
-
-      await addDoc(collection(db, "orders"), {
-        productId,
-        ownerId: product.ownerId,
-        productName: product.name,
-        price: product.price,
-        buyerEmail: email,
-        type: product.type || "file",
-        paymentMethod: "platform",
-        status: "instant",
-        createdAt: serverTimestamp(),
-      });
-
-      setTimeout(() => {
-        setPaying(false);
-        setAssignedCode(codeValue);
-        setUnlocked(true);
-      }, 900);
-    } catch (err) {
-      setClaimError("صار خطأ، حاول مرة ثانية.");
-      setPaying(false);
-    }
-  }
-
-  // مسار الدفع اليدوي: يسجّل الطلب كـ"بانتظار تأكيد الدفع" ثم يفتح واتساب صاحب المتجر
-  // ما يفتح الملف/الكود تلقائيًا — صاحب المتجر يتأكد من التحويل ويسلّم المنتج بنفسه
-  async function handleManualPurchase() {
-    if (!email || !email.includes("@")) {
-      setEmailError("أدخل بريدًا إلكترونيًا صحيحًا.");
-      return;
-    }
-    setClaimError("");
-    setPaying(true);
-
-    try {
-      await addDoc(collection(db, "orders"), {
-        productId,
-        ownerId: product.ownerId,
-        productName: product.name,
-        price: product.price,
-        buyerEmail: email,
-        type: product.type || "file",
-        paymentMethod: "manual",
-        status: "pending",
-        createdAt: serverTimestamp(),
-      });
-
-      const waNumber = (store.payoutWhatsapp || "").replace(/[^0-9]/g, "");
-      const message = `مرحبًا، حوّلت مبلغ ${Number(product.price).toFixed(2)} ر.ع مقابل منتج "${product.name}" من متجركم على Monah. بريدي: ${email}`;
-      const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
-
-      setPaying(false);
-      setManualPending(true);
-      if (waNumber) {
-        window.open(waUrl, "_blank");
-      }
-    } catch (err) {
-      setClaimError("صار خطأ، حاول مرة ثانية.");
-      setPaying(false);
-    }
-  }
-
-  function copyManual(value, key) {
-    navigator.clipboard.writeText(value);
-    setManualCopied(key);
-    setTimeout(() => setManualCopied(""), 1500);
-  }
-
-  // يطلب رابط تحميل موقّع (Signed URL) قصير الصلاحية من السيرفر — مو من Firebase مباشرة
-  // السيرفر يتحقق أول من وجود unlock صالح قبل ما يولّد أي رابط
-  async function handleDownload() {
-    setDownloading(true);
-    setDownloadError("");
-    try {
-      if (!product.filePath) {
-        // توافق مؤقت مع منتجات قديمة رُفعت قبل تفعيل نظام الحماية
-        window.location.href = product.fileUrl;
-        setDownloading(false);
-        return;
-      }
-      const uid = await ensureAnonymousAuth();
-      const idToken = await auth.currentUser.getIdToken();
-      const res = await fetch("/api/download", {
+      const res = await fetch("/api/growth-assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ productId }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: q,
+          storeData: storeData || {},
+          actionType: actionType || "chat",
+        }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) {
-        setDownloadError(data.error || "انتهت صلاحية رابط التحميل أو صار خطأ. تواصل مع صاحب المتجر.");
-        setDownloading(false);
-        return;
-      }
-      window.location.href = data.url;
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: data.reply || data.error || "ما وصل رد", suggestion: data.suggestion || null },
+      ]);
     } catch (err) {
-      setDownloadError("انتهت صلاحية رابط التحميل أو صار خطأ. تواصل مع صاحب المتجر.");
+      setMessages((prev) => [...prev, { role: "assistant", text: "صار خطأ بالاتصال، حاول مرة ثانية" }]);
     }
-    setDownloading(false);
+    setLoading(false);
+  }
+
+  function handleAsk() {
+    sendToAssistant(question.trim(), "chat");
+  }
+
+  function handleQuickAction(action) {
+    sendToAssistant(action.label, action.id);
   }
 
   return (
-    <div className="pp-page" dir="rtl" lang="ar">
-      <style>{styles}</style>
-      <div className="pp-header">
-        <a className="pp-back" href={`#store/${product.ownerId}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#8A8677" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" transform="scale(-1,1) translate(-24,0)"/></svg>
-          {storeName}
-        </a>
-        <div className="pp-brand" style={{ color: brandColor }}>Monah</div>
-      </div>
+    <div style={{ direction: "rtl", fontFamily: "'Cairo', sans-serif" }}>
+      {/* الزر العائم */}
+      {!open && (
+        <button
+          onClick={openPanel}
+          onPointerDown={(e) => { e.currentTarget.style.transform = "scale(0.94)"; }}
+          onPointerUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          onPointerLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          style={{
+            position: "fixed",
+            bottom: 24,
+            insetInlineStart: 20,
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "#0B0B0C",
+            color: "#fff",
+            border: "none",
+            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+            fontSize: 24,
+            cursor: "pointer",
+            zIndex: 1000,
+            transform: "scale(1)",
+            transition: "transform 100ms ease-out",
+          }}
+        >
+          ✦
+        </button>
+      )}
 
-      <div className={"pp-cover" + (product.images && product.images.length > 0 ? " has-image" : "")} style={{ background: (product.images && product.images.length) ? "transparent" : brandColor }}>
-        {product.images && product.images.length > 0 ? (
-          <img src={product.images[0]} alt={product.name} className="pp-cover-img" />
-        ) : (
-          <div className="pp-cover-icon">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/>
-              <path d="M14 2v6h6" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/>
-            </svg>
+      {/* نافذة قفل الميزة — لغير المشتركين بباقة متجر متكامل */}
+      {open && !hasAccess && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            insetInlineStart: 0,
+            width: "100%",
+            maxWidth: 380,
+            background: "#fff",
+            borderRadius: "20px 20px 0 0",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.2)",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              padding: "14px 16px",
+              background: "#0B0B0C",
+              color: "#fff",
+              borderRadius: "20px 20px 0 0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: 15 }}>مساعد نمو متجرك ✦</span>
+            <button
+              onClick={() => setOpen(false)}
+              style={{ background: "none", border: "none", color: "#fff", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
+            >
+              ×
+            </button>
           </div>
-        )}
-      </div>
-
-      <div className="pp-wrap">
-        <div className="pp-cat">{category}</div>
-        <div className="pp-name">{product.name}</div>
-        <div className="pp-by">من متجر <a href={`#store/${product.ownerId}`}>{storeName}</a></div>
-
-        <div className="pp-card">
-          <div className="pp-price-row">
-            <span className="pp-price-label">السعر</span>
-            <div className="pp-price-value">
-              <span className="pp-price mono">{Number(product.price).toFixed(2)}</span>
-              <span className="pp-currency">ر.ع</span>
+          <div style={{ padding: 24, textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
+            <div style={{ fontFamily: "'Almarai', sans-serif", fontWeight: 800, color: "#0B0B0C", fontSize: 15, marginBottom: 8 }}>
+              مساعد نمو متجرك حصري لباقة متجر متكامل
             </div>
-          </div>
-          {product.description
-            ? <div className="pp-desc">{product.description}</div>
-            : <div className="pp-desc-empty">ما فيه وصف إضافي لهذا المنتج.</div>}
-          <div className="pp-includes">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#4B6152" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            {isCodeProduct ? "كود تفعيل خاص يصلك فورًا بعد إتمام الدفع" : "ملف رقمي يُرسل لك فورًا بعد إتمام الدفع"}
+            <div style={{ color: "#8A8677", fontSize: 12.5, lineHeight: 1.8, marginBottom: 18 }}>
+              رقّي باقتك عشان تقدر تستخدم المساعد الذكي لتحسين منتجاتك وكتابة المحتوى وأفكار التسويق.
+            </div>
+            <button
+              onClick={() => {
+                setOpen(false);
+                if (onUpgradeClick) onUpgradeClick();
+              }}
+              onPointerDown={(e) => { e.currentTarget.style.transform = "scale(0.96)"; }}
+              onPointerUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              style={{
+                width: "100%",
+                background: "#0B0B0C",
+                color: "#fff",
+                border: "none",
+                padding: 13,
+                borderRadius: 100,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                transform: "scale(1)",
+                transition: "transform 100ms ease-out",
+              }}
+            >
+              شوف باقة متجر متكامل
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="pp-trust">
-          <div className="pp-trust-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin: "0 auto 5px" }}><path d="M12 2l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V6l7-4z" stroke="#4B6152" strokeWidth="1.7"/></svg>
-            <span>دفع آمن</span>
+      {/* نافذة المحادثة — فقط لمشتركي باقة متجر متكامل */}
+      {open && hasAccess && (
+        <div
+          ref={panelRef}
+          style={{
+            position: "fixed",
+            bottom: 0,
+            insetInlineStart: 0,
+            width: "100%",
+            maxWidth: 380,
+            height: "min(560px, 85vh)",
+            background: "rgba(255,255,255,0.85)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            borderRadius: "20px 20px 0 0",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.2)",
+            display: "flex",
+            flexDirection: "column",
+            zIndex: 1000,
+            touchAction: "none",
+          }}
+        >
+          <div style={{ width: 40, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.3)", margin: "8px auto 0" }} />
+          <div
+            style={{
+              padding: "10px 16px 14px",
+              background: "#0B0B0C",
+              color: "#fff",
+              borderRadius: "20px 20px 0 0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: 15 }}>مساعد نمو متجرك ✦</span>
+            <button
+              onClick={() => closePanel()}
+              style={{ background: "none", border: "none", color: "#fff", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
+            >
+              ×
+            </button>
           </div>
-          <div className="pp-trust-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin: "0 auto 5px" }}><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="1.7"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="1.7" strokeLinecap="round"/></svg>
-            <span>تسليم فوري</span>
-          </div>
-          <div className="pp-trust-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin: "0 auto 5px" }}><path d="M21 11.5a8.5 8.5 0 01-12.5 7.5L4 20l1-4.3A8.5 8.5 0 1121 11.5z" stroke="#4B6152" strokeWidth="1.7"/></svg>
-            <span>دعم مباشر</span>
-          </div>
-        </div>
 
-        {/* مسار الدفع اليدوي */}
-        {isManualPayment && !manualPending && (
-          <>
-            <div className="pp-manual-card">
-              <div className="pp-manual-title">طريقة الدفع لهذا المتجر: تحويل مباشر</div>
-              {store.payoutInfo && (
-                <div className="pp-manual-row">
-                  <span className="pp-manual-label">حوّل المبلغ إلى</span>
-                  <div className="pp-manual-value">
-                    {store.payoutInfo}
-                    <button className="pp-manual-copy" onClick={() => copyManual(store.payoutInfo, "info")}>
-                      {manualCopied === "info" ? "تم" : "نسخ"}
+          <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, background: "rgba(251,250,247,0.4)", touchAction: "pan-y" }}>
+            {messages.length === 0 && (
+              <>
+                <p style={{ color: "#8A8677", fontSize: 13.5, textAlign: "center", marginTop: 20, marginBottom: 16 }}>
+                  {nextStep
+                    ? `${nextStep.title} — اسألني وأساعدك فيها، أو اختر من الأزرار تحت 👇`
+                    : "اسألني عن أي شي يخص تطوير متجرك ومبيعاتك 👋"}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+                  {QUICK_ACTIONS.map((action) => (
+                    <button
+                      key={action.id}
+                      onClick={() => handleQuickAction(action)}
+                      style={{
+                        padding: "7px 12px",
+                        borderRadius: 100,
+                        border: "1px solid #EDEAE0",
+                        background: "#fff",
+                        color: "#0B0B0C",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {action.label}
                     </button>
+                  ))}
+                </div>
+              </>
+            )}
+            {messages.map((m, i) => (
+              <div key={i} style={{ marginBottom: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: m.role === "user" ? "flex-start" : "flex-end",
+                  }}
+                >
+                  <div
+                    style={{
+                      maxWidth: "85%",
+                      padding: "10px 14px",
+                      borderRadius: 14,
+                      background: m.role === "user" ? "#F1F0EA" : "#EAF0EB",
+                      color: "#0B0B0C",
+                      fontSize: 13.5,
+                    }}
+                  >
+                    {m.role === "assistant" ? formatText(m.text) : m.text}
                   </div>
                 </div>
-              )}
-              <div className="pp-manual-steps">
-                ١. حوّل مبلغ {Number(product.price).toFixed(2)} ر.ع على الحساب أعلاه.<br/>
-                ٢. اضغط الزر تحت — بيفتح واتساب صاحب المتجر تلقائيًا برسالة جاهزة.<br/>
-                ٣. أرفق لقطة شاشة التحويل بنفس محادثة الواتساب.<br/>
-                ٤. صاحب المتجر يرسل لك منتجك مباشرة بعد تأكيد التحويل.
+                {m.role === "assistant" && m.suggestion && (
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <div style={{ maxWidth: "85%", width: "85%" }}>
+                      <SuggestionCard suggestion={m.suggestion} storeData={storeData} onApply={onApplySuggestion} />
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="pp-email-field">
-              <label>بريدك الإلكتروني</label>
-              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(""); }} placeholder="example@email.com" />
-              {emailError && <div className="pp-email-error">{emailError}</div>}
-              {claimError && <div className="pp-email-error">{claimError}</div>}
-            </div>
-            <button
-              className="pp-btn"
-              style={{ background: brandColor }}
-              disabled={paying}
-              onClick={handleManualPurchase}
-            >
-              {paying ? "جاري التسجيل..." : "حوّلت المبلغ، تواصل مع البائع"}
-            </button>
-            <div className="pp-secure">يفتح محادثة واتساب مباشرة مع صاحب المتجر</div>
-          </>
-        )}
-
-        {isManualPayment && manualPending && (
-          <div className="pp-pending">
-            تم تسجيل طلبك ✓<br/>
-            بعد ما يتأكد صاحب المتجر من التحويل، بيرسل لك منتجك مباشرة على واتساب أو بريدك الإلكتروني.
+            ))}
+            {loading && (
+              <div style={{ textAlign: "end", color: "#8A8677", fontSize: 13 }}>جاري التفكير...</div>
+            )}
           </div>
-        )}
 
-        {/* مسار الدفع التلقائي (تجريبي، بانتظار تفعيل بوابة دفع حقيقية) */}
-        {!isManualPayment && !unlocked && (
-          <>
-            <div className="pp-email-field">
-              <label>بريدك الإلكتروني</label>
-              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(""); }} placeholder="example@email.com" />
-              {emailError && <div className="pp-email-error">{emailError}</div>}
-              {claimError && <div className="pp-email-error">{claimError}</div>}
-            </div>
+          <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #EDEAE0" }}>
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAsk()}
+              placeholder="اكتب سؤالك..."
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                borderRadius: 100,
+                border: "1px solid #EDEAE0",
+                fontSize: 13.5,
+                fontFamily: "inherit",
+                background: "#FBFAF7",
+              }}
+            />
             <button
-              className="pp-btn"
-              style={{ background: brandColor }}
-              disabled={paying}
-              onClick={handlePurchase}
+              onClick={handleAsk}
+              disabled={loading}
+              style={{
+                padding: "0 16px",
+                borderRadius: 100,
+                background: "#0B0B0C",
+                color: "#fff",
+                border: "none",
+                fontSize: 13.5,
+                cursor: "pointer",
+              }}
             >
-              {paying ? "جاري التحقق..." : "ادفع واستلم الآن"}
+              إرسال
             </button>
-            <div className="pp-secure">تسليم فوري تلقائي بعد إتمام الدفع</div>
-            <div className="pp-note">الدفع الفعلي لسا قيد التفعيل — هذا زر تجريبي يوريك آلية التسليم</div>
-          </>
-        )}
-        {!isManualPayment && unlocked && !isCodeProduct && (
-          <>
-            <div className="pp-unlocked">✓ تم الدفع بنجاح</div>
-            <button
-              className="pp-btn"
-              style={{ background: brandColor }}
-              disabled={downloading}
-              onClick={handleDownload}
-            >
-              {downloading ? "جاري تجهيز الرابط..." : "تحميل الملف الآن"}
-            </button>
-            {downloadError && <div className="pp-email-error" style={{ textAlign: "center", marginTop: "10px" }}>{downloadError}</div>}
-            <div className="pp-secure">رابط التحميل صالح لمدة {UNLOCK_VALID_DAYS} يوم من الآن</div>
-          </>
-        )}
-        {!isManualPayment && unlocked && isCodeProduct && (
-          <>
-            <div className="pp-unlocked">✓ تم الدفع بنجاح</div>
-            <div className="pp-code-box">
-              <span className="pp-code-value mono">{assignedCode}</span>
-              <button
-                className="pp-code-copy"
-                onClick={() => {
-                  navigator.clipboard.writeText(assignedCode);
-                  setCodeCopied(true);
-                  setTimeout(() => setCodeCopied(false), 1500);
-                }}
-              >
-                {codeCopied ? "تم النسخ" : "نسخ الكود"}
-              </button>
-            </div>
-            <div className="pp-secure">هذا الكود خاص فيك، احتفظي فيه</div>
-          </>
-        )}
-      </div>
-      <div className="pp-footer">هذا المتجر مدعوم عبر منصة Monah</div>
-
-      <CustomerAssistant
-        productData={{
-          storeName,
-          storeTagline: store && store.tagline,
-          productName: product.name,
-          productType: product.type,
-          price: product.price,
-          category,
-          description: product.description,
-          paymentMethod: store && store.paymentMethod,
-        }}
-      />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
