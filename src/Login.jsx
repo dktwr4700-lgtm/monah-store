@@ -20,6 +20,9 @@ const styles = `
   .auth-forgot button{ background:none; border:none; color:#8A8677; font-size:12px; font-family:'Cairo'; cursor:pointer; text-decoration:underline; padding:0; }
   .auth-switch{ text-align:center; font-size:12.5px; color:#8A8677; margin-top:16px; }
   .auth-switch a{ color:#0B0B0C; font-weight:700; text-decoration:none; }
+
+  .auth-page button{ transition:transform 100ms ease-out; }
+  .auth-page button:active{ transform:scale(0.96); }
 `;
 
 export default function Login() {
