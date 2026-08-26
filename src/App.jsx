@@ -206,27 +206,27 @@ const styles = `
 `;
 
 const FEATURES = [
-  { title: "تسليم تلقائي", desc: "الملف يوصل العميل فورًا بعد الدفع، بدون أي تدخل منك.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+  { title: "متجر وهوية خاصة", desc: "اسمك وشعارك ولون متجرك ورابطه تظهر للزائر بشكل واضح.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
   { title: "رابط لكل منتج", desc: "كل منتج له رابط خاص فيه، تشاركه بأي مكان تحب.", icon: <path d="M12 3v18M3 12h18" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/> },
-  { title: "تقارير مبيعات", desc: "تابع إيراداتك وأداء منتجاتك أول بأول.", icon: <><rect x="3" y="4" width="18" height="14" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 9h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
+  { title: "مشاركة وQR", desc: "شارك رابط متجرك أو منتجك، وخذ رمز QR جاهز للزوار.", icon: <><rect x="3" y="4" width="18" height="14" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 9h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
   { title: "إعداد بدقائق", desc: "بدون خبرة تقنية، وبدون كمبيوتر أو استضافة خارجية.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
 ];
 
 const PROTECTION = [
-  { title: "روابط تحميل مؤقتة", desc: "رابط تحميل كل منتج له صلاحية محدودة، ما يبقى صالح للأبد لأي شخص.", icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
-  { title: "تشفير الملفات", desc: "ملفاتك محفوظة بشكل مشفّر، ما يقدر أي طرف يوصلها إلا العميل المخوّل بعد الدفع.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
-  { title: "حماية الرابط من المشاركة", desc: "رابط التحميل مرتبط بك وحدك، فما يقدر أي شخص ثاني يستخدم نفس الرابط لتحميل منتجك.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: "ملفاتك محفوظة", desc: "ملف المنتج لا يظهر في صفحة المتجر العامة، وتفعيل تنزيله للمشتري ينتظر ربط الدفع واختباره.", icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { title: "معاينة قبل الاستفسار", desc: "تقدر تعرض صورًا للمنتج حتى يفهم الزائر فكرته من دون كشف الملف نفسه.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: "تفعيل الحماية بعد الدفع", desc: "روابط التنزيل المقيدة والتحقق من المشتري تُفعّل بعد ربط الدفع وتجربة شراء فعلية.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
 ];
 
 const WHY = [
-  { n: "01", title: "احتفظ بـ١٠٠٪ من أرباحك", desc: "بدون عمولة على أي عملية بيع، تدفع الاشتراك الشهري بس ولا شي غيره." },
+  { n: "01", title: "رسوم واضحة عند التفعيل", desc: "تفاصيل الاشتراك والتحصيل تظهر بشكل واضح عند جاهزية الدفع واختباره." },
   { n: "02", title: "يدعم كل أنواع الملفات", desc: "PDF، ZIP، صور، فيديوهات، أكواد، وأي ملف رقمي تبيعه." },
   { n: "03", title: "بدون خبرة تقنية", desc: "ما تحتاج كمبيوتر ولا استضافة خارجية، كل شي من متجرك مباشرة." },
 ];
 
 const COMPARE = [
-  { label: "العمولة على المبيعات", monah: "٪٠", other: "نسبة من كل عملية بيع" },
-  { label: "رسوم الاشتراك", monah: "ثابتة وواضحة", other: "غالبًا متغيّرة" },
+  { label: "هوية المتجر", monah: "باسم التاجر", other: "تختلف حسب المنصة" },
+  { label: "أدوات المشاركة", monah: "رابط وQR", other: "تختلف حسب المنصة" },
 ];
 
 const USECASES = [
@@ -237,33 +237,31 @@ const USECASES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "تسجّل وتشترك بباقة شهرية", desc: "تدخل بياناتك وتختار الباقة المناسبة لك." },
+  { n: "01", title: "تسجّل وتجهّز متجرك", desc: "تدخل بياناتك وتختار شكل متجرك وأدواته المتاحة." },
   { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه." },
-  { n: "03", title: "تشارك الرابط وتستلم كامل السعر", desc: "ما فيه عمولة على أي عملية بيع تسويها." },
+  { n: "03", title: "تشارك الرابط مع جمهورك", desc: "الدفع والتسليم التلقائي يتفعّلان بعد اكتمال الربط واختباره." },
 ];
 
 const COMMON_FEATURES = [
-  "بدون عمولة على المبيعات",
-  "تسليم تلقائي بعد الدفع",
   "صفحة متوافقة مع الجوال",
   "رابط خاص لكل منتج",
-  "ترقية أو تخفيض أو إلغاء في أي وقت",
+  "مشاركة وQR للمتجر",
 ];
 
 const PACKAGES = [
   { name: "أساسية", monthly: 5, yearly: 50, label: "للبداية", desc: "لبداية بسيطة: متجر واضح ورابط جاهز لمشاركة منتجاتك.", btn: "ابدأ متجرك", features: ["حتى 10 منتجات", "واجهة متجر أصلية", "رابط ومشاركة للمنتجات"] },
-  { name: "احترافية", monthly: 10, yearly: 100, popular: true, label: "خيار النمو", desc: "لمن يريد هوية واضحة للمتجر وتجربة أقوى للزائر.", btn: "نمِّ متجرك", features: ["كل مميزات الأساسية", "منتجات غير محدودة", "شعار وغلاف وألوان المتجر", "كوبونات خصم"], soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"] },
+  { name: "احترافية", monthly: 10, yearly: 100, popular: true, label: "خيار النمو", desc: "لمن يريد هوية واضحة للمتجر وتجربة أقوى للزائر.", btn: "نمِّ متجرك", features: ["كل مميزات الأساسية", "منتجات غير محدودة", "شعار وغلاف وألوان المتجر", "تهيئة كوبونات قبل تفعيل الدفع"], soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"] },
   { name: "متجر متكامل", monthly: 15, yearly: 150, label: "لهوية مستقلة", desc: "لمن يريد متجرًا بهويته الخاصة وتجربة أقرب لموقعه المستقل.", btn: "ابنِ علامتك", features: ["كل مميزات الاحترافية", "هوية متجر خاصة", "تذييل هادئ مدعوم من مُونَة"], soon: ["ربط دومينك الخاص", "تحليلات مصادر الزيارات", "مساعدة في إعداد المتجر"] },
 ];
 
 const FAQS = [
   { q: "هل أحتاج خبرة تقنية؟", a: "أبدًا. ترفع ملفك وتحدد السعر، والباقي تتكفل به المنصة." },
   { q: "وش أنواع الملفات المسموحة؟", a: "أي ملف رقمي: PDF، تصاميم، أكواد، فيديوهات، وغيرها." },
-  { q: "فيه عمولة على مبيعاتي؟", a: "لا. تدفع الاشتراك الشهري بس، وتحتفظ بكامل سعر بيعك." },
+  { q: "فيه عمولة على مبيعاتي؟", a: "سياسة العمولة والرسوم تعلن بوضوح عند تفعيل الدفع، بعد معرفة تكلفة مزود الدفع واختبار العملية." },
   { q: "أقدر أربط دومين خاص فيني؟", a: "هذي ميزة قادمة قريبًا للباقة المتكاملة، لسا قيد التطوير." },
-  { q: "وش يصير لو ألغيت اشتراكي؟", a: "متجرك يتوقف عن استقبال مبيعات جديدة، لكن بياناتك ومنتجاتك تبقى محفوظة عندنا لو رجعت تشترك لاحقًا." },
-  { q: "أقدر أغيّر باقتي بعدين؟", a: "أكيد، تقدر ترقّي أو تنزّل باقتك في أي وقت من لوحة التحكم." },
-  { q: "وش الفرق بين الاشتراك الشهري والسنوي؟", a: "نفس المميزات بالضبط، بس الاشتراك السنوي يوفر لك تكلفة شهرين مجانًا مقارنة بالدفع شهر بشهر." },
+  { q: "وش يصير لو ألغيت اشتراكي؟", a: "تفاصيل الاشتراك والإلغاء تظهر بعد تفعيل الدفع وشرح الشروط بشكل واضح." },
+  { q: "أقدر أغيّر باقتي بعدين؟", a: "تقدر تشوف المزايا المقترحة الآن، وفتح الاشتراك الفعلي يبدأ بعد ربط الدفع واختباره." },
+  { q: "وش الفرق بين الاشتراك الشهري والسنوي؟", a: "الأسعار وخيارات التجديد لا تصبح ملزمة إلا عند تفعيل بوابة الدفع وإعلانها بوضوح." },
 ];
 
 function FaqItem({ q, a, id }) {
@@ -346,9 +344,9 @@ export default function App() {
       <div className="wrap">
         <div className="hero">
           <div className="hero-copy">
-            <div className="hero-eyebrow">بدون عمولة على أي عملية بيع</div>
+            <div className="hero-eyebrow">متجر عربي للمنتجات الرقمية</div>
             <h1>بيع منتجك الرقمي<br/>من رابط واحد</h1>
-            <p>ارفع ملفاتك الرقمية، شارك رابط كل منتج على واتساب وإنستغرام، والملف يوصل عميلك تلقائيًا بعد الدفع.</p>
+            <p>ارفع منتجاتك الرقمية، شارك رابط كل منتج على واتساب وإنستغرام، وجهّز متجرك قبل تفعيل الدفع والتسليم التلقائي.</p>
             <a className="pill-black" href="#register">أنشئ متجرك الآن ←</a>
             <a className="hero-ghost" href="#how">شاهد كيف تعمل</a>
             <div className="hero-signals">
@@ -372,8 +370,8 @@ export default function App() {
                 <div className="screen-stage">
                   <div className={"slide" + (slide === 0 ? " active" : "")}>
                     <div className="screen-title">متجرك الرقمي<br/>جاهز خلال دقائق</div>
-                    <div className="screen-sub">ارفع منتجك، شارك الرابط، واستلم أرباحك كاملة بدون عمولة.</div>
-                    <div className="screen-visual"><span className="pct mono">٪٠</span></div>
+                    <div className="screen-sub">ارفع منتجك، شارك الرابط، ورتّب متجرك بهويتك الخاصة.</div>
+                    <div className="screen-visual"><span className="pct mono">QR</span></div>
                     <div className="screen-card">
                       <div className="left"><span className="icon">🛍️</span><div><b>رزمة قوالب سيرة ذاتية</b><span>متجر هند للتصاميم</span></div></div>
                       <span className="pct2 mono">٥.٠٠</span>
@@ -381,9 +379,9 @@ export default function App() {
                   </div>
                   <div className={"slide" + (slide === 1 ? " active" : "")}>
                     <div className="confirm-badge">✓</div>
-                    <div className="confirm-title">تم الدفع والتسليم</div>
-                    <div className="confirm-sub">وصل الملف للعميل تلقائيًا الآن</div>
-                    <div className="confirm-amount mono">٥.٠٠ ر.ع</div>
+                    <div className="confirm-title">متجرك جاهز للمشاركة</div>
+                    <div className="confirm-sub">الدفع والتسليم التلقائي يفعّلان بعد اكتمال الربط والاختبار</div>
+                    <div className="confirm-amount mono">MONAH</div>
                   </div>
                 </div>
 
@@ -400,9 +398,9 @@ export default function App() {
         </div>
 
         <div className="stats">
-          <div className="stat"><b>٪٠</b><span>عمولة على البيع</span></div>
-          <div className="stat"><b>فوري</b><span>تسليم الملف</span></div>
-          <div className="stat"><b>مؤقت</b><span>روابط تحميل محمية</span></div>
+          <div className="stat"><b>QR</b><span>مشاركة المتجر</span></div>
+          <div className="stat"><b>خاص</b><span>هوية التاجر</span></div>
+          <div className="stat"><b>مرن</b><span>مزايا تُختار</span></div>
         </div>
       </div>
 
@@ -508,7 +506,7 @@ export default function App() {
         <div className="wrap">
           <div className="section-eyebrow reveal">الاشتراك</div>
           <h2 className="section-title reveal">اختر باقتك</h2>
-          <div className="section-sub reveal">تقدر ترقّي أو تنزّل باقتك في أي وقت، وتلغي اشتراكك بدون أي رسوم إضافية</div>
+          <div className="section-sub reveal">المزايا والأسعار المعروضة في مرحلة التجهيز، ويفعّل الاشتراك بعد ربط الدفع واختباره.</div>
 
           <div className="billing-toggle reveal">
             <button className={"billing-btn" + (billing === "monthly" ? " active" : "")} onClick={() => setBilling("monthly")}>شهري</button>
@@ -531,7 +529,7 @@ export default function App() {
               </div>
             ))}
           </div>
-          <div className="pricing-note">الأسعار كاملة وشاملة، بدون أي عمولة أو رسوم خفية من Monah. قد تُطبَّق رسوم بسيطة من مزود الدفع حسب وسيلة الدفع المستخدمة. لو ألغيت اشتراكك، ما يُخصم منك أي مبلغ إضافي.</div>
+          <div className="pricing-note">لا يبدأ اشتراك أو تحصيل أو تسليم تلقائي قبل ربط الدفع واختبار العملية كاملة.</div>
         </div>
       </section>
 

@@ -142,12 +142,37 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(product).toContain("منتجات أخرى من {storeName}");
     expect(product).toContain("أسئلة عن المتجر");
     expect(rules).toContain("'featured', 'sortOrder'");
-    expect(rules).toContain("'coverUrl', 'about', 'faqs', 'updatedAt'");
+    expect(rules).toContain("'coverUrl', 'about', 'faqs', 'featureSelections'");
   });
 
   it("يحفظ تصميم المتجر بالدمج حتى لا تتعطل المتاجر التي لديها حقول قديمة", async () => {
     const dashboard = await source("src/Dashboard.jsx");
 
     expect(dashboard).toContain("}, { merge: true });");
+  });
+
+  it("يحفظ التاجر اختيارات مزايا الدفعة الأولى فقط في متجره وبحالة صريحة", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(dashboard).toContain("FEATURE_CATALOG");
+    expect(dashboard).toContain("handleSaveFeatureSelections");
+    expect(dashboard).toContain("featureSelectionUpdatedAt");
+    expect(dashboard).toContain("copyCampaignLink");
+    expect(rules).toContain("'featureSelections'");
+    expect(rules).toContain("'featureSelectionUpdatedAt'");
+  });
+
+  it("يعرض معاينة المنتج وصفحة البيع فقط عند اختيار التاجر ولا يدّعي تفعيل الدفع", async () => {
+    const product = await source("src/ProductPage.jsx");
+    const landing = await source("src/App.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(product).toContain("smartSalesPageEnabled");
+    expect(product).toContain("productPreviewEnabled");
+    expect(product).toContain("ملف المنتج الكامل لا يظهر في صفحة المتجر");
+    expect(landing).toContain("لا يبدأ اشتراك أو تحصيل أو تسليم تلقائي");
+    expect(landing).not.toContain("وصل الملف للعميل تلقائيًا الآن");
+    expect(dashboard).toContain("تنزيل المشتري برابط مؤقت يفعّل بعد ربط الدفع");
   });
 });

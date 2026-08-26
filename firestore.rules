@@ -54,14 +54,16 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.keys().hasOnly([
           'ownerId', 'name', 'color', 'tagline', 'whatsapp', 'instagram', 'slug',
-          'logoUrl', 'coverUrl', 'about', 'faqs', 'updatedAt'
+          'logoUrl', 'coverUrl', 'about', 'faqs', 'featureSelections',
+          'featureSelectionUpdatedAt', 'updatedAt'
         ]);
       allow update: if isAdmin() || (
         owns(ownerId)
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'color', 'tagline', 'whatsapp', 'instagram', 'slug', 'logoUrl',
-          'coverUrl', 'about', 'faqs', 'updatedAt'
+          'coverUrl', 'about', 'faqs', 'featureSelections',
+          'featureSelectionUpdatedAt', 'updatedAt'
         ])
       );
       allow delete: if owns(ownerId) || isAdmin();

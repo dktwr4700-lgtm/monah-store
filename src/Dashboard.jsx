@@ -188,6 +188,7 @@ const styles = `
   .pk-price span{ font-size:11px; color:#8A8677; font-family:'Cairo',sans-serif; }
   .pk-features div{ font-size:12px; color:#3D4A66; padding:3px 0; }
   .pk-current-tag{ display:inline-block; margin-top:10px; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; }
+  .mf-intro{background:#F4F7F2;border:1px solid #DDE8DE;border-radius:16px;padding:15px;margin-bottom:13px;font-size:12px;line-height:1.85;color:#345242}.mf-grid{display:grid;gap:10px}.mf-card{border:1px solid #EDEAE0;border-radius:15px;padding:14px;background:#fff;display:flex;gap:11px;align-items:flex-start}.mf-card.selected{border-color:#163F2E;background:#F7FBF7}.mf-toggle{appearance:none;width:20px;height:20px;border-radius:7px;border:1.5px solid #B8B2A7;background:#fff;display:grid;place-items:center;cursor:pointer;flex:0 0 20px;margin-top:1px}.mf-toggle:checked{background:#163F2E;border-color:#163F2E}.mf-toggle:checked::after{content:"✓";color:#fff;font-size:13px;font-weight:800}.mf-body{flex:1}.mf-title{font-weight:800;font-size:12.5px;color:#0B0B0C}.mf-text{font-size:10.5px;color:#748178;line-height:1.7;margin-top:4px}.mf-status{display:inline-flex;margin-top:7px;padding:3px 8px;border-radius:100px;background:#EAF0EB;color:#37724B;font-size:9.5px;font-weight:800}.mf-save{position:sticky;bottom:0;margin:14px -18px 0;padding:12px 18px;border-top:1px solid #EDEAE0;background:#fff;display:flex;gap:10px;align-items:center}.mf-save span{flex:1;font-size:10.5px;color:#748178}.mf-soon{margin-top:14px;border-top:1px dashed #EDEAE0;padding-top:13px}.mf-soon-title{font-weight:800;font-size:11px;color:#9C6D1F;margin-bottom:5px}.mf-soon-text{font-size:10.5px;color:#8A8677;line-height:1.75}.dh-campaign{margin-top:9px;padding:9px;border-radius:11px;background:#F4F7F2;border:1px solid #DDE8DE}.dh-campaign-title{font-size:10px;font-weight:800;color:#163F2E;margin-bottom:7px}.dh-campaign-actions{display:flex;gap:6px;flex-wrap:wrap}.dh-campaign-btn{border:1px solid #D1DED2;border-radius:100px;background:#fff;color:#163F2E;font-family:'Cairo',sans-serif;font-size:9.5px;font-weight:800;padding:5px 8px;cursor:pointer}
 
   .cp-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
   .cp-item:first-child{ border-top:none; }
@@ -202,11 +203,10 @@ const styles = `
 `;
 
 const COMMON_FEATURES = [
-  "بدون عمولة على المبيعات",
-  "تسليم تلقائي للمنتج بعد الدفع",
   "صفحة متوافقة مع الجوال",
   "رابط خاص لكل منتج",
-  "ترقية أو تخفيض الباقة أو الإلغاء في أي وقت",
+  "مشاركة وQR للمتجر",
+  "هوية خاصة للمتجر",
 ];
 
 const PACKAGES = [
@@ -232,13 +232,31 @@ const PACKAGES = [
   },
 ];
 
+const FEATURE_CATALOG = [
+  {
+    key: "smartSalesPage",
+    title: "تنسيق صفحة المنتج",
+    description: "يعرض ملخصًا واضحًا لنوع المنتج ومعاينته وطريقة الاستفسار داخل صفحته العامة.",
+  },
+  {
+    key: "productPreview",
+    title: "صور معاينة للمنتج",
+    description: "يوضح للزائر أن الصور المعروضة معاينة فقط، من دون كشف ملف المنتج نفسه.",
+  },
+  {
+    key: "campaignLinks",
+    title: "روابط حملات جاهزة",
+    description: "ينشئ رابطًا مختلفًا لواتساب أو إنستغرام أو تيك توك لكل منتج. الإحصاءات تأتي لاحقًا بعد تفعيلها واختبارها.",
+  },
+];
+
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
     const t = parts[1];
-    return ["overview", "products", "coupons", "orders", "design", "subscription"].includes(t) ? t : "overview";
+    return ["overview", "products", "coupons", "orders", "design", "features", "subscription"].includes(t) ? t : "overview";
   }
   const [tab, setTabState] = useState(getTabFromHash);
 
@@ -300,6 +318,9 @@ export default function Dashboard() {
   const [designDirty, setDesignDirty] = useState(false);
   const [storeAbout, setStoreAbout] = useState("");
   const [storeFaqs, setStoreFaqs] = useState([]);
+  const [featureSelections, setFeatureSelections] = useState({});
+  const [featureSaving, setFeatureSaving] = useState(false);
+  const [featureSaved, setFeatureSaved] = useState(false);
 
   // coupons
   const [coupons, setCoupons] = useState([]);
@@ -423,6 +444,7 @@ export default function Dashboard() {
         setCoverUrl(data.coverUrl || "");
         setStoreAbout(data.about || "");
         setStoreFaqs(Array.isArray(data.faqs) ? data.faqs : []);
+        setFeatureSelections(data.featureSelections && typeof data.featureSelections === "object" ? data.featureSelections : {});
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -757,6 +779,27 @@ export default function Dashboard() {
     setDesignSaving(false);
   }
 
+  async function handleSaveFeatureSelections() {
+    setFeatureSaving(true);
+    setFeatureSaved(false);
+    try {
+      const cleanSelections = Object.fromEntries(
+        FEATURE_CATALOG.map((feature) => [feature.key, featureSelections[feature.key] === true])
+      );
+      await setDoc(doc(db, "stores", user.uid), {
+        ownerId: user.uid,
+        featureSelections: cleanSelections,
+        featureSelectionUpdatedAt: serverTimestamp(),
+      }, { merge: true });
+      setFeatureSelections(cleanSelections);
+      setFeatureSaved(true);
+      window.setTimeout(() => setFeatureSaved(false), 2200);
+    } catch (err) {
+      setError("تعذر حفظ اختيار المزايا، حاول مرة ثانية.");
+    }
+    setFeatureSaving(false);
+  }
+
   async function handleAddCoupon(e) {
     e.preventDefault();
     setCouponError("");
@@ -828,6 +871,14 @@ export default function Dashboard() {
       setCopied(kind + id);
       setTimeout(() => setCopied(""), 1500);
     });
+  }
+
+  function copyCampaignLink(productId, source) {
+    const url = `${window.location.origin}${window.location.pathname}?src=${encodeURIComponent(source)}#product/${productId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(`campaign-${productId}-${source}`);
+      setTimeout(() => setCopied(""), 1800);
+    }).catch(() => setError("تعذر نسخ رابط الحملة، جرب مرة ثانية."));
   }
 
   async function shareStore() {
@@ -945,8 +996,8 @@ export default function Dashboard() {
         key: "add-coupon",
         badge: "✦ خطوتك التالية",
         title: "جرب أول كود خصم لك",
-        text: "كوبونات الخصم تشجع الزوار يسوون قرار الشراء بسرعة أكبر.",
-        cta: "أنشئ كود خصم",
+        text: "جهّز كود خصم ليصبح جاهزًا عند تفعيل الدفع واختباره.",
+        cta: "جهّز كود خصم",
         onClick: () => setTab("coupons"),
         progress: stepsDone,
       };
@@ -1005,9 +1056,10 @@ export default function Dashboard() {
       <div className="dh-tabs">
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
-        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>الخصومات</button>
+        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>أكواد الخصم</button>
         <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
         <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
+        <button className={"dh-tab" + (tab === "features" ? " active" : "")} onClick={() => setTab("features")}>مزايا متجرك</button>
         <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
       </div>
 
@@ -1042,8 +1094,8 @@ export default function Dashboard() {
             </div>
 
             <div className="dh-stats">
-              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
-              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>إجمالي مسجل</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>طلبات مسجلة</span></div>
               <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
             </div>
 
@@ -1198,11 +1250,11 @@ export default function Dashboard() {
                     <label>ملف المنتج</label>
                     <input key={fileInputKey} type="file" onChange={handleFilePick} />
                     {productFile && (
-                      <div className="dh-file-picked">
+                    <div className="dh-file-picked">
                         ✓ {productFile.name} ({(productFile.size / 1024 / 1024).toFixed(1)} م.ب)
                       </div>
                     )}
-                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي — رابط تحميله يتوفر فقط للمشتري بعد إتمام الدفع، ولمدة محدودة. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
+                    <div className="dh-hint">الملف لا يظهر في صفحة المتجر العامة. تنزيل المشتري برابط مؤقت يفعّل بعد ربط الدفع واختبار عملية شراء فعلية. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
                   </div>
                 ) : (
                   <div className="dh-field">
@@ -1318,6 +1370,18 @@ export default function Dashboard() {
                           <button className="dh-item-action danger" onClick={() => setConfirmDeleteId(p.id)} type="button">حذف</button>
                         )}
                       </div>
+                      {featureSelections.campaignLinks && (
+                        <div className="dh-campaign">
+                          <div className="dh-campaign-title">أنشئ رابطًا مختلفًا لكل مكان تشارك فيه هذا المنتج</div>
+                          <div className="dh-campaign-actions">
+                            {["واتساب", "إنستغرام", "تيك توك"].map((source) => (
+                              <button className="dh-campaign-btn" key={source} type="button" onClick={() => copyCampaignLink(p.id, source)}>
+                                {copied === `campaign-${p.id}-${source}` ? "تم النسخ ✓" : source}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="dh-sort-actions">
                         <button className="dh-sort-btn" onClick={() => moveProduct(p.id, -1)} type="button">↑ قدّمه</button>
                         <button className="dh-sort-btn" onClick={() => moveProduct(p.id, 1)} type="button">↓ أخّره</button>
@@ -1333,8 +1397,8 @@ export default function Dashboard() {
         {tab === "coupons" && sellerPlan === "basic" && (
           <div className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
             <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
-            <div className="dh-title" style={{ marginBottom: 8 }}>كوبونات الخصم متاحة من الباقة الاحترافية</div>
-            <div className="dh-hint" style={{ marginBottom: 16 }}>رقّي باقتك عشان تقدر تسوي أكواد خصم لمنتجاتك.</div>
+            <div className="dh-title" style={{ marginBottom: 8 }}>أكواد الخصم تُجهّز قبل تفعيل الدفع</div>
+            <div className="dh-hint" style={{ marginBottom: 16 }}>لا نعرضها كخصم يعمل عند الشراء إلا بعد ربط ثواني واختبارها.</div>
             <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 220, margin: "0 auto" }}>
               شوف الباقات
             </button>
@@ -1356,7 +1420,7 @@ export default function Dashboard() {
                     placeholder="مثال: EID20"
                     style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }}
                   />
-                  <div className="dh-hint">أحرف إنجليزية وأرقام، بدون مسافات. العميل يكتب هذا الكود وقت الشراء.</div>
+                  <div className="dh-hint">أحرف إنجليزية وأرقام، بدون مسافات. يحفظ الكود الآن ويطبّق على الشراء فقط بعد تفعيل الدفع واختباره.</div>
                 </div>
                 <div className="dh-field">
                   <label>نسبة الخصم (%)</label>
@@ -1531,6 +1595,39 @@ export default function Dashboard() {
                 {designSaving ? "جاري الحفظ..." : "حفظ ونشر التغييرات"}
               </button>
             </div>
+          </>
+        )}
+
+        {tab === "features" && (
+          <>
+            <div className="mf-intro">
+              اختر الأدوات التي تريد تشغيلها في متجرك. هذه الدفعة تعمل داخل الموقع الآن، ولا يوجد دفع أو رسوم مفعّلة في هذه الصفحة.
+            </div>
+            <section className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 6 }}>أدوات متاحة الآن</div>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>كل أداة هنا لها وظيفة ظاهرة ومجربة في الموقع. احفظ اختيارك ثم افتح صفحة المنتج أو قائمة منتجاتك لتستخدمها.</div>
+              <div className="mf-grid">
+                {FEATURE_CATALOG.map((feature) => {
+                  const selected = featureSelections[feature.key] === true;
+                  return <label className={`mf-card ${selected ? "selected" : ""}`} key={feature.key}>
+                    <input className="mf-toggle" type="checkbox" checked={selected} onChange={(event) => setFeatureSelections((items) => ({ ...items, [feature.key]: event.target.checked }))} />
+                    <span className="mf-body">
+                      <span className="mf-title">{feature.title}</span>
+                      <span className="mf-text">{feature.description}</span>
+                      <span className="mf-status">تعمل الآن</span>
+                    </span>
+                  </label>;
+                })}
+              </div>
+              <div className="mf-save">
+                <span>{featureSaved ? "تم حفظ اختياراتك" : "لا تظهر هذه الأدوات للتاجر إلا بعد حفظ الاختيار."}</span>
+                <button className="dh-btn" style={{ width: "auto", padding: "10px 16px" }} type="button" onClick={handleSaveFeatureSelections} disabled={featureSaving}>{featureSaving ? "جاري الحفظ..." : "حفظ الاختيارات"}</button>
+              </div>
+            </section>
+            <section className="dh-card mf-soon">
+              <div className="mf-soon-title">مزايا تنتظر ثواني</div>
+              <div className="mf-soon-text">الكوبونات عند الشراء، الحزم المدفوعة، التسليم التلقائي، التقارير، ومكتبة المشتري ستبقى مقفلة حتى يكتمل ربط الدفع وتجربة شراء حقيقية.</div>
+            </section>
           </>
         )}
 
