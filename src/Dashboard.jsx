@@ -10,15 +10,17 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Orders from "./Orders.jsx";
 import GrowthAssistant from "./GrowthAssistant.jsx";
 
-// [تشخيص مؤقت] يعرض أي خطأ حقيقي بدل الشاشة الفاضية — يُحذف بعد التشخيص
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 20, direction: "rtl", fontFamily: "monospace", fontSize: 12, whiteSpace: "pre-wrap", color: "#B24C3A", background: "#fff" }}>
-          [تشخيص مؤقت]{"\n"}{String(this.state.error && this.state.error.message)}{"\n\n"}{String(this.state.error && this.state.error.stack)}
+          <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20, direction: "rtl", fontFamily: "Cairo, sans-serif", color: "#B24C3A", background: "#fff" }}>
+            <div style={{ maxWidth: 380, textAlign: "center", border: "1px solid #F0D9D3", borderRadius: 18, padding: 24 }}>
+              <strong style={{ display: "block", marginBottom: 8 }}>تعذّر فتح لوحة التحكم الآن</strong>
+              <span style={{ fontSize: 13, lineHeight: 1.8 }}>جرّب تحديث الصفحة. إذا استمرت المشكلة، تواصل مع دعم مُونَة.</span>
+            </div>
         </div>
       );
     }
@@ -428,8 +430,15 @@ export default function Dashboard() {
     e.preventDefault();
     setError("");
 
+    const cleanName = name.trim();
+    const numericPrice = Number(price);
+    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+      setError("اكتب اسم المنتج وسعرًا صحيحًا أكبر من صفر.");
+      return;
+    }
+
     if (productType === "file") {
-      if (!name || !price || !productFile) {
+      if (!productFile) {
         setError("عبّي اسم المنتج والسعر واختر ملف المنتج.");
         return;
       }
@@ -446,15 +455,15 @@ export default function Dashboard() {
       const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
       const productRef = await addDoc(collection(db, "products"), {
         ownerId: user.uid,
-        name,
-        price: Number(price),
+        name: cleanName,
+        price: numericPrice,
         description: description || "",
         category: category || "عام",
         type: productType,
         filePath: "",
         codesCount: productType === "code" ? codesList.length : 0,
         images: productImages,
-        hidden: !publish,
+        hidden: true,
         createdAt: serverTimestamp(),
       });
 
@@ -467,13 +476,20 @@ export default function Dashboard() {
         await batch.commit();
       }
 
-      if (productType === "file" && productFile) {
-        setUploadingFile(true);
-        const safeName = productFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const filePath = `secure/${productRef.id}/${safeName}`;
-        const fileRef = ref(storage, filePath);
-        await uploadBytes(fileRef, productFile);
-        await updateDoc(doc(db, "products", productRef.id), { filePath });
+      try {
+        if (productType === "file" && productFile) {
+          setUploadingFile(true);
+          const safeName = productFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const filePath = `secure/${productRef.id}/${safeName}`;
+          const fileRef = ref(storage, filePath);
+          await uploadBytes(fileRef, productFile);
+          await updateDoc(doc(db, "products", productRef.id), { filePath });
+        }
+        await updateDoc(doc(db, "products", productRef.id), { hidden: !publish });
+      } catch (uploadError) {
+        await deleteDoc(doc(db, "products", productRef.id));
+        throw uploadError;
+      } finally {
         setUploadingFile(false);
       }
 
@@ -506,15 +522,17 @@ export default function Dashboard() {
   }
 
   async function saveEdit(productId) {
-    if (!editName || !editPrice) {
+    const cleanName = editName.trim();
+    const numericPrice = Number(editPrice);
+    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
       setError("عبّي اسم المنتج والسعر.");
       return;
     }
     setEditSaving(true);
     try {
       await updateDoc(doc(db, "products", productId), {
-        name: editName,
-        price: Number(editPrice),
+        name: cleanName,
+        price: numericPrice,
         description: editDescription || "",
         category: editCategory || "عام",
       });
@@ -559,6 +577,10 @@ export default function Dashboard() {
     const file = e.target.files[0];
     if (!file) return;
     setImagesError("");
+    if (!file.type.startsWith("image/")) {
+      setImagesError("اختر ملف صورة صالحًا.");
+      return;
+    }
     if (productImages.length >= 2) {
       setImagesError("حد أقصى صورتين لكل منتج.");
       return;
@@ -587,6 +609,10 @@ export default function Dashboard() {
     const file = e.target.files[0];
     if (!file) return;
     setLogoError("");
+    if (!file.type.startsWith("image/")) {
+      setLogoError("اختر ملف صورة صالحًا.");
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       setLogoError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
       return;
@@ -607,6 +633,10 @@ export default function Dashboard() {
     const file = e.target.files[0];
     if (!file) return;
     setCoverError("");
+    if (!file.type.startsWith("image/")) {
+      setCoverError("اختر ملف صورة صالحًا.");
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       setCoverError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
       return;
@@ -629,8 +659,19 @@ export default function Dashboard() {
     setDesignSaved(false);
     setSlugError("");
     try {
+      const cleanStoreName = storeName.trim();
       const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
-      if (cleanSlug) {
+      if (!cleanStoreName) {
+        setError("اكتب اسم متجرك قبل الحفظ.");
+        setDesignSaving(false);
+        return;
+      }
+      if (!cleanSlug || cleanSlug.length < 3) {
+        setSlugError("اكتب رابطًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+        setDesignSaving(false);
+        return;
+      }
+      {
         const q = query(collection(db, "stores"), where("slug", "==", cleanSlug));
         const snap = await getDocs(q);
         const takenByOther = snap.docs.some((d) => d.id !== user.uid);
@@ -641,7 +682,7 @@ export default function Dashboard() {
         }
       }
       await setDoc(doc(db, "stores", user.uid), {
-        name: storeName,
+        name: cleanStoreName,
         color: storeColor,
         tagline: tagline || "",
         whatsapp: whatsapp || "",
@@ -656,7 +697,7 @@ export default function Dashboard() {
         updatedAt: serverTimestamp(),
       });
       try {
-        await setDoc(doc(db, "sellers", user.uid), { storeName }, { merge: true });
+        await setDoc(doc(db, "sellers", user.uid), { storeName: cleanStoreName }, { merge: true });
       } catch (e) {
         console.error(e);
       }
@@ -1423,7 +1464,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} onApplySuggestion={handleApplySuggestion} nextStep={nextStep} />
+      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} nextStep={nextStep} />
     </div>
     </DebugErrorBoundary>
   );

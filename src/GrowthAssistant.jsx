@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { auth } from "./firebase.js";
 
 function formatText(text) {
   const lines = text.split("\n");
@@ -143,7 +144,7 @@ function SuggestionCard({ suggestion, storeData, onApply }) {
   return null;
 }
 
-export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApplySuggestion, nextStep }) {
+export default function GrowthAssistant({ storeData, plan, onUpgradeClick, nextStep }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
@@ -258,19 +259,21 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApp
     setQuestion("");
     setLoading(true);
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("missing_session");
       const res = await fetch("/api/growth-assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           question: q,
-          storeData: storeData || {},
           actionType: actionType || "chat",
         }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "assistant_request_failed");
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: data.reply || data.error || "ما وصل رد", suggestion: data.suggestion || null },
+        { role: "assistant", text: data.reply || "ما وصل رد" },
       ]);
     } catch (err) {
       setMessages((prev) => [...prev, { role: "assistant", text: "صار خطأ بالاتصال، حاول مرة ثانية" }]);
@@ -479,13 +482,6 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApp
                     {m.role === "assistant" ? formatText(m.text) : m.text}
                   </div>
                 </div>
-                {m.role === "assistant" && m.suggestion && (
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <div style={{ maxWidth: "85%", width: "85%" }}>
-                      <SuggestionCard suggestion={m.suggestion} storeData={storeData} onApply={onApplySuggestion} />
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
             {loading && (

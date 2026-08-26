@@ -1,13 +1,18 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
-import Register from "./Register.jsx";
-import Login from "./Login.jsx";
-import Dashboard from "./Dashboard.jsx";
-import ProductPage from "./ProductPage.jsx";
-import StorePage from "./StorePage.jsx";
-import LegalPage from "./LegalPage.jsx";
-import AdminDashboard from "./AdminDashboard.jsx";
+
+const Register = lazy(() => import("./Register.jsx"));
+const Login = lazy(() => import("./Login.jsx"));
+const Dashboard = lazy(() => import("./Dashboard.jsx"));
+const ProductPage = lazy(() => import("./ProductPage.jsx"));
+const StorePage = lazy(() => import("./StorePage.jsx"));
+const LegalPage = lazy(() => import("./LegalPage.jsx"));
+const AdminDashboard = lazy(() => import("./AdminDashboard.jsx"));
+
+function PageLoading() {
+  return <div dir="rtl" style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Cairo, sans-serif", color: "#4B6152", background: "#FBFAF7" }}>جاري التحميل…</div>;
+}
 
 function Root() {
   const [hash, setHash] = React.useState(window.location.hash.replace("#", ""));
@@ -18,15 +23,16 @@ function Root() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  if (hash === "register") return <Register />;
-  if (hash === "login") return <Login />;
-  if (hash === "dashboard" || hash.startsWith("dashboard/")) return <Dashboard />;
-  if (hash === "privacy") return <LegalPage type="privacy" />;
-  if (hash === "terms") return <LegalPage type="terms" />;
-  if (hash === "admin") return <AdminDashboard />;
-  if (hash.startsWith("product/")) return <ProductPage productId={hash.split("/")[1]} />;
-  if (hash.startsWith("store/")) return <StorePage sellerId={hash.split("/")[1]} />;
-  return <App />;
+  let page = <App />;
+  if (hash === "register") page = <Register />;
+  else if (hash === "login") page = <Login />;
+  else if (hash === "dashboard" || hash.startsWith("dashboard/")) page = <Dashboard />;
+  else if (hash === "privacy") page = <LegalPage type="privacy" />;
+  else if (hash === "terms") page = <LegalPage type="terms" />;
+  else if (hash === "admin") page = <AdminDashboard />;
+  else if (hash.startsWith("product/")) page = <ProductPage productId={hash.split("/")[1]} />;
+  else if (hash.startsWith("store/")) page = <StorePage sellerId={hash.split("/")[1]} />;
+  return <Suspense fallback={<PageLoading />}>{page}</Suspense>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
