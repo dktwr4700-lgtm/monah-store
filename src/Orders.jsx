@@ -48,6 +48,9 @@ const styles = `
   .ord-empty span{ font-size:12.5px; }
   .ord-empty-btn{ display:inline-flex; align-items:center; gap:6px; background:#0B0B0C; color:#fff; border:none; padding:11px 20px; border-radius:100px; font-weight:700; font-size:12.5px; cursor:pointer; margin-top:16px; font-family:'Cairo', sans-serif; }
   .ord-error{ background:#F6E9E5; color:#B24C3A; padding:12px 16px; border-radius:12px; font-size:12.5px; margin-bottom:14px; line-height:1.7; }
+
+  .ord-wrap button{ transition:transform 100ms ease-out; }
+  .ord-wrap button:active{ transform:scale(0.96); }
 `;
 
 function formatDate(ts) {
