@@ -1,0 +1,49 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function ownsProduct(productId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/products/$(productId))
+        && firestore.get(/databases/(default)/documents/products/$(productId)).data.ownerId == request.auth.uid;
+    }
+    function hasValidUnlock(productId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/unlocks/$(request.auth.uid + '_' + productId))
+        && firestore.get(/databases/(default)/documents/unlocks/$(request.auth.uid + '_' + productId)).data.expiresAt > request.time;
+    }
+    function ownsNamedFile(fileName) {
+      return signedIn() && fileName.matches(request.auth.uid + '-.*');
+    }
+
+    match /secure/{productId}/{fileName} {
+      allow read: if ownsProduct(productId) || hasValidUnlock(productId);
+      allow create: if ownsProduct(productId) && request.resource.size < 50 * 1024 * 1024;
+      allow update, delete: if false;
+    }
+
+    match /product-images/{fileName} {
+      allow read: if true;
+      allow create: if ownsNamedFile(fileName)
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow update, delete: if ownsNamedFile(fileName);
+    }
+
+    match /logos/{fileName} {
+      allow read: if true;
+      allow create: if ownsNamedFile(fileName)
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow update, delete: if ownsNamedFile(fileName);
+    }
+
+    match /covers/{fileName} {
+      allow read: if true;
+      allow create: if ownsNamedFile(fileName)
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow update, delete: if ownsNamedFile(fileName);
+    }
+  }
+}

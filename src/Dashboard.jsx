@@ -272,9 +272,6 @@ export default function Dashboard() {
   const [slugError, setSlugError] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("platform");
-  const [payoutInfo, setPayoutInfo] = useState("");
-  const [payoutWhatsapp, setPayoutWhatsapp] = useState("");
   const [logoError, setLogoError] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
@@ -327,8 +324,7 @@ export default function Dashboard() {
             storeName: user.email.split("@")[0],
             email: user.email,
             createdAt: new Date().toISOString(),
-            plan: "basic",
-            disabled: false,
+            plan: null,
           });
         }
       } catch (err) {
@@ -404,9 +400,6 @@ export default function Dashboard() {
         setSlug(data.slug || "");
         setLogoUrl(data.logoUrl || "");
         setCoverUrl(data.coverUrl || "");
-        setPaymentMethod(data.paymentMethod || "platform");
-        setPayoutInfo(data.payoutInfo || "");
-        setPayoutWhatsapp(data.payoutWhatsapp || "");
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -464,6 +457,7 @@ export default function Dashboard() {
         codesCount: productType === "code" ? codesList.length : 0,
         images: productImages,
         hidden: true,
+        suspended: false,
         createdAt: serverTimestamp(),
       });
 
@@ -690,9 +684,6 @@ export default function Dashboard() {
         slug: cleanSlug || "",
         logoUrl: logoUrl || "",
         coverUrl: coverUrl || "",
-        paymentMethod: paymentMethod,
-        payoutInfo: paymentMethod === "manual" ? payoutInfo || "" : "",
-        payoutWhatsapp: paymentMethod === "manual" ? payoutWhatsapp || "" : "",
         ownerId: user.uid,
         updatedAt: serverTimestamp(),
       });
@@ -1342,56 +1333,9 @@ export default function Dashboard() {
               </div>
 
               <div className="dh-field">
-                <label>طريقة استلام المدفوعات</label>
-                <div className="dh-type-toggle">
-                  <button
-                    type="button"
-                    className={"dh-type-btn" + (paymentMethod === "platform" ? " active" : "")}
-                    onClick={() => { setPaymentMethod("platform"); setDesignDirty(true); }}
-                  >
-                    تلقائي عبر المنصة
-                  </button>
-                  <button
-                    type="button"
-                    className={"dh-type-btn" + (paymentMethod === "manual" ? " active" : "")}
-                    onClick={() => { setPaymentMethod("manual"); setDesignDirty(true); }}
-                  >
-                    يدوي (تحويل + واتساب)
-                  </button>
-                </div>
-                <div className="dh-hint">
-                  {paymentMethod === "platform"
-                    ? "العميل يضغط زر الدفع، ويستلم منتجه تلقائيًا مباشرة من الموقع."
-                    : "العميل يحوّل المبلغ مباشرة لحسابك، ويرسل لك إثبات التحويل عبر واتساب، وترسل له المنتج بنفسك."}
-                </div>
+                <label>الدفع</label>
+                <div className="dh-hint">ربط الدفع ما زال قيد التجهيز. لا نحفظ أي معلومات تحويل أو حسابات في صفحة المتجر العامة لحمايتها.</div>
               </div>
-
-              {paymentMethod === "manual" && (
-                <>
-                  <div className="dh-field">
-                    <label>رقم الحساب أو الجوال لاستلام التحويل</label>
-                    <input
-                      type="text"
-                      value={payoutInfo}
-                      onChange={(e) => { setPayoutInfo(e.target.value); setDesignDirty(true); }}
-                      placeholder="OM00 0000 0000 0000 0000 000 أو 9689xxxxxxx"
-                      style={{ direction: "ltr", textAlign: "right" }}
-                    />
-                    <div className="dh-hint">هذا اللي يشوفه العميل قبل الشراء عشان يحوّل عليه مباشرة.</div>
-                  </div>
-                  <div className="dh-field">
-                    <label>رقم واتساب لاستقبال إثبات الدفع</label>
-                    <input
-                      type="text"
-                      value={payoutWhatsapp}
-                      onChange={(e) => { setPayoutWhatsapp(e.target.value); setDesignDirty(true); }}
-                      placeholder="96891234567"
-                      style={{ direction: "ltr", textAlign: "right" }}
-                    />
-                    <div className="dh-hint">العميل بيُطلب منه يحتفظ بإيصال التحويل ويرسله لك على هذا الرقم لتأكيد الدفع.</div>
-                  </div>
-                </>
-              )}
             </div>
 
             <div className="ds-save-bar">
