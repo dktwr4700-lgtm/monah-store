@@ -63,16 +63,21 @@ export default function StorePage({ sellerId }) {
             resolvedOwnerId = storeSnap.docs[0].id;
           }
         }
+        if (!storeData) {
+          setStatus("missing");
+          return;
+        }
         setStore(storeData);
         const productQuery = query(collection(db, "products"), where("ownerId", "==", resolvedOwnerId));
         const productSnap = await getDocs(productQuery);
         const allProducts = productSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
-        // نستبعد المنتجات اللي البائع أخفاها من لوحة تحكمه — ما تظهر للعميل هنا
-        setProducts(allProducts.filter((product) => !product.hidden));
+        // لا تظهر المسودات أو المنتجات التي أوقفها مالك المنصة للزائر.
+        setProducts(allProducts.filter((product) => !product.hidden && !product.suspended));
       } catch (error) {
         console.error("Unable to load store", error);
+        setStatus("missing");
       } finally {
-        setStatus("ready");
+        setStatus((current) => current === "loading" ? "ready" : current);
       }
     }
     fetchData();
@@ -126,7 +131,7 @@ export default function StorePage({ sellerId }) {
           <div className="mc-assurance"><strong>واضح</strong><span>بلا رسوم إضافية</span></div>
         </section>
 
-        {status === "loading" ? <div className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">نجهّز لك المتجر</div><div className="mc-empty-sub">لحظات ونظهر المنتجات المتاحة.</div></div> : <>
+        {status === "loading" ? <div className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">نجهّز لك المتجر</div><div className="mc-empty-sub">لحظات ونظهر المنتجات المتاحة.</div></div> : status === "missing" ? <section className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">لم نجد هذا المتجر</div><div className="mc-empty-sub">تأكد من الرابط أو ارجع إلى صفحة مُونَة الرئيسية.</div><a className="mc-empty-cta" href="#">العودة إلى مُونَة</a></section> : <>
           {products.length === 0 ? <section className="mc-empty">
             <div className="mc-empty-icon"><FileIcon /></div>
             <div className="mc-empty-title">أول مجموعة رقمية في الطريق.</div>

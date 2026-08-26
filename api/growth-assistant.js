@@ -1,150 +1,108 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+import admin from "firebase-admin";
+
+const REQUIRED_PLAN = "full";
+const MAX_QUESTION_LENGTH = 1600;
+const ALLOWED_ACTIONS = new Set(["chat", "improve-product", "caption", "reel-idea", "audit-store", "coupon-idea", "what-today"]);
+
+function firebaseAdmin() {
+  if (!admin.apps.length) {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (!rawServiceAccount) throw new Error("firebase_admin_not_configured");
+    admin.initializeApp({ credential: admin.credential.cert(JSON.parse(rawServiceAccount)) });
   }
+  return admin;
+}
 
-  const { question, storeData, actionType } = req.body;
+function buildStoreContext(data) {
+  const lines = [
+    `اسم المتجر: ${data.storeName || "بدون اسم بعد"}`,
+    data.tagline ? `وصف المتجر: ${data.tagline}` : "",
+    `الباقة الحالية: ${data.plan}`,
+    `عدد المنتجات: ${data.products.length}`,
+  ].filter(Boolean);
 
-  // حماية إضافية بجانب حماية الواجهة — فقط باقة "متجر متكامل" تقدر تستخدم المساعد فعليًا
-  const REQUIRED_PLAN = 'full';
-  if (!storeData || storeData.plan !== REQUIRED_PLAN) {
-    return res.status(403).json({ error: 'هذي الميزة متاحة فقط لباقة متجر متكامل.' });
+  if (data.products.length) {
+    lines.push("المنتجات (استخدم المعرّف بالضبط فقط إذا قدّمت اقتراح تطبيق):");
+    data.products.forEach((product) => lines.push(`- المعرّف: ${product.id} | ${product.name} | السعر: ${product.price} ر.ع | التصنيف: ${product.category || "عام"} | ${product.hidden ? "مخفي" : "منشور"} | الوصف: ${product.description || "بدون وصف"}`));
+  } else {
+    lines.push("لا توجد منتجات مضافة بعد.");
   }
+  lines.push(`عدد الطلبات: ${data.ordersCount}`);
+  lines.push(`إجمالي المبيعات: ${data.totalSales} ر.ع`);
+  return lines.join("\n");
+}
 
-  const type = actionType || 'chat';
+async function authenticatedStoreData(req) {
+  const authHeader = req.headers.authorization || "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!idToken) return { error: [401, "سجّل دخولك إلى لوحة متجرك أولًا."] };
 
-  function buildStoreContext(data) {
-    if (!data || Object.keys(data).length === 0) {
-      return 'ما وصلتني بيانات عن المتجر، عامل التاجر كمستخدم جديد ما بدأ بعد.';
-    }
-    const lines = [];
-    lines.push(`اسم المتجر: ${data.storeName || 'بدون اسم بعد'}`);
-    if (data.tagline) lines.push(`وصف المتجر: ${data.tagline}`);
-    lines.push(`الباقة الحالية: ${data.plan || 'أساسية'}`);
-    lines.push(`عدد المنتجات: ${data.productsCount ?? 0}`);
-    if (data.products && data.products.length > 0) {
-      lines.push('المنتجات (استخدم قيمة id بالضبط لو بنيت اقتراح تطبيق):');
-      data.products.forEach((p) => {
-        lines.push(
-          `- id: ${p.id} | ${p.name} | السعر: ${p.price} ر.ع | التصنيف: ${p.category || 'عام'} | ${p.hidden ? 'مخفي' : 'منشور'} | الوصف: ${p.description ? p.description : 'بدون وصف'}`
-        );
-      });
-    } else {
-      lines.push('ما عنده أي منتج مضاف بعد.');
-    }
-    lines.push(`عدد الطلبات: ${data.ordersCount ?? 0}`);
-    lines.push(`إجمالي المبيعات: ${data.totalSales ?? 0} ر.ع`);
-    return lines.join('\n');
-  }
+  const app = firebaseAdmin();
+  const decoded = await app.auth().verifyIdToken(idToken);
+  const db = app.firestore();
+  const sellerSnap = await db.collection("sellers").doc(decoded.uid).get();
+  if (!sellerSnap.exists || sellerSnap.data().disabled) return { error: [403, "هذا الحساب غير متاح لاستخدام المساعد الآن."] };
+  if (sellerSnap.data().plan !== REQUIRED_PLAN) return { error: [403, "مساعد النمو متاح حاليًا لباقة متجر متكامل فقط."] };
 
-  const storeContext = buildStoreContext(storeData);
-  const hasMultipleProducts = (storeData?.products?.length || 0) > 1;
-  const hasOneProduct = (storeData?.products?.length || 0) === 1;
-  const hasNoProducts = (storeData?.products?.length || 0) === 0;
-
-  const SUGGESTION_FORMAT_NOTE = `
-إذا حددت بوضوح منتجًا واحدًا بالذات للتحسين (تعرف id بتاعه من بيانات المتجر أعلاه)، أضف بنهاية ردك تمامًا، بسطر منفصل، كتلة بهذا الشكل بالضبط (بدون أي نص إضافي حولها، وبدون علامات markdown):
-[[SUGGESTION]]{"productId":"<id المنتج بالضبط>","name":"<الاسم المقترح أو نفس الاسم الحالي لو ما تغيّر>","description":"<الوصف المقترح الجديد>"}[[/SUGGESTION]]
-لا تضف هذي الكتلة إلا لو متأكد من هوية المنتج بالضبط (يعني عنده منتج واحد، أو حدد التاجر أي منتج بوضوح خلال المحادثة). إذا لسا تسأله أي منتج يقصد، لا تضف الكتلة.`;
-
-  const COUPON_FORMAT_NOTE = `
-بعد ما تقترح كود الخصم، أضف بنهاية ردك تمامًا، بسطر منفصل، كتلة بهذا الشكل بالضبط (بدون أي نص إضافي حولها):
-[[SUGGESTION]]{"code":"<الكود المقترح بأحرف إنجليزية وأرقام فقط>","percent":<رقم النسبة بدون علامة %>}[[/SUGGESTION]]`;
-
-  const ACTION_INSTRUCTIONS = {
-    'improve-product': `
-مهمتك الآن: تحسين اسم ووصف منتج معين للتاجر.
-${hasNoProducts ? 'التاجر ما عنده أي منتج بعد — قل له يحتاج يضيف منتج أول قبل ما تقدر تحسّنه.' : ''}
-${hasMultipleProducts ? 'عنده أكثر من منتج — إذا ما حدد التاجر اسم المنتج بسؤاله، اسأله أي منتج بالضبط يبي يحسّن (اذكر أسماء منتجاته الحالية بسؤالك)، ولا تضف كتلة الاقتراح حتى يحدد.' : ''}
-${hasOneProduct ? 'عنده منتج واحد فقط — اشتغل عليه مباشرة بدون ما تسأل.' : ''}
-لما تحدد المنتج، اكتب له بأسلوب طبيعي: اسم مقترح محسّن (لو يحتاج)، ووصف مقترح جديد أوضح وأقوى بيعيًا (٢-٤ جمل)، بأسلوب يبرز الفائدة للمشتري.
-${hasNoProducts ? '' : SUGGESTION_FORMAT_NOTE}`,
-
-    caption: `
-مهمتك الآن: كتابة كابشن جاهز لمنصات التواصل (واتساب/إنستغرام) لمنتج معين.
-${hasNoProducts ? 'التاجر ما عنده أي منتج بعد — قل له يحتاج يضيف منتج أول.' : ''}
-${hasMultipleProducts ? 'عنده أكثر من منتج — إذا ما حدد أي منتج، اسأله عن أي منتج يبي الكابشن (اذكر أسماء منتجاته).' : ''}
-${hasOneProduct ? 'عنده منتج واحد — اكتب الكابشن له مباشرة.' : ''}
-لما تحدد المنتج، اكتب كابشن قصير جذاب (٣-٥ أسطر) مناسب لواتساب أو إنستغرام، فيه مقدمة تشد الانتباه، ذكر الفائدة، ودعوة واضحة للشراء مع الإشارة إلى رابط المنتج بشكل عام (بدون رابط حقيقي، فقط "الرابط في متجرك").`,
-
-    'reel-idea': `
-مهمتك الآن: تقديم فكرة فيديو قصير (ريلز/ستوري) لمنتج معين.
-${hasNoProducts ? 'التاجر ما عنده أي منتج بعد — قل له يحتاج يضيف منتج أول.' : ''}
-${hasMultipleProducts ? 'عنده أكثر من منتج — إذا ما حدد أي منتج، اسأله عن أي منتج يبي الفكرة له.' : ''}
-${hasOneProduct ? 'عنده منتج واحد — اكتب الفكرة له مباشرة.' : ''}
-لما تحدد المنتج، اقترح: خطاف افتتاحي (Hook) بجملة واحدة تشد المشاهد بأول ٣ ثواني، فكرة مشاهد الفيديو بشكل مختصر (٣-٤ نقاط)، ودعوة ختامية (CTA) واضحة.`,
-
-    'audit-store': `
-مهمتك الآن: فحص جاهزية متجر التاجر للبيع، بناءً على بيانات المتجر أعلاه فقط.
-راجع: هل عنده منتجات؟ هل المنتجات فيها وصف؟ هل عنده اسم ووصف واضح للمتجر؟
-اعطِ قائمة نقاط (Checklist) قصيرة بأهم ٣-٥ أشياء ناقصة أو تحتاج تحسين، كل نقطة بجملة مختصرة وعملية. لو كل شي تمام، اذكر ذلك وامدحه بإيجاز ثم اقترح خطوة نمو تالية.`,
-
-    'coupon-idea': `
-مهمتك الآن: اقتراح كود خصم مناسب للتاجر بناءً على وضع متجره.
-${hasNoProducts ? 'التاجر ما عنده منتجات بعد، فكود الخصم مو مفيد الآن — قل له يضيف منتج أول ولا تضف كتلة الاقتراح.' : `اقترح: اسم كود قصير وسهل التذكر (أحرف إنجليزية وأرقام)، نسبة خصم مناسبة (بين 10% و30% حسب حجم متجره)، ومدة مقترحة للعرض (مثلاً أسبوع أو أسبوعين). اشرح باختصار سبب اختيارك لهذي النسبة والمدة.${COUPON_FORMAT_NOTE}`}`,
-
-    'what-today': `
-مهمتك الآن: اقتراح مهمة واحدة أو اثنتين بسيطتين يقدر التاجر يسويهم اليوم لتحسين متجره، بناءً على وضعه الحالي بالضبط.
-لا تعطِ قائمة طويلة، فقط ١-٢ مهمة، كل وحدة بجملة قصيرة وعملية يقدر يبدأ فيها فورًا.`,
-
-    chat: '',
+  const [storeSnap, productsSnap, ordersSnap] = await Promise.all([
+    db.collection("stores").doc(decoded.uid).get(),
+    db.collection("products").where("ownerId", "==", decoded.uid).get(),
+    db.collection("orders").where("ownerId", "==", decoded.uid).get(),
+  ]);
+  const products = productsSnap.docs.slice(0, 20).map((document) => {
+    const product = document.data();
+    return { id: document.id, name: product.name || "منتج بدون اسم", price: Number(product.price) || 0, category: product.category || "عام", description: product.description || "", hidden: Boolean(product.hidden) };
+  });
+  const orders = ordersSnap.docs.map((document) => document.data());
+  const store = storeSnap.exists ? storeSnap.data() : {};
+  return {
+    data: {
+      storeName: store.name || sellerSnap.data().storeName || "متجرك",
+      tagline: store.tagline || "",
+      plan: REQUIRED_PLAN,
+      products,
+      ordersCount: orders.length,
+      totalSales: orders.filter((order) => order.status !== "pending").reduce((sum, order) => sum + (Number(order.price) || 0), 0),
+    },
   };
+}
 
-  const actionInstruction = ACTION_INSTRUCTIONS[type] !== undefined ? ACTION_INSTRUCTIONS[type] : '';
+function actionInstruction(type, storeData) {
+  const productNames = storeData.products.map((product) => product.name).join("، ");
+  if (type === "improve-product") return storeData.products.length ? `حسّن اسم ووصف منتج واحد. إن وُجد أكثر من منتج ولم يحدد المستخدم المنتج، اسأله أولًا عن المنتج المقصود (${productNames}). لا تقل إنك طبقت تعديلًا بنفسك.` : "أخبر التاجر أن يضيف منتجه الأول قبل تحسينه.";
+  if (type === "caption") return storeData.products.length ? "اكتب كابشنًا عربيًا قصيرًا وجاهزًا للمشاركة للمنتج المحدد، مع دعوة واضحة للشراء دون اختلاق رابط." : "أخبر التاجر أن يضيف منتجه الأول قبل كتابة كابشن.";
+  if (type === "reel-idea") return storeData.products.length ? "اقترح فكرة ريلز عملية: خطاف، 3 مشاهد، ودعوة ختامية." : "أخبر التاجر أن يضيف منتجه الأول قبل اقتراح فكرة ريلز.";
+  if (type === "audit-store") return "راجع الاسم والوصف والمنتجات اعتمادًا على البيانات الموثوقة فقط، وقدّم 3 خطوات عملية كحد أقصى.";
+  if (type === "coupon-idea") return storeData.products.length ? "اقترح كود خصم قصيرًا ونسبة بين 10 و30 بالمئة ومدة مناسبة. لا تنشئ الكود بنفسك." : "أخبر التاجر أن يضيف منتجه الأول قبل إنشاء فكرة خصم.";
+  if (type === "what-today") return "اقترح مهمة واحدة أو اثنتين فقط يمكن للتاجر تنفيذها اليوم.";
+  return "أجب باختصار وبأسلوب عملي عن سؤال التاجر اعتمادًا على بيانات متجره فقط.";
+}
 
-  const basePrompt = `أنت "مساعد نمو متجرك"، مساعد ذكي داخل منصة Monah لبيع المنتجات الرقمية بدون عمولة. تتحدث بالعربية بأسلوب مباشر وعملي وودود، بدون رموز markdown خام مثل # أو **، فقط نص عادي منظم بفقرات وأسطر واضحة.
-
-بيانات متجر التاجر الحالي:
-${storeContext}
-
-القواعد العامة:
-- ردودك دائمًا مبنية على بيانات هذا المتجر تحديدًا، لا نصائح عامة فقط.
-- إذا المتجر فارغ من المنتجات، وجّه التاجر لإضافة أول منتج بدل إعطاء نصائح تسويقية عامة.
-- كن مختصرًا ومباشرًا، لا تطوّل بدون داعٍ.
-- أنت لا تقدر تعدّل أي شيء في المتجر مباشرة بنفسك؛ التاجر هو اللي يضغط زر التطبيق يدويًا لو وافق على اقتراحك.
-${actionInstruction}`;
-
-  const userMessage = question || 'ساعدني';
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "الطريقة غير مدعومة." });
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: basePrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      }),
+    const trusted = await authenticatedStoreData(req);
+    if (trusted.error) return res.status(trusted.error[0]).json({ error: trusted.error[1] });
+
+    const question = String(req.body?.question || "ساعدني").trim().slice(0, MAX_QUESTION_LENGTH);
+    const requestedAction = String(req.body?.actionType || "chat");
+    const type = ALLOWED_ACTIONS.has(requestedAction) ? requestedAction : "chat";
+    const storeContext = buildStoreContext(trusted.data);
+    const system = `أنت مساعد نمو متجر داخل منصة مُونَة. تحدث بالعربية بأسلوب مباشر وودود. استخدم بيانات المتجر أدناه فقط، ولا تدّعِ تنفيذ تعديل أو نشر أو إنشاء كوبون بنفسك. لا تطلب كلمات مرور أو بيانات دفع أو بيانات شخصية حساسة.\n\n${storeContext}\n\nالمهمة الحالية: ${actionInstruction(type, trusted.data)}`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY || "", "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 800, system, messages: [{ role: "user", content: question || "ساعدني" }] }),
     });
-
-    const data = await response.json();
-    const rawReply = data.content?.[0]?.text || 'ما قدرت أطلع رد، حاول مرة ثانية';
-
-    // نستخرج كتلة الاقتراح المنظّمة (لو موجودة) ونشيلها من النص المعروض للتاجر
-    let reply = rawReply;
-    let suggestion = null;
-    const match = rawReply.match(/\[\[SUGGESTION\]\]([\s\S]*?)\[\[\/SUGGESTION\]\]/);
-    if (match) {
-      try {
-        const parsed = JSON.parse(match[1].trim());
-        if (type === 'improve-product' && parsed.productId) {
-          suggestion = { kind: 'improve-product', productId: parsed.productId, name: parsed.name, description: parsed.description };
-        } else if (type === 'coupon-idea' && parsed.code && parsed.percent) {
-          suggestion = { kind: 'coupon-idea', code: String(parsed.code).toUpperCase().replace(/\s+/g, ''), percent: Number(parsed.percent) };
-        }
-      } catch (e) {
-        suggestion = null;
-      }
-      reply = rawReply.replace(match[0], '').trim();
-    }
-
-    res.status(200).json({ reply, suggestion });
+    if (!response.ok) return res.status(502).json({ error: "المساعد غير متاح الآن، حاول بعد قليل." });
+    const responseData = await response.json();
+    const reply = responseData.content?.[0]?.text;
+    if (!reply) return res.status(502).json({ error: "لم يصل رد من المساعد، حاول بعد قليل." });
+    return res.status(200).json({ reply });
   } catch (error) {
-    res.status(500).json({ error: 'حصل خطأ، حاول مرة ثانية' });
+    console.error("growth assistant error", error?.message || "unknown");
+    return res.status(500).json({ error: "تعذر تشغيل المساعد الآن، حاول بعد قليل." });
   }
 }
