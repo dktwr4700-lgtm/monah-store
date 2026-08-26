@@ -1,532 +1,1430 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { auth, db, storage } from "./firebase.js";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import {
+  collection, addDoc, query, where, onSnapshot,
+  serverTimestamp, doc, setDoc, getDoc, getDocs, writeBatch,
+  deleteDoc, updateDoc
+} from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Orders from "./Orders.jsx";
+import GrowthAssistant from "./GrowthAssistant.jsx";
 
-function formatText(text) {
-  const lines = text.split("\n");
-  const elements = [];
-  let listItems = [];
-
-  function flushList() {
-    if (listItems.length > 0) {
-      elements.push(
-        <ul key={elements.length} style={{ margin: "6px 0", paddingInlineStart: 20 }}>
-          {listItems.map((item, i) => (
-            <li key={i} style={{ marginBottom: 4 }}>{formatInline(item)}</li>
-          ))}
-        </ul>
+// [تشخيص مؤقت] يعرض أي خطأ حقيقي بدل الشاشة الفاضية — يُحذف بعد التشخيص
+class DebugErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20, direction: "rtl", fontFamily: "monospace", fontSize: 12, whiteSpace: "pre-wrap", color: "#B24C3A", background: "#fff" }}>
+          [تشخيص مؤقت]{"\n"}{String(this.state.error && this.state.error.message)}{"\n\n"}{String(this.state.error && this.state.error.stack)}
+        </div>
       );
-      listItems = [];
     }
+    return this.props.children;
   }
-
-  function formatInline(str) {
-    const parts = str.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={i}>{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  }
-
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (trimmed === "---" || trimmed === "") {
-      flushList();
-      if (trimmed === "") elements.push(<div key={elements.length} style={{ height: 6 }} />);
-      return;
-    }
-    if (trimmed.startsWith("### ")) {
-      flushList();
-      elements.push(<h4 key={elements.length} style={{ margin: "10px 0 4px", fontSize: 15 }}>{formatInline(trimmed.slice(4))}</h4>);
-      return;
-    }
-    if (trimmed.startsWith("## ")) {
-      flushList();
-      elements.push(<h3 key={elements.length} style={{ margin: "12px 0 6px", fontSize: 16 }}>{formatInline(trimmed.slice(3))}</h3>);
-      return;
-    }
-    if (trimmed.startsWith("# ")) {
-      flushList();
-      elements.push(<h3 key={elements.length} style={{ margin: "12px 0 6px", fontSize: 17 }}>{formatInline(trimmed.slice(2))}</h3>);
-      return;
-    }
-    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      listItems.push(trimmed.slice(2));
-      return;
-    }
-    flushList();
-    elements.push(<p key={elements.length} style={{ margin: "4px 0", lineHeight: 1.7 }}>{formatInline(trimmed)}</p>);
-  });
-  flushList();
-  return elements;
 }
 
-const QUICK_ACTIONS = [
-  { id: "improve-product", label: "حسّن هذا المنتج" },
-  { id: "caption", label: "اكتب لي كابشن" },
-  { id: "reel-idea", label: "فكرة ريلز" },
-  { id: "audit-store", label: "افحص متجري" },
-  { id: "coupon-idea", label: "أنشئ كود خصم" },
-  { id: "what-today", label: "ماذا أفعل اليوم؟" },
+const COLORS = ["#16233F", "#4B6152", "#8B3A3A", "#5B4A8A", "#B9832F"];
+const ADMIN_EMAIL = "k1997551@gmail.com";
+const MAX_PRODUCT_FILE_MB = 50;
+
+const styles = `
+  .dh-page{ min-height:100vh; background:#FFFFFF; font-family:'Cairo', sans-serif; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  .dh-header{ display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:#FFFFFF; border-bottom:1px solid #EDEAE0; }
+  .dh-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:16px; }
+  .dh-brand span{ color:#8A8677; font-weight:600; font-size:11.5px; margin-right:6px; }
+  .dh-logout{ border:1px solid #EDEAE0; padding:7px 13px; border-radius:100px; font-size:11px; color:#3D4A66; background:none; font-family:'Cairo',sans-serif; cursor:pointer; }
+  .dh-admin-btn{ border:1px solid #B9832F; padding:7px 13px; border-radius:100px; font-size:11px; color:#B9832F; background:none; font-family:'Cairo',sans-serif; cursor:pointer; font-weight:700; margin-left:8px; }
+
+  .dh-tabs{ display:flex; gap:6px; padding:12px 16px 0; overflow-x:auto; background:#FFFFFF; }
+  .dh-tab{ white-space:nowrap; padding:8px 14px; border-radius:100px; font-size:11.5px; font-weight:700; border:1px solid #EDEAE0; background:#FFFFFF; color:#3D4A66; cursor:pointer; }
+  .dh-tab.active{ background:#0B0B0C; color:#fff; border-color:#0B0B0C; }
+
+  .dh-wrap{ padding:18px; max-width:560px; margin:0 auto; }
+
+  .dh-stats{ display:flex; gap:1px; background:#EDEAE0; border-radius:16px; overflow:hidden; margin-bottom:16px; }
+
+  .dh-next{ position:relative; overflow:hidden; background:linear-gradient(150deg, #163F2E, #0E3B2C 60%, #0A2E22); border-radius:20px; padding:22px 20px; margin-bottom:16px; color:#fff; }
+  .dh-next-badge{ display:inline-flex; align-items:center; gap:6px; background:rgba(244,241,232,0.1); color:#D6F35C; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; margin-bottom:14px; }
+  .dh-next-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:16px; line-height:1.6; margin-bottom:8px; }
+  .dh-next-text{ color:rgba(244,241,232,0.72); font-size:12.5px; line-height:1.8; max-width:280px; margin-bottom:16px; }
+  .dh-next-bar{ height:6px; background:rgba(244,241,232,0.12); border-radius:100px; overflow:hidden; margin-bottom:6px; }
+  .dh-next-bar-fill{ height:100%; background:#D6F35C; border-radius:100px; }
+  .dh-next-step{ color:rgba(244,241,232,0.55); font-size:11px; margin-bottom:16px; }
+  .dh-next-btn{ display:inline-flex; align-items:center; gap:6px; background:#fff; color:#0B0B0C; border:none; padding:11px 18px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer; }
+
+  .dh-quick{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .dh-quick-btn{ flex:1; min-width:130px; background:#FFFFFF; border:1px solid #EDEAE0; border-radius:14px; padding:14px; text-align:center; font-size:12px; font-weight:700; color:#0B0B0C; cursor:pointer; }
+  .dh-quick-btn:hover{ background:#FBFAF7; }
+
+  .pv-overlay{ position:fixed; inset:0; background:rgba(11,11,12,0.55); z-index:100; display:flex; align-items:flex-end; justify-content:center; }
+  .pv-sheet{ background:#FFFFFF; width:100%; max-width:460px; max-height:90vh; overflow-y:auto; border-radius:22px 22px 0 0; position:relative; }
+  .pv-close{ position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; background:#FFFFFF; padding:14px 18px; border-bottom:1px solid #EDEAE0; }
+  .pv-close-label{ font-family:'Almarai', sans-serif; font-weight:800; font-size:13px; color:#0B0B0C; }
+  .pv-close-btn{ background:#F1F0EA; border:none; width:30px; height:30px; border-radius:50%; color:#0B0B0C; font-size:14px; cursor:pointer; }
+  .pv-body{ padding:20px; }
+  .pv-cover{ height:150px; border-radius:16px; background:linear-gradient(135deg, #0E3B2C, #1C4632); display:flex; align-items:center; justify-content:center; margin-bottom:18px; overflow:hidden; }
+  .pv-cover img{ width:100%; height:100%; object-fit:cover; }
+  .pv-cat{ display:inline-flex; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; margin-bottom:12px; }
+  .pv-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#0B0B0C; margin-bottom:14px; }
+  .pv-card{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; overflow:hidden; margin-bottom:14px; }
+  .pv-price-row{ display:flex; justify-content:space-between; padding:16px 18px; border-bottom:1px dashed #EDEAE0; }
+  .pv-desc{ padding:16px 18px; color:#3D4A66; font-size:13px; line-height:1.9; }
+  .pv-btn{ width:100%; background:#0B0B0C; color:#fff; border:none; padding:15px; border-radius:100px; font-weight:700; font-size:13.5px; text-align:center; }
+  .pv-note{ text-align:center; color:#B0AC9C; font-size:11px; margin-top:14px; }
+  .dh-stat{ flex:1; background:#0E3B2C; padding:16px 10px; text-align:center; }
+  .dh-stat:nth-child(2){ background:#163F2E; }
+  .dh-stat:nth-child(3){ background:#0A2E22; }
+  .dh-stat b{ display:block; font-family:'JetBrains Mono',monospace; font-weight:700; color:#fff; font-size:18px; }
+  .dh-stat span{ display:block; color:#B9C9BC; font-size:9.5px; margin-top:4px; }
+
+  .dh-store-link{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+  .dh-store-label{ color:#8A8677; font-size:10.5px; margin-bottom:7px; font-weight:600; }
+  .dh-store-row{ display:flex; align-items:center; gap:8px; }
+  .dh-store-url{ flex:1; color:#0B0B0C; font-size:11.5px; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dh-copy{ background:#0B0B0C; color:#fff; border:none; padding:7px 12px; border-radius:100px; font-size:10.5px; font-weight:700; white-space:nowrap; cursor:pointer; }
+
+  .dh-card{ background:#FFFFFF; border-radius:16px; padding:18px; margin-bottom:14px; border:1px solid #EDEAE0; }
+  .dh-title-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .dh-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; color:#0B0B0C; }
+  .dh-title-count{ font-family:'JetBrains Mono',monospace; color:#8A8677; font-size:11px; }
+
+  .dh-field{ margin-bottom:12px; }
+  .dh-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
+  .dh-field input, .dh-field textarea, .dh-field select{ width:100%; padding:11px 13px; border:1px solid #EDEAE0; border-radius:10px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; }
+  .dh-hint{ color:#8A8677; font-size:10.5px; margin-top:6px; line-height:1.6; }
+  .dh-btn{ width:100%; background:#0B0B0C; color:#fff; border:none; padding:13px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer; }
+  .dh-btn:disabled{ opacity:.6; }
+  .dh-type-toggle{ display:flex; gap:8px; }
+  .dh-type-btn{ flex:1; padding:11px; border:1px solid #EDEAE0; background:#FBFAF7; border-radius:10px; font-size:12.5px; font-weight:700; color:#3D4A66; cursor:pointer; }
+  .dh-type-btn.active{ background:#0B0B0C; color:#fff; border-color:#0B0B0C; }
+  .dh-item-stock{ color:#8A8677; font-size:11px; margin-bottom:8px; }
+  .dh-images-row{ display:flex; gap:10px; }
+  .dh-image-thumb-wrap{ position:relative; width:64px; height:64px; }
+  .dh-image-thumb{ width:64px; height:64px; border-radius:12px; object-fit:cover; display:block; }
+  .dh-image-remove{ position:absolute; top:-6px; left:-6px; width:20px; height:20px; border-radius:50%; background:#B24C3A; color:#fff; border:2px solid #FFFFFF; font-size:10px; line-height:1; cursor:pointer; }
+  .dh-image-add{ width:64px; height:64px; border-radius:12px; border:1.5px dashed #EDEAE0; background:#FBFAF7; display:flex; align-items:center; justify-content:center; font-size:22px; color:#8A8677; cursor:pointer; flex-shrink:0; }
+  .dh-item-actions{ display:flex; gap:8px; margin-top:8px; }
+  .dh-item-action{ flex:1; text-align:center; padding:8px; border-radius:100px; font-size:11px; font-weight:700; border:1px solid #EDEAE0; background:#FBFAF7; color:#3D4A66; cursor:pointer; }
+  .dh-item-action.primary{ background:#0B0B0C; color:#fff; border-color:#0B0B0C; }
+  .dh-item-action.danger{ color:#B24C3A; border-color:#F0D9D3; }
+  .dh-item-action:disabled{ opacity:.6; }
+  .dh-edit-form .dh-field{ margin-bottom:10px; }
+  .dh-edit-actions{ display:flex; gap:8px; margin-top:4px; }
+  .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
+  .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
+  .dh-file-picked{ background:#EAF0EB; color:#4B6152; font-size:11.5px; padding:9px 12px; border-radius:10px; margin-top:8px; }
+
+  .dh-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
+  .dh-item:first-child{ border-top:none; }
+  .dh-item-top{ display:flex; justify-content:space-between; margin-bottom:8px; }
+  .dh-item-name{ font-weight:700; color:#0B0B0C; font-size:13px; }
+  .dh-item-price{ color:#B9832F; font-weight:700; font-size:12.5px; font-family:'JetBrains Mono',monospace; }
+  .dh-item-link{ display:flex; gap:8px; align-items:center; background:#FBFAF7; border:1px solid #EDEAE0; border-radius:8px; padding:7px 9px; }
+  .dh-item-link-text{ flex:1; font-size:10px; color:#8A8677; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dh-item-link-btn{ background:#0B0B0C; color:#fff; border:none; padding:5px 10px; border-radius:100px; font-size:10px; cursor:pointer; }
+  .empty-note{ color:#B0AC9C; font-size:13px; text-align:center; padding:22px 0; }
+
+  .ds-preview{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; overflow:hidden; margin-bottom:16px; }
+  .ds-preview-bar{ padding:10px 14px; background:#FBFAF7; border-bottom:1px solid #EDEAE0; font-size:10px; color:#8A8677; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .ds-preview-body{ padding:22px 18px; text-align:center; }
+  .ds-preview-logo{ width:52px; height:52px; border-radius:16px; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-weight:800; color:#fff; font-size:20px; }
+  .ds-preview-logo-img{ width:52px; height:52px; border-radius:16px; margin:0 auto 10px; display:block; object-fit:cover; }
+  .ds-preview-name{ font-family:'Almarai',sans-serif; font-weight:800; font-size:14px; margin-bottom:4px; }
+  .ds-preview-tag{ font-size:11px; color:#8A8677; }
+  .dh-logo-row{ display:flex; align-items:center; gap:12px; }
+  .dh-logo-thumb{ width:52px; height:52px; border-radius:14px; object-fit:cover; flex-shrink:0; }
+  .dh-logo-placeholder{ width:52px; height:52px; border-radius:14px; background:#FBFAF7; border:1.5px dashed #EDEAE0; display:flex; align-items:center; justify-content:center; color:#8A8677; font-family:'Almarai',sans-serif; font-weight:800; flex-shrink:0; }
+  .dh-logo-btn{ border:1px solid #EDEAE0; background:#FFFFFF; padding:9px 14px; border-radius:100px; font-size:11.5px; font-weight:700; color:#0B0B0C; cursor:pointer; }
+  .ds-swatches{ display:flex; gap:10px; margin-bottom:16px; }
+  .ds-swatch{ width:38px; height:38px; border-radius:12px; position:relative; border:2px solid transparent; cursor:pointer; }
+  .ds-swatch.selected{ border-color:#0B0B0C; }
+  .ds-swatch.selected::after{ content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; }
+
+  .ds-cover-preview{ height:80px; position:relative; overflow:hidden; }
+  .ds-cover-preview img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .ds-preview-body{ position:relative; margin-top:-30px; }
+  .ds-cover-row{ display:flex; align-items:center; gap:12px; }
+  .ds-cover-thumb{ width:80px; height:44px; border-radius:10px; object-fit:cover; flex-shrink:0; }
+  .ds-cover-placeholder{ width:80px; height:44px; border-radius:10px; background:#FBFAF7; border:1.5px dashed #EDEAE0; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#B0AC9C; font-size:10px; }
+
+  .ds-view-btn{ display:inline-flex; align-items:center; gap:6px; color:#0B0B0C; font-size:11.5px; font-weight:700; text-decoration:none; border:1px solid #EDEAE0; padding:8px 14px; border-radius:100px; background:#FFFFFF; }
+
+  .ds-save-bar{ position:sticky; bottom:0; background:#FFFFFF; border-top:1px solid #EDEAE0; padding:12px 18px; margin:0 -18px; display:flex; align-items:center; gap:12px; }
+  .ds-save-status{ flex:1; font-size:11.5px; color:#8A8677; }
+  .ds-save-status.unsaved{ color:#B9832F; font-weight:700; }
+  .ds-save-btn{ background:#0B0B0C; color:#fff; border:none; padding:11px 22px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .ds-save-btn:disabled{ opacity:.6; }
+
+  .pk-card{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; padding:18px; margin-bottom:12px; position:relative; }
+  .pk-card.current{ border:2px solid #0B0B0C; }
+  .pk-badge{ position:absolute; top:-9px; right:16px; background:#B9832F; color:#fff; font-size:10px; font-weight:700; padding:3px 10px; border-radius:100px; }
+  .pk-name{ font-family:'Almarai',sans-serif; font-weight:800; color:#0B0B0C; font-size:14px; margin-bottom:4px; }
+  .pk-price{ font-family:'JetBrains Mono',monospace; font-weight:700; color:#0B0B0C; font-size:20px; margin-bottom:10px; }
+  .pk-price span{ font-size:11px; color:#8A8677; font-family:'Cairo',sans-serif; }
+  .pk-features div{ font-size:12px; color:#3D4A66; padding:3px 0; }
+  .pk-current-tag{ display:inline-block; margin-top:10px; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; }
+
+  .cp-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
+  .cp-item:first-child{ border-top:none; }
+  .cp-item-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .cp-code{ font-family:'JetBrains Mono',monospace; font-weight:800; color:#0B0B0C; font-size:14px; letter-spacing:.02em; }
+  .cp-percent{ background:#F3EBDD; color:#B9832F; font-size:11px; font-weight:700; padding:4px 10px; border-radius:100px; }
+  .cp-scope{ color:#8A8677; font-size:11px; margin-bottom:8px; }
+
+  /* استجابة فورية للضغط — نفس مبدأ apple-design */
+  .dh-page button{ transition:transform 100ms ease-out; }
+  .dh-page button:active{ transform:scale(0.96); }
+`;
+
+const COMMON_FEATURES = [
+  "بدون عمولة على المبيعات",
+  "تسليم تلقائي للمنتج بعد الدفع",
+  "صفحة متوافقة مع الجوال",
+  "رابط خاص لكل منتج",
+  "ترقية أو تخفيض الباقة أو الإلغاء في أي وقت",
 ];
 
-// الباقة الوحيدة المسموح لها باستخدام المساعد فعليًا (تحكّم بالتكلفة)
-const REQUIRED_PLAN = "full";
+const PACKAGES = [
+  {
+    id: "basic", name: "أساسية", price: "5",
+    desc: "مناسبة لمن يريد البدء ببيع أول منتجاته الرقمية.",
+    btn: "ابدأ متجرك",
+    features: ["حتى 10 منتجات", "صفحة متجر جاهزة", "بيع ملفات وأكواد/تراخيص"],
+  },
+  {
+    id: "pro", name: "احترافية", price: "10", popular: true,
+    desc: "مناسبة لمن يريد تنمية مبيعاته وتخصيص متجره.",
+    btn: "نمِّ متجرك",
+    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "تخصيص شعار وألوان المتجر", "كوبونات خصم"],
+    soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"],
+  },
+  {
+    id: "full", name: "متجر متكامل", price: "15",
+    desc: "مناسبة لمن يريد بناء علامة رقمية مستقلة.",
+    btn: "ابنِ علامتك",
+    features: ["كل مميزات الاحترافية"],
+    soon: ["ربط دومينك الخاص", "إزالة شعار Monah من واجهة المتجر", "حماية متقدمة لروابط التحميل", "تحليلات مصادر الزيارات", "دعم أولوية", "مساعدة في إعداد المتجر"],
+  },
+];
 
-function SuggestionCard({ suggestion, storeData, onApply }) {
-  const [applying, setApplying] = useState(false);
-  const [applied, setApplied] = useState(false);
-  const [error, setError] = useState("");
+export default function Dashboard() {
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+  function getTabFromHash() {
+    const parts = window.location.hash.replace("#", "").split("/");
+    const t = parts[1];
+    return ["overview", "products", "coupons", "orders", "design", "subscription"].includes(t) ? t : "overview";
+  }
+  const [tab, setTabState] = useState(getTabFromHash);
 
-  async function handleApply() {
-    if (!onApply || applying || applied) return;
-    setApplying(true);
-    setError("");
-    try {
-      await onApply(suggestion);
-      setApplied(true);
-    } catch (err) {
-      setError("تعذر تطبيق التعديل، حاول مرة ثانية.");
+  function setTab(newTab) {
+    setTabState(newTab);
+    const newHash = "#dashboard/" + newTab;
+    if (window.location.hash !== newHash) {
+      window.location.hash = newHash;
     }
-    setApplying(false);
   }
 
-  if (suggestion.kind === "improve-product") {
-    const product = (storeData?.products || []).find((p) => p.id === suggestion.productId);
-    return (
-      <div style={{ marginTop: 6, marginBottom: 10, background: "#fff", border: "1px solid #EDEAE0", borderRadius: 14, padding: 12 }}>
-        <div style={{ fontSize: 11, color: "#8A8677", fontWeight: 700, marginBottom: 6 }}>
-          اقتراح تعديل{product ? ` — ${product.name}` : ""}
-        </div>
-        {applied ? (
-          <div style={{ color: "#4B6152", fontSize: 12.5, fontWeight: 700 }}>✓ تم التطبيق على المنتج</div>
-        ) : (
-          <>
-            <button
-              onClick={handleApply}
-              disabled={applying}
-              style={{ width: "100%", background: "#0B0B0C", color: "#fff", border: "none", padding: "9px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-            >
-              {applying ? "جاري التطبيق..." : `تطبيق على ${product ? product.name : "المنتج"}`}
-            </button>
-            {error && <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 6 }}>{error}</div>}
-          </>
-        )}
-      </div>
-    );
-  }
+  // products
+  const [products, setProducts] = useState([]);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [productFile, setProductFile] = useState(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const [category, setCategory] = useState("");
+  const [productType, setProductType] = useState("file");
+  const [sellerPlan, setSellerPlan] = useState("basic");
+  const [codesText, setCodesText] = useState("");
+  const [productImages, setProductImages] = useState([]);
+  const [imagesUploading, setImagesUploading] = useState(false);
+  const [imagesError, setImagesError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [copied, setCopied] = useState("");
+  const [productQuery, setProductQuery] = useState("");
+  const [productFilter, setProductFilter] = useState("all");
+  const [togglingHiddenId, setTogglingHiddenId] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  if (suggestion.kind === "coupon-idea") {
-    return (
-      <div style={{ marginTop: 6, marginBottom: 10, background: "#fff", border: "1px solid #EDEAE0", borderRadius: 14, padding: 12 }}>
-        <div style={{ fontSize: 11, color: "#8A8677", fontWeight: 700, marginBottom: 6 }}>
-          اقتراح كود خصم — {suggestion.code} ({suggestion.percent}٪)
-        </div>
-        {applied ? (
-          <div style={{ color: "#4B6152", fontSize: 12.5, fontWeight: 700 }}>✓ تم إنشاء الكود</div>
-        ) : (
-          <>
-            <button
-              onClick={handleApply}
-              disabled={applying}
-              style={{ width: "100%", background: "#0B0B0C", color: "#fff", border: "none", padding: "9px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-            >
-              {applying ? "جاري الإنشاء..." : `إنشاء كود ${suggestion.code}`}
-            </button>
-            {error && <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 6 }}>{error}</div>}
-          </>
-        )}
-      </div>
-    );
-  }
+  // store design
+  const [storeName, setStoreName] = useState("");
+  const [storeColor, setStoreColor] = useState(COLORS[0]);
+  const [tagline, setTagline] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugError, setSlugError] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("platform");
+  const [payoutInfo, setPayoutInfo] = useState("");
+  const [payoutWhatsapp, setPayoutWhatsapp] = useState("");
+  const [logoError, setLogoError] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverError, setCoverError] = useState("");
+  const [designSaved, setDesignSaved] = useState(false);
+  const [designSaving, setDesignSaving] = useState(false);
+  const [designDirty, setDesignDirty] = useState(false);
 
-  return null;
-}
+  // coupons
+  const [coupons, setCoupons] = useState([]);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponPercent, setCouponPercent] = useState("");
+  const [couponScope, setCouponScope] = useState("all");
+  const [couponSaving, setCouponSaving] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const [deletingCouponId, setDeletingCouponId] = useState(null);
 
-export default function GrowthAssistant({ storeData, plan, onUpgradeClick, onApplySuggestion, nextStep }) {
-  const [open, setOpen] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const scrollRef = useRef(null);
-  const panelRef = useRef(null);
+  // overview: sales
+  const [sellerOrders, setSellerOrders] = useState([]);
 
-  // ===== زنبرك قابل للمقاطعة — نفس منطق مهارة apple-design =====
-  const currentY = useRef(0);
-  const targetY = useRef(0);
-  const velocity = useRef(0);
-  const rafId = useRef(null);
-  const panelHeight = useRef(560);
+  useEffect(() => {
+    function onHashChange() {
+      setTabState(getTabFromHash());
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
-  function renderSheet() {
-    if (panelRef.current) panelRef.current.style.transform = `translateY(${currentY.current}px)`;
-  }
-  function springStep(damping, response) {
-    const stiffness = (2 * Math.PI / response) ** 2;
-    const dampingCoef = 2 * damping * Math.sqrt(stiffness);
-    function step() {
-      const displacement = currentY.current - targetY.current;
-      const accel = -stiffness * displacement - dampingCoef * velocity.current;
-      velocity.current += accel * (1 / 60);
-      currentY.current += velocity.current * (1 / 60);
-      renderSheet();
-      if (Math.abs(velocity.current) > 0.5 || Math.abs(currentY.current - targetY.current) > 0.5) {
-        rafId.current = requestAnimationFrame(step);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) {
+        window.location.hash = "login";
       } else {
-        currentY.current = targetY.current;
-        velocity.current = 0;
-        renderSheet();
-        rafId.current = null;
-        if (targetY.current > 0) setOpen(false);
+        setUser(u);
+      }
+      setChecking(false);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.email === ADMIN_EMAIL) return;
+    async function ensureSellerProfile() {
+      try {
+        const sellerRef = doc(db, "sellers", user.uid);
+        const snap = await getDoc(sellerRef);
+        if (!snap.exists()) {
+          await setDoc(sellerRef, {
+            storeName: user.email.split("@")[0],
+            email: user.email,
+            createdAt: new Date().toISOString(),
+            plan: "basic",
+            disabled: false,
+          });
+        }
+      } catch (err) {
+        console.error("ensureSellerProfile:", err);
       }
     }
-    return step;
+    ensureSellerProfile();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    async function loadSellerPlan() {
+      try {
+        const snap = await getDoc(doc(db, "sellers", user.uid));
+        if (snap.exists()) {
+          setSellerPlan(snap.data().plan || "basic");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadSellerPlan();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "products"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "orders"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        list.sort((a, b) => {
+          const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+          const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+          return tb - ta;
+        });
+        setSellerOrders(list);
+      },
+      () => setSellerOrders([])
+    );
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    async function loadStore() {
+      const snap = await getDoc(doc(db, "stores", user.uid));
+      if (snap.exists()) {
+        const data = snap.data();
+        setStoreName(data.name || "");
+        setStoreColor(data.color || COLORS[0]);
+        setTagline(data.tagline || "");
+        setWhatsapp(data.whatsapp || "");
+        setInstagram(data.instagram || "");
+        setSlug(data.slug || "");
+        setLogoUrl(data.logoUrl || "");
+        setCoverUrl(data.coverUrl || "");
+        setPaymentMethod(data.paymentMethod || "platform");
+        setPayoutInfo(data.payoutInfo || "");
+        setPayoutWhatsapp(data.payoutWhatsapp || "");
+      } else {
+        setStoreName(user.email.split("@")[0]);
+      }
+    }
+    loadStore();
+  }, [user]);
+
+  function handleFilePick(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setError("");
+    if (file.size > MAX_PRODUCT_FILE_MB * 1024 * 1024) {
+      setError(`حجم الملف أكبر من ${MAX_PRODUCT_FILE_MB} ميجا. تواصل معنا لو تحتاج رفع ملف أكبر.`);
+      setProductFile(null);
+      return;
+    }
+    setProductFile(file);
   }
-  function animateTo(target, opts = {}) {
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    targetY.current = target;
-    if (opts.velocity !== undefined) velocity.current = opts.velocity;
-    rafId.current = requestAnimationFrame(springStep(opts.damping ?? 1.0, opts.response ?? 0.4));
+
+  async function handleAddProduct(e, publish) {
+    e.preventDefault();
+    setError("");
+
+    if (productType === "file") {
+      if (!name || !price || !productFile) {
+        setError("عبّي اسم المنتج والسعر واختر ملف المنتج.");
+        return;
+      }
+    } else {
+      const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
+      if (!name || !price || codesList.length === 0) {
+        setError("عبّي اسم المنتج والسعر، وألصقي الأكواد (كود بكل سطر).");
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
+      const productRef = await addDoc(collection(db, "products"), {
+        ownerId: user.uid,
+        name,
+        price: Number(price),
+        description: description || "",
+        category: category || "عام",
+        type: productType,
+        filePath: "",
+        codesCount: productType === "code" ? codesList.length : 0,
+        images: productImages,
+        hidden: !publish,
+        createdAt: serverTimestamp(),
+      });
+
+      if (productType === "code" && codesList.length > 0) {
+        const batch = writeBatch(db);
+        codesList.forEach((code) => {
+          const codeRef = doc(collection(db, "products", productRef.id, "codes"));
+          batch.set(codeRef, { code, used: false, usedBy: null, usedAt: null });
+        });
+        await batch.commit();
+      }
+
+      if (productType === "file" && productFile) {
+        setUploadingFile(true);
+        const safeName = productFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filePath = `secure/${productRef.id}/${safeName}`;
+        const fileRef = ref(storage, filePath);
+        await uploadBytes(fileRef, productFile);
+        await updateDoc(doc(db, "products", productRef.id), { filePath });
+        setUploadingFile(false);
+      }
+
+      setName("");
+      setPrice("");
+      setDescription("");
+      setProductFile(null);
+      setFileInputKey((k) => k + 1);
+      setCategory("");
+      setCodesText("");
+      setProductType("file");
+      setProductImages([]);
+    } catch (err) {
+      setError("صار خطأ، حاول مرة ثانية.");
+      setUploadingFile(false);
+    }
+    setSaving(false);
   }
-  function openPanel() {
-    setOpen(true);
-    requestAnimationFrame(() => {
-      if (panelRef.current) panelHeight.current = panelRef.current.offsetHeight;
-      currentY.current = panelHeight.current;
-      renderSheet();
-      animateTo(0, { damping: 0.86, response: 0.42 });
+
+  function startEdit(p) {
+    setEditingId(p.id);
+    setEditName(p.name);
+    setEditPrice(String(p.price));
+    setEditDescription(p.description || "");
+    setEditCategory(p.category || "");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(productId) {
+    if (!editName || !editPrice) {
+      setError("عبّي اسم المنتج والسعر.");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      await updateDoc(doc(db, "products", productId), {
+        name: editName,
+        price: Number(editPrice),
+        description: editDescription || "",
+        category: editCategory || "عام",
+      });
+      setEditingId(null);
+    } catch (err) {
+      setError("تعذر حفظ التعديل، حاول مرة ثانية.");
+    }
+    setEditSaving(false);
+  }
+
+  async function confirmDelete(productId) {
+    setDeletingId(productId);
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      setConfirmDeleteId(null);
+    } catch (err) {
+      setError("تعذر حذف المنتج، حاول مرة ثانية.");
+    }
+    setDeletingId(null);
+  }
+
+  async function toggleHidden(productId, currentlyHidden) {
+    setTogglingHiddenId(productId);
+    try {
+      await updateDoc(doc(db, "products", productId), { hidden: !currentlyHidden });
+    } catch (err) {
+      setError("تعذر تحديث حالة المنتج، حاول مرة ثانية.");
+    }
+    setTogglingHiddenId(null);
+  }
+
+  const filteredProducts = products.filter((p) => {
+    const matchesQuery = p.name.toLowerCase().includes(productQuery.trim().toLowerCase());
+    const matchesFilter =
+      productFilter === "all" ||
+      (productFilter === "visible" && !p.hidden) ||
+      (productFilter === "hidden" && p.hidden);
+    return matchesQuery && matchesFilter;
+  });
+
+  async function handleProductImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImagesError("");
+    if (productImages.length >= 2) {
+      setImagesError("حد أقصى صورتين لكل منتج.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImagesError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      return;
+    }
+    setImagesUploading(true);
+    try {
+      const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      setProductImages((prev) => [...prev, url]);
+    } catch (err) {
+      setImagesError("تعذر رفع الصورة، حاول مرة ثانية.");
+    }
+    setImagesUploading(false);
+  }
+
+  function removeProductImage(url) {
+    setProductImages((prev) => prev.filter((u) => u !== url));
+  }
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoError("");
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const fileRef = ref(storage, `logos/${user.uid}-${Date.now()}`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      setLogoUrl(url);
+    } catch (err) {
+      setLogoError("تعذر رفع الصورة، حاول مرة ثانية.");
+    }
+    setLogoUploading(false);
+  }
+
+  async function handleCoverUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCoverError("");
+    if (file.size > 5 * 1024 * 1024) {
+      setCoverError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      return;
+    }
+    setCoverUploading(true);
+    try {
+      const fileRef = ref(storage, `covers/${user.uid}-${Date.now()}`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      setCoverUrl(url);
+      setDesignDirty(true);
+    } catch (err) {
+      setCoverError("تعذر رفع الصورة، حاول مرة ثانية.");
+    }
+    setCoverUploading(false);
+  }
+
+  async function handleSaveDesign() {
+    setDesignSaving(true);
+    setDesignSaved(false);
+    setSlugError("");
+    try {
+      const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+      if (cleanSlug) {
+        const q = query(collection(db, "stores"), where("slug", "==", cleanSlug));
+        const snap = await getDocs(q);
+        const takenByOther = snap.docs.some((d) => d.id !== user.uid);
+        if (takenByOther) {
+          setSlugError("هذا الرابط مستخدم من متجر ثاني، جربي رابط مختلف.");
+          setDesignSaving(false);
+          return;
+        }
+      }
+      await setDoc(doc(db, "stores", user.uid), {
+        name: storeName,
+        color: storeColor,
+        tagline: tagline || "",
+        whatsapp: whatsapp || "",
+        instagram: instagram || "",
+        slug: cleanSlug || "",
+        logoUrl: logoUrl || "",
+        coverUrl: coverUrl || "",
+        paymentMethod: paymentMethod,
+        payoutInfo: paymentMethod === "manual" ? payoutInfo || "" : "",
+        payoutWhatsapp: paymentMethod === "manual" ? payoutWhatsapp || "" : "",
+        ownerId: user.uid,
+        updatedAt: serverTimestamp(),
+      });
+      try {
+        await setDoc(doc(db, "sellers", user.uid), { storeName }, { merge: true });
+      } catch (e) {
+        console.error(e);
+      }
+      setSlug(cleanSlug);
+      setDesignSaved(true);
+      setDesignDirty(false);
+      setTimeout(() => setDesignSaved(false), 2000);
+    } catch (err) {
+      setError("تعذر حفظ التصميم، حاول مرة ثانية.");
+    }
+    setDesignSaving(false);
+  }
+
+  async function handleAddCoupon(e) {
+    e.preventDefault();
+    setCouponError("");
+    if (sellerPlan === "basic") {
+      setCouponError("كوبونات الخصم متاحة من الباقة الاحترافية فأعلى.");
+      return;
+    }
+    const cleanCode = couponCode.trim().toUpperCase().replace(/\s+/g, "");
+    const percentNum = Number(couponPercent);
+
+    if (!cleanCode) {
+      setCouponError("اكتب كود الخصم.");
+      return;
+    }
+    if (!percentNum || percentNum <= 0 || percentNum > 90) {
+      setCouponError("نسبة الخصم لازم تكون بين 1 و 90.");
+      return;
+    }
+    const exists = coupons.some((c) => c.code === cleanCode);
+    if (exists) {
+      setCouponError("عندك كود بنفس الاسم من قبل، اختر اسم ثاني.");
+      return;
+    }
+
+    setCouponSaving(true);
+    try {
+      await addDoc(collection(db, "coupons"), {
+        ownerId: user.uid,
+        code: cleanCode,
+        discountPercent: percentNum,
+        productId: couponScope === "all" ? null : couponScope,
+        active: true,
+        createdAt: serverTimestamp(),
+      });
+      setCouponCode("");
+      setCouponPercent("");
+      setCouponScope("all");
+    } catch (err) {
+      setCouponError("صار خطأ، حاول مرة ثانية.");
+    }
+    setCouponSaving(false);
+  }
+
+  async function deleteCoupon(couponId) {
+    setDeletingCouponId(couponId);
+    try {
+      await deleteDoc(doc(db, "coupons", couponId));
+    } catch (err) {
+      console.error(err);
+    }
+    setDeletingCouponId(null);
+  }
+
+  function couponScopeLabel(c) {
+    if (!c.productId) return "على كل منتجاتك";
+    const p = products.find((pr) => pr.id === c.productId);
+    return p ? `على منتج: ${p.name}` : "على منتج محذوف";
+  }
+
+  function handleLogout() {
+    signOut(auth).then(() => {
+      window.location.hash = "login";
     });
   }
-  function closePanel(withVelocity) {
-    animateTo(panelHeight.current, { damping: 1.0, response: 0.35, velocity: withVelocity || 0 });
+
+  function copyLink(id, kind) {
+    const url = `${window.location.origin}${window.location.pathname}#${kind}/${id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(kind + id);
+      setTimeout(() => setCopied(""), 1500);
+    });
   }
 
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel || !open) return;
-    let dragging = false, startY = 0, startCurrentY = 0, lastMoveY = 0, lastMoveT = 0, pointerVelocity = 0;
-    function onDown(e) {
-      if (e.target.closest("button") || e.target.closest("input")) return;
-      dragging = true;
-      if (rafId.current) cancelAnimationFrame(rafId.current);
-      panel.setPointerCapture(e.pointerId);
-      startY = e.clientY; startCurrentY = currentY.current;
-      lastMoveY = e.clientY; lastMoveT = performance.now(); pointerVelocity = 0;
+  if (checking) return null;
+
+  const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
+  const initial = (storeName || "م").charAt(0);
+
+  const assistantContext = {
+    storeName,
+    tagline,
+    plan: sellerPlan,
+    productsCount: products.length,
+    products: products.slice(0, 20).map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      category: p.category,
+      description: p.description,
+      hidden: !!p.hidden,
+    })),
+    ordersCount: sellerOrders.length,
+    totalSales: sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0),
+  };
+
+  // يحدد أهم خطوة ناقصة بمتجر التاجر حاليًا — تُستخدم ببطاقة "خطوتك التالية" وبترحيب المساعد الذكي
+  function getNextStep() {
+    const hasProduct = products.length > 0;
+    const hasTagline = !!tagline;
+    const hasContact = !!(whatsapp || instagram);
+    const allDescribed = products.every((p) => !!p.description);
+    const hasCoupon = coupons.length > 0;
+    const stepsDone = [hasProduct, hasTagline, hasContact, hasProduct ? allDescribed : false, sellerPlan === "basic" ? true : hasCoupon].filter(Boolean).length;
+
+    if (!hasProduct) {
+      return {
+        key: "add-product",
+        badge: "✦ خطوة البداية",
+        title: "منتجك الأول أقرب مما تتوقع",
+        text: "أضف منتجاً، راجعه، ثم شارك الرابط مع جمهورك.",
+        cta: "+ أضف أول منتج",
+        onClick: () => setTab("products"),
+        progress: stepsDone,
+      };
     }
-    function onMove(e) {
-      if (!dragging) return;
-      let newY = startCurrentY + (e.clientY - startY);
-      if (newY < 0) {
-        const over = -newY;
-        newY = -((over * panelHeight.current * 0.55) / (panelHeight.current + 0.55 * Math.abs(over)));
-      }
-      currentY.current = newY;
-      renderSheet();
-      const now = performance.now();
-      const dt = now - lastMoveT;
-      if (dt > 0) pointerVelocity = ((e.clientY - lastMoveY) / dt) * 1000;
-      lastMoveY = e.clientY; lastMoveT = now;
+    if (!hasTagline) {
+      return {
+        key: "add-tagline",
+        badge: "✦ خطوتك التالية",
+        title: "عرّف الزوار بمتجرك",
+        text: "جملة وصف بسيطة تزيد ثقة العملاء وتوضح لهم وش تبيع.",
+        cta: "أضف وصف المتجر",
+        onClick: () => setTab("design"),
+        progress: stepsDone,
+      };
     }
-    function onUp() {
-      if (!dragging) return;
-      dragging = false;
-      const projected = currentY.current + (pointerVelocity / 1000) * 0.998 / (1 - 0.998);
-      if (projected > panelHeight.current * 0.35) closePanel(pointerVelocity);
-      else animateTo(0, { damping: 0.9, response: 0.35, velocity: pointerVelocity });
+    if (!hasContact) {
+      return {
+        key: "add-contact",
+        badge: "✦ خطوتك التالية",
+        title: "خلّ عملاءك يقدرون يتواصلون معك",
+        text: "أضف رقم واتساب أو حساب إنستغرام في تصميم متجرك.",
+        cta: "أضف وسيلة تواصل",
+        onClick: () => setTab("design"),
+        progress: stepsDone,
+      };
     }
-    panel.addEventListener("pointerdown", onDown);
-    panel.addEventListener("pointermove", onMove);
-    panel.addEventListener("pointerup", onUp);
-    return () => {
-      panel.removeEventListener("pointerdown", onDown);
-      panel.removeEventListener("pointermove", onMove);
-      panel.removeEventListener("pointerup", onUp);
+    if (!allDescribed) {
+      return {
+        key: "describe-product",
+        badge: "✦ خطوتك التالية",
+        title: "منتجاتك تستاهل وصف أوضح",
+        text: "وصف جيد يرفع ثقة المشتري ويزيد فرص البيع.",
+        cta: "حسّن وصف منتج",
+        onClick: () => setTab("products"),
+        progress: stepsDone,
+      };
+    }
+    if (sellerPlan !== "basic" && !hasCoupon) {
+      return {
+        key: "add-coupon",
+        badge: "✦ خطوتك التالية",
+        title: "جرب أول كود خصم لك",
+        text: "كوبونات الخصم تشجع الزوار يسوون قرار الشراء بسرعة أكبر.",
+        cta: "أنشئ كود خصم",
+        onClick: () => setTab("coupons"),
+        progress: stepsDone,
+      };
+    }
+    return {
+      key: "share-store",
+      badge: "✦ جاهز للانطلاق",
+      title: "متجرك جاهز، حان وقت المشاركة",
+      text: "شارك رابط متجرك على واتساب وإنستغرام لتبدأ استقبال الزيارات والمبيعات.",
+      cta: "نسخ رابط المتجر",
+      onClick: () => copyLink(slug || user.uid, "store"),
+      progress: stepsDone,
     };
-  }, [open]);
+  }
 
-  const hasAccess = plan === REQUIRED_PLAN;
+  const nextStep = getNextStep();
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, loading]);
-
-  async function sendToAssistant(q, actionType) {
-    if (!q || loading || !hasAccess) return;
-    setMessages((prev) => [...prev, { role: "user", text: q }]);
-    setQuestion("");
-    setLoading(true);
-    try {
-      const res = await fetch("/api/growth-assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: q,
-          storeData: storeData || {},
-          actionType: actionType || "chat",
-        }),
+  // يطبّق اقتراح المساعد الذكي بعد ما التاجر يضغط زر "تطبيق" — الكتابة الفعلية بقاعدة البيانات تصير هنا فقط
+  async function handleApplySuggestion(suggestion) {
+    if (suggestion.kind === "improve-product") {
+      await updateDoc(doc(db, "products", suggestion.productId), {
+        name: suggestion.name,
+        description: suggestion.description,
       });
-      const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: data.reply || data.error || "ما وصل رد", suggestion: data.suggestion || null },
-      ]);
-    } catch (err) {
-      setMessages((prev) => [...prev, { role: "assistant", text: "صار خطأ بالاتصال، حاول مرة ثانية" }]);
+      return;
     }
-    setLoading(false);
-  }
-
-  function handleAsk() {
-    sendToAssistant(question.trim(), "chat");
-  }
-
-  function handleQuickAction(action) {
-    sendToAssistant(action.label, action.id);
+    if (suggestion.kind === "coupon-idea") {
+      const exists = coupons.some((c) => c.code === suggestion.code);
+      if (exists) throw new Error("duplicate_code");
+      await addDoc(collection(db, "coupons"), {
+        ownerId: user.uid,
+        code: suggestion.code,
+        discountPercent: suggestion.percent,
+        productId: null,
+        active: true,
+        createdAt: serverTimestamp(),
+      });
+      return;
+    }
   }
 
   return (
-    <div style={{ direction: "rtl", fontFamily: "'Cairo', sans-serif" }}>
-      {/* الزر العائم */}
-      {!open && (
-        <button
-          onClick={openPanel}
-          onPointerDown={(e) => { e.currentTarget.style.transform = "scale(0.94)"; }}
-          onPointerUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          onPointerLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          style={{
-            position: "fixed",
-            bottom: 24,
-            insetInlineStart: 20,
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            background: "#0B0B0C",
-            color: "#fff",
-            border: "none",
-            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
-            fontSize: 24,
-            cursor: "pointer",
-            zIndex: 1000,
-            transform: "scale(1)",
-            transition: "transform 100ms ease-out",
-          }}
-        >
-          ✦
-        </button>
-      )}
-
-      {/* نافذة قفل الميزة — لغير المشتركين بباقة متجر متكامل */}
-      {open && !hasAccess && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            insetInlineStart: 0,
-            width: "100%",
-            maxWidth: 380,
-            background: "#fff",
-            borderRadius: "20px 20px 0 0",
-            boxShadow: "0 -4px 24px rgba(0,0,0,0.2)",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              padding: "14px 16px",
-              background: "#0B0B0C",
-              color: "#fff",
-              borderRadius: "20px 20px 0 0",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontWeight: 700, fontSize: 15 }}>مساعد نمو متجرك ✦</span>
-            <button
-              onClick={() => setOpen(false)}
-              style={{ background: "none", border: "none", color: "#fff", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
-            >
-              ×
-            </button>
-          </div>
-          <div style={{ padding: 24, textAlign: "center" }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
-            <div style={{ fontFamily: "'Almarai', sans-serif", fontWeight: 800, color: "#0B0B0C", fontSize: 15, marginBottom: 8 }}>
-              مساعد نمو متجرك حصري لباقة متجر متكامل
-            </div>
-            <div style={{ color: "#8A8677", fontSize: 12.5, lineHeight: 1.8, marginBottom: 18 }}>
-              رقّي باقتك عشان تقدر تستخدم المساعد الذكي لتحسين منتجاتك وكتابة المحتوى وأفكار التسويق.
-            </div>
-            <button
-              onClick={() => {
-                setOpen(false);
-                if (onUpgradeClick) onUpgradeClick();
-              }}
-              onPointerDown={(e) => { e.currentTarget.style.transform = "scale(0.96)"; }}
-              onPointerUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-              style={{
-                width: "100%",
-                background: "#0B0B0C",
-                color: "#fff",
-                border: "none",
-                padding: 13,
-                borderRadius: 100,
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: "pointer",
-                transform: "scale(1)",
-                transition: "transform 100ms ease-out",
-              }}
-            >
-              شوف باقة متجر متكامل
-            </button>
-          </div>
+    <DebugErrorBoundary>
+    <div className="dh-page" dir="rtl" lang="ar">
+      <style>{styles}</style>
+      <div className="dh-header">
+        <div className="dh-brand">Monah <span>· {storeName || "متجرك"}</span></div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {user.email === ADMIN_EMAIL && (
+            <a href="#admin" className="dh-admin-btn">لوحة الأدمن</a>
+          )}
+          <button className="dh-logout" onClick={handleLogout}>تسجيل خروج</button>
         </div>
-      )}
+      </div>
 
-      {/* نافذة المحادثة — فقط لمشتركي باقة متجر متكامل */}
-      {open && hasAccess && (
-        <div
-          ref={panelRef}
-          style={{
-            position: "fixed",
-            bottom: 0,
-            insetInlineStart: 0,
-            width: "100%",
-            maxWidth: 380,
-            height: "min(560px, 85vh)",
-            background: "rgba(255,255,255,0.85)",
-            backdropFilter: "blur(20px) saturate(180%)",
-            borderRadius: "20px 20px 0 0",
-            boxShadow: "0 -4px 24px rgba(0,0,0,0.2)",
-            display: "flex",
-            flexDirection: "column",
-            zIndex: 1000,
-            touchAction: "none",
-          }}
-        >
-          <div style={{ width: 40, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.3)", margin: "8px auto 0" }} />
-          <div
-            style={{
-              padding: "10px 16px 14px",
-              background: "#0B0B0C",
-              color: "#fff",
-              borderRadius: "20px 20px 0 0",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontWeight: 700, fontSize: 15 }}>مساعد نمو متجرك ✦</span>
-            <button
-              onClick={() => closePanel()}
-              style={{ background: "none", border: "none", color: "#fff", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
-            >
-              ×
-            </button>
-          </div>
+      <div className="dh-tabs">
+        <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
+        <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
+        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>الخصومات</button>
+        <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
+        <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
+        <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
+      </div>
 
-          <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, background: "rgba(251,250,247,0.4)", touchAction: "pan-y" }}>
-            {messages.length === 0 && (
-              <>
-                <p style={{ color: "#8A8677", fontSize: 13.5, textAlign: "center", marginTop: 20, marginBottom: 16 }}>
-                  {nextStep
-                    ? `${nextStep.title} — اسألني وأساعدك فيها، أو اختر من الأزرار تحت 👇`
-                    : "اسألني عن أي شي يخص تطوير متجرك ومبيعاتك 👋"}
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
-                  {QUICK_ACTIONS.map((action) => (
-                    <button
-                      key={action.id}
-                      onClick={() => handleQuickAction(action)}
-                      style={{
-                        padding: "7px 12px",
-                        borderRadius: 100,
-                        border: "1px solid #EDEAE0",
-                        background: "#fff",
-                        color: "#0B0B0C",
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
+      <div className="dh-wrap">
+
+        {tab === "overview" && (
+          <>
+            <div className="dh-next">
+              <span className="dh-next-badge">{nextStep.badge}</span>
+              <div className="dh-next-title">{nextStep.title}</div>
+              <div className="dh-next-text">{nextStep.text}</div>
+              <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: `${(nextStep.progress / 5) * 100}%` }} /></div>
+              <div className="dh-next-step">{nextStep.progress} من 5 خطوات مكتملة</div>
+              <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
+            </div>
+
+            <div className="dh-stats">
+              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
+              <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
+            </div>
+
+            <div className="dh-quick">
+              <button className="dh-quick-btn" onClick={() => setTab("products")}>+ أضف منتج</button>
+              <button className="dh-quick-btn" onClick={() => setTab("design")}>تصميم المتجر</button>
+              <button className="dh-quick-btn" onClick={() => copyLink(slug || user.uid, "store")}>
+                {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط ✓" : "نسخ رابط المتجر"}
+              </button>
+            </div>
+
+            <div className="dh-store-link">
+              <div className="dh-store-label">رابط متجرك العام</div>
+              <div className="dh-store-row">
+                <span className="dh-store-url">{storeUrl}</span>
+                <button className="dh-copy" onClick={() => copyLink(slug || user.uid, "store")}>
+                  {copied === "store" + (slug || user.uid) ? "تم" : "نسخ"}
+                </button>
+              </div>
+            </div>
+            <div className="dh-card">
+              <div className="dh-title">آخر الطلبات</div>
+              {sellerOrders.length === 0 && (
+                <div className="empty-note">أضف منتجك الأول، ثم شارك رابطه على واتساب أو إنستغرام لتبدأ استقبال المبيعات.</div>
+              )}
+              {sellerOrders.slice(0, 5).map((o) => (
+                <div className="dh-item" key={o.id}>
+                  <div className="dh-item-top">
+                    <span className="dh-item-name">{o.productName}</span>
+                    <span className="dh-item-price">{Number(o.price).toFixed(2)} ر.ع</span>
+                  </div>
+                  <div className="dh-item-stock">{o.buyerEmail}</div>
                 </div>
-              </>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} style={{ marginBottom: 10 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: m.role === "user" ? "flex-start" : "flex-end",
-                  }}
-                >
-                  <div
-                    style={{
-                      maxWidth: "85%",
-                      padding: "10px 14px",
-                      borderRadius: 14,
-                      background: m.role === "user" ? "#F1F0EA" : "#EAF0EB",
-                      color: "#0B0B0C",
-                      fontSize: 13.5,
-                    }}
-                  >
-                    {m.role === "assistant" ? formatText(m.text) : m.text}
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === "products" && (
+          <>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 16 }}>أضف منتج جديد</div>
+              {error && <div className="dh-error">{error}</div>}
+              <form onSubmit={(e) => e.preventDefault()}>
+                <div className="dh-field">
+                  <label>اسم المنتج</label>
+                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className="dh-field">
+                  <label>السعر (ر.ع)</label>
+                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+                </div>
+                <div className="dh-field">
+                  <label>التصنيف (مثل: قوالب، أيقونات، عروض تقديمية)</label>
+                  <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="عام" />
+                </div>
+                <div className="dh-field">
+                  <label>وصف مختصر (اختياري)</label>
+                  <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
+                </div>
+                <div className="dh-field">
+                  <label>صور المنتج (حتى صورتين، اختياري)</label>
+                  <div className="dh-images-row">
+                    {productImages.map((url) => (
+                      <div className="dh-image-thumb-wrap" key={url}>
+                        <img src={url} alt="" className="dh-image-thumb" />
+                        <button type="button" className="dh-image-remove" onClick={() => removeProductImage(url)}>✕</button>
+                      </div>
+                    ))}
+                    {productImages.length < 2 && (
+                      <label className="dh-image-add">
+                        {imagesUploading ? "..." : "+"}
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleProductImageUpload} disabled={imagesUploading} />
+                      </label>
+                    )}
+                  </div>
+                  {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
+                </div>
+                <div className="dh-field">
+                  <label>نوع المنتج</label>
+                  <div className="dh-type-toggle">
+                    <button
+                      type="button"
+                      className={"dh-type-btn" + (productType === "file" ? " active" : "")}
+                      onClick={() => setProductType("file")}
+                    >
+                      ملف
+                    </button>
+                    <button
+                      type="button"
+                      className={"dh-type-btn" + (productType === "code" ? " active" : "")}
+                      onClick={() => setProductType("code")}
+                    >
+                      كود / ترخيص
+                    </button>
                   </div>
                 </div>
-                {m.role === "assistant" && m.suggestion && (
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <div style={{ maxWidth: "85%", width: "85%" }}>
-                      <SuggestionCard suggestion={m.suggestion} storeData={storeData} onApply={onApplySuggestion} />
-                    </div>
+                {productType === "file" ? (
+                  <div className="dh-field">
+                    <label>ملف المنتج</label>
+                    <input key={fileInputKey} type="file" onChange={handleFilePick} />
+                    {productFile && (
+                      <div className="dh-file-picked">
+                        ✓ {productFile.name} ({(productFile.size / 1024 / 1024).toFixed(1)} م.ب)
+                      </div>
+                    )}
+                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي — رابط تحميله يتوفر فقط للمشتري بعد إتمام الدفع، ولمدة محدودة. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
+                  </div>
+                ) : (
+                  <div className="dh-field">
+                    <label>الصقي الأكواد (كود بكل سطر)</label>
+                    <textarea rows="5" value={codesText} onChange={(e) => setCodesText(e.target.value)} placeholder={"CODE-001\nCODE-002\nCODE-003"} style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }} />
+                    <div className="dh-hint">كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.</div>
                   </div>
                 )}
+                <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || !price} style={{ width: "100%", marginBottom: 8 }}>
+                  معاينة المنتج
+                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="dh-item-action" type="button" onClick={(e) => handleAddProduct(e, false)} disabled={saving} style={{ flex: 1 }}>
+                    {saving ? "..." : "حفظ كمسودة"}
+                  </button>
+                  <button className="dh-btn" type="button" onClick={(e) => handleAddProduct(e, true)} disabled={saving} style={{ flex: 1 }}>
+                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري النشر...") : "نشر المنتج"}
+                  </button>
+                </div>
+                <div className="dh-hint" style={{ marginTop: 8, textAlign: "center" }}>
+                  "حفظ كمسودة" يحفظ المنتج مخفيًا عن الزوار — تقدر تنشره بعدين من قائمة منتجاتك.
+                </div>
+              </form>
+            </div>
+
+            <div className="dh-card">
+              <div className="dh-title-row">
+                <div className="dh-title">منتجاتك</div>
+                <div className="dh-title-count mono">{products.length} منتج</div>
+              </div>
+
+              {products.length > 0 && (
+                <>
+                  <div className="dh-field">
+                    <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="ابحث باسم المنتج" />
+                  </div>
+                  <div className="dh-type-toggle" style={{ marginBottom: 14 }}>
+                    <button type="button" className={"dh-type-btn" + (productFilter === "all" ? " active" : "")} onClick={() => setProductFilter("all")}>
+                      الكل ({products.length})
+                    </button>
+                    <button type="button" className={"dh-type-btn" + (productFilter === "visible" ? " active" : "")} onClick={() => setProductFilter("visible")}>
+                      منشور ({products.filter((p) => !p.hidden).length})
+                    </button>
+                    <button type="button" className={"dh-type-btn" + (productFilter === "hidden" ? " active" : "")} onClick={() => setProductFilter("hidden")}>
+                      مخفي ({products.filter((p) => p.hidden).length})
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {products.length === 0 && <div className="empty-note">ما أضفت أي منتج بعد.</div>}
+              {products.length > 0 && filteredProducts.length === 0 && <div className="empty-note">ما فيه منتج يطابق البحث أو الفلتر.</div>}
+              {filteredProducts.map((p) => (
+                <div className="dh-item" key={p.id}>
+                  {editingId === p.id ? (
+                    <div className="dh-edit-form">
+                      <div className="dh-field">
+                        <label>اسم المنتج</label>
+                        <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                      </div>
+                      <div className="dh-field">
+                        <label>السعر (ر.ع)</label>
+                        <input type="number" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+                      </div>
+                      <div className="dh-field">
+                        <label>التصنيف</label>
+                        <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
+                      </div>
+                      <div className="dh-field">
+                        <label>وصف مختصر</label>
+                        <textarea rows="2" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                      </div>
+                      {p.type !== "code" && (
+                        <div className="dh-hint" style={{ marginBottom: 10 }}>
+                          لتغيير الملف نفسه، احذفي هذا المنتج وأضيفيه من جديد مؤقتًا.
+                        </div>
+                      )}
+                      <div className="dh-edit-actions">
+                        <button className="dh-item-action" onClick={cancelEdit} type="button">إلغاء</button>
+                        <button className="dh-item-action primary" onClick={() => saveEdit(p.id)} disabled={editSaving} type="button">
+                          {editSaving ? "جاري الحفظ..." : "حفظ"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="dh-item-top">
+                        <span className="dh-item-name">{p.name}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
+                        <span className="dh-item-price">{p.price} ر.ع</span>
+                      </div>
+                      {p.type === "code" && (
+                        <div className="dh-item-stock">مخزون: {p.codesCount || 0} كود</div>
+                      )}
+                      <div className="dh-item-link">
+                        <span className="dh-item-link-text">{`#product/${p.id}`}</span>
+                        <button className="dh-item-link-btn" onClick={() => copyLink(p.id, "product")}>
+                          {copied === "product" + p.id ? "تم" : "نسخ"}
+                        </button>
+                      </div>
+                      <div className="dh-item-actions">
+                        <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
+                        <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
+                          {togglingHiddenId === p.id ? "..." : (p.hidden ? "إظهار" : "إخفاء")}
+                        </button>
+                        {confirmDeleteId === p.id ? (
+                          <button className="dh-item-action danger" onClick={() => confirmDelete(p.id)} disabled={deletingId === p.id} type="button">
+                            {deletingId === p.id ? "جاري الحذف..." : "تأكيد الحذف؟"}
+                          </button>
+                        ) : (
+                          <button className="dh-item-action danger" onClick={() => setConfirmDeleteId(p.id)} type="button">حذف</button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === "coupons" && sellerPlan === "basic" && (
+          <div className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
+            <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
+            <div className="dh-title" style={{ marginBottom: 8 }}>كوبونات الخصم متاحة من الباقة الاحترافية</div>
+            <div className="dh-hint" style={{ marginBottom: 16 }}>رقّي باقتك عشان تقدر تسوي أكواد خصم لمنتجاتك.</div>
+            <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 220, margin: "0 auto" }}>
+              شوف الباقات
+            </button>
+          </div>
+        )}
+
+        {tab === "coupons" && sellerPlan !== "basic" && (
+          <>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>
+              {couponError && <div className="dh-error">{couponError}</div>}
+              <form onSubmit={handleAddCoupon}>
+                <div className="dh-field">
+                  <label>كود الخصم</label>
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="مثال: EID20"
+                    style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }}
+                  />
+                  <div className="dh-hint">أحرف إنجليزية وأرقام، بدون مسافات. العميل يكتب هذا الكود وقت الشراء.</div>
+                </div>
+                <div className="dh-field">
+                  <label>نسبة الخصم (%)</label>
+                  <input type="number" value={couponPercent} onChange={(e) => setCouponPercent(e.target.value)} placeholder="20" />
+                </div>
+                <div className="dh-field">
+                  <label>ينطبق على</label>
+                  <select value={couponScope} onChange={(e) => setCouponScope(e.target.value)}>
+                    <option value="all">كل منتجاتك</option>
+                    {products.map((p) => (
+                      <option value={p.id} key={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button className="dh-btn" type="submit" disabled={couponSaving}>
+                  {couponSaving ? "جاري الحفظ..." : "إنشاء الكود"}
+                </button>
+              </form>
+            </div>
+
+            <div className="dh-card">
+              <div className="dh-title-row">
+                <div className="dh-title">أكوادك الحالية</div>
+                <div className="dh-title-count mono">{coupons.length}</div>
+              </div>
+              {coupons.length === 0 && <div className="empty-note">ما أضفت أي كود خصم بعد.</div>}
+              {coupons.map((c) => (
+                <div className="cp-item" key={c.id}>
+                  <div className="cp-item-top">
+                    <span className="cp-code">{c.code}</span>
+                    <span className="cp-percent">خصم {c.discountPercent}٪</span>
+                  </div>
+                  <div className="cp-scope">{couponScopeLabel(c)}</div>
+                  <div className="dh-item-actions">
+                    <button
+                      className="dh-item-action danger"
+                      disabled={deletingCouponId === c.id}
+                      onClick={() => deleteCoupon(c.id)}
+                    >
+                      {deletingCouponId === c.id ? "جاري الحذف..." : "حذف الكود"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} />}
+
+        {tab === "design" && (
+          <>
+            <div className="ds-preview">
+              <div className="ds-preview-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>{`monah-app.com/#store/${slug || user.uid.slice(0, 8) + "..."}`}</span>
+                <a className="ds-view-btn" style={{ padding: "4px 10px", fontSize: 10 }} href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer">
+                  عرض المتجر ↗
+                </a>
+              </div>
+              {coverUrl && (
+                <div className="ds-cover-preview">
+                  <img src={coverUrl} alt="غلاف المتجر" />
+                </div>
+              )}
+              <div className="ds-preview-body">
+                {logoUrl
+                  ? <img src={logoUrl} alt="شعار المتجر" className="ds-preview-logo-img" />
+                  : <div className="ds-preview-logo" style={{ background: storeColor }}>{initial}</div>}
+                <div className="ds-preview-name" style={{ color: storeColor }}>{storeName || "اسم متجرك"}</div>
+                <div className="ds-preview-tag">{tagline || "منتجات رقمية عبر Monah"}</div>
+              </div>
+            </div>
+
+            <div className="dh-card">
+              {designSaved && <div className="dh-success">تم حفظ تصميم متجرك.</div>}
+              {error && <div className="dh-error">{error}</div>}
+
+              <div className="dh-field">
+                <label>غلاف المتجر (اختياري)</label>
+                <div className="ds-cover-row">
+                  {coverUrl
+                    ? <img src={coverUrl} alt="" className="ds-cover-thumb" />
+                    : <div className="ds-cover-placeholder">بدون غلاف</div>}
+                  <label className="dh-logo-btn">
+                    {coverUploading ? "جاري الرفع..." : "رفع صورة غلاف"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} disabled={coverUploading} />
+                  </label>
+                </div>
+                <div className="dh-hint">صورة عريضة تظهر أعلى صفحة متجرك، فوق الشعار.</div>
+                {coverError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{coverError}</div>}
+              </div>
+
+              <div className="dh-field">
+                <label>شعار المتجر</label>
+                <div className="dh-logo-row">
+                  {logoUrl
+                    ? <img src={logoUrl} alt="" className="dh-logo-thumb" />
+                    : <div className="dh-logo-placeholder">{initial}</div>}
+                  <label className="dh-logo-btn">
+                    {logoUploading ? "جاري الرفع..." : "رفع شعار جديد"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { handleLogoUpload(e); setDesignDirty(true); }} disabled={logoUploading} />
+                  </label>
+                </div>
+                {logoError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{logoError}</div>}
+              </div>
+              <div className="dh-field">
+                <label>اسم المتجر</label>
+                <input type="text" value={storeName} onChange={(e) => { setStoreName(e.target.value); setDesignDirty(true); }} />
+              </div>
+              <div className="dh-field">
+                <label>عرّف الزوار بمتجرك في جملة واحدة</label>
+                <input type="text" value={tagline} onChange={(e) => { setTagline(e.target.value); setDesignDirty(true); }} placeholder="مثال: قوالب وتصاميم تساعدك تنجز شغلك بشكل أسرع" />
+              </div>
+              <div className="dh-field">
+                <label>اختر رابط متجرك</label>
+                <input type="text" value={slug} onChange={(e) => { setSlug(e.target.value); setSlugError(""); setDesignDirty(true); }} placeholder="hind" style={{ direction: "ltr", textAlign: "right" }} />
+                {slugError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{slugError}</div>}
+                <div className="dh-hint">سيظهر متجرك على: monah-app.com/#store/{slug || "اسمك"}</div>
+              </div>
+              <div className="dh-field">
+                <label>رقم واتساب (اختياري)</label>
+                <input type="text" value={whatsapp} onChange={(e) => { setWhatsapp(e.target.value); setDesignDirty(true); }} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} />
+              </div>
+              <div className="dh-field">
+                <label>حساب إنستغرام (اختياري)</label>
+                <input type="text" value={instagram} onChange={(e) => { setInstagram(e.target.value); setDesignDirty(true); }} placeholder="username" style={{ direction: "ltr", textAlign: "right" }} />
+              </div>
+              <div className="dh-field">
+                <label>لون المتجر الرئيسي</label>
+                <div className="ds-swatches">
+                  {COLORS.map((c) => (
+                    <div
+                      key={c}
+                      className={"ds-swatch" + (storeColor === c ? " selected" : "")}
+                      style={{ background: c }}
+                      onClick={() => { setStoreColor(c); setDesignDirty(true); }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="dh-field">
+                <label>طريقة استلام المدفوعات</label>
+                <div className="dh-type-toggle">
+                  <button
+                    type="button"
+                    className={"dh-type-btn" + (paymentMethod === "platform" ? " active" : "")}
+                    onClick={() => { setPaymentMethod("platform"); setDesignDirty(true); }}
+                  >
+                    تلقائي عبر المنصة
+                  </button>
+                  <button
+                    type="button"
+                    className={"dh-type-btn" + (paymentMethod === "manual" ? " active" : "")}
+                    onClick={() => { setPaymentMethod("manual"); setDesignDirty(true); }}
+                  >
+                    يدوي (تحويل + واتساب)
+                  </button>
+                </div>
+                <div className="dh-hint">
+                  {paymentMethod === "platform"
+                    ? "العميل يضغط زر الدفع، ويستلم منتجه تلقائيًا مباشرة من الموقع."
+                    : "العميل يحوّل المبلغ مباشرة لحسابك، ويرسل لك إثبات التحويل عبر واتساب، وترسل له المنتج بنفسك."}
+                </div>
+              </div>
+
+              {paymentMethod === "manual" && (
+                <>
+                  <div className="dh-field">
+                    <label>رقم الحساب أو الجوال لاستلام التحويل</label>
+                    <input
+                      type="text"
+                      value={payoutInfo}
+                      onChange={(e) => { setPayoutInfo(e.target.value); setDesignDirty(true); }}
+                      placeholder="OM00 0000 0000 0000 0000 000 أو 9689xxxxxxx"
+                      style={{ direction: "ltr", textAlign: "right" }}
+                    />
+                    <div className="dh-hint">هذا اللي يشوفه العميل قبل الشراء عشان يحوّل عليه مباشرة.</div>
+                  </div>
+                  <div className="dh-field">
+                    <label>رقم واتساب لاستقبال إثبات الدفع</label>
+                    <input
+                      type="text"
+                      value={payoutWhatsapp}
+                      onChange={(e) => { setPayoutWhatsapp(e.target.value); setDesignDirty(true); }}
+                      placeholder="96891234567"
+                      style={{ direction: "ltr", textAlign: "right" }}
+                    />
+                    <div className="dh-hint">العميل بيُطلب منه يحتفظ بإيصال التحويل ويرسله لك على هذا الرقم لتأكيد الدفع.</div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="ds-save-bar">
+              <span className={"ds-save-status" + (designDirty ? " unsaved" : "")}>
+                {designDirty ? "عندك تغييرات غير محفوظة" : "كل شي محفوظ"}
+              </span>
+              <button className="ds-save-btn" onClick={handleSaveDesign} disabled={designSaving}>
+                {designSaving ? "جاري الحفظ..." : "حفظ ونشر التغييرات"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {tab === "subscription" && (
+          <>
+            <div className="dh-hint" style={{ marginBottom: 14, lineHeight: 1.9 }}>
+              كل الباقات تشمل: {COMMON_FEATURES.join(" · ")}
+            </div>
+            {PACKAGES.map((pkg) => (
+              <div className={"pk-card" + (pkg.id === sellerPlan ? " current" : "")} key={pkg.id}>
+                {pkg.popular && <div className="pk-badge">الأكثر طلبًا</div>}
+                <div className="pk-name">{pkg.name}</div>
+                <div className="dh-hint" style={{ marginBottom: 10 }}>{pkg.desc}</div>
+                <div className="pk-price">{pkg.price} <span>ر.ع / شهريًا</span></div>
+                <div className="pk-features">
+                  {pkg.features.map((f) => <div key={f}>✓ {f}</div>)}
+                </div>
+                {pkg.soon && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #EDEAE0" }}>
+                    <div style={{ color: "#B9832F", fontSize: 10.5, fontWeight: 700, marginBottom: 4 }}>قادم قريبًا:</div>
+                    {pkg.soon.map((f) => (
+                      <div key={f} style={{ fontSize: 11.5, color: "#B0AC9C" }}>○ {f}</div>
+                    ))}
+                  </div>
+                )}
+                {pkg.id === sellerPlan && <div className="pk-current-tag">باقتك الحالية</div>}
               </div>
             ))}
-            {loading && (
-              <div style={{ textAlign: "end", color: "#8A8677", fontSize: 13 }}>جاري التفكير...</div>
-            )}
-          </div>
+          </>
+        )}
 
-          <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #EDEAE0" }}>
-            <input
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-              placeholder="اكتب سؤالك..."
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                borderRadius: 100,
-                border: "1px solid #EDEAE0",
-                fontSize: 13.5,
-                fontFamily: "inherit",
-                background: "#FBFAF7",
-              }}
-            />
-            <button
-              onClick={handleAsk}
-              disabled={loading}
-              style={{
-                padding: "0 16px",
-                borderRadius: 100,
-                background: "#0B0B0C",
-                color: "#fff",
-                border: "none",
-                fontSize: 13.5,
-                cursor: "pointer",
-              }}
-            >
-              إرسال
-            </button>
+      </div>
+
+      {previewOpen && (
+        <div className="pv-overlay" onClick={() => setPreviewOpen(false)}>
+          <div className="pv-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="pv-close">
+              <span className="pv-close-label">معاينة — هكذا يشوفها العميل</span>
+              <button className="pv-close-btn" onClick={() => setPreviewOpen(false)}>✕</button>
+            </div>
+            <div className="pv-body">
+              <div className="pv-cover">
+                {productImages[0]
+                  ? <img src={productImages[0]} alt="" />
+                  : <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/><path d="M14 2v6h6" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/></svg>}
+              </div>
+              <div className="pv-cat">{category || "عام"}</div>
+              <div className="pv-name">{name || "اسم المنتج"}</div>
+              <div className="pv-card">
+                <div className="pv-price-row">
+                  <span style={{ color: "#8A8677", fontSize: 11.5 }}>السعر</span>
+                  <b className="mono" style={{ fontSize: 20 }}>{price ? Number(price).toFixed(2) : "0.00"} ر.ع</b>
+                </div>
+                <div className="pv-desc">{description || "ما فيه وصف إضافي لهذا المنتج."}</div>
+              </div>
+              <div className="pv-btn">ادفع واستلم الآن</div>
+              <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد</div>
+            </div>
           </div>
         </div>
       )}
+
+      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} onApplySuggestion={handleApplySuggestion} nextStep={nextStep} />
     </div>
+    </DebugErrorBoundary>
   );
 }
