@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerId", "order": "ASCENDING" },
+        { "fieldPath": "hidden", "order": "ASCENDING" },
+        { "fieldPath": "suspended", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

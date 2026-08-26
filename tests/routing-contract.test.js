@@ -20,11 +20,12 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(productPage).toContain("navigator.share");
   });
 
-  it("لا يعرض المنتجات المخفية أو الموقوفة للزوار", async () => {
+  it("يطلب المنتجات المنشورة وغير الموقوفة للزوار", async () => {
     const store = await source("src/StorePage.jsx");
     const productPage = await source("src/ProductPage.jsx");
 
-    expect(store).toContain("!product.hidden && !product.suspended");
+    expect(store).toContain('where("hidden", "==", false)');
+    expect(store).toContain('where("suspended", "==", false)');
     expect(productPage).toContain("productData.hidden || productData.suspended");
   });
 
@@ -32,6 +33,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const dashboard = await source("src/Dashboard.jsx");
 
     expect(dashboard).toContain("hidden: true");
+    expect(dashboard).toContain("suspended: false");
     expect(dashboard).toContain("await updateDoc(doc(db, \"products\", productRef.id), { hidden: !publish })");
     expect(dashboard).toContain("سعرًا صحيحًا أكبر من صفر");
   });
@@ -54,5 +56,40 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(assistant).not.toContain("storeData.plan !== REQUIRED_PLAN");
     expect(assistantClient).toContain("Authorization: `Bearer ${idToken}`");
     expect(assistantClient).not.toContain("storeData: storeData || {}");
+  });
+
+  it("يحضّر قواعد تمنع تعديل منتجات الآخرين وتصاريح التنزيل من المتصفح", async () => {
+    const rules = await source("firestore.rules");
+    const storageRules = await source("storage.rules");
+
+    expect(rules).toContain("request.resource.data.ownerId == request.auth.uid");
+    expect(rules).toContain("request.resource.data.suspended == false");
+    expect(rules).toContain("match /unlocks/{unlockId}");
+    expect(rules).toContain("allow list, create, update, delete: if false;");
+    expect(rules).toContain("match /shared/{docId} { allow read, write: if false; }");
+    expect(storageRules).toContain("request.resource.contentType.matches('image/.*')");
+    expect(storageRules).toContain("allow update, delete: if false;");
+  });
+
+  it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {
+    const store = await source("src/StorePage.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(store).toContain('where("hidden", "==", false)');
+    expect(store).toContain('where("suspended", "==", false)');
+    expect(dashboard).not.toContain("payoutInfo:");
+    expect(dashboard).not.toContain("payoutWhatsapp:");
+  });
+
+  it("يجهّز فهرسًا وترحيلًا آمنين قبل تفعيل الاستعلام المحمي على المنتجات القديمة", async () => {
+    const indexes = await source("firestore.indexes.json");
+    const migration = await source("scripts/migrate-product-visibility.mjs");
+    const payoutMigration = await source("scripts/remove-public-payout-fields.mjs");
+
+    expect(indexes).toContain('"fieldPath": "suspended"');
+    expect(migration).toContain('suspended: false');
+    expect(migration).toContain('FIREBASE_SERVICE_ACCOUNT_KEY');
+    expect(payoutMigration).toContain("FieldValue.delete()");
+    expect(payoutMigration).toContain("payoutWhatsapp");
   });
 });

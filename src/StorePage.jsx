@@ -68,11 +68,15 @@ export default function StorePage({ sellerId }) {
           return;
         }
         setStore(storeData);
-        const productQuery = query(collection(db, "products"), where("ownerId", "==", resolvedOwnerId));
+        const productQuery = query(
+          collection(db, "products"),
+          where("ownerId", "==", resolvedOwnerId),
+          where("hidden", "==", false),
+          where("suspended", "==", false)
+        );
         const productSnap = await getDocs(productQuery);
         const allProducts = productSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
-        // لا تظهر المسودات أو المنتجات التي أوقفها مالك المنصة للزائر.
-        setProducts(allProducts.filter((product) => !product.hidden && !product.suspended));
+        setProducts(allProducts);
       } catch (error) {
         console.error("Unable to load store", error);
         setStatus("missing");
