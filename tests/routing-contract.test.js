@@ -235,6 +235,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const legal = await source("src/LegalPage.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
     const customerAssistant = await source("api/customer-assistant.js");
+    const html = await source("index.html");
 
     expect(landing).toContain("خيارات البيع الإلكتروني عند تفعيلها");
     expect(landing).toContain("البيع الإلكتروني قيد التفعيل");
@@ -257,6 +258,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).not.toContain("ثواني");
     expect(catalog).toContain("مجهز للتجربة");
     expect(customerAssistant).not.toContain("دفع تلقائي فوري عبر المنصة");
+    expect(html).not.toContain("تسليم الملفات تلقائياً");
+    expect(html).not.toContain("بدون عمولة على المبيعات");
   });
 
   it("يجعل نصوص الشروط والخصوصية صادقة قبل تفعيل الدفع", async () => {
