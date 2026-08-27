@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import GrowthAssistant from "./GrowthAssistant.jsx";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -200,37 +201,6 @@ const styles = `
   .dh-page button{ transition:transform 100ms ease-out; }
   .dh-page button:active{ transform:scale(0.96); }
 `;
-
-const COMMON_FEATURES = [
-  "بدون عمولة على المبيعات",
-  "تسليم المنتج بعد ربط ثواني واختباره",
-  "صفحة متوافقة مع الجوال",
-  "رابط خاص لكل منتج",
-  "ترقية أو تخفيض الباقة أو الإلغاء في أي وقت",
-];
-
-const PACKAGES = [
-  {
-    id: "basic", name: "أساسية", price: "5",
-    desc: "لبداية بسيطة: متجر واضح ورابط جاهز لمشاركة منتجاتك.",
-    btn: "ابدأ متجرك",
-    features: ["حتى 10 منتجات", "صفحة متجر أصلية", "رابط ومشاركة للمنتجات"],
-  },
-  {
-    id: "pro", name: "احترافية", price: "10", highlight: "خيار النمو",
-    desc: "لمن يريد هوية واضحة للمتجر وتجربة أقوى للزائر.",
-    btn: "نمِّ متجرك",
-    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "شعار وغلاف وألوان المتجر", "كوبونات خصم"],
-    soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"],
-  },
-  {
-    id: "full", name: "متجر متكامل", price: "15",
-    desc: "لمن يريد متجرًا بهويته الخاصة وتجربة أقرب لموقعه المستقل.",
-    btn: "ابنِ علامتك",
-    features: ["كل مميزات الاحترافية", "هوية متجر خاصة", "تذييل هادئ مدعوم من مُونَة"],
-    soon: ["ربط دومينك الخاص", "تحليلات مصادر الزيارات", "دعم أولوية", "مساعدة في إعداد المتجر"],
-  },
-];
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -1707,29 +1677,42 @@ export default function Dashboard() {
 
         {tab === "subscription" && (
           <>
-            <div className="dh-hint" style={{ marginBottom: 14, lineHeight: 1.9 }}>
-              كل الباقات تشمل: {COMMON_FEATURES.join(" · ")}
-            </div>
-            {PACKAGES.map((pkg) => (
-              <div className={"pk-card" + (pkg.id === sellerPlan ? " current" : "")} key={pkg.id}>
-                {pkg.highlight && <div className="pk-badge">{pkg.highlight}</div>}
-                <div className="pk-name">{pkg.name}</div>
-                <div className="dh-hint" style={{ marginBottom: 10 }}>{pkg.desc}</div>
-                <div className="pk-price">{pkg.price} <span>ر.ع / شهريًا</span></div>
-                <div className="pk-features">
-                  {pkg.features.map((f) => <div key={f}>✓ {f}</div>)}
+            <div className="dh-card" style={{ borderTop: "3px solid #B9832F" }}>
+              <div className="dh-title-row">
+                <div>
+                  <div className="dh-title">اشتراك متجرك</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>تبني اشتراكك بنفسك، بدل الباقات الثابتة.</div>
                 </div>
-                {pkg.soon && (
-                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #EDEAE0" }}>
-                    <div style={{ color: "#B9832F", fontSize: 10.5, fontWeight: 700, marginBottom: 4 }}>قادم قريبًا:</div>
-                    {pkg.soon.map((f) => (
-                      <div key={f} style={{ fontSize: 11.5, color: "#B0AC9C" }}>○ {f}</div>
-                    ))}
+                <span style={{ background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>قيد التجهيز</span>
+              </div>
+              <div style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <b style={{ display: "block", color: "#0B0B0C", fontSize: 13 }}>المتجر الأساسي</b>
+                  <span className="dh-hint">هوية المتجر، المنتجات، وروابط المشاركة.</span>
+                </div>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b>
+              </div>
+              <p className="dh-hint" style={{ margin: "13px 0 0", lineHeight: 1.9 }}>لا يوجد تحصيل الآن. بعد ربط ثواني، تختار الإضافات التي تحتاجها ويظهر لك مجموعك الشهري قبل أي دفع.</p>
+            </div>
+
+            {Array.from(new Set(ADD_ON_CATALOG.map((item) => item.group))).map((group) => (
+              <div className="dh-card" key={group}>
+                <div className="dh-title" style={{ marginBottom: 8 }}>{group}</div>
+                {ADD_ON_CATALOG.filter((item) => item.group === group).map((item) => (
+                  <div className="dh-item" key={item.key}>
+                    <div className="dh-item-top" style={{ alignItems: "flex-start", gap: 12 }}>
+                      <div>
+                        <div className="dh-item-name">{item.title}</div>
+                        <div className="dh-hint" style={{ marginTop: 3 }}>{item.desc}</div>
+                      </div>
+                      <b className="dh-item-price">+{item.price.toFixed(2)} ر.ع</b>
+                    </div>
+                    <span style={{ display: "inline-block", background: item.ready ? "#EAF0EB" : "#F3EBDD", color: item.ready ? "#37724B" : "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>{item.status}</span>
                   </div>
-                )}
-                {pkg.id === sellerPlan && <div className="pk-current-tag">باقتك الحالية</div>}
+                ))}
               </div>
             ))}
+            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>الأسعار هنا لعرض خطتك المستقبلية فقط. الإضافات لا تتفعل ولا تُحصّل قبل ربط ثواني واختبار الدفع.</div>
           </>
         )}
 
@@ -1757,8 +1740,8 @@ export default function Dashboard() {
                 </div>
                 <div className="pv-desc">{description || "ما فيه وصف إضافي لهذا المنتج."}</div>
               </div>
-              <div className="pv-btn">ادفع واستلم الآن</div>
-              <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد</div>
+              <div className="pv-btn">الدفع والتسليم بعد ربط ثواني</div>
+              <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد ولا يوجد دفع الآن</div>
             </div>
           </div>
         </div>

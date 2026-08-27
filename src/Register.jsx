@@ -34,9 +34,9 @@ const styles = `
 
 const STEPS = [
   { n: "1", label: "الحساب" },
-  { n: "2", label: "الباقة" },
-  { n: "3", label: "المتجر" },
-  { n: "4", label: "أول منتج" },
+  { n: "2", label: "المتجر" },
+  { n: "3", label: "المنتج" },
+  { n: "4", label: "المشاركة" },
 ];
 
 export default function Register() {
@@ -115,7 +115,7 @@ export default function Register() {
         </form>
 
         <div className="auth-next-hint">
-          بعد إنشاء الحساب: تختار باقتك ← تضبط شكل متجرك ← ترفع أول منتج
+          بعد إنشاء الحساب: تضبط شكل متجرك ← ترفع أول منتج ← تأخذ رابط المشاركة
         </div>
 
         <div className="auth-switch">

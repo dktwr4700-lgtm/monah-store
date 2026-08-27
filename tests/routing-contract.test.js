@@ -108,10 +108,17 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
   it("يشرح الاشتراك المرن دون ادعاء شعبية غير موثق", async () => {
     const landing = await source("src/App.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
 
     expect(landing).toContain("اشتراك مرن");
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
+    expect(dashboard).toContain("اشتراك متجرك");
+    expect(dashboard).toContain("تبني اشتراكك بنفسك");
+    expect(dashboard).toContain("BASE_MONTHLY_PRICE.toFixed(2)");
+    expect(dashboard).not.toContain("PACKAGES.map");
+    expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 3");
   });
 
   it("يعرض أدوات التاجر المهمة مباشرة داخل لوحة التحكم", async () => {
@@ -191,5 +198,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).not.toContain('<b>فوري</b><span>تسليم الملف</span>');
     expect(dashboard).toContain("رابط تنزيل المشتري يُفعّل بعد ربط ثواني واختبار عملية دفع حقيقية");
     expect(dashboard).not.toContain("رابط تحميله يتوفر فقط للمشتري بعد إتمام الدفع");
+    expect(dashboard).toContain("الدفع والتسليم بعد ربط ثواني");
+    expect(dashboard).not.toContain("ادفع واستلم الآن");
   });
 });
