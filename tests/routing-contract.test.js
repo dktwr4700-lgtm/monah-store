@@ -201,4 +201,17 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("الدفع والتسليم بعد ربط ثواني");
     expect(dashboard).not.toContain("ادفع واستلم الآن");
   });
+
+  it("يجعل نصوص الشروط والخصوصية صادقة قبل تفعيل الدفع", async () => {
+    const legal = await source("src/LegalPage.jsx");
+
+    expect(legal).toContain("مرحلة المنصة الحالية");
+    expect(legal).toContain("لا تجمع مُونَة حاليًا بيانات بطاقات أو حسابات دفع");
+    expect(legal).toContain("لا توفر مُونَة تحصيلًا ماليًا أو شراءً أو تسليمًا تلقائيًا");
+    expect(legal).toContain("يبدأ بمتجر أساسي بسعر 3 ر.ع");
+    expect(legal).toContain("الحزم مقفلة ولا تظهر للزوار");
+    expect(legal).not.toContain("اشتراك شهري أو سنوي");
+    expect(legal).not.toContain("يُجدد تلقائيًا");
+    expect(legal).not.toContain("تُسلّم فورًا");
+  });
 });
