@@ -94,6 +94,34 @@ service cloud.firestore {
       allow update, delete: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
     }
 
+    match /bundles/{bundleId} {
+      allow get, list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.hidden == true
+        && request.resource.data.suspended == false
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.price is number
+        && request.resource.data.price > 0
+        && request.resource.data.productIds is list
+        && request.resource.data.productIds.size() >= 2
+        && request.resource.data.productIds.size() <= 25
+        && request.resource.data.keys().hasOnly([
+          'ownerId', 'name', 'price', 'description', 'productIds', 'hidden', 'suspended', 'createdAt'
+        ]);
+      allow update: if isAdmin() || (
+        signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'price', 'description', 'productIds'
+        ])
+      );
+      allow delete: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+    }
+
     match /orders/{orderId} {
       allow get, list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
       allow create, update, delete: if false;

@@ -106,14 +106,12 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("اختر مظهر متجرك");
   });
 
-  it("يشرح الباقات كخيارات نمو دون ادعاء شعبية غير موثق", async () => {
+  it("يشرح الاشتراك المرن دون ادعاء شعبية غير موثق", async () => {
     const landing = await source("src/App.jsx");
-    const dashboard = await source("src/Dashboard.jsx");
 
-    expect(landing).toContain("خيار النمو");
-    expect(dashboard).toContain("خيار النمو");
+    expect(landing).toContain("اشتراك مرن");
+    expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
-    expect(dashboard).not.toContain("الأكثر طلبًا");
   });
 
   it("يعرض أدوات التاجر المهمة مباشرة داخل لوحة التحكم", async () => {
@@ -149,5 +147,43 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const dashboard = await source("src/Dashboard.jsx");
 
     expect(dashboard).toContain("}, { merge: true });");
+  });
+
+  it("يحفظ حزم المنتجات مقفلة ويمنع ظهورها أو شرائها قبل الدفع", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const store = await source("src/StorePage.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(dashboard).toContain('collection(db, "bundles")');
+    expect(dashboard).toContain("حفظ الحزمة مقفلة");
+    expect(dashboard).toContain("تم حفظ الحزمة وهي مقفلة الآن");
+    expect(dashboard).toContain("الحزم المحفوظة");
+    expect(dashboard).toContain("hidden: true");
+    expect(dashboard).toContain("لن تظهر للزوار أو تسمح بالشراء قبل الدفع");
+    expect(store).not.toContain('collection(db, "bundles")');
+    expect(rules).toContain("match /bundles/{bundleId}");
+    expect(rules).toContain("request.resource.data.hidden == true");
+  });
+
+  it("لا يعد بالدفع أو التسليم التلقائي قبل ربط ثواني واختبار الشراء", async () => {
+    const landing = await source("src/App.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(landing).toContain("الدفع والتسليم يفعّلان بعد ربط ثواني واختبارهما");
+    expect(landing).toContain("الدفع والتسليم قيد التجهيز");
+    expect(landing).toContain("لا يوجد تحصيل اشتراك حاليًا قبل ربط ثواني واختباره");
+    expect(landing).toContain("قيد التجهيز");
+    expect(landing).toContain("متجرك الأساسي");
+    expect(landing).toContain("إضافات يختارها التاجر بعد ربط ثواني");
+    expect(landing).not.toContain("PACKAGES.map");
+    expect(landing).not.toContain("وفّر شهرين");
+    expect(landing).not.toContain("وصل الملف للعميل تلقائيًا الآن");
+    expect(landing).not.toContain("الملف يوصل العميل فورًا بعد الدفع");
+    expect(landing).not.toContain("تدفع الاشتراك الشهري بس");
+    expect(landing).toContain("بعد الربط");
+    expect(landing).toContain("قيد التجهيز");
+    expect(landing).not.toContain('<b>فوري</b><span>تسليم الملف</span>');
+    expect(dashboard).toContain("رابط تنزيل المشتري يُفعّل بعد ربط ثواني واختبار عملية دفع حقيقية");
+    expect(dashboard).not.toContain("رابط تحميله يتوفر فقط للمشتري بعد إتمام الدفع");
   });
 });
