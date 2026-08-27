@@ -35,7 +35,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("hidden: true");
     expect(dashboard).toContain("suspended: false");
     expect(dashboard).toContain("await updateDoc(doc(db, \"products\", productRef.id), { hidden: !publish })");
-    expect(dashboard).toContain("سعرًا صحيحًا أكبر من صفر");
+    expect(dashboard).toContain("اكتب 0 للمنتج المجاني");
   });
 
   it("لا يعرض تفاصيل الخطأ الداخلية للبائع", async () => {
@@ -92,6 +92,34 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("match /shared/{docId} { allow read, write: if false; }");
     expect(storageRules).toContain("request.resource.contentType.matches('image/.*')");
     expect(storageRules).toContain("allow update, delete: if false;");
+  });
+
+  it("يتيح تنزيل الملف المجاني فقط عبر رابط قصير ولا يفتح الملفات المدفوعة", async () => {
+    const productPage = await source("src/ProductPage.jsx");
+    const freeDownload = await source("api/free-download.js");
+    const rules = await source("firestore.rules");
+
+    expect(productPage).toContain('fetch("/api/free-download"');
+    expect(productPage).toContain("احصل على المنتج مجانًا");
+    expect(freeDownload).toContain("Number(product.price) === 0");
+    expect(freeDownload).toContain("product.hidden === false");
+    expect(freeDownload).toContain("SIGNED_URL_TTL_MS");
+    expect(rules).toContain("request.resource.data.price >= 0");
+    expect(rules).toContain("request.resource.data.type == 'file'");
+  });
+
+  it("ينشئ روابط تتبع يراها مالك المنتج فقط ويحفظ عدد الزيارات في الخادم", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const rules = await source("firestore.rules");
+    const tracking = await source("api/track-visit.js");
+
+    expect(dashboard).toContain("روابط التتبع");
+    expect(dashboard).toContain('collection(db, "campaignLinks")');
+    expect(dashboard).toContain("إنشاء رابط تتبع");
+    expect(rules).toContain("match /campaignLinks/{linkId}");
+    expect(rules).toContain("request.resource.data.visits == resource.data.visits");
+    expect(tracking).toContain("db.runTransaction");
+    expect(tracking).toContain("lastVisitedAt");
   });
 
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {

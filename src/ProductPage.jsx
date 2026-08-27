@@ -36,6 +36,7 @@ export default function ProductPage({ productId }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [activeImage, setActiveImage] = useState(0);
   const [shareStatus, setShareStatus] = useState("");
+  const [downloadStatus, setDownloadStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +96,7 @@ export default function ProductPage({ productId }) {
   const contact = whatsappUrl(store?.whatsapp, name);
   const category = product?.category || "منتج رقمي";
   const isCode = product?.type === "code";
+  const isFreeFile = Number(product?.price) === 0 && product?.type === "file";
   const storeName = store?.name || "صاحب المتجر";
   const storeColor = store?.color || "#163f2e";
   const storeLogo = store?.logoUrl;
@@ -112,6 +114,23 @@ export default function ProductPage({ productId }) {
       window.setTimeout(() => setShareStatus(""), 1800);
     } catch (error) {
       if (error?.name !== "AbortError") setShareStatus("تعذرت المشاركة، انسخ الرابط من المتصفح");
+    }
+  }
+
+  async function downloadFreeProduct() {
+    setDownloadStatus("جاري تجهيز التنزيل...");
+    try {
+      const response = await fetch("/api/free-download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.url) throw new Error("download unavailable");
+      window.location.assign(data.url);
+      setDownloadStatus("بدأ التنزيل");
+    } catch (error) {
+      setDownloadStatus("تعذر تجهيز التنزيل الآن. حاول مرة ثانية.");
     }
   }
 
@@ -134,11 +153,11 @@ export default function ProductPage({ productId }) {
             <span className="pp-category">{category}</span>
             <h1 className="pp-title">{name}</h1>
             <div className="pp-store">من متجر <strong>{storeName}</strong></div>
-            <div className="pp-price-row"><span className="pp-price-label">السعر المعروض</span><span className="pp-price">{Number(product?.price || 0).toFixed(2)} ر.ع</span></div>
+            <div className="pp-price-row"><span className="pp-price-label">السعر المعروض</span><span className="pp-price">{isFreeFile ? "مجاني" : `${Number(product?.price || 0).toFixed(2)} ر.ع`}</span></div>
             <div className="pp-description">{product?.description || "لا يوجد وصف إضافي لهذا المنتج حاليًا."}</div>
-            {contact ? <a className="pp-contact" href={contact} target="_blank" rel="noopener noreferrer">تواصل مع البائع قبل الشراء</a> : <span className="pp-contact disabled">بيانات التواصل غير متاحة حاليًا</span>}
+            {isFreeFile ? <button type="button" className="pp-contact" onClick={downloadFreeProduct}>{downloadStatus || "احصل على المنتج مجانًا"}</button> : (contact ? <a className="pp-contact" href={contact} target="_blank" rel="noopener noreferrer">تواصل مع البائع قبل الشراء</a> : <span className="pp-contact disabled">بيانات التواصل غير متاحة حاليًا</span>)}
             <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || "مشاركة رابط المنتج"}</button></div>
-            <p className="pp-note">تواصل مع صاحب المتجر للاستفسار عن المنتج وطريقة الاستلام المتاحة.</p>
+            <p className="pp-note">{isFreeFile ? "هذا المنتج مجاني. يبدأ تنزيل الملف بعد الضغط على الزر." : "تواصل مع صاحب المتجر للاستفسار عن المنتج وطريقة الاستلام المتاحة."}</p>
           </section>
         </div>
         <section className="pp-info" aria-label="معلومات المنتج">

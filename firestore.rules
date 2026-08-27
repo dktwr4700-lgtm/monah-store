@@ -22,7 +22,8 @@ service cloud.firestore {
         && request.resource.data.hidden == true
         && request.resource.data.suspended == false
         && request.resource.data.price is number
-        && request.resource.data.price > 0
+        && request.resource.data.price >= 0
+        && (request.resource.data.price > 0 || request.resource.data.type == 'file')
         && request.resource.data.keys().hasOnly([
           'ownerId', 'name', 'price', 'description', 'category', 'type',
           'filePath', 'codesCount', 'images', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt'
@@ -30,6 +31,8 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         ownsExistingProduct()
         && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.price >= 0
+        && (request.resource.data.price > 0 || resource.data.type == 'file')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'price', 'description', 'category', 'filePath', 'codesCount',
           'images', 'hidden', 'featured', 'sortOrder'
@@ -46,6 +49,30 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['code', 'used', 'usedBy', 'usedAt']);
         allow update, delete: if isAdmin();
       }
+    }
+
+    match /campaignLinks/{linkId} {
+      allow get, list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.productId is string
+        && ownsProduct(request.resource.data.productId)
+        && get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.hidden == false
+        && get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.get('suspended', false) == false
+        && request.resource.data.label is string
+        && request.resource.data.label.size() >= 2
+        && request.resource.data.label.size() <= 60
+        && request.resource.data.visits == 0
+        && request.resource.data.keys().hasOnly(['ownerId', 'productId', 'label', 'visits', 'createdAt']);
+      allow update: if isAdmin() || (
+        signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.productId == resource.data.productId
+        && request.resource.data.visits == resource.data.visits
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['label'])
+      );
+      allow delete: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
     }
 
     match /stores/{ownerId} {
