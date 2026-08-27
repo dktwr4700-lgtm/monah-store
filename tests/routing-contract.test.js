@@ -158,11 +158,17 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("حفظ الحزمة مقفلة");
     expect(dashboard).toContain("تم حفظ الحزمة وهي مقفلة الآن");
     expect(dashboard).toContain("الحزم المحفوظة");
+    expect(dashboard).toContain("إخفاء الحزمة");
+    expect(dashboard).toContain("الحزم المخفية");
+    expect(dashboard).toContain("حذف نهائيًا");
+    expect(dashboard).toContain("نعم، احذف الحزمة");
+    expect(dashboard).toContain("تم حذف الحزمة فقط. منتجاتك بقيت كما هي.");
     expect(dashboard).toContain("hidden: true");
     expect(dashboard).toContain("لن تظهر للزوار أو تسمح بالشراء قبل الدفع");
     expect(store).not.toContain('collection(db, "bundles")');
     expect(rules).toContain("match /bundles/{bundleId}");
     expect(rules).toContain("request.resource.data.hidden == true");
+    expect(rules).toContain("request.resource.data.archived is bool");
   });
 
   it("لا يعد بالدفع أو التسليم التلقائي قبل ربط ثواني واختبار الشراء", async () => {

@@ -100,6 +100,7 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.hidden == true
         && request.resource.data.suspended == false
+        && (!('archived' in request.resource.data) || request.resource.data.archived == false)
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 2
         && request.resource.data.name.size() <= 120
@@ -109,14 +110,17 @@ service cloud.firestore {
         && request.resource.data.productIds.size() >= 2
         && request.resource.data.productIds.size() <= 25
         && request.resource.data.keys().hasOnly([
-          'ownerId', 'name', 'price', 'description', 'productIds', 'hidden', 'suspended', 'createdAt'
+          'ownerId', 'name', 'price', 'description', 'productIds', 'hidden', 'suspended', 'archived', 'createdAt'
         ]);
       allow update: if isAdmin() || (
         signedIn()
         && resource.data.ownerId == request.auth.uid
         && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.hidden == true
+        && request.resource.data.suspended == false
+        && (!('archived' in request.resource.data) || request.resource.data.archived is bool)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'price', 'description', 'productIds'
+          'name', 'price', 'description', 'productIds', 'archived'
         ])
       );
       allow delete: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();

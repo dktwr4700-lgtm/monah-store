@@ -288,6 +288,10 @@ export default function Dashboard() {
   const [bundleSaving, setBundleSaving] = useState(false);
   const [bundleSaved, setBundleSaved] = useState(false);
   const [bundleError, setBundleError] = useState("");
+  const [bundleActionNotice, setBundleActionNotice] = useState("");
+  const [togglingBundleId, setTogglingBundleId] = useState(null);
+  const [confirmBundleDeleteId, setConfirmBundleDeleteId] = useState(null);
+  const [deletingBundleId, setDeletingBundleId] = useState(null);
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -638,6 +642,7 @@ export default function Dashboard() {
     const numericPrice = Number(bundlePrice);
     setBundleSaved(false);
     setBundleError("");
+    setBundleActionNotice("");
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
       setBundleError("اكتب اسم الحزمة وسعرًا صحيحًا أكبر من صفر.");
       return;
@@ -656,6 +661,7 @@ export default function Dashboard() {
         productIds: bundleProductIds,
         hidden: true,
         suspended: false,
+        archived: false,
         createdAt: serverTimestamp(),
       });
       setBundleName("");
@@ -669,6 +675,37 @@ export default function Dashboard() {
     setBundleSaving(false);
   }
 
+  async function toggleBundleArchived(bundle) {
+    setBundleError("");
+    setBundleSaved(false);
+    setBundleActionNotice("");
+    setTogglingBundleId(bundle.id);
+    try {
+      await updateDoc(doc(db, "bundles", bundle.id), { archived: !bundle.archived });
+      setBundleActionNotice(bundle.archived
+        ? "تم إظهار الحزمة ضمن الحزم المحفوظة."
+        : "تم إخفاء الحزمة. ستجدها في الحزم المخفية.");
+    } catch (err) {
+      setBundleError("تعذر تحديث حالة الحزمة، حاول مرة ثانية.");
+    }
+    setTogglingBundleId(null);
+  }
+
+  async function confirmDeleteBundle(bundleId) {
+    setBundleError("");
+    setBundleSaved(false);
+    setBundleActionNotice("");
+    setDeletingBundleId(bundleId);
+    try {
+      await deleteDoc(doc(db, "bundles", bundleId));
+      setConfirmBundleDeleteId(null);
+      setBundleActionNotice("تم حذف الحزمة فقط. منتجاتك بقيت كما هي.");
+    } catch (err) {
+      setBundleError("تعذر حذف الحزمة، حاول مرة ثانية.");
+    }
+    setDeletingBundleId(null);
+  }
+
   const filteredProducts = products.filter((p) => {
     const matchesQuery = p.name.toLowerCase().includes(productQuery.trim().toLowerCase());
     const matchesFilter =
@@ -678,6 +715,8 @@ export default function Dashboard() {
     return matchesQuery && matchesFilter;
   });
   const orderedProducts = [...filteredProducts].sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
+  const activeBundles = bundles.filter((bundle) => !bundle.archived);
+  const archivedBundles = bundles.filter((bundle) => bundle.archived);
 
   async function handleProductImageUpload(e) {
     const file = e.target.files[0];
@@ -1396,6 +1435,7 @@ export default function Dashboard() {
                 جهّز عرضًا من منتجين أو أكثر بسعر واحد الآن. الحزمة تبقى مخفية ولا يمكن شراؤها قبل ربط ثواني واختبار الدفع.
               </div>
               {bundleSaved && <div className="dh-success" role="status">تم حفظ الحزمة وهي مقفلة الآن. ستجدها تحت هذا الزر.</div>}
+              {bundleActionNotice && <div className="dh-success" role="status">{bundleActionNotice}</div>}
               {bundleError && <div className="dh-error">{bundleError}</div>}
               {products.length < 2 ? (
                 <div className="empty-note">تحتاج منتجين على الأقل قبل تجهيز حزمة.</div>
@@ -1429,11 +1469,32 @@ export default function Dashboard() {
                   </button>
                 </>
               )}
-              {bundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+              {activeBundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
                 <div className="dh-title" style={{ fontSize: 12 }}>الحزم المحفوظة</div>
-                {bundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
+                {activeBundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
                   <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag">مقفلة</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} ر.ع</span></div>
                   <div className="dh-hint">{bundle.productIds?.length || 0} منتجات · لن تظهر للزوار أو تسمح بالشراء قبل الدفع.</div>
+                  {confirmBundleDeleteId === bundle.id ? <div className="dh-item-actions">
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(null)}>إلغاء</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => confirmDeleteBundle(bundle.id)} disabled={deletingBundleId === bundle.id}>{deletingBundleId === bundle.id ? "جاري الحذف..." : "نعم، احذف الحزمة"}</button>
+                  </div> : <div className="dh-item-actions">
+                    <button className="dh-item-action" type="button" onClick={() => toggleBundleArchived(bundle)} disabled={togglingBundleId === bundle.id}>{togglingBundleId === bundle.id ? "جاري الإخفاء..." : "إخفاء الحزمة"}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(bundle.id)}>حذف نهائيًا</button>
+                  </div>}
+                </div>)}
+              </div>}
+              {archivedBundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+                <div className="dh-title" style={{ fontSize: 12 }}>الحزم المخفية</div>
+                {archivedBundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
+                  <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag">مخفية</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} ر.ع</span></div>
+                  <div className="dh-hint">محفوظة عندك فقط. منتجات الحزمة لم تتغير.</div>
+                  {confirmBundleDeleteId === bundle.id ? <div className="dh-item-actions">
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(null)}>إلغاء</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => confirmDeleteBundle(bundle.id)} disabled={deletingBundleId === bundle.id}>{deletingBundleId === bundle.id ? "جاري الحذف..." : "نعم، احذف الحزمة"}</button>
+                  </div> : <div className="dh-item-actions">
+                    <button className="dh-item-action" type="button" onClick={() => toggleBundleArchived(bundle)} disabled={togglingBundleId === bundle.id}>{togglingBundleId === bundle.id ? "جاري الإظهار..." : "إظهار الحزمة"}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(bundle.id)}>حذف نهائيًا</button>
+                  </div>}
                 </div>)}
               </div>}
             </div>
