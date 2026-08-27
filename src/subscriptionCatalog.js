@@ -3,7 +3,7 @@ export const BASE_MONTHLY_PRICE = 3;
 export const ADD_ON_CATALOG = [
   { key: "smartSalesPage", group: "المتجر والمنتجات", title: "صفحة بيع مستقلة", price: 0.5, desc: "صفحة أوضح لعرض المنتج قبل التواصل.", status: "متاح الآن", ready: true },
   { key: "productPreview", group: "المتجر والمنتجات", title: "معاينة صور للمنتج", price: 0.5, desc: "يوضح للزائر أن الصور معاينة من دون كشف الملف.", status: "متاح الآن", ready: true },
-  { key: "campaignLinks", group: "المتجر والمنتجات", title: "رابط بيع مباشر", price: 0.5, desc: "رابط مختلف لواتساب أو إنستغرام أو تيك توك.", status: "متاح الآن", ready: true },
+  { key: "directSalesLinks", group: "المتجر والمنتجات", title: "رابط بيع مباشر", price: 0.5, desc: "رابط واضح للمنتج أو المتجر ترسله لعملائك.", status: "متاح الآن", ready: true },
   { key: "storeDesign", group: "المتجر والمنتجات", title: "تخصيص تصميم المتجر", price: 1, desc: "شعار وغلاف وألوان وبيانات متجر خاصة.", status: "متاح الآن", ready: true },
   { key: "customDomain", group: "المتجر والمنتجات", title: "دومين مخصص", price: 1, desc: "ربط اسم موقع خاص بالتاجر.", status: "يبنى قبل التفعيل", ready: false },
   { key: "productBundles", group: "المتجر والمنتجات", title: "بيع عدة منتجات معًا", price: 0.5, desc: "عرض أكثر من منتج ضمن عملية شراء واحدة.", status: "بعد ثواني", ready: false },
@@ -17,7 +17,7 @@ export const ADD_ON_CATALOG = [
   { key: "upsell", group: "زيادة المبيعات", title: "Upsell", price: 1.5, desc: "عرض إضافة مناسبة عند إكمال الشراء.", status: "بعد ثواني", ready: false },
   { key: "crossSell", group: "زيادة المبيعات", title: "Cross-sell", price: 1, desc: "اقتراح منتجات مرتبطة للعميل.", status: "بعد ثواني", ready: false },
   { key: "returningOffers", group: "زيادة المبيعات", title: "عروض للعملاء السابقين", price: 1, desc: "عرض خاص لمن اشترى سابقًا.", status: "بعد ثواني", ready: false },
-  { key: "campaignLinks", group: "زيادة المبيعات", title: "روابط تتبع الحملات", price: 1, desc: "روابط منفصلة لكل مكان نشر؛ التقارير عند تفعيلها.", status: "متاح الآن", ready: true },
+  { key: "campaignTracking", group: "زيادة المبيعات", title: "روابط تتبع الحملات", price: 1, desc: "روابط منفصلة لكل مكان نشر مع نتائج فعلية بعد تجهيز التقارير.", status: "يبنى قبل التفعيل", ready: false },
   { key: "affiliate", group: "زيادة المبيعات", title: "Affiliate", price: 2, desc: "مسوقون يشاركون روابطهم مقابل عمولة.", status: "مرحلة لاحقة", ready: false },
   { key: "salesDashboard", group: "التحليلات والعملاء", title: "لوحة المبيعات", price: 1, desc: "مبيعات مسجلة بعد تفعيل الدفع.", status: "بعد ثواني", ready: false },
   { key: "customerHistory", group: "التحليلات والعملاء", title: "سجل مشتريات العملاء", price: 0.5, desc: "يشاهد التاجر تاريخ شراء عملائه.", status: "بعد ثواني", ready: false },

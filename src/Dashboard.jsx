@@ -256,6 +256,12 @@ export default function Dashboard() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [launchInterests, setLaunchInterests] = useState({});
+  const [bundles, setBundles] = useState([]);
+  const [bundleName, setBundleName] = useState("");
+  const [bundlePrice, setBundlePrice] = useState("");
+  const [bundleDescription, setBundleDescription] = useState("");
+  const [bundleProductIds, setBundleProductIds] = useState([]);
+  const [bundleSaving, setBundleSaving] = useState(false);
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -355,6 +361,15 @@ export default function Dashboard() {
     const unsub = onSnapshot(q, (snap) => {
       setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "bundles"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      setBundles(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
+    }, () => setBundles([]));
     return () => unsub();
   }, [user]);
 
@@ -615,6 +630,46 @@ export default function Dashboard() {
     } catch (err) {
       setError("تعذر ترتيب المنتجات الآن، حاول مرة ثانية.");
     }
+  }
+
+  function toggleBundleProduct(productId) {
+    setBundleProductIds((current) => current.includes(productId)
+      ? current.filter((id) => id !== productId)
+      : [...current, productId]);
+  }
+
+  async function handleCreateBundle() {
+    const cleanName = bundleName.trim();
+    const numericPrice = Number(bundlePrice);
+    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+      setError("اكتب اسم الحزمة وسعرًا صحيحًا أكبر من صفر.");
+      return;
+    }
+    if (bundleProductIds.length < 2) {
+      setError("اختر منتجين على الأقل داخل الحزمة.");
+      return;
+    }
+    setBundleSaving(true);
+    setError("");
+    try {
+      await addDoc(collection(db, "bundles"), {
+        ownerId: user.uid,
+        name: cleanName,
+        price: numericPrice,
+        description: bundleDescription.trim().slice(0, 500),
+        productIds: bundleProductIds,
+        hidden: true,
+        suspended: false,
+        createdAt: serverTimestamp(),
+      });
+      setBundleName("");
+      setBundlePrice("");
+      setBundleDescription("");
+      setBundleProductIds([]);
+    } catch (err) {
+      setError("تعذر حفظ الحزمة، حاول مرة ثانية.");
+    }
+    setBundleSaving(false);
   }
 
   const filteredProducts = products.filter((p) => {
@@ -1320,6 +1375,54 @@ export default function Dashboard() {
                   )}
                 </div>
               ))}
+            </div>
+
+            <div className="dh-card">
+              <div className="dh-title-row">
+                <div className="dh-title">حزم المنتجات</div>
+                <div className="dh-title-count">تُفعّل مع ثواني</div>
+              </div>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>
+                جهّز عرضًا من منتجين أو أكثر بسعر واحد الآن. الحزمة تبقى مخفية ولا يمكن شراؤها قبل ربط ثواني واختبار الدفع.
+              </div>
+              {products.filter((product) => !product.isLaunch).length < 2 ? (
+                <div className="empty-note">تحتاج منتجين عاديين على الأقل قبل تجهيز حزمة.</div>
+              ) : (
+                <>
+                  <div className="dh-field">
+                    <label>اسم الحزمة</label>
+                    <input value={bundleName} onChange={(event) => setBundleName(event.target.value)} placeholder="مثال: حزمة قوالب البداية" maxLength="120" />
+                  </div>
+                  <div className="dh-field">
+                    <label>سعر الحزمة المتوقع (ر.ع)</label>
+                    <input type="number" min="0.01" step="0.01" value={bundlePrice} onChange={(event) => setBundlePrice(event.target.value)} />
+                  </div>
+                  <div className="dh-field">
+                    <label>وصف مختصر (اختياري)</label>
+                    <textarea rows="2" value={bundleDescription} onChange={(event) => setBundleDescription(event.target.value)} placeholder="وش الذي يحصل عليه العميل داخل الحزمة؟" maxLength="500" />
+                  </div>
+                  <div className="dh-field">
+                    <label>اختر منتجات الحزمة</label>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {products.filter((product) => !product.isLaunch).map((product) => (
+                        <label key={product.id} className="dh-item-action" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
+                          <span>{product.name} · {Number(product.price).toFixed(2)} ر.ع</span>
+                          <input type="checkbox" checked={bundleProductIds.includes(product.id)} onChange={() => toggleBundleProduct(product.id)} />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <button type="button" className="dh-item-action primary" onClick={handleCreateBundle} disabled={bundleSaving} style={{ width: "100%" }}>
+                    {bundleSaving ? "جاري الحفظ..." : "حفظ الحزمة مقفلة"}
+                  </button>
+                </>
+              )}
+              {bundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+                {bundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
+                  <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag">مقفلة</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} ر.ع</span></div>
+                  <div className="dh-hint">{bundle.productIds?.length || 0} منتجات · لن تظهر للزوار أو تسمح بالشراء قبل الدفع.</div>
+                </div>)}
+              </div>}
             </div>
           </>
         )}

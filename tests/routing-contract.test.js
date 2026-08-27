@@ -214,6 +214,22 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(register).toContain("لا يوجد دفع أو تحصيل حتى يجهز ربط ثواني");
   });
 
+  it("يفصل الرابط المباشر العامل عن تتبع الحملات وحزم المنتجات المقفلة", async () => {
+    const catalog = await source("src/subscriptionCatalog.js");
+    const dashboard = await source("src/Dashboard.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(catalog).toContain('key: "directSalesLinks"');
+    expect(catalog).toContain('key: "campaignTracking"');
+    expect(catalog).toContain('key: "bundles"');
+    expect(catalog).toContain('status: "بعد ثواني", ready: false');
+    expect(dashboard).toContain("حزم المنتجات");
+    expect(dashboard).toContain("حفظ الحزمة مقفلة");
+    expect(dashboard).toContain('collection(db, "bundles")');
+    expect(rules).toContain("match /bundles/{bundleId}");
+    expect(rules).toContain("request.resource.data.hidden == true");
+  });
+
   it("يسجل اهتمام الإطلاق القادم ويحمي البريد لصاحب المنتج فقط", async () => {
     const dashboard = await source("src/Dashboard.jsx");
     const product = await source("src/ProductPage.jsx");
