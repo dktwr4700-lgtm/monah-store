@@ -1073,8 +1073,6 @@ export default function Dashboard() {
       <div className="dh-tabs">
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
-        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>الخصومات</button>
-        <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
         <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
         <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
       </div>
@@ -1270,7 +1268,7 @@ export default function Dashboard() {
                         ✓ {productFile.name} ({(productFile.size / 1024 / 1024).toFixed(1)} م.ب)
                       </div>
                     )}
-                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. رابط تنزيل المشتري يُفعّل بعد ربط ثواني واختبار عملية دفع حقيقية. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
+                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. وصول العميل للملف يُتاح عند تفعيل البيع الإلكتروني. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
                   </div>
                 ) : (
                   <div className="dh-field">
@@ -1399,10 +1397,10 @@ export default function Dashboard() {
             <div className="dh-card">
               <div className="dh-title-row">
                 <div className="dh-title">حزم المنتجات</div>
-                <div className="dh-title-count">تُفعّل مع ثواني</div>
+                <div className="dh-title-count">مقفلة حتى تفعيل البيع الإلكتروني</div>
               </div>
               <div className="dh-hint" style={{ marginBottom: 14 }}>
-                جهّز عرضًا من منتجين أو أكثر بسعر واحد الآن. الحزمة تبقى مخفية ولا يمكن شراؤها قبل ربط ثواني واختبار الدفع.
+                جهّز عرضًا من منتجين أو أكثر بسعر واحد الآن. الحزمة تبقى مخفية ولا يمكن شراؤها قبل تفعيل البيع الإلكتروني.
               </div>
               {bundleSaved && <div className="dh-success" role="status">تم حفظ الحزمة وهي مقفلة الآن. ستجدها تحت هذا الزر.</div>}
               {bundleActionNotice && <div className="dh-success" role="status">{bundleActionNotice}</div>}
@@ -1692,7 +1690,7 @@ export default function Dashboard() {
                 </div>
                 <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b>
               </div>
-              <p className="dh-hint" style={{ margin: "13px 0 0", lineHeight: 1.9 }}>لا يوجد تحصيل الآن. بعد ربط ثواني، تختار الإضافات التي تحتاجها ويظهر لك مجموعك الشهري قبل أي دفع.</p>
+              <p className="dh-hint" style={{ margin: "13px 0 0", lineHeight: 1.9 }}>تختار الإضافات التي تحتاجها ويظهر لك مجموعك الشهري وتفاصيل التفعيل قبل أي تحصيل.</p>
             </div>
 
             {Array.from(new Set(ADD_ON_CATALOG.map((item) => item.group))).map((group) => (
@@ -1712,7 +1710,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ))}
-            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>الأسعار هنا لعرض خطتك المستقبلية فقط. الإضافات لا تتفعل ولا تُحصّل قبل ربط ثواني واختبار الدفع.</div>
+            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>الأسعار المعروضة توضح خطتك. لا يتم تفعيل أي إضافة أو تحصيل مبلغ إلا بعد إظهار طريقة التفعيل والسعر النهائي بوضوح.</div>
           </>
         )}
 
@@ -1740,8 +1738,8 @@ export default function Dashboard() {
                 </div>
                 <div className="pv-desc">{description || "ما فيه وصف إضافي لهذا المنتج."}</div>
               </div>
-              <div className="pv-btn">الدفع والتسليم بعد ربط ثواني</div>
-              <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد ولا يوجد دفع الآن</div>
+              <div className="pv-btn">خيارات البيع عند التفعيل</div>
+              <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد، وتظهر خيارات البيع الإلكتروني عند تشغيلها</div>
             </div>
           </div>
         </div>

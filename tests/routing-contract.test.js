@@ -178,38 +178,44 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("request.resource.data.archived is bool");
   });
 
-  it("لا يعد بالدفع أو التسليم التلقائي قبل ربط ثواني واختبار الشراء", async () => {
+  it("لا يسمي بوابة دفع ولا يعد بالدفع أو التسليم قبل إتاحة الخدمة", async () => {
     const landing = await source("src/App.jsx");
     const dashboard = await source("src/Dashboard.jsx");
+    const legal = await source("src/LegalPage.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
+    const customerAssistant = await source("api/customer-assistant.js");
 
-    expect(landing).toContain("الدفع والتسليم يفعّلان بعد ربط ثواني واختبارهما");
-    expect(landing).toContain("الدفع والتسليم قيد التجهيز");
-    expect(landing).toContain("لا يوجد تحصيل اشتراك حاليًا قبل ربط ثواني واختباره");
-    expect(landing).toContain("قيد التجهيز");
+    expect(landing).toContain("خيارات البيع الإلكتروني عند تفعيلها");
+    expect(landing).toContain("البيع الإلكتروني قيد التفعيل");
     expect(landing).toContain("متجرك الأساسي");
-    expect(landing).toContain("إضافات يختارها التاجر بعد ربط ثواني");
+    expect(landing).toContain("إضافات يختارها التاجر عند التفعيل");
     expect(landing).not.toContain("PACKAGES.map");
     expect(landing).not.toContain("وفّر شهرين");
     expect(landing).not.toContain("وصل الملف للعميل تلقائيًا الآن");
     expect(landing).not.toContain("الملف يوصل العميل فورًا بعد الدفع");
     expect(landing).not.toContain("تدفع الاشتراك الشهري بس");
-    expect(landing).toContain("بعد الربط");
-    expect(landing).toContain("قيد التجهيز");
     expect(landing).not.toContain('<b>فوري</b><span>تسليم الملف</span>');
-    expect(dashboard).toContain("رابط تنزيل المشتري يُفعّل بعد ربط ثواني واختبار عملية دفع حقيقية");
+    expect(landing).not.toContain("ثواني");
+    expect(dashboard).toContain("وصول العميل للملف يُتاح عند تفعيل البيع الإلكتروني");
     expect(dashboard).not.toContain("رابط تحميله يتوفر فقط للمشتري بعد إتمام الدفع");
-    expect(dashboard).toContain("الدفع والتسليم بعد ربط ثواني");
     expect(dashboard).not.toContain("ادفع واستلم الآن");
+    expect(dashboard).not.toContain("ثواني");
+    expect(dashboard).not.toContain('>الخصومات</button>');
+    expect(dashboard).not.toContain('>الطلبات</button>');
+    expect(legal).not.toContain("ثواني");
+    expect(catalog).not.toContain("ثواني");
+    expect(catalog).toContain("مجهز للتجربة");
+    expect(customerAssistant).not.toContain("دفع تلقائي فوري عبر المنصة");
   });
 
   it("يجعل نصوص الشروط والخصوصية صادقة قبل تفعيل الدفع", async () => {
     const legal = await source("src/LegalPage.jsx");
 
-    expect(legal).toContain("مرحلة المنصة الحالية");
-    expect(legal).toContain("لا تجمع مُونَة حاليًا بيانات بطاقات أو حسابات دفع");
-    expect(legal).toContain("لا توفر مُونَة تحصيلًا ماليًا أو شراءً أو تسليمًا تلقائيًا");
-    expect(legal).toContain("يبدأ بمتجر أساسي بسعر 3 ر.ع");
-    expect(legal).toContain("الحزم مقفلة ولا تظهر للزوار");
+    expect(legal).toContain("استخدام المنصة");
+    expect(legal).toContain("لا تطلب مُونَة بيانات بطاقات أو حسابات دفع");
+    expect(legal).toContain("يظهر للعميل داخل المنصة ما إذا كانت خيارات الشراء");
+    expect(legal).toContain("يبدأ الاشتراك المرن بمتجر أساسي بسعر 3 ر.ع");
+    expect(legal).toContain("لا تظهر الحزمة للزوار");
     expect(legal).not.toContain("اشتراك شهري أو سنوي");
     expect(legal).not.toContain("يُجدد تلقائيًا");
     expect(legal).not.toContain("تُسلّم فورًا");
