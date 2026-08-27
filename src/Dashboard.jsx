@@ -262,6 +262,13 @@ export default function Dashboard() {
   const [togglingBundleId, setTogglingBundleId] = useState(null);
   const [confirmBundleDeleteId, setConfirmBundleDeleteId] = useState(null);
   const [deletingBundleId, setDeletingBundleId] = useState(null);
+  const [campaignLinks, setCampaignLinks] = useState([]);
+  const [campaignProductId, setCampaignProductId] = useState("");
+  const [campaignLabel, setCampaignLabel] = useState("");
+  const [campaignSaving, setCampaignSaving] = useState(false);
+  const [campaignError, setCampaignError] = useState("");
+  const [campaignNotice, setCampaignNotice] = useState("");
+  const [deletingCampaignId, setDeletingCampaignId] = useState(null);
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -1836,10 +1843,3 @@ export default function Dashboard() {
     </DebugErrorBoundary>
   );
 }
-  const [campaignLinks, setCampaignLinks] = useState([]);
-  const [campaignProductId, setCampaignProductId] = useState("");
-  const [campaignLabel, setCampaignLabel] = useState("");
-  const [campaignSaving, setCampaignSaving] = useState(false);
-  const [campaignError, setCampaignError] = useState("");
-  const [campaignNotice, setCampaignNotice] = useState("");
-  const [deletingCampaignId, setDeletingCampaignId] = useState(null);

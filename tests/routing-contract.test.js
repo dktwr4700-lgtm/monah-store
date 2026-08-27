@@ -121,6 +121,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("روابط التتبع");
     expect(dashboard).toContain('collection(db, "campaignLinks")');
     expect(dashboard).toContain("إنشاء رابط تتبع");
+    expect(dashboard.indexOf("const [campaignLinks")).toBeLessThan(dashboard.indexOf("// store design"));
+    expect(dashboard.indexOf("const [campaignLinks", dashboard.indexOf("const [campaignLinks") + 1)).toBe(-1);
     expect(rules).toContain("match /campaignLinks/{linkId}");
     expect(rules).toContain("request.resource.data.visits == resource.data.visits");
     expect(tracking).toContain("db.runTransaction");
