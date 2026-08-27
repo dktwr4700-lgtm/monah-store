@@ -106,11 +106,12 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("اختر مظهر متجرك");
   });
 
-  it("يشرح الباقات كخيارات نمو دون ادعاء شعبية غير موثق", async () => {
+  it("يعرض اشتراكًا مرنًا قبل التسجيل دون ادعاء شعبية غير موثق", async () => {
     const landing = await source("src/App.jsx");
     const dashboard = await source("src/Dashboard.jsx");
 
-    expect(landing).toContain("خيار النمو");
+    expect(landing).toContain("ابنِ اشتراكك بنفسك");
+    expect(landing).toContain("BASE_MONTHLY_PRICE = 3");
     expect(dashboard).toContain("خيار النمو");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).not.toContain("الأكثر طلبًا");
@@ -171,8 +172,36 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(product).toContain("smartSalesPageEnabled");
     expect(product).toContain("productPreviewEnabled");
     expect(product).toContain("ملف المنتج الكامل لا يظهر في صفحة المتجر");
-    expect(landing).toContain("لا يبدأ اشتراك أو تحصيل أو تسليم تلقائي");
+    expect(landing).toContain("لا يوجد تحصيل الآن");
     expect(landing).not.toContain("وصل الملف للعميل تلقائيًا الآن");
     expect(dashboard).toContain("تنزيل المشتري برابط مؤقت يفعّل بعد ربط الدفع");
+  });
+
+  it("يجمع السعر قبل التسجيل ويحفظ مسودة الاختيارات مع الحساب من دون تحصيل", async () => {
+    const landing = await source("src/App.jsx");
+    const register = await source("src/Register.jsx");
+
+    expect(landing).toContain("BASE_MONTHLY_PRICE = 3");
+    expect(landing).toContain("monah.subscriptionDraft");
+    expect(landing).toContain("ابنِ اشتراكك بنفسك");
+    expect(register).toContain("readSubscriptionDraft");
+    expect(register).toContain("featureSelections: Object.fromEntries");
+    expect(register).toContain("لا يوجد دفع أو تحصيل حتى يجهز ربط ثواني");
+  });
+
+  it("يسجل اهتمام الإطلاق القادم ويحمي البريد لصاحب المنتج فقط", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const product = await source("src/ProductPage.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(dashboard).toContain('setProductMode("launch")');
+    expect(dashboard).toContain("launchInterests");
+    expect(dashboard).toContain("إطلاق منتج قادم");
+    expect(product).toContain("registerInterest");
+    expect(product).toContain('doc(db, "products", product.id, "interests"');
+    expect(product).toContain("إطلاق منتج قادم");
+    expect(rules).toContain("match /interests/{interestId}");
+    expect(rules).toContain("allow get, list: if ownsProduct(productId) || isAdmin();");
+    expect(rules).toContain("allow update, delete: if false;");
   });
 });

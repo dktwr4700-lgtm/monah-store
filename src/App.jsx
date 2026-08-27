@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
@@ -150,6 +150,8 @@ const styles = `
   .price-card.popular .price-btn{ background:#153A2C; color:#fff; border:none; }
   .pricing-note{ text-align:center; color:#8A8677; font-size:11.5px; max-width:480px; margin:0 auto; line-height:1.8; }
 
+  .subscription-builder{max-width:960px;margin:0 auto;background:#fff;border:1px solid #e3ded2;border-radius:24px;overflow:hidden;box-shadow:0 18px 42px rgba(22,45,32,.06)}.sb-head{padding:26px 26px 20px;background:linear-gradient(135deg,#14382B,#21503e);color:#fff}.sb-kicker{font-size:10.5px;font-weight:800;color:#D6F35C;margin-bottom:7px}.sb-head h3{font-family:'Almarai',sans-serif;font-size:20px;margin:0 0 7px}.sb-head p{font-size:12px;line-height:1.8;color:#d6e4dc;margin:0;max-width:620px}.sb-content{display:grid;grid-template-columns:minmax(0,1fr) 250px;align-items:start}.sb-catalog{padding:20px}.sb-group{border-top:1px solid #eee9df;padding-top:18px;margin-top:18px}.sb-group:first-child{border-top:0;padding-top:0;margin-top:0}.sb-group-title{font-family:'Almarai',sans-serif;font-size:13px;color:#153A2C;font-weight:800;margin-bottom:4px}.sb-group-note{font-size:10.5px;line-height:1.7;color:#8A8677;margin-bottom:10px}.sb-item{display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid #f0ede6;cursor:pointer}.sb-item:first-of-type{border-top:0}.sb-check{appearance:none;width:20px;height:20px;flex:0 0 20px;border:1.5px solid #c8c1b5;border-radius:6px;background:#fff;display:grid;place-items:center;cursor:pointer}.sb-check:checked{background:#153A2C;border-color:#153A2C}.sb-check:checked::after{content:"✓";color:#fff;font-size:13px;font-weight:800}.sb-item-main{flex:1;min-width:0}.sb-item-title{display:block;font-size:12px;font-weight:800;color:#25362e}.sb-item-desc{display:block;font-size:10px;color:#8A8677;line-height:1.6;margin-top:2px}.sb-item-state{display:inline-flex;padding:2px 6px;border-radius:99px;background:#f3f0e9;color:#8a7560;font-size:8.5px;font-weight:800;margin-top:4px}.sb-item-state.ready{background:#eaf4eb;color:#357046}.sb-price{font-family:'JetBrains Mono',monospace;color:#153A2C;font-size:12px;font-weight:800;white-space:nowrap}.sb-summary{position:sticky;top:16px;background:#f7f6f0;border-right:1px solid #e8e3d8;padding:20px}.sb-summary-kicker{font-size:10px;font-weight:800;color:#8A8677}.sb-total{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:800;color:#153A2C;margin:5px 0}.sb-total span{font-family:'Cairo',sans-serif;font-size:10px;color:#8A8677;font-weight:400}.sb-summary-row{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:#63746A;padding:8px 0;border-top:1px solid #e7e2d8}.sb-summary-row b{font-family:'JetBrains Mono',monospace;color:#25362e}.sb-summary-note{font-size:9.5px;line-height:1.75;color:#8A8677;margin:12px 0}.sb-start{width:100%;border:0;border-radius:12px;background:#153A2C;color:#fff;font-family:'Cairo',sans-serif;font-weight:800;padding:12px;cursor:pointer;font-size:12px}.sb-draft{font-size:9.5px;line-height:1.7;color:#9C6D1F;margin-top:10px}.sb-empty{font-size:10.5px;color:#8A8677;line-height:1.7;padding:8px 0}.sb-scroll{scroll-margin-top:18px}
+
   .faq{ max-width:640px; margin:0 auto; }
   .faq-item{ border-top:1px solid #EDEAE0; }
   .faq-item:last-child{ border-bottom:1px solid #EDEAE0; }
@@ -193,6 +195,7 @@ const styles = `
     .screen-stage{ height:320px; }
     section.section{ padding:54px 0; }
     .price-card.popular{ transform:none; }
+    .sb-content{grid-template-columns:1fr}.sb-summary{position:static;border-right:0;border-top:1px solid #e8e3d8;order:-1}.sb-head{padding:22px 18px}.sb-catalog{padding:18px}
     .hero-phone-col::before{ width:270px; bottom:15px; }
     .hero-phone-col::after{ width:220px; height:220px; left:5px; }
     .final-cta{ padding:50px 0 24px; }
@@ -242,16 +245,36 @@ const STEPS = [
   { n: "03", title: "تشارك الرابط مع جمهورك", desc: "الدفع والتسليم التلقائي يتفعّلان بعد اكتمال الربط واختباره." },
 ];
 
-const COMMON_FEATURES = [
-  "صفحة متوافقة مع الجوال",
-  "رابط خاص لكل منتج",
-  "مشاركة وQR للمتجر",
-];
+const BASE_MONTHLY_PRICE = 3;
 
-const PACKAGES = [
-  { name: "أساسية", monthly: 5, yearly: 50, label: "للبداية", desc: "لبداية بسيطة: متجر واضح ورابط جاهز لمشاركة منتجاتك.", btn: "ابدأ متجرك", features: ["حتى 10 منتجات", "واجهة متجر أصلية", "رابط ومشاركة للمنتجات"] },
-  { name: "احترافية", monthly: 10, yearly: 100, popular: true, label: "خيار النمو", desc: "لمن يريد هوية واضحة للمتجر وتجربة أقوى للزائر.", btn: "نمِّ متجرك", features: ["كل مميزات الأساسية", "منتجات غير محدودة", "شعار وغلاف وألوان المتجر", "تهيئة كوبونات قبل تفعيل الدفع"], soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"] },
-  { name: "متجر متكامل", monthly: 15, yearly: 150, label: "لهوية مستقلة", desc: "لمن يريد متجرًا بهويته الخاصة وتجربة أقرب لموقعه المستقل.", btn: "ابنِ علامتك", features: ["كل مميزات الاحترافية", "هوية متجر خاصة", "تذييل هادئ مدعوم من مُونَة"], soon: ["ربط دومينك الخاص", "تحليلات مصادر الزيارات", "مساعدة في إعداد المتجر"] },
+const ADD_ON_CATALOG = [
+  { key: "smartSalesPage", group: "المتجر والمنتجات", title: "صفحة بيع مستقلة", price: 0.5, desc: "صفحة أوضح لعرض المنتج قبل التواصل.", status: "متاح الآن", ready: true },
+  { key: "productPreview", group: "المتجر والمنتجات", title: "معاينة صور للمنتج", price: 0.5, desc: "يوضح للزائر أن الصور معاينة من دون كشف الملف.", status: "متاح الآن", ready: true },
+  { key: "directLinks", group: "المتجر والمنتجات", title: "رابط بيع مباشر", price: 0.5, desc: "رابط مختلف لواتساب أو إنستغرام أو تيك توك.", status: "متاح الآن", ready: true },
+  { key: "storeDesign", group: "المتجر والمنتجات", title: "تخصيص تصميم المتجر", price: 1, desc: "شعار وغلاف وألوان وبيانات متجر خاصة.", status: "متاح الآن", ready: true },
+  { key: "customDomain", group: "المتجر والمنتجات", title: "دومين مخصص", price: 1, desc: "ربط اسم موقع خاص بالتاجر.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "productBundles", group: "المتجر والمنتجات", title: "بيع عدة منتجات معًا", price: 0.5, desc: "عرض أكثر من منتج ضمن عملية شراء واحدة.", status: "بعد ثواني", ready: false },
+  { key: "bundles", group: "المتجر والمنتجات", title: "إنشاء Bundles", price: 1, desc: "حزمة بسعر خاص من منتجات التاجر.", status: "بعد ثواني", ready: false },
+  { key: "freeProducts", group: "المتجر والمنتجات", title: "منتجات مجانية", price: 0.5, desc: "منتج مجاني لجذب المهتمين.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "autoDelivery", group: "الدفع والتسليم", title: "التسليم التلقائي", price: 1, desc: "تسليم المنتج بعد تأكيد الدفع.", status: "بعد ثواني", ready: false },
+  { key: "invoices", group: "الدفع والتسليم", title: "فاتورة تلقائية", price: 0.5, desc: "إيصال واضح للعملية بعد الدفع.", status: "بعد ثواني", ready: false },
+  { key: "coupons", group: "الدفع والتسليم", title: "كوبونات", price: 0.5, desc: "خصم يطبق عند عملية شراء مكتملة.", status: "بعد ثواني", ready: false },
+  { key: "timedOffers", group: "الدفع والتسليم", title: "عروض مؤقتة", price: 0.5, desc: "سعر أو خصم ينتهي في وقت محدد.", status: "بعد ثواني", ready: false },
+  { key: "giftCards", group: "الدفع والتسليم", title: "بطاقات هدايا", price: 1, desc: "شراء هدية رقمية لشخص آخر.", status: "مرحلة لاحقة", ready: false },
+  { key: "upsell", group: "زيادة المبيعات", title: "Upsell", price: 1.5, desc: "عرض إضافة مناسبة عند إكمال الشراء.", status: "بعد ثواني", ready: false },
+  { key: "crossSell", group: "زيادة المبيعات", title: "Cross-sell", price: 1, desc: "اقتراح منتجات مرتبطة للعميل.", status: "بعد ثواني", ready: false },
+  { key: "returningOffers", group: "زيادة المبيعات", title: "عروض للعملاء السابقين", price: 1, desc: "عرض خاص لمن اشترى سابقًا.", status: "بعد ثواني", ready: false },
+  { key: "campaignLinks", group: "زيادة المبيعات", title: "روابط تتبع الحملات", price: 1, desc: "روابط منفصلة لكل مكان نشر؛ التقارير عند تفعيلها.", status: "متاح الآن", ready: true },
+  { key: "affiliate", group: "زيادة المبيعات", title: "Affiliate", price: 2, desc: "مسوقون يشاركون روابطهم مقابل عمولة.", status: "مرحلة لاحقة", ready: false },
+  { key: "salesDashboard", group: "التحليلات والعملاء", title: "لوحة المبيعات", price: 1, desc: "مبيعات مسجلة بعد تفعيل الدفع.", status: "بعد ثواني", ready: false },
+  { key: "customerHistory", group: "التحليلات والعملاء", title: "سجل مشتريات العملاء", price: 0.5, desc: "يشاهد التاجر تاريخ شراء عملائه.", status: "بعد ثواني", ready: false },
+  { key: "customerSegments", group: "التحليلات والعملاء", title: "تقسيم العملاء", price: 1, desc: "ينظم العملاء حسب سلوك الشراء.", status: "مرحلة لاحقة", ready: false },
+  { key: "reportExport", group: "التحليلات والعملاء", title: "تصدير التقارير", price: 0.5, desc: "تنزيل تقرير مرتب من بيانات حقيقية.", status: "بعد ثواني", ready: false },
+  { key: "downloadLimits", group: "حماية المنتجات", title: "تحديد مرات التحميل", price: 0.5, desc: "يحدد عدد تنزيلات المنتج للمشتري.", status: "بعد ثواني", ready: false },
+  { key: "watermark", group: "حماية المنتجات", title: "علامة مائية للملفات", price: 1.5, desc: "إضافة علامة إلى ملفات مدعومة قبل التسليم.", status: "مرحلة لاحقة", ready: false },
+  { key: "aiDescription", group: "الذكاء والأتمتة", title: "كتابة وصف المنتج بالذكاء", price: 1, desc: "يساعد التاجر على كتابة وصف أوضح.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "aiAdCopy", group: "الذكاء والأتمتة", title: "إنشاء نص إعلان", price: 1, desc: "مسودة إعلان يراجعها التاجر قبل استخدامها.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "aiLaunch", group: "الذكاء والأتمتة", title: "إطلاق منتج بضغطة", price: 2.5, desc: "تجهيز اسم ووصف وسعر وصفحة بيع كمسودة.", status: "مرحلة لاحقة", ready: false },
 ];
 
 const FAQS = [
@@ -279,11 +302,38 @@ function FaqItem({ q, a, id }) {
 }
 
 export default function App() {
-  const [billing, setBilling] = useState("monthly");
+  const [selectedAddOns, setSelectedAddOns] = useState({});
   const [slide, setSlide] = useState(0);
   const phoneColRef = useRef(null);
   const phoneRef = useRef(null);
   const floatCardRef = useRef(null);
+  const selectedCatalog = useMemo(
+    () => ADD_ON_CATALOG.filter((feature) => selectedAddOns[feature.key]),
+    [selectedAddOns]
+  );
+  const monthlyTotal = useMemo(
+    () => BASE_MONTHLY_PRICE + selectedCatalog.reduce((total, feature) => total + feature.price, 0),
+    [selectedCatalog]
+  );
+  const catalogGroups = useMemo(
+    () => [...new Set(ADD_ON_CATALOG.map((feature) => feature.group))],
+    []
+  );
+
+  function toggleAddOn(key) {
+    setSelectedAddOns((items) => ({ ...items, [key]: !items[key] }));
+  }
+
+  function continueToRegister() {
+    const draft = {
+      baseMonthlyPrice: BASE_MONTHLY_PRICE,
+      selections: selectedCatalog.map(({ key, title, price, status }) => ({ key, title, price, status })),
+      monthlyTotal,
+      savedAt: new Date().toISOString(),
+    };
+    window.sessionStorage.setItem("monah.subscriptionDraft", JSON.stringify(draft));
+    window.location.hash = "register";
+  }
 
   useEffect(() => {
     const timer = setInterval(() => setSlide((s) => (s + 1) % 2), 3000);
@@ -336,7 +386,7 @@ export default function App() {
           </div>
           <div className="nav-btns">
             <a className="nav-link" href="#login">تسجيل الدخول</a>
-            <a className="nav-cta" href="#register">أنشئ متجرك</a>
+            <a className="nav-cta" href="#build-subscription">ابنِ اشتراكك</a>
           </div>
         </div>
       </div>
@@ -347,7 +397,7 @@ export default function App() {
             <div className="hero-eyebrow">متجر عربي للمنتجات الرقمية</div>
             <h1>بيع منتجك الرقمي<br/>من رابط واحد</h1>
             <p>ارفع منتجاتك الرقمية، شارك رابط كل منتج على واتساب وإنستغرام، وجهّز متجرك قبل تفعيل الدفع والتسليم التلقائي.</p>
-            <a className="pill-black" href="#register">أنشئ متجرك الآن ←</a>
+            <a className="pill-black" href="#build-subscription">ابنِ اشتراكك ←</a>
             <a className="hero-ghost" href="#how">شاهد كيف تعمل</a>
             <div className="hero-signals">
               <span><i>✓</i> واجهة عربية سهلة</span>
@@ -502,34 +552,48 @@ export default function App() {
         </div>
       </section>
 
-      <section className="section" id="pricing" style={{ background: "#FBFAF7" }}>
+      <section className="section" id="build-subscription" style={{ background: "#FBFAF7" }}>
         <div className="wrap">
           <div className="section-eyebrow reveal">الاشتراك</div>
-          <h2 className="section-title reveal">اختر باقتك</h2>
-          <div className="section-sub reveal">المزايا والأسعار المعروضة في مرحلة التجهيز، ويفعّل الاشتراك بعد ربط الدفع واختباره.</div>
+          <h2 className="section-title reveal">ابنِ اشتراكك بنفسك</h2>
+          <div className="section-sub reveal">ابدأ بمتجر أساسي، ثم اختر فقط الأدوات التي تريدها. يظهر لك المبلغ الشهري قبل إنشاء حسابك.</div>
 
-          <div className="billing-toggle reveal">
-            <button className={"billing-btn" + (billing === "monthly" ? " active" : "")} onClick={() => setBilling("monthly")}>شهري</button>
-            <button className={"billing-btn" + (billing === "yearly" ? " active" : "")} onClick={() => setBilling("yearly")}>سنوي <span className="billing-save-badge">وفّر شهرين</span></button>
-          </div>
-
-          <div className="common-features reveal"><b>كل الباقات تشمل:</b> {COMMON_FEATURES.join(" · ")}</div>
-
-          <div className="pricing">
-            {PACKAGES.map((p) => (
-              <div className={"price-card reveal" + (p.popular ? " popular" : "")} key={p.name}>
-                {p.label && <div className="price-badge">{p.label}</div>}
-                <div className="price-name">{p.name}</div>
-                <div className="price-desc">{p.desc}</div>
-                <div className="price-value mono">{billing === "monthly" ? p.monthly : p.yearly}<span>{billing === "monthly" ? "ر.ع / شهريًا" : "ر.ع / سنويًا"}</span></div>
-                <div className="price-yearly-note">{billing === "yearly" ? `بدل ${p.monthly * 12} ر.ع — توفير ${p.monthly * 12 - p.yearly} ر.ع بالسنة` : ""}</div>
-                <div className="price-features">{p.features.map((f) => <div key={f}>✓ {f}</div>)}</div>
-                {p.soon && <div className="price-soon"><div className="price-soon-label">قادم قريبًا:</div>{p.soon.map((f) => <div key={f}>○ {f}</div>)}</div>}
-                <a className="price-btn" href="#register">{p.btn}</a>
+          <div className="subscription-builder reveal sb-scroll">
+            <div className="sb-head">
+              <div className="sb-kicker">متجر أساسي — {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا</div>
+              <h3>اختر مزايا متجرك</h3>
+              <p>هذه الاختيارات تُحفظ كمسودة مع التسجيل. لا يوجد دفع في هذه الصفحة الآن، ولا تُفعّل أي أداة إلا بعد بنائها واختبارها وربط الدفع.</p>
+            </div>
+            <div className="sb-content">
+              <div className="sb-catalog">
+                {catalogGroups.map((group) => {
+                  const items = ADD_ON_CATALOG.filter((feature) => feature.group === group);
+                  return <section className="sb-group" key={group}>
+                    <div className="sb-group-title">{group}</div>
+                    <div className="sb-group-note">اختر ما يناسب مرحلة متجرك؛ السعر الظاهر يضاف إلى اشتراكك الشهري.</div>
+                    {items.map((feature) => <label className="sb-item" key={feature.key}>
+                      <input className="sb-check" type="checkbox" checked={selectedAddOns[feature.key] === true} onChange={() => toggleAddOn(feature.key)} />
+                      <span className="sb-item-main">
+                        <span className="sb-item-title">{feature.title}</span>
+                        <span className="sb-item-desc">{feature.desc}</span>
+                        <span className={`sb-item-state ${feature.ready ? "ready" : ""}`}>{feature.status}</span>
+                      </span>
+                      <span className="sb-price">+{feature.price.toFixed(2)} ر.ع</span>
+                    </label>)}
+                  </section>;
+                })}
               </div>
-            ))}
+              <aside className="sb-summary" aria-live="polite">
+                <div className="sb-summary-kicker">اشتراكك الشهري المتوقع</div>
+                <div className="sb-total">{monthlyTotal.toFixed(2)} <span>ر.ع / شهريًا</span></div>
+                <div className="sb-summary-row"><span>متجر أساسي</span><b>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b></div>
+                {selectedCatalog.length === 0 ? <div className="sb-empty">ما أضفت أي ميزة بعد.</div> : selectedCatalog.map((feature) => <div className="sb-summary-row" key={feature.key}><span>{feature.title}</span><b>+{feature.price.toFixed(2)}</b></div>)}
+                <div className="sb-summary-note">عند تفعيل الدفع: أي ميزة تضيفها لاحقًا تدفع سعرها كاملًا فورًا، ثم تدخل في التجديد الشهري القادم.</div>
+                <button className="sb-start" type="button" onClick={continueToRegister}>حفظ اختياراتي وإنشاء حساب</button>
+                <div className="sb-draft">لا يوجد تحصيل الآن. هذه مسودة اشتراك إلى أن يجهز ربط ثواني واختبار الدفع.</div>
+              </aside>
+            </div>
           </div>
-          <div className="pricing-note">لا يبدأ اشتراك أو تحصيل أو تسليم تلقائي قبل ربط الدفع واختبار العملية كاملة.</div>
         </div>
       </section>
 

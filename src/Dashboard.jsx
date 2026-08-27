@@ -277,6 +277,8 @@ export default function Dashboard() {
   const [fileInputKey, setFileInputKey] = useState(0);
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState("file");
+  const [productMode, setProductMode] = useState("sell");
+  const [launchMessage, setLaunchMessage] = useState("");
   const [sellerPlan, setSellerPlan] = useState("basic");
   const [codesText, setCodesText] = useState("");
   const [productImages, setProductImages] = useState([]);
@@ -298,6 +300,7 @@ export default function Dashboard() {
   const [productFilter, setProductFilter] = useState("all");
   const [togglingHiddenId, setTogglingHiddenId] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [launchInterests, setLaunchInterests] = useState({});
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -401,6 +404,28 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
+    let cancelled = false;
+    async function loadLaunchInterests() {
+      const launchProducts = products.filter((product) => product.isLaunch === true);
+      if (!launchProducts.length) {
+        if (!cancelled) setLaunchInterests({});
+        return;
+      }
+      try {
+        const entries = await Promise.all(launchProducts.map(async (product) => {
+          const snap = await getDocs(collection(db, "products", product.id, "interests"));
+          return [product.id, snap.docs.map((item) => ({ id: item.id, ...item.data() }))];
+        }));
+        if (!cancelled) setLaunchInterests(Object.fromEntries(entries));
+      } catch (err) {
+        console.error("loadLaunchInterests:", err);
+      }
+    }
+    loadLaunchInterests();
+    return () => { cancelled = true; };
+  }, [products]);
+
+  useEffect(() => {
     if (!user) return;
     const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
@@ -475,7 +500,8 @@ export default function Dashboard() {
       return;
     }
 
-    if (productType === "file") {
+    const isLaunch = productMode === "launch";
+    if (productType === "file" && !isLaunch) {
       if (!productFile) {
         setError("عبّي اسم المنتج والسعر واختر ملف المنتج.");
         return;
@@ -505,6 +531,8 @@ export default function Dashboard() {
         suspended: false,
         featured: false,
         sortOrder: Date.now(),
+        isLaunch,
+        launchMessage: isLaunch ? launchMessage.trim().slice(0, 280) : "",
         createdAt: serverTimestamp(),
       });
 
@@ -518,7 +546,7 @@ export default function Dashboard() {
       }
 
       try {
-        if (productType === "file" && productFile) {
+        if (productType === "file" && productFile && !isLaunch) {
           setUploadingFile(true);
           const safeName = productFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
           const filePath = `secure/${productRef.id}/${safeName}`;
@@ -542,6 +570,8 @@ export default function Dashboard() {
       setCategory("");
       setCodesText("");
       setProductType("file");
+      setProductMode("sell");
+      setLaunchMessage("");
       setProductImages([]);
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
@@ -1209,6 +1239,18 @@ export default function Dashboard() {
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
                 <div className="dh-field">
+                  <label>نوع النشر</label>
+                  <div className="dh-type-toggle">
+                    <button type="button" className={"dh-type-btn" + (productMode === "sell" ? " active" : "")} onClick={() => setProductMode("sell")}>بيع منتج الآن</button>
+                    <button type="button" className={"dh-type-btn" + (productMode === "launch" ? " active" : "")} onClick={() => setProductMode("launch")}>إطلاق منتج قادم</button>
+                  </div>
+                  {productMode === "launch" && <div className="dh-hint">سيظهر للزائر نموذج يكتب فيه بريده ليصله خبر المنتج لاحقًا. اكتب السعر المتوقع أعلاه، ولا تحتاج رفع الملف الآن.</div>}
+                </div>
+                {productMode === "launch" && <div className="dh-field">
+                  <label>رسالة قصيرة للمهتمين (اختياري)</label>
+                  <textarea rows="2" value={launchMessage} onChange={(e) => setLaunchMessage(e.target.value)} placeholder="مثال: سنخبرك عند اكتمال الإطلاق." maxLength="280" />
+                </div>}
+                <div className="dh-field">
                   <label>صور المنتج (حتى صورتين، اختياري)</label>
                   <div className="dh-images-row">
                     {productImages.map((url) => (
@@ -1245,7 +1287,7 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
-                {productType === "file" ? (
+                {productType === "file" && productMode !== "launch" ? (
                   <div className="dh-field">
                     <label>ملف المنتج</label>
                     <input key={fileInputKey} type="file" onChange={handleFilePick} />
@@ -1271,7 +1313,7 @@ export default function Dashboard() {
                     {saving ? "..." : "حفظ كمسودة"}
                   </button>
                   <button className="dh-btn" type="button" onClick={(e) => handleAddProduct(e, true)} disabled={saving} style={{ flex: 1 }}>
-                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري النشر...") : "نشر المنتج"}
+                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري النشر...") : (productMode === "launch" ? "نشر الإطلاق" : "نشر المنتج")}
                   </button>
                 </div>
                 <div className="dh-hint" style={{ marginTop: 8, textAlign: "center" }}>
@@ -1342,7 +1384,7 @@ export default function Dashboard() {
                   ) : (
                     <>
                       <div className="dh-item-top">
-                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">مميز</span>}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
+                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">مميز</span>}{p.isLaunch && <span className="dh-featured-tag">إطلاق قادم</span>}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
                         <span className="dh-item-price">{p.price} ر.ع</span>
                       </div>
                       {p.type === "code" && (
@@ -1354,6 +1396,10 @@ export default function Dashboard() {
                           {copied === "product" + p.id ? "تم" : "نسخ"}
                         </button>
                       </div>
+                      {p.isLaunch && <div className="dh-card" style={{ marginTop: 10, marginBottom: 0, padding: 12, background: "#FFFDF7" }}>
+                        <div className="dh-title-row" style={{ marginBottom: 8 }}><div className="dh-title" style={{ fontSize: 12 }}>مهتمون بهذا الإطلاق</div><div className="dh-title-count">{launchInterests[p.id]?.length || 0}</div></div>
+                        {(launchInterests[p.id] || []).length ? <div className="dh-hint">{launchInterests[p.id].map((interest) => interest.email).join(" · ")}</div> : <div className="dh-hint">لا يوجد مهتمون بعد.</div>}
+                      </div>}
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
