@@ -197,6 +197,12 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain('setProductMode("launch")');
     expect(dashboard).toContain("launchInterests");
     expect(dashboard).toContain("إطلاق منتج قادم");
+    expect(dashboard).toContain('productMode === "launch" ? null');
+    expect(dashboard).toContain('productMode !== "launch" && <div className="dh-field">');
+    expect(dashboard).toContain('} else if (!isLaunch) {');
+    expect(dashboard).toContain('!isLaunch && productType === "code" ? codesList.length : 0');
+    expect(dashboard).toContain("copyInterestEmail");
+    expect(dashboard).toContain("نسخ البريد");
     expect(product).toContain("registerInterest");
     expect(product).toContain('doc(db, "products", product.id, "interests"');
     expect(product).toContain("إطلاق منتج قادم");

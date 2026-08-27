@@ -501,12 +501,12 @@ export default function Dashboard() {
     }
 
     const isLaunch = productMode === "launch";
-    if (productType === "file" && !isLaunch) {
+    if (!isLaunch && productType === "file") {
       if (!productFile) {
         setError("عبّي اسم المنتج والسعر واختر ملف المنتج.");
         return;
       }
-    } else {
+    } else if (!isLaunch) {
       const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
       if (!name || !price || codesList.length === 0) {
         setError("عبّي اسم المنتج والسعر، وألصقي الأكواد (كود بكل سطر).");
@@ -525,7 +525,7 @@ export default function Dashboard() {
         category: category || "عام",
         type: productType,
         filePath: "",
-        codesCount: productType === "code" ? codesList.length : 0,
+        codesCount: !isLaunch && productType === "code" ? codesList.length : 0,
         images: productImages,
         hidden: true,
         suspended: false,
@@ -536,7 +536,7 @@ export default function Dashboard() {
         createdAt: serverTimestamp(),
       });
 
-      if (productType === "code" && codesList.length > 0) {
+      if (!isLaunch && productType === "code" && codesList.length > 0) {
         const batch = writeBatch(db);
         codesList.forEach((code) => {
           const codeRef = doc(collection(db, "products", productRef.id, "codes"));
@@ -901,6 +901,13 @@ export default function Dashboard() {
       setCopied(kind + id);
       setTimeout(() => setCopied(""), 1500);
     });
+  }
+
+  function copyInterestEmail(productId, email) {
+    navigator.clipboard.writeText(email).then(() => {
+      setCopied(`interest-${productId}-${email}`);
+      setTimeout(() => setCopied(""), 1500);
+    }).catch(() => setError("تعذر نسخ البريد، جرب مرة ثانية."));
   }
 
   function copyCampaignLink(productId, source) {
@@ -1268,7 +1275,7 @@ export default function Dashboard() {
                   </div>
                   {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
                 </div>
-                <div className="dh-field">
+                {productMode !== "launch" && <div className="dh-field">
                   <label>نوع المنتج</label>
                   <div className="dh-type-toggle">
                     <button
@@ -1286,8 +1293,8 @@ export default function Dashboard() {
                       كود / ترخيص
                     </button>
                   </div>
-                </div>
-                {productType === "file" && productMode !== "launch" ? (
+                </div>}
+                {productMode === "launch" ? null : productType === "file" ? (
                   <div className="dh-field">
                     <label>ملف المنتج</label>
                     <input key={fileInputKey} type="file" onChange={handleFilePick} />
@@ -1398,7 +1405,7 @@ export default function Dashboard() {
                       </div>
                       {p.isLaunch && <div className="dh-card" style={{ marginTop: 10, marginBottom: 0, padding: 12, background: "#FFFDF7" }}>
                         <div className="dh-title-row" style={{ marginBottom: 8 }}><div className="dh-title" style={{ fontSize: 12 }}>مهتمون بهذا الإطلاق</div><div className="dh-title-count">{launchInterests[p.id]?.length || 0}</div></div>
-                        {(launchInterests[p.id] || []).length ? <div className="dh-hint">{launchInterests[p.id].map((interest) => interest.email).join(" · ")}</div> : <div className="dh-hint">لا يوجد مهتمون بعد.</div>}
+                        {(launchInterests[p.id] || []).length ? <div style={{ display: "grid", gap: 7 }}>{launchInterests[p.id].map((interest) => <div key={interest.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}><span className="dh-hint" style={{ margin: 0, overflowWrap: "anywhere" }}>{interest.email}</span><button type="button" className="dh-item-action" onClick={() => copyInterestEmail(p.id, interest.email)}>{copied === `interest-${p.id}-${interest.email}` ? "تم النسخ" : "نسخ البريد"}</button></div>)}</div> : <div className="dh-hint">لا يوجد مهتمون بعد.</div>}
                       </div>}
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
