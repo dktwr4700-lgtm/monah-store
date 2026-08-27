@@ -106,12 +106,14 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("اختر مظهر متجرك");
   });
 
-  it("يشرح الباقات كخيارات نمو دون ادعاء شعبية غير موثق", async () => {
+  it("يعرض اشتراكًا مرنًا قبل التسجيل دون ادعاء شعبية غير موثق", async () => {
     const landing = await source("src/App.jsx");
     const dashboard = await source("src/Dashboard.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
 
-    expect(landing).toContain("خيار النمو");
-    expect(dashboard).toContain("خيار النمو");
+    expect(landing).toContain("ابنِ اشتراكك بنفسك");
+    expect(catalog).toContain("BASE_MONTHLY_PRICE = 3");
+    expect(dashboard).toContain("متجر أساسي + مزايا تختارها");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).not.toContain("الأكثر طلبًا");
   });
@@ -142,12 +144,114 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(product).toContain("منتجات أخرى من {storeName}");
     expect(product).toContain("أسئلة عن المتجر");
     expect(rules).toContain("'featured', 'sortOrder'");
-    expect(rules).toContain("'coverUrl', 'about', 'faqs', 'updatedAt'");
+    expect(rules).toContain("'coverUrl', 'about', 'faqs', 'featureSelections'");
+  });
+
+  it("يعرض لوحة اشتراك مرنة بعد التسجيل ولا يعيد الباقات الثابتة أو خيارات مزايا مدفوعة", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("مزايا اشتراكك");
+    expect(dashboard).toContain("متجر أساسي + مزايا تختارها");
+    expect(dashboard).toContain("لا يوجد تحصيل الآن");
+    expect(dashboard).toContain("كوبونات الخصم ضمن اشتراكك");
+    expect(dashboard).not.toContain("شوف الباقات");
+    expect(dashboard).not.toContain("ادفع واستلم الآن");
+  });
+
+  it("يكبر رمز QR ويتيح فتح رابط المتجر للتحقق منه", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("setQrOpen(true)");
+    expect(dashboard).toContain("تكبير QR");
+    expect(dashboard).toContain('aria-label="رمز QR للمتجر"');
+    expect(dashboard).toContain("افتح الرابط للاختبار");
+    expect(dashboard).toContain('level="H"');
+    expect(dashboard).toContain("https://www.monah-app.com/#store/");
   });
 
   it("يحفظ تصميم المتجر بالدمج حتى لا تتعطل المتاجر التي لديها حقول قديمة", async () => {
     const dashboard = await source("src/Dashboard.jsx");
 
     expect(dashboard).toContain("}, { merge: true });");
+  });
+
+  it("يحفظ التاجر اختيارات مزايا الدفعة الأولى فقط في متجره وبحالة صريحة", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(dashboard).toContain("ADD_ON_CATALOG");
+    expect(dashboard).toContain("handleSaveFeatureSelections");
+    expect(dashboard).toContain("featureSelectionUpdatedAt");
+    expect(dashboard).toContain("copyCampaignLink");
+    expect(rules).toContain("'featureSelections'");
+    expect(rules).toContain("'featureSelectionUpdatedAt'");
+  });
+
+  it("يعرض معاينة المنتج وصفحة البيع فقط عند اختيار التاجر ولا يدّعي تفعيل الدفع", async () => {
+    const product = await source("src/ProductPage.jsx");
+    const landing = await source("src/App.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(product).toContain("smartSalesPageEnabled");
+    expect(product).toContain("productPreviewEnabled");
+    expect(product).toContain("ملف المنتج الكامل لا يظهر في صفحة المتجر");
+    expect(landing).toContain("لا يوجد تحصيل الآن");
+    expect(landing).not.toContain("وصل الملف للعميل تلقائيًا الآن");
+    expect(dashboard).toContain("تنزيل المشتري برابط مؤقت يفعّل بعد ربط الدفع");
+  });
+
+  it("يجمع السعر قبل التسجيل ويحفظ مسودة الاختيارات مع الحساب من دون تحصيل", async () => {
+    const landing = await source("src/App.jsx");
+    const register = await source("src/Register.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect(catalog).toContain("BASE_MONTHLY_PRICE = 3");
+    expect(catalog).toContain('key: "coupons"');
+    expect(landing).toContain("monah.subscriptionDraft");
+    expect(landing).toContain("ابنِ اشتراكك بنفسك");
+    expect(register).toContain("readSubscriptionDraft");
+    expect(register).toContain("featureSelections: Object.fromEntries");
+    expect(register).toContain("لا يوجد دفع أو تحصيل حتى يجهز ربط ثواني");
+  });
+
+  it("يفصل الرابط المباشر العامل عن تتبع الحملات وحزم المنتجات المقفلة", async () => {
+    const catalog = await source("src/subscriptionCatalog.js");
+    const dashboard = await source("src/Dashboard.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(catalog).toContain('key: "directSalesLinks"');
+    expect(catalog).toContain('key: "campaignTracking"');
+    expect(catalog).toContain('key: "bundles"');
+    expect(catalog).toContain('status: "بعد ثواني", ready: false');
+    expect(dashboard).toContain("حزم المنتجات");
+    expect(dashboard).toContain("حفظ الحزمة مقفلة");
+    expect(dashboard).toContain('collection(db, "bundles")');
+    expect(dashboard).toContain("setBundleSaved(true)");
+    expect(dashboard).toContain("تم حفظ الحزمة وهي مقفلة الآن");
+    expect(dashboard).toContain("الحزم المحفوظة");
+    expect(rules).toContain("match /bundles/{bundleId}");
+    expect(rules).toContain("request.resource.data.hidden == true");
+  });
+
+  it("يسجل اهتمام الإطلاق القادم ويحمي البريد لصاحب المنتج فقط", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const product = await source("src/ProductPage.jsx");
+    const rules = await source("firestore.rules");
+
+    expect(dashboard).toContain('setProductMode("launch")');
+    expect(dashboard).toContain("launchInterests");
+    expect(dashboard).toContain("إطلاق منتج قادم");
+    expect(dashboard).toContain('productMode === "launch" ? null');
+    expect(dashboard).toContain('productMode !== "launch" && <div className="dh-field">');
+    expect(dashboard).toContain('} else if (!isLaunch) {');
+    expect(dashboard).toContain('!isLaunch && productType === "code" ? codesList.length : 0');
+    expect(dashboard).toContain("copyInterestEmail");
+    expect(dashboard).toContain("نسخ البريد");
+    expect(product).toContain("registerInterest");
+    expect(product).toContain('doc(db, "products", product.id, "interests"');
+    expect(product).toContain("إطلاق منتج قادم");
+    expect(rules).toContain("match /interests/{interestId}");
+    expect(rules).toContain("allow get, list: if ownsProduct(productId) || isAdmin();");
+    expect(rules).toContain("allow update, delete: if false;");
   });
 });

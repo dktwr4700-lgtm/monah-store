@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import GrowthAssistant from "./GrowthAssistant.jsx";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -76,7 +77,7 @@ const styles = `
   .dh-studio-head{ position:relative; z-index:1; display:flex; align-items:center; gap:12px; margin-top:13px; }.dh-studio-logo{ width:52px; height:52px; flex:0 0 52px; border-radius:16px; background:#fff; color:var(--studio-color,#163F2E); overflow:hidden; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-size:18px; font-weight:800; box-shadow:0 8px 16px rgba(0,0,0,.18); }.dh-studio-logo img{width:100%;height:100%;object-fit:cover}.dh-studio-name{font-family:'Almarai',sans-serif;font-size:16px;font-weight:800}.dh-studio-tag{font-size:11px;line-height:1.6;color:rgba(255,255,255,.7);margin-top:4px;max-width:300px}.dh-studio-meta{font-size:10px;color:rgba(255,255,255,.65);margin-top:5px}
   .dh-studio-actions{ position:relative; z-index:1; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; }.dh-studio-action{ min-height:56px; border:1px solid rgba(255,255,255,.13); border-radius:13px; background:rgba(255,255,255,.1); color:#fff; padding:8px 6px; font-family:'Cairo',sans-serif; font-size:10.5px; font-weight:700; cursor:pointer; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }.dh-studio-action span{font-size:16px;line-height:1}.dh-studio-action.primary{background:#D6F35C;color:#143226;border-color:#D6F35C}
   .dh-share-card{ background:#fff; border:1px solid #EDEAE0; border-radius:17px; padding:16px; margin-bottom:14px; }.dh-share-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.dh-share-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-share-sub{font-size:10.5px;color:#8A8677;line-height:1.7}.dh-share-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.dh-share-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:12px;padding:10px 6px;color:#22372C;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer;text-decoration:none;text-align:center}.dh-share-btn.primary{background:#0E3B2C;color:#fff;border-color:#0E3B2C}
-  .dh-qr{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px}.dh-qr-code{width:86px;height:86px;background:#fff;border:1px solid #EDEAE0;border-radius:12px;padding:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.dh-qr-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-qr-sub{font-size:10.5px;color:#748178;line-height:1.75;margin-top:6px}.dh-qr-actions{display:flex;gap:7px;margin-top:10px}.dh-mini-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:100px;padding:7px 10px;font-family:'Cairo',sans-serif;color:#163F2E;font-weight:800;font-size:10px;cursor:pointer}
+  .dh-qr{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px}.dh-qr-code{width:108px;height:108px;background:#fff;border:1px solid #EDEAE0;border-radius:14px;padding:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.dh-qr-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-qr-sub{font-size:10.5px;color:#748178;line-height:1.75;margin-top:6px}.dh-qr-actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}.dh-mini-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:100px;padding:7px 10px;font-family:'Cairo',sans-serif;color:#163F2E;font-weight:800;font-size:10px;cursor:pointer}
   .dh-product-health{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px}.dh-health-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.dh-health-number{border-radius:12px;background:#F4F7F2;padding:11px}.dh-health-number b{display:block;font-family:'JetBrains Mono',monospace;font-size:18px;color:#163F2E}.dh-health-number span{font-size:10px;color:#748178}.dh-health-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px dashed #EDEAE0}.dh-health-name{font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}.dh-health-state{font-size:9.5px;font-weight:800;border-radius:100px;padding:4px 8px}.dh-health-state.live{background:#EAF0EB;color:#37724B}.dh-health-state.hidden{background:#F3EBDD;color:#9C6D1F}.dh-health-manage{border:0;background:none;color:#163F2E;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer;padding:4px}
   .dh-featured-tag{display:inline-flex;background:#F3EBDD;color:#9C6D1F;border-radius:100px;padding:3px 7px;font-size:9px;font-weight:800;margin-right:6px}.dh-sort-actions{display:flex;gap:5px;margin-top:8px}.dh-sort-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:9px;padding:6px 8px;font-family:'Cairo',sans-serif;font-size:10px;font-weight:800;color:#163F2E;cursor:pointer}
 
@@ -188,6 +189,7 @@ const styles = `
   .pk-price span{ font-size:11px; color:#8A8677; font-family:'Cairo',sans-serif; }
   .pk-features div{ font-size:12px; color:#3D4A66; padding:3px 0; }
   .pk-current-tag{ display:inline-block; margin-top:10px; background:#EAF0EB; color:#4B6152; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; }
+  .mf-intro{background:#F4F7F2;border:1px solid #DDE8DE;border-radius:16px;padding:15px;margin-bottom:13px;font-size:12px;line-height:1.85;color:#345242}.mf-grid{display:grid;gap:10px}.mf-card{border:1px solid #EDEAE0;border-radius:15px;padding:14px;background:#fff;display:flex;gap:11px;align-items:flex-start}.mf-card.selected{border-color:#163F2E;background:#F7FBF7}.mf-toggle{appearance:none;width:20px;height:20px;border-radius:7px;border:1.5px solid #B8B2A7;background:#fff;display:grid;place-items:center;cursor:pointer;flex:0 0 20px;margin-top:1px}.mf-toggle:checked{background:#163F2E;border-color:#163F2E}.mf-toggle:checked::after{content:"✓";color:#fff;font-size:13px;font-weight:800}.mf-body{flex:1}.mf-title{font-weight:800;font-size:12.5px;color:#0B0B0C}.mf-text{font-size:10.5px;color:#748178;line-height:1.7;margin-top:4px}.mf-status{display:inline-flex;margin-top:7px;padding:3px 8px;border-radius:100px;background:#EAF0EB;color:#37724B;font-size:9.5px;font-weight:800}.mf-save{position:sticky;bottom:0;margin:14px -18px 0;padding:12px 18px;border-top:1px solid #EDEAE0;background:#fff;display:flex;gap:10px;align-items:center}.mf-save span{flex:1;font-size:10.5px;color:#748178}.mf-soon{margin-top:14px;border-top:1px dashed #EDEAE0;padding-top:13px}.mf-soon-title{font-weight:800;font-size:11px;color:#9C6D1F;margin-bottom:5px}.mf-soon-text{font-size:10.5px;color:#8A8677;line-height:1.75}.dh-campaign{margin-top:9px;padding:9px;border-radius:11px;background:#F4F7F2;border:1px solid #DDE8DE}.dh-campaign-title{font-size:10px;font-weight:800;color:#163F2E;margin-bottom:7px}.dh-campaign-actions{display:flex;gap:6px;flex-wrap:wrap}.dh-campaign-btn{border:1px solid #D1DED2;border-radius:100px;background:#fff;color:#163F2E;font-family:'Cairo',sans-serif;font-size:9.5px;font-weight:800;padding:5px 8px;cursor:pointer}
 
   .cp-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
   .cp-item:first-child{ border-top:none; }
@@ -195,42 +197,12 @@ const styles = `
   .cp-code{ font-family:'JetBrains Mono',monospace; font-weight:800; color:#0B0B0C; font-size:14px; letter-spacing:.02em; }
   .cp-percent{ background:#F3EBDD; color:#B9832F; font-size:11px; font-weight:700; padding:4px 10px; border-radius:100px; }
   .cp-scope{ color:#8A8677; font-size:11px; margin-bottom:8px; }
+  .sub-hero{background:linear-gradient(135deg,#163F2E,#0A2E22);border-radius:18px;padding:19px;color:#fff;margin-bottom:13px}.sub-kicker{font-size:10px;color:#D6F35C;font-weight:800;margin-bottom:7px}.sub-title{font-family:'Almarai',sans-serif;font-size:16px;font-weight:800}.sub-total{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:800;margin-top:9px}.sub-total span{font-family:'Cairo',sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500}.sub-note{font-size:10.5px;line-height:1.8;color:rgba(255,255,255,.72);margin-top:7px}.sub-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px dashed #EDEAE0;font-size:11px;color:#3D4A66}.sub-row:first-of-type{border-top:0}.sub-row b{font-family:'JetBrains Mono',monospace;color:#0B0B0C}.sub-empty{font-size:11px;color:#8A8677;line-height:1.8;padding:5px 0}.sub-ready{display:inline-flex;margin-top:4px;padding:3px 7px;background:#EAF0EB;color:#37724B;border-radius:100px;font-size:9px;font-weight:800}.sub-ready.waiting{background:#FFF4D8;color:#9A6C1E}.sub-locked{background:#FFF8E9;border:1px solid #F0E2B5;border-radius:16px;padding:16px;font-size:11.5px;color:#6E5A2C;line-height:1.9}.sub-locked b{display:block;color:#8C6418;font-family:'Almarai',sans-serif;font-size:13px;margin-bottom:5px}.qr-overlay{position:fixed;inset:0;background:rgba(11,11,12,.58);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px}.qr-sheet{max-width:360px;width:100%;background:#fff;border-radius:22px;padding:20px;text-align:center;position:relative}.qr-close{position:absolute;top:11px;left:11px;border:0;background:#F1F0EA;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer}.qr-sheet h3{font-family:'Almarai',sans-serif;font-size:16px;margin:5px 0 7px}.qr-sheet p{font-size:11px;color:#748178;line-height:1.8;margin:0 auto 15px;max-width:265px}.qr-large{width:270px;min-height:270px;max-width:100%;margin:0 auto 15px;border:1px solid #EDEAE0;border-radius:18px;display:grid;place-items:center;background:#fff}.qr-large-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qr-large-actions button{border:1px solid #EDEAE0;background:#FBFAF7;color:#163F2E;border-radius:11px;padding:11px 8px;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer}.qr-large-actions button:first-child{background:#0B0B0C;color:#fff;border-color:#0B0B0C}
 
   /* استجابة فورية للضغط — نفس مبدأ apple-design */
   .dh-page button{ transition:transform 100ms ease-out; }
   .dh-page button:active{ transform:scale(0.96); }
 `;
-
-const COMMON_FEATURES = [
-  "بدون عمولة على المبيعات",
-  "تسليم تلقائي للمنتج بعد الدفع",
-  "صفحة متوافقة مع الجوال",
-  "رابط خاص لكل منتج",
-  "ترقية أو تخفيض الباقة أو الإلغاء في أي وقت",
-];
-
-const PACKAGES = [
-  {
-    id: "basic", name: "أساسية", price: "5",
-    desc: "لبداية بسيطة: متجر واضح ورابط جاهز لمشاركة منتجاتك.",
-    btn: "ابدأ متجرك",
-    features: ["حتى 10 منتجات", "صفحة متجر أصلية", "رابط ومشاركة للمنتجات"],
-  },
-  {
-    id: "pro", name: "احترافية", price: "10", highlight: "خيار النمو",
-    desc: "لمن يريد هوية واضحة للمتجر وتجربة أقوى للزائر.",
-    btn: "نمِّ متجرك",
-    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "شعار وغلاف وألوان المتجر", "كوبونات خصم"],
-    soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"],
-  },
-  {
-    id: "full", name: "متجر متكامل", price: "15",
-    desc: "لمن يريد متجرًا بهويته الخاصة وتجربة أقرب لموقعه المستقل.",
-    btn: "ابنِ علامتك",
-    features: ["كل مميزات الاحترافية", "هوية متجر خاصة", "تذييل هادئ مدعوم من مُونَة"],
-    soon: ["ربط دومينك الخاص", "تحليلات مصادر الزيارات", "دعم أولوية", "مساعدة في إعداد المتجر"],
-  },
-];
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -238,7 +210,7 @@ export default function Dashboard() {
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
     const t = parts[1];
-    return ["overview", "products", "coupons", "orders", "design", "subscription"].includes(t) ? t : "overview";
+    return ["overview", "products", "orders", "design", "features", "subscription"].includes(t) ? t : "overview";
   }
   const [tab, setTabState] = useState(getTabFromHash);
 
@@ -259,6 +231,8 @@ export default function Dashboard() {
   const [fileInputKey, setFileInputKey] = useState(0);
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState("file");
+  const [productMode, setProductMode] = useState("sell");
+  const [launchMessage, setLaunchMessage] = useState("");
   const [sellerPlan, setSellerPlan] = useState("basic");
   const [codesText, setCodesText] = useState("");
   const [productImages, setProductImages] = useState([]);
@@ -280,6 +254,15 @@ export default function Dashboard() {
   const [productFilter, setProductFilter] = useState("all");
   const [togglingHiddenId, setTogglingHiddenId] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [launchInterests, setLaunchInterests] = useState({});
+  const [bundles, setBundles] = useState([]);
+  const [bundleName, setBundleName] = useState("");
+  const [bundlePrice, setBundlePrice] = useState("");
+  const [bundleDescription, setBundleDescription] = useState("");
+  const [bundleProductIds, setBundleProductIds] = useState([]);
+  const [bundleSaving, setBundleSaving] = useState(false);
+  const [bundleSaved, setBundleSaved] = useState(false);
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -300,6 +283,9 @@ export default function Dashboard() {
   const [designDirty, setDesignDirty] = useState(false);
   const [storeAbout, setStoreAbout] = useState("");
   const [storeFaqs, setStoreFaqs] = useState([]);
+  const [featureSelections, setFeatureSelections] = useState({});
+  const [featureSaving, setFeatureSaving] = useState(false);
+  const [featureSaved, setFeatureSaved] = useState(false);
 
   // coupons
   const [coupons, setCoupons] = useState([]);
@@ -381,6 +367,37 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
+    const q = query(collection(db, "bundles"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      setBundles(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
+    }, () => setBundles([]));
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadLaunchInterests() {
+      const launchProducts = products.filter((product) => product.isLaunch === true);
+      if (!launchProducts.length) {
+        if (!cancelled) setLaunchInterests({});
+        return;
+      }
+      try {
+        const entries = await Promise.all(launchProducts.map(async (product) => {
+          const snap = await getDocs(collection(db, "products", product.id, "interests"));
+          return [product.id, snap.docs.map((item) => ({ id: item.id, ...item.data() }))];
+        }));
+        if (!cancelled) setLaunchInterests(Object.fromEntries(entries));
+      } catch (err) {
+        console.error("loadLaunchInterests:", err);
+      }
+    }
+    loadLaunchInterests();
+    return () => { cancelled = true; };
+  }, [products]);
+
+  useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -423,6 +440,7 @@ export default function Dashboard() {
         setCoverUrl(data.coverUrl || "");
         setStoreAbout(data.about || "");
         setStoreFaqs(Array.isArray(data.faqs) ? data.faqs : []);
+        setFeatureSelections(data.featureSelections && typeof data.featureSelections === "object" ? data.featureSelections : {});
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -453,12 +471,13 @@ export default function Dashboard() {
       return;
     }
 
-    if (productType === "file") {
+    const isLaunch = productMode === "launch";
+    if (!isLaunch && productType === "file") {
       if (!productFile) {
         setError("عبّي اسم المنتج والسعر واختر ملف المنتج.");
         return;
       }
-    } else {
+    } else if (!isLaunch) {
       const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
       if (!name || !price || codesList.length === 0) {
         setError("عبّي اسم المنتج والسعر، وألصقي الأكواد (كود بكل سطر).");
@@ -477,16 +496,18 @@ export default function Dashboard() {
         category: category || "عام",
         type: productType,
         filePath: "",
-        codesCount: productType === "code" ? codesList.length : 0,
+        codesCount: !isLaunch && productType === "code" ? codesList.length : 0,
         images: productImages,
         hidden: true,
         suspended: false,
         featured: false,
         sortOrder: Date.now(),
+        isLaunch,
+        launchMessage: isLaunch ? launchMessage.trim().slice(0, 280) : "",
         createdAt: serverTimestamp(),
       });
 
-      if (productType === "code" && codesList.length > 0) {
+      if (!isLaunch && productType === "code" && codesList.length > 0) {
         const batch = writeBatch(db);
         codesList.forEach((code) => {
           const codeRef = doc(collection(db, "products", productRef.id, "codes"));
@@ -496,7 +517,7 @@ export default function Dashboard() {
       }
 
       try {
-        if (productType === "file" && productFile) {
+        if (productType === "file" && productFile && !isLaunch) {
           setUploadingFile(true);
           const safeName = productFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
           const filePath = `secure/${productRef.id}/${safeName}`;
@@ -520,6 +541,8 @@ export default function Dashboard() {
       setCategory("");
       setCodesText("");
       setProductType("file");
+      setProductMode("sell");
+      setLaunchMessage("");
       setProductImages([]);
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
@@ -608,6 +631,48 @@ export default function Dashboard() {
     } catch (err) {
       setError("تعذر ترتيب المنتجات الآن، حاول مرة ثانية.");
     }
+  }
+
+  function toggleBundleProduct(productId) {
+    setBundleProductIds((current) => current.includes(productId)
+      ? current.filter((id) => id !== productId)
+      : [...current, productId]);
+  }
+
+  async function handleCreateBundle() {
+    const cleanName = bundleName.trim();
+    const numericPrice = Number(bundlePrice);
+    setBundleSaved(false);
+    setError("");
+    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+      setError("اكتب اسم الحزمة وسعرًا صحيحًا أكبر من صفر.");
+      return;
+    }
+    if (bundleProductIds.length < 2) {
+      setError("اختر منتجين على الأقل داخل الحزمة.");
+      return;
+    }
+    setBundleSaving(true);
+    try {
+      await addDoc(collection(db, "bundles"), {
+        ownerId: user.uid,
+        name: cleanName,
+        price: numericPrice,
+        description: bundleDescription.trim().slice(0, 500),
+        productIds: bundleProductIds,
+        hidden: true,
+        suspended: false,
+        createdAt: serverTimestamp(),
+      });
+      setBundleName("");
+      setBundlePrice("");
+      setBundleDescription("");
+      setBundleProductIds([]);
+      setBundleSaved(true);
+    } catch (err) {
+      setError("تعذر حفظ الحزمة، حاول مرة ثانية.");
+    }
+    setBundleSaving(false);
   }
 
   const filteredProducts = products.filter((p) => {
@@ -757,63 +822,25 @@ export default function Dashboard() {
     setDesignSaving(false);
   }
 
-  async function handleAddCoupon(e) {
-    e.preventDefault();
-    setCouponError("");
-    if (sellerPlan === "basic") {
-      setCouponError("كوبونات الخصم متاحة من الباقة الاحترافية فأعلى.");
-      return;
-    }
-    const cleanCode = couponCode.trim().toUpperCase().replace(/\s+/g, "");
-    const percentNum = Number(couponPercent);
-
-    if (!cleanCode) {
-      setCouponError("اكتب كود الخصم.");
-      return;
-    }
-    if (!percentNum || percentNum <= 0 || percentNum > 90) {
-      setCouponError("نسبة الخصم لازم تكون بين 1 و 90.");
-      return;
-    }
-    const exists = coupons.some((c) => c.code === cleanCode);
-    if (exists) {
-      setCouponError("عندك كود بنفس الاسم من قبل، اختر اسم ثاني.");
-      return;
-    }
-
-    setCouponSaving(true);
+  async function handleSaveFeatureSelections() {
+    setFeatureSaving(true);
+    setFeatureSaved(false);
     try {
-      await addDoc(collection(db, "coupons"), {
+      const cleanSelections = Object.fromEntries(
+        ADD_ON_CATALOG.map((feature) => [feature.key, featureSelections[feature.key] === true])
+      );
+      await setDoc(doc(db, "stores", user.uid), {
         ownerId: user.uid,
-        code: cleanCode,
-        discountPercent: percentNum,
-        productId: couponScope === "all" ? null : couponScope,
-        active: true,
-        createdAt: serverTimestamp(),
-      });
-      setCouponCode("");
-      setCouponPercent("");
-      setCouponScope("all");
+        featureSelections: cleanSelections,
+        featureSelectionUpdatedAt: serverTimestamp(),
+      }, { merge: true });
+      setFeatureSelections(cleanSelections);
+      setFeatureSaved(true);
+      window.setTimeout(() => setFeatureSaved(false), 2200);
     } catch (err) {
-      setCouponError("صار خطأ، حاول مرة ثانية.");
+      setError("تعذر حفظ اختيار المزايا، حاول مرة ثانية.");
     }
-    setCouponSaving(false);
-  }
-
-  async function deleteCoupon(couponId) {
-    setDeletingCouponId(couponId);
-    try {
-      await deleteDoc(doc(db, "coupons", couponId));
-    } catch (err) {
-      console.error(err);
-    }
-    setDeletingCouponId(null);
-  }
-
-  function couponScopeLabel(c) {
-    if (!c.productId) return "على كل منتجاتك";
-    const p = products.find((pr) => pr.id === c.productId);
-    return p ? `على منتج: ${p.name}` : "على منتج محذوف";
+    setFeatureSaving(false);
   }
 
   function handleLogout() {
@@ -828,6 +855,21 @@ export default function Dashboard() {
       setCopied(kind + id);
       setTimeout(() => setCopied(""), 1500);
     });
+  }
+
+  function copyInterestEmail(productId, email) {
+    navigator.clipboard.writeText(email).then(() => {
+      setCopied(`interest-${productId}-${email}`);
+      setTimeout(() => setCopied(""), 1500);
+    }).catch(() => setError("تعذر نسخ البريد، جرب مرة ثانية."));
+  }
+
+  function copyCampaignLink(productId, source) {
+    const url = `${window.location.origin}${window.location.pathname}?src=${encodeURIComponent(source)}#product/${productId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(`campaign-${productId}-${source}`);
+      setTimeout(() => setCopied(""), 1800);
+    }).catch(() => setError("تعذر نسخ رابط الحملة، جرب مرة ثانية."));
   }
 
   async function shareStore() {
@@ -863,12 +905,15 @@ export default function Dashboard() {
 
   if (checking) return null;
 
-  const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
+  const storeUrl = `https://www.monah-app.com/#store/${slug || user.uid}`;
   const initial = (storeName || "م").charAt(0);
   const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
   const hiddenProducts = products.filter((product) => product.hidden || product.suspended);
   const selectedStoreStyle = STORE_STYLES.find((style) => style.color === storeColor) || STORE_STYLES[0];
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`تصفح منتجات ${storeName || "متجري"}: ${storeUrl}`)}`;
+  const selectedSubscriptionFeatures = ADD_ON_CATALOG.filter((feature) => featureSelections[feature.key]);
+  const expectedMonthlyTotal = BASE_MONTHLY_PRICE + selectedSubscriptionFeatures.reduce((total, feature) => total + feature.price, 0);
+  const couponSelected = featureSelections.coupons === true;
 
   const assistantContext = {
     storeName,
@@ -893,8 +938,7 @@ export default function Dashboard() {
     const hasTagline = !!tagline;
     const hasContact = !!(whatsapp || instagram);
     const allDescribed = products.every((p) => !!p.description);
-    const hasCoupon = coupons.length > 0;
-    const stepsDone = [hasProduct, hasTagline, hasContact, hasProduct ? allDescribed : false, sellerPlan === "basic" ? true : hasCoupon].filter(Boolean).length;
+    const stepsDone = [hasProduct, hasTagline, hasContact, hasProduct ? allDescribed : false].filter(Boolean).length;
 
     if (!hasProduct) {
       return {
@@ -940,17 +984,6 @@ export default function Dashboard() {
         progress: stepsDone,
       };
     }
-    if (sellerPlan !== "basic" && !hasCoupon) {
-      return {
-        key: "add-coupon",
-        badge: "✦ خطوتك التالية",
-        title: "جرب أول كود خصم لك",
-        text: "كوبونات الخصم تشجع الزوار يسوون قرار الشراء بسرعة أكبر.",
-        cta: "أنشئ كود خصم",
-        onClick: () => setTab("coupons"),
-        progress: stepsDone,
-      };
-    }
     return {
       key: "share-store",
       badge: "✦ جاهز للانطلاق",
@@ -974,17 +1007,7 @@ export default function Dashboard() {
       return;
     }
     if (suggestion.kind === "coupon-idea") {
-      const exists = coupons.some((c) => c.code === suggestion.code);
-      if (exists) throw new Error("duplicate_code");
-      await addDoc(collection(db, "coupons"), {
-        ownerId: user.uid,
-        code: suggestion.code,
-        discountPercent: suggestion.percent,
-        productId: null,
-        active: true,
-        createdAt: serverTimestamp(),
-      });
-      return;
+      throw new Error("coupon_unavailable_until_payment");
     }
   }
 
@@ -1005,9 +1028,9 @@ export default function Dashboard() {
       <div className="dh-tabs">
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
-        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>الخصومات</button>
         <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
         <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
+        <button className={"dh-tab" + (tab === "features" ? " active" : "")} onClick={() => setTab("features")}>مزايا متجرك</button>
         <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
       </div>
 
@@ -1042,8 +1065,8 @@ export default function Dashboard() {
             </div>
 
             <div className="dh-stats">
-              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
-              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>إجمالي مسجل</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>طلبات مسجلة</span></div>
               <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
             </div>
 
@@ -1074,13 +1097,14 @@ export default function Dashboard() {
             </section>
 
             <section className="dh-qr">
-              <div className="dh-qr-code"><QRCodeSVG value={storeUrl} size={70} bgColor="#ffffff" fgColor={storeColor} level="M" /></div>
+              <button className="dh-qr-code" type="button" onClick={() => setQrOpen(true)} aria-label="تكبير رمز المتجر"><QRCodeSVG value={storeUrl} size={94} bgColor="#ffffff" fgColor={storeColor} level="H" includeMargin /></button>
               <div>
                 <div className="dh-qr-title">رمز متجرك</div>
-                <div className="dh-qr-sub">خله عندك في المعرض أو المطبوعات، والعميل يفتحه بكاميرا جواله.</div>
+                <div className="dh-qr-sub">اضغط عليه لتكبيره. خله في المعرض أو المطبوعات، والعميل يفتحه بكاميرا جواله.</div>
                 <div className="dh-qr-actions">
                   <button className="dh-mini-btn" onClick={() => copyLink(slug || user.uid, "store")}>نسخ الرابط</button>
                   <button className="dh-mini-btn" onClick={shareStore}>مشاركة</button>
+                  <button className="dh-mini-btn" type="button" onClick={() => setQrOpen(true)}>تكبير QR</button>
                 </div>
               </div>
             </section>
@@ -1157,6 +1181,18 @@ export default function Dashboard() {
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
                 <div className="dh-field">
+                  <label>نوع النشر</label>
+                  <div className="dh-type-toggle">
+                    <button type="button" className={"dh-type-btn" + (productMode === "sell" ? " active" : "")} onClick={() => setProductMode("sell")}>بيع منتج الآن</button>
+                    <button type="button" className={"dh-type-btn" + (productMode === "launch" ? " active" : "")} onClick={() => setProductMode("launch")}>إطلاق منتج قادم</button>
+                  </div>
+                  {productMode === "launch" && <div className="dh-hint">سيظهر للزائر نموذج يكتب فيه بريده ليصله خبر المنتج لاحقًا. اكتب السعر المتوقع أعلاه، ولا تحتاج رفع الملف الآن.</div>}
+                </div>
+                {productMode === "launch" && <div className="dh-field">
+                  <label>رسالة قصيرة للمهتمين (اختياري)</label>
+                  <textarea rows="2" value={launchMessage} onChange={(e) => setLaunchMessage(e.target.value)} placeholder="مثال: سنخبرك عند اكتمال الإطلاق." maxLength="280" />
+                </div>}
+                <div className="dh-field">
                   <label>صور المنتج (حتى صورتين، اختياري)</label>
                   <div className="dh-images-row">
                     {productImages.map((url) => (
@@ -1174,7 +1210,7 @@ export default function Dashboard() {
                   </div>
                   {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
                 </div>
-                <div className="dh-field">
+                {productMode !== "launch" && <div className="dh-field">
                   <label>نوع المنتج</label>
                   <div className="dh-type-toggle">
                     <button
@@ -1192,17 +1228,17 @@ export default function Dashboard() {
                       كود / ترخيص
                     </button>
                   </div>
-                </div>
-                {productType === "file" ? (
+                </div>}
+                {productMode === "launch" ? null : productType === "file" ? (
                   <div className="dh-field">
                     <label>ملف المنتج</label>
                     <input key={fileInputKey} type="file" onChange={handleFilePick} />
                     {productFile && (
-                      <div className="dh-file-picked">
+                    <div className="dh-file-picked">
                         ✓ {productFile.name} ({(productFile.size / 1024 / 1024).toFixed(1)} م.ب)
                       </div>
                     )}
-                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي — رابط تحميله يتوفر فقط للمشتري بعد إتمام الدفع، ولمدة محدودة. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
+                    <div className="dh-hint">الملف لا يظهر في صفحة المتجر العامة. تنزيل المشتري برابط مؤقت يفعّل بعد ربط الدفع واختبار عملية شراء فعلية. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
                   </div>
                 ) : (
                   <div className="dh-field">
@@ -1219,7 +1255,7 @@ export default function Dashboard() {
                     {saving ? "..." : "حفظ كمسودة"}
                   </button>
                   <button className="dh-btn" type="button" onClick={(e) => handleAddProduct(e, true)} disabled={saving} style={{ flex: 1 }}>
-                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري النشر...") : "نشر المنتج"}
+                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري النشر...") : (productMode === "launch" ? "نشر الإطلاق" : "نشر المنتج")}
                   </button>
                 </div>
                 <div className="dh-hint" style={{ marginTop: 8, textAlign: "center" }}>
@@ -1290,7 +1326,7 @@ export default function Dashboard() {
                   ) : (
                     <>
                       <div className="dh-item-top">
-                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">مميز</span>}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
+                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">مميز</span>}{p.isLaunch && <span className="dh-featured-tag">إطلاق قادم</span>}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
                         <span className="dh-item-price">{p.price} ر.ع</span>
                       </div>
                       {p.type === "code" && (
@@ -1302,6 +1338,10 @@ export default function Dashboard() {
                           {copied === "product" + p.id ? "تم" : "نسخ"}
                         </button>
                       </div>
+                      {p.isLaunch && <div className="dh-card" style={{ marginTop: 10, marginBottom: 0, padding: 12, background: "#FFFDF7" }}>
+                        <div className="dh-title-row" style={{ marginBottom: 8 }}><div className="dh-title" style={{ fontSize: 12 }}>مهتمون بهذا الإطلاق</div><div className="dh-title-count">{launchInterests[p.id]?.length || 0}</div></div>
+                        {(launchInterests[p.id] || []).length ? <div style={{ display: "grid", gap: 7 }}>{launchInterests[p.id].map((interest) => <div key={interest.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}><span className="dh-hint" style={{ margin: 0, overflowWrap: "anywhere" }}>{interest.email}</span><button type="button" className="dh-item-action" onClick={() => copyInterestEmail(p.id, interest.email)}>{copied === `interest-${p.id}-${interest.email}` ? "تم النسخ" : "نسخ البريد"}</button></div>)}</div> : <div className="dh-hint">لا يوجد مهتمون بعد.</div>}
+                      </div>}
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
@@ -1318,6 +1358,18 @@ export default function Dashboard() {
                           <button className="dh-item-action danger" onClick={() => setConfirmDeleteId(p.id)} type="button">حذف</button>
                         )}
                       </div>
+                      {featureSelections.campaignLinks && (
+                        <div className="dh-campaign">
+                          <div className="dh-campaign-title">أنشئ رابطًا مختلفًا لكل مكان تشارك فيه هذا المنتج</div>
+                          <div className="dh-campaign-actions">
+                            {["واتساب", "إنستغرام", "تيك توك"].map((source) => (
+                              <button className="dh-campaign-btn" key={source} type="button" onClick={() => copyCampaignLink(p.id, source)}>
+                                {copied === `campaign-${p.id}-${source}` ? "تم النسخ ✓" : source}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="dh-sort-actions">
                         <button className="dh-sort-btn" onClick={() => moveProduct(p.id, -1)} type="button">↑ قدّمه</button>
                         <button className="dh-sort-btn" onClick={() => moveProduct(p.id, 1)} type="button">↓ أخّره</button>
@@ -1327,82 +1379,69 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          </>
-        )}
-
-        {tab === "coupons" && sellerPlan === "basic" && (
-          <div className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
-            <div className="dh-title" style={{ marginBottom: 8 }}>كوبونات الخصم متاحة من الباقة الاحترافية</div>
-            <div className="dh-hint" style={{ marginBottom: 16 }}>رقّي باقتك عشان تقدر تسوي أكواد خصم لمنتجاتك.</div>
-            <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 220, margin: "0 auto" }}>
-              شوف الباقات
-            </button>
-          </div>
-        )}
-
-        {tab === "coupons" && sellerPlan !== "basic" && (
-          <>
-            <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>
-              {couponError && <div className="dh-error">{couponError}</div>}
-              <form onSubmit={handleAddCoupon}>
-                <div className="dh-field">
-                  <label>كود الخصم</label>
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="مثال: EID20"
-                    style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }}
-                  />
-                  <div className="dh-hint">أحرف إنجليزية وأرقام، بدون مسافات. العميل يكتب هذا الكود وقت الشراء.</div>
-                </div>
-                <div className="dh-field">
-                  <label>نسبة الخصم (%)</label>
-                  <input type="number" value={couponPercent} onChange={(e) => setCouponPercent(e.target.value)} placeholder="20" />
-                </div>
-                <div className="dh-field">
-                  <label>ينطبق على</label>
-                  <select value={couponScope} onChange={(e) => setCouponScope(e.target.value)}>
-                    <option value="all">كل منتجاتك</option>
-                    {products.map((p) => (
-                      <option value={p.id} key={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <button className="dh-btn" type="submit" disabled={couponSaving}>
-                  {couponSaving ? "جاري الحفظ..." : "إنشاء الكود"}
-                </button>
-              </form>
-            </div>
 
             <div className="dh-card">
               <div className="dh-title-row">
-                <div className="dh-title">أكوادك الحالية</div>
-                <div className="dh-title-count mono">{coupons.length}</div>
+                <div className="dh-title">حزم المنتجات</div>
+                <div className="dh-title-count">تُفعّل مع ثواني</div>
               </div>
-              {coupons.length === 0 && <div className="empty-note">ما أضفت أي كود خصم بعد.</div>}
-              {coupons.map((c) => (
-                <div className="cp-item" key={c.id}>
-                  <div className="cp-item-top">
-                    <span className="cp-code">{c.code}</span>
-                    <span className="cp-percent">خصم {c.discountPercent}٪</span>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>
+                جهّز عرضًا من منتجين أو أكثر بسعر واحد الآن. الحزمة تبقى مخفية ولا يمكن شراؤها قبل ربط ثواني واختبار الدفع.
+              </div>
+              {bundleSaved && <div className="dh-success" role="status">تم حفظ الحزمة وهي مقفلة الآن. ستجدها تحت هذا الزر.</div>}
+              {error && <div className="dh-error">{error}</div>}
+              {products.filter((product) => !product.isLaunch).length < 2 ? (
+                <div className="empty-note">تحتاج منتجين عاديين على الأقل قبل تجهيز حزمة.</div>
+              ) : (
+                <>
+                  <div className="dh-field">
+                    <label>اسم الحزمة</label>
+                    <input value={bundleName} onChange={(event) => setBundleName(event.target.value)} placeholder="مثال: حزمة قوالب البداية" maxLength="120" />
                   </div>
-                  <div className="cp-scope">{couponScopeLabel(c)}</div>
-                  <div className="dh-item-actions">
-                    <button
-                      className="dh-item-action danger"
-                      disabled={deletingCouponId === c.id}
-                      onClick={() => deleteCoupon(c.id)}
-                    >
-                      {deletingCouponId === c.id ? "جاري الحذف..." : "حذف الكود"}
-                    </button>
+                  <div className="dh-field">
+                    <label>سعر الحزمة المتوقع (ر.ع)</label>
+                    <input type="number" min="0.01" step="0.01" value={bundlePrice} onChange={(event) => setBundlePrice(event.target.value)} />
                   </div>
-                </div>
-              ))}
+                  <div className="dh-field">
+                    <label>وصف مختصر (اختياري)</label>
+                    <textarea rows="2" value={bundleDescription} onChange={(event) => setBundleDescription(event.target.value)} placeholder="وش الذي يحصل عليه العميل داخل الحزمة؟" maxLength="500" />
+                  </div>
+                  <div className="dh-field">
+                    <label>اختر منتجات الحزمة</label>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {products.filter((product) => !product.isLaunch).map((product) => (
+                        <label key={product.id} className="dh-item-action" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
+                          <span>{product.name} · {Number(product.price).toFixed(2)} ر.ع</span>
+                          <input type="checkbox" checked={bundleProductIds.includes(product.id)} onChange={() => toggleBundleProduct(product.id)} />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <button type="button" className="dh-item-action primary" onClick={handleCreateBundle} disabled={bundleSaving} style={{ width: "100%" }}>
+                    {bundleSaving ? "جاري الحفظ..." : "حفظ الحزمة مقفلة"}
+                  </button>
+                </>
+              )}
+              {bundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+                <div className="dh-title" style={{ fontSize: 12 }}>الحزم المحفوظة</div>
+                {bundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
+                  <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag">مقفلة</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} ر.ع</span></div>
+                  <div className="dh-hint">{bundle.productIds?.length || 0} منتجات · لن تظهر للزوار أو تسمح بالشراء قبل الدفع.</div>
+                </div>)}
+              </div>}
             </div>
           </>
+        )}
+
+        {tab === "coupons" && (
+          <section className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
+            <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
+            <div className="dh-title" style={{ marginBottom: 8 }}>{couponSelected ? "كوبونات الخصم ضمن اشتراكك" : "كوبونات الخصم إضافة في اشتراكك"}</div>
+            <div className="dh-hint" style={{ maxWidth: 360, margin: "0 auto 16px", lineHeight: 1.9 }}>{couponSelected ? "اخترت الكوبونات ضمن اشتراكك. تظل مقفلة إلى أن نربط ثواني ونجرب خصمًا حقيقيًا من بداية الطلب حتى نهايته." : "تختار الكوبونات من قائمة مزايا الاشتراك قبل التسجيل. لن تظهر كميزة تعمل قبل ربط ثواني واختبارها."}</div>
+            <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 250, margin: "0 auto" }}>
+              عرض اشتراكي
+            </button>
+          </section>
         )}
 
         {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} />}
@@ -1534,31 +1573,42 @@ export default function Dashboard() {
           </>
         )}
 
+        {tab === "features" && (
+          <>
+            <div className="mf-intro">هذه صفحة متابعة فقط. اختيارات الاشتراك والسعر تتم قبل التسجيل، وهنا تعرف ما هو ضمن اشتراك متجرك الآن.</div>
+            <section className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 6 }}>مزايا اشتراكك</div>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>كل ميزة اخترتها تظهر هنا: ما يعمل الآن، وما ينتظر ربط الدفع بوضوح.</div>
+              {selectedSubscriptionFeatures.length ? <div className="mf-grid">{selectedSubscriptionFeatures.map((feature) => <div className="mf-card selected" key={feature.key}><span className="mf-body"><span className="mf-title">✓ {feature.title}</span><span className="mf-text">{feature.desc}</span><span className="mf-status">{feature.ready ? "تعمل الآن" : feature.status}</span></span></div>)}</div> : <div className="sub-empty">لا توجد إضافات مختارة بعد. المتجر الأساسي يعمل، ويمكن اختيار الإضافات قبل التسجيل عند إنشاء متجر جديد.</div>}
+            </section>
+            <section className="sub-locked">
+              <b>إضافة مزايا جديدة لاحقًا</b>
+              بعد تفعيل ثواني، تختار الميزة وتدفع سعرها كاملًا فورًا، ثم تدخل في قيمة اشتراكك الشهري القادم. لن نفتح هذه الخطوة قبل اختبارها.
+            </section>
+          </>
+        )}
+
         {tab === "subscription" && (
           <>
-            <div className="dh-hint" style={{ marginBottom: 14, lineHeight: 1.9 }}>
-              كل الباقات تشمل: {COMMON_FEATURES.join(" · ")}
-            </div>
-            {PACKAGES.map((pkg) => (
-              <div className={"pk-card" + (pkg.id === sellerPlan ? " current" : "")} key={pkg.id}>
-                {pkg.highlight && <div className="pk-badge">{pkg.highlight}</div>}
-                <div className="pk-name">{pkg.name}</div>
-                <div className="dh-hint" style={{ marginBottom: 10 }}>{pkg.desc}</div>
-                <div className="pk-price">{pkg.price} <span>ر.ع / شهريًا</span></div>
-                <div className="pk-features">
-                  {pkg.features.map((f) => <div key={f}>✓ {f}</div>)}
-                </div>
-                {pkg.soon && (
-                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #EDEAE0" }}>
-                    <div style={{ color: "#B9832F", fontSize: 10.5, fontWeight: 700, marginBottom: 4 }}>قادم قريبًا:</div>
-                    {pkg.soon.map((f) => (
-                      <div key={f} style={{ fontSize: 11.5, color: "#B0AC9C" }}>○ {f}</div>
-                    ))}
-                  </div>
-                )}
-                {pkg.id === sellerPlan && <div className="pk-current-tag">باقتك الحالية</div>}
-              </div>
-            ))}
+            <section className="sub-hero">
+              <div className="sub-kicker">اشتراكك الشهري</div>
+              <div className="sub-title">متجر أساسي + مزايا تختارها</div>
+              <div className="sub-total">{expectedMonthlyTotal.toFixed(2)} <span>ر.ع شهريًا عند تفعيل الدفع</span></div>
+              <div className="sub-note">لا يوجد تحصيل الآن. هذا ملخص سعر الاشتراك الذي اخترته قبل التسجيل.</div>
+            </section>
+            <section className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 8 }}>يشمل متجرك الأساسي</div>
+              <div className="sub-row"><span>متجر وصفحة منتج ورابط مشاركة</span><b>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b></div>
+              <div className="sub-row"><span>إدارة المنتجات ولوحة التاجر</span><b>ضمن الأساس</b></div>
+            </section>
+            <section className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 8 }}>الإضافات المفعلة</div>
+              {selectedSubscriptionFeatures.length ? selectedSubscriptionFeatures.map((feature) => <div className="sub-row" key={feature.key}><span>{feature.title}<span className={`sub-ready${feature.ready ? "" : " waiting"}`}>{feature.ready ? "تعمل الآن" : feature.status}</span></span><b>+{feature.price.toFixed(2)} ر.ع</b></div>) : <div className="sub-empty">لا توجد إضافات مختارة فوق المتجر الأساسي.</div>}
+            </section>
+            <section className="sub-locked">
+              <b>مزايا جديدة بعد ثواني</b>
+              الكوبونات والحزم والتقارير والحماية الموسعة ستظهر هنا بعد أن نربط الدفع ونختبر كل ميزة. لا يوجد زر دفع أو ترقية الآن.
+            </section>
           </>
         )}
 
@@ -1586,10 +1636,25 @@ export default function Dashboard() {
                 </div>
                 <div className="pv-desc">{description || "ما فيه وصف إضافي لهذا المنتج."}</div>
               </div>
-              <div className="pv-btn">ادفع واستلم الآن</div>
+              <div className="pv-btn">تواصل قبل الشراء</div>
               <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد</div>
             </div>
           </div>
+        </div>
+      )}
+
+      {qrOpen && (
+        <div className="qr-overlay" onClick={() => setQrOpen(false)}>
+          <section className="qr-sheet" onClick={(event) => event.stopPropagation()} aria-label="رمز QR للمتجر">
+            <button className="qr-close" type="button" onClick={() => setQrOpen(false)} aria-label="إغلاق">✕</button>
+            <h3>رمز متجرك</h3>
+            <p>امسحه بكاميرا جوال آخر، أو افتح الرابط أدناه للتأكد أنه يأخذ العميل إلى متجرك.</p>
+            <div className="qr-large"><QRCodeSVG value={storeUrl} size={238} bgColor="#ffffff" fgColor={storeColor} level="H" includeMargin /></div>
+            <div className="qr-large-actions">
+              <button type="button" onClick={() => window.open(storeUrl, "_blank", "noopener,noreferrer")}>افتح الرابط للاختبار</button>
+              <button type="button" onClick={() => copyLink(slug || user.uid, "store")}>{copied === "store" + (slug || user.uid) ? "تم النسخ" : "نسخ الرابط"}</button>
+            </div>
+          </section>
         </div>
       )}
 

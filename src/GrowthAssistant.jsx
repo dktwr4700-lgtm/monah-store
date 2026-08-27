@@ -67,12 +67,8 @@ const QUICK_ACTIONS = [
   { id: "caption", label: "اكتب لي كابشن" },
   { id: "reel-idea", label: "فكرة ريلز" },
   { id: "audit-store", label: "افحص متجري" },
-  { id: "coupon-idea", label: "أنشئ كود خصم" },
   { id: "what-today", label: "ماذا أفعل اليوم؟" },
 ];
-
-// الباقة الوحيدة المسموح لها باستخدام المساعد فعليًا (تحكّم بالتكلفة)
-const REQUIRED_PLAN = "full";
 
 function SuggestionCard({ suggestion, storeData, onApply }) {
   const [applying, setApplying] = useState(false);
@@ -117,34 +113,10 @@ function SuggestionCard({ suggestion, storeData, onApply }) {
     );
   }
 
-  if (suggestion.kind === "coupon-idea") {
-    return (
-      <div style={{ marginTop: 6, marginBottom: 10, background: "#fff", border: "1px solid #EDEAE0", borderRadius: 14, padding: 12 }}>
-        <div style={{ fontSize: 11, color: "#8A8677", fontWeight: 700, marginBottom: 6 }}>
-          اقتراح كود خصم — {suggestion.code} ({suggestion.percent}٪)
-        </div>
-        {applied ? (
-          <div style={{ color: "#4B6152", fontSize: 12.5, fontWeight: 700 }}>✓ تم إنشاء الكود</div>
-        ) : (
-          <>
-            <button
-              onClick={handleApply}
-              disabled={applying}
-              style={{ width: "100%", background: "#0B0B0C", color: "#fff", border: "none", padding: "9px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-            >
-              {applying ? "جاري الإنشاء..." : `إنشاء كود ${suggestion.code}`}
-            </button>
-            {error && <div style={{ color: "#B24C3A", fontSize: 11, marginTop: 6 }}>{error}</div>}
-          </>
-        )}
-      </div>
-    );
-  }
-
   return null;
 }
 
-export default function GrowthAssistant({ storeData, plan, onUpgradeClick, nextStep }) {
+export default function GrowthAssistant({ storeData, onUpgradeClick, nextStep }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
@@ -245,7 +217,7 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick, nextS
     };
   }, [open]);
 
-  const hasAccess = plan === REQUIRED_PLAN;
+  const hasAccess = false;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -320,7 +292,7 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick, nextS
         </button>
       )}
 
-      {/* نافذة قفل الميزة — لغير المشتركين بباقة متجر متكامل */}
+      {/* الأداة تظهر كميزة مقفلة حتى يكتمل بناؤها واختبارها */}
       {open && !hasAccess && (
         <div
           style={{
@@ -357,10 +329,10 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick, nextS
           <div style={{ padding: 24, textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
             <div style={{ fontFamily: "'Almarai', sans-serif", fontWeight: 800, color: "#0B0B0C", fontSize: 15, marginBottom: 8 }}>
-              مساعد نمو متجرك حصري لباقة متجر متكامل
+              مساعد نمو متجرك قيد التجهيز
             </div>
             <div style={{ color: "#8A8677", fontSize: 12.5, lineHeight: 1.8, marginBottom: 18 }}>
-              رقّي باقتك عشان تقدر تستخدم المساعد الذكي لتحسين منتجاتك وكتابة المحتوى وأفكار التسويق.
+              سيظهر هذا المساعد ضمن مزايا الاشتراك فقط بعد أن يكتمل بناؤه ويُختبر داخل الموقع.
             </div>
             <button
               onClick={() => {
@@ -383,13 +355,13 @@ export default function GrowthAssistant({ storeData, plan, onUpgradeClick, nextS
                 transition: "transform 100ms ease-out",
               }}
             >
-              شوف باقة متجر متكامل
+              راجع اشتراكك
             </button>
           </div>
         </div>
       )}
 
-      {/* نافذة المحادثة — فقط لمشتركي باقة متجر متكامل */}
+      {/* نافذة المحادثة تظهر فقط عند تفعيل الميزة بعد اختبارها */}
       {open && hasAccess && (
         <div
           ref={panelRef}

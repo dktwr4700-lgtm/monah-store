@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase.js";
 
 const styles = `
@@ -7,7 +7,7 @@ const styles = `
 `;
 
 const extraStyles = `
-  .pp-section{margin-top:22px;background:#fff;border:1px solid #e7e3d8;border-radius:18px;padding:17px}.pp-section-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800;color:var(--pp-brand);margin-bottom:10px}.pp-related{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pp-related-card{border:1px solid #eee9df;border-radius:12px;padding:9px;color:#111;text-decoration:none}.pp-related-name{font-size:10.5px;font-weight:800;line-height:1.55}.pp-related-price{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--pp-brand);margin-top:5px}.pp-faq details{border-top:1px solid #eee9df;padding:10px 0}.pp-faq details:first-child{border-top:0}.pp-faq summary{font-size:11px;font-weight:800;cursor:pointer}.pp-faq p{font-size:10.5px;line-height:1.9;color:#777;margin:7px 0 0}@media(max-width:680px){.pp-related{grid-template-columns:repeat(2,1fr)}}
+  .pp-section{margin-top:22px;background:#fff;border:1px solid #e7e3d8;border-radius:18px;padding:17px}.pp-section-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800;color:var(--pp-brand);margin-bottom:10px}.pp-related{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pp-related-card{border:1px solid #eee9df;border-radius:12px;padding:9px;color:#111;text-decoration:none}.pp-related-name{font-size:10.5px;font-weight:800;line-height:1.55}.pp-related-price{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--pp-brand);margin-top:5px}.pp-faq details{border-top:1px solid #eee9df;padding:10px 0}.pp-faq details:first-child{border-top:0}.pp-faq summary{font-size:11px;font-weight:800;cursor:pointer}.pp-faq p{font-size:10.5px;line-height:1.9;color:#777;margin:7px 0 0}.pp-preview-note{margin-top:10px;padding:9px 11px;border:1px solid #dfe9df;border-radius:12px;background:#f4f8f4;color:#42624c;font-size:10.5px;line-height:1.75}.pp-selling-points{margin-top:17px;border-top:1px solid #eee9df;padding-top:14px}.pp-selling-points b{display:block;font-size:11.5px;margin-bottom:7px;color:var(--pp-brand)}.pp-selling-points div{font-size:10.5px;line-height:1.85;color:#5d5a54}.pp-campaign-note{margin-top:9px;color:#6a756e;font-size:9.5px}.pp-launch-badge{display:inline-flex;background:#f3ebdd;color:#8c6418;border-radius:999px;padding:5px 10px;font-size:10.5px;font-weight:800;margin-bottom:10px}.pp-interest{margin-top:18px;padding:14px;border:1px solid #dfe9df;border-radius:15px;background:#f7faf7}.pp-interest-title{font-size:12px;font-weight:800;color:var(--pp-brand);margin-bottom:5px}.pp-interest p{font-size:10.5px;line-height:1.75;color:#657166;margin:0 0 10px}.pp-interest-form{display:flex;gap:7px}.pp-interest-form input{flex:1;min-width:0;border:1px solid #d9e3da;border-radius:10px;padding:10px;font:inherit;font-size:11px;direction:ltr}.pp-interest-form button{border:0;border-radius:10px;background:var(--pp-brand);color:#fff;padding:10px 12px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer}.pp-interest-status{font-size:10px;line-height:1.6;margin-top:8px;color:#5e6b61}.pp-interest-status.error{color:#9f4b3b}@media(max-width:680px){.pp-related{grid-template-columns:repeat(2,1fr)}.pp-interest-form{flex-direction:column}}
 `;
 
 function storeUrl(store, ownerId) {
@@ -36,6 +36,9 @@ export default function ProductPage({ productId }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [activeImage, setActiveImage] = useState(0);
   const [shareStatus, setShareStatus] = useState("");
+  const [interestEmail, setInterestEmail] = useState("");
+  const [interestStatus, setInterestStatus] = useState("");
+  const [interestSaving, setInterestSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +102,35 @@ export default function ProductPage({ productId }) {
   const storeColor = store?.color || "#163f2e";
   const storeLogo = store?.logoUrl;
   const storeFaqs = Array.isArray(store?.faqs) ? store.faqs.filter((faq) => faq?.question && faq?.answer) : [];
+  const smartSalesPageEnabled = store?.featureSelections?.smartSalesPage === true;
+  const productPreviewEnabled = store?.featureSelections?.productPreview === true;
+  const campaignSource = new URLSearchParams(window.location.search).get("src");
+  const isLaunch = product?.isLaunch === true;
+
+  function interestIdFromEmail(email) {
+    return encodeURIComponent(email.trim().toLowerCase()).replace(/%/g, "_");
+  }
+
+  async function registerInterest(event) {
+    event.preventDefault();
+    const email = interestEmail.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setInterestStatus("اكتب بريدًا إلكترونيًا صحيحًا.");
+      return;
+    }
+    setInterestSaving(true);
+    setInterestStatus("");
+    try {
+      await setDoc(doc(db, "products", product.id, "interests", interestIdFromEmail(email)), { email, createdAt: serverTimestamp() });
+      setInterestStatus("تم تسجيل اهتمامك. سيخبرك صاحب المنتج عند جاهزية الإطلاق.");
+      setInterestEmail("");
+    } catch (error) {
+      console.error("registerInterest:", error);
+      setInterestStatus("تعذر الحفظ الآن. ربما سجلت اهتمامك سابقًا، أو جرب لاحقًا.");
+    } finally {
+      setInterestSaving(false);
+    }
+  }
 
   async function shareProduct() {
     const shareData = { title: name, text: `شاهد ${name} من ${storeName}`, url: window.location.href };
@@ -129,16 +161,25 @@ export default function ProductPage({ productId }) {
               {images.length ? <img src={images[activeImage]} alt={`صورة ${name}`} /> : <div className="pp-placeholder"><div className="pp-file"><b></b><i></i><i></i><i></i><em></em></div><span>منتج رقمي</span></div>}
             </div>
             {images.length > 1 && <div className="pp-thumbs" aria-label="صور المنتج">{images.map((image, index) => <button key={image} type="button" className={`pp-thumb ${activeImage === index ? "active" : ""}`} onClick={() => setActiveImage(index)} aria-label={`عرض الصورة ${index + 1}`}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} /></button>)}</div>}
+            {productPreviewEnabled && images.length > 0 && <div className="pp-preview-note">هذه صور معاينة للمنتج فقط. ملف المنتج الكامل لا يظهر في صفحة المتجر.</div>}
           </section>
           <section className="pp-card">
             <span className="pp-category">{category}</span>
+            {isLaunch && <div className="pp-launch-badge">إطلاق منتج قادم</div>}
             <h1 className="pp-title">{name}</h1>
             <div className="pp-store">من متجر <strong>{storeName}</strong></div>
-            <div className="pp-price-row"><span className="pp-price-label">السعر المعروض</span><span className="pp-price">{Number(product?.price || 0).toFixed(2)} ر.ع</span></div>
+            <div className="pp-price-row"><span className="pp-price-label">{isLaunch ? "السعر المتوقع" : "السعر المعروض"}</span><span className="pp-price">{Number(product?.price || 0).toFixed(2)} ر.ع</span></div>
             <div className="pp-description">{product?.description || "لا يوجد وصف إضافي لهذا المنتج حاليًا."}</div>
-            {contact ? <a className="pp-contact" href={contact} target="_blank" rel="noopener noreferrer">تواصل مع البائع قبل الشراء</a> : <span className="pp-contact disabled">بيانات التواصل غير متاحة حاليًا</span>}
+            {smartSalesPageEnabled && <div className="pp-selling-points"><b>قبل ما تتواصل مع البائع</b><div>{images.length > 0 ? "تصفح صور المعاينة أولًا، ثم راجع الوصف والسعر المعروض." : "راجع وصف المنتج وسعره، ثم تواصل مع البائع لو تحتاج تفاصيل إضافية."}</div><div>طريقة الاستلام والدفع يؤكدها البائع حاليًا قبل إكمال الطلب.</div></div>}
+            {isLaunch ? <form className="pp-interest" onSubmit={registerInterest}>
+              <div className="pp-interest-title">سجل اهتمامك بهذا الإطلاق</div>
+              <p>{product?.launchMessage || "اكتب بريدك فقط، وسيخبرك صاحب المنتج عند جاهزية الإطلاق."}</p>
+              <div className="pp-interest-form"><input type="email" value={interestEmail} onChange={(event) => setInterestEmail(event.target.value)} placeholder="بريدك الإلكتروني" aria-label="بريدك الإلكتروني" /><button type="submit" disabled={interestSaving}>{interestSaving ? "جارٍ الحفظ..." : "أنا مهتم"}</button></div>
+              {interestStatus && <div className={`pp-interest-status ${interestStatus.startsWith("تعذر") || interestStatus.startsWith("اكتب") ? "error" : ""}`}>{interestStatus}</div>}
+            </form> : (contact ? <a className="pp-contact" href={contact} target="_blank" rel="noopener noreferrer">تواصل مع البائع قبل الشراء</a> : <span className="pp-contact disabled">بيانات التواصل غير متاحة حاليًا</span>)}
             <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || "مشاركة رابط المنتج"}</button></div>
-            <p className="pp-note">تواصل مع صاحب المتجر للاستفسار عن المنتج وطريقة الاستلام المتاحة.</p>
+            <p className="pp-note">{isLaunch ? "لا يوجد شراء أو دفع لهذا المنتج قبل اكتمال الإطلاق وربط الدفع." : "تواصل مع صاحب المتجر للاستفسار عن المنتج وطريقة الاستلام المتاحة."}</p>
+            {campaignSource && <p className="pp-campaign-note">فتحت هذا المنتج من رابط مشاركة: {campaignSource}</p>}
           </section>
         </div>
         <section className="pp-info" aria-label="معلومات المنتج">

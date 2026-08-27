@@ -70,10 +70,8 @@ const styles = `
 `;
 
 function planLabel(plan) {
-  if (plan === "basic") return "أساسية";
-  if (plan === "pro") return "احترافية";
-  if (plan === "full") return "متجر متكامل";
-  return "بدون باقة";
+  if (["basic", "pro", "full"].includes(plan)) return "اشتراك مرن (بيانات سابقة)";
+  return "لم يحدد اشتراكه بعد";
 }
 
 export default function AdminDashboard() {
@@ -438,4 +436,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
