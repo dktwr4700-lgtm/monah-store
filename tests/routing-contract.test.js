@@ -109,10 +109,11 @@ describe("عقود المسارات العامة في مُونَة", () => {
   it("يعرض اشتراكًا مرنًا قبل التسجيل دون ادعاء شعبية غير موثق", async () => {
     const landing = await source("src/App.jsx");
     const dashboard = await source("src/Dashboard.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
 
     expect(landing).toContain("ابنِ اشتراكك بنفسك");
-    expect(landing).toContain("BASE_MONTHLY_PRICE = 3");
-    expect(dashboard).toContain("خيار النمو");
+    expect(catalog).toContain("BASE_MONTHLY_PRICE = 3");
+    expect(dashboard).toContain("متجر أساسي + مزايا تختارها");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).not.toContain("الأكثر طلبًا");
   });
@@ -146,6 +147,28 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("'coverUrl', 'about', 'faqs', 'featureSelections'");
   });
 
+  it("يعرض لوحة اشتراك مرنة بعد التسجيل ولا يعيد الباقات الثابتة أو خيارات مزايا مدفوعة", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("مزايا اشتراكك");
+    expect(dashboard).toContain("متجر أساسي + مزايا تختارها");
+    expect(dashboard).toContain("لا يوجد تحصيل الآن");
+    expect(dashboard).toContain("كوبونات الخصم ضمن اشتراكك");
+    expect(dashboard).not.toContain("شوف الباقات");
+    expect(dashboard).not.toContain("ادفع واستلم الآن");
+  });
+
+  it("يكبر رمز QR ويتيح فتح رابط المتجر للتحقق منه", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("setQrOpen(true)");
+    expect(dashboard).toContain("تكبير QR");
+    expect(dashboard).toContain('aria-label="رمز QR للمتجر"');
+    expect(dashboard).toContain("افتح الرابط للاختبار");
+    expect(dashboard).toContain('level="H"');
+    expect(dashboard).toContain("https://www.monah-app.com/#store/");
+  });
+
   it("يحفظ تصميم المتجر بالدمج حتى لا تتعطل المتاجر التي لديها حقول قديمة", async () => {
     const dashboard = await source("src/Dashboard.jsx");
 
@@ -156,7 +179,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const dashboard = await source("src/Dashboard.jsx");
     const rules = await source("firestore.rules");
 
-    expect(dashboard).toContain("FEATURE_CATALOG");
+    expect(dashboard).toContain("ADD_ON_CATALOG");
     expect(dashboard).toContain("handleSaveFeatureSelections");
     expect(dashboard).toContain("featureSelectionUpdatedAt");
     expect(dashboard).toContain("copyCampaignLink");
@@ -180,8 +203,10 @@ describe("عقود المسارات العامة في مُونَة", () => {
   it("يجمع السعر قبل التسجيل ويحفظ مسودة الاختيارات مع الحساب من دون تحصيل", async () => {
     const landing = await source("src/App.jsx");
     const register = await source("src/Register.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
 
-    expect(landing).toContain("BASE_MONTHLY_PRICE = 3");
+    expect(catalog).toContain("BASE_MONTHLY_PRICE = 3");
+    expect(catalog).toContain('key: "coupons"');
     expect(landing).toContain("monah.subscriptionDraft");
     expect(landing).toContain("ابنِ اشتراكك بنفسك");
     expect(register).toContain("readSubscriptionDraft");

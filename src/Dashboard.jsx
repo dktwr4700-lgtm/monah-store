@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import GrowthAssistant from "./GrowthAssistant.jsx";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -76,7 +77,7 @@ const styles = `
   .dh-studio-head{ position:relative; z-index:1; display:flex; align-items:center; gap:12px; margin-top:13px; }.dh-studio-logo{ width:52px; height:52px; flex:0 0 52px; border-radius:16px; background:#fff; color:var(--studio-color,#163F2E); overflow:hidden; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-size:18px; font-weight:800; box-shadow:0 8px 16px rgba(0,0,0,.18); }.dh-studio-logo img{width:100%;height:100%;object-fit:cover}.dh-studio-name{font-family:'Almarai',sans-serif;font-size:16px;font-weight:800}.dh-studio-tag{font-size:11px;line-height:1.6;color:rgba(255,255,255,.7);margin-top:4px;max-width:300px}.dh-studio-meta{font-size:10px;color:rgba(255,255,255,.65);margin-top:5px}
   .dh-studio-actions{ position:relative; z-index:1; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; }.dh-studio-action{ min-height:56px; border:1px solid rgba(255,255,255,.13); border-radius:13px; background:rgba(255,255,255,.1); color:#fff; padding:8px 6px; font-family:'Cairo',sans-serif; font-size:10.5px; font-weight:700; cursor:pointer; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }.dh-studio-action span{font-size:16px;line-height:1}.dh-studio-action.primary{background:#D6F35C;color:#143226;border-color:#D6F35C}
   .dh-share-card{ background:#fff; border:1px solid #EDEAE0; border-radius:17px; padding:16px; margin-bottom:14px; }.dh-share-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.dh-share-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-share-sub{font-size:10.5px;color:#8A8677;line-height:1.7}.dh-share-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.dh-share-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:12px;padding:10px 6px;color:#22372C;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer;text-decoration:none;text-align:center}.dh-share-btn.primary{background:#0E3B2C;color:#fff;border-color:#0E3B2C}
-  .dh-qr{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px}.dh-qr-code{width:86px;height:86px;background:#fff;border:1px solid #EDEAE0;border-radius:12px;padding:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.dh-qr-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-qr-sub{font-size:10.5px;color:#748178;line-height:1.75;margin-top:6px}.dh-qr-actions{display:flex;gap:7px;margin-top:10px}.dh-mini-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:100px;padding:7px 10px;font-family:'Cairo',sans-serif;color:#163F2E;font-weight:800;font-size:10px;cursor:pointer}
+  .dh-qr{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px}.dh-qr-code{width:108px;height:108px;background:#fff;border:1px solid #EDEAE0;border-radius:14px;padding:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.dh-qr-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800}.dh-qr-sub{font-size:10.5px;color:#748178;line-height:1.75;margin-top:6px}.dh-qr-actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}.dh-mini-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:100px;padding:7px 10px;font-family:'Cairo',sans-serif;color:#163F2E;font-weight:800;font-size:10px;cursor:pointer}
   .dh-product-health{background:#fff;border:1px solid #EDEAE0;border-radius:17px;padding:16px;margin-bottom:14px}.dh-health-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.dh-health-number{border-radius:12px;background:#F4F7F2;padding:11px}.dh-health-number b{display:block;font-family:'JetBrains Mono',monospace;font-size:18px;color:#163F2E}.dh-health-number span{font-size:10px;color:#748178}.dh-health-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px dashed #EDEAE0}.dh-health-name{font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}.dh-health-state{font-size:9.5px;font-weight:800;border-radius:100px;padding:4px 8px}.dh-health-state.live{background:#EAF0EB;color:#37724B}.dh-health-state.hidden{background:#F3EBDD;color:#9C6D1F}.dh-health-manage{border:0;background:none;color:#163F2E;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer;padding:4px}
   .dh-featured-tag{display:inline-flex;background:#F3EBDD;color:#9C6D1F;border-radius:100px;padding:3px 7px;font-size:9px;font-weight:800;margin-right:6px}.dh-sort-actions{display:flex;gap:5px;margin-top:8px}.dh-sort-btn{border:1px solid #EDEAE0;background:#FBFAF7;border-radius:9px;padding:6px 8px;font-family:'Cairo',sans-serif;font-size:10px;font-weight:800;color:#163F2E;cursor:pointer}
 
@@ -196,59 +197,12 @@ const styles = `
   .cp-code{ font-family:'JetBrains Mono',monospace; font-weight:800; color:#0B0B0C; font-size:14px; letter-spacing:.02em; }
   .cp-percent{ background:#F3EBDD; color:#B9832F; font-size:11px; font-weight:700; padding:4px 10px; border-radius:100px; }
   .cp-scope{ color:#8A8677; font-size:11px; margin-bottom:8px; }
+  .sub-hero{background:linear-gradient(135deg,#163F2E,#0A2E22);border-radius:18px;padding:19px;color:#fff;margin-bottom:13px}.sub-kicker{font-size:10px;color:#D6F35C;font-weight:800;margin-bottom:7px}.sub-title{font-family:'Almarai',sans-serif;font-size:16px;font-weight:800}.sub-total{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:800;margin-top:9px}.sub-total span{font-family:'Cairo',sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500}.sub-note{font-size:10.5px;line-height:1.8;color:rgba(255,255,255,.72);margin-top:7px}.sub-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px dashed #EDEAE0;font-size:11px;color:#3D4A66}.sub-row:first-of-type{border-top:0}.sub-row b{font-family:'JetBrains Mono',monospace;color:#0B0B0C}.sub-empty{font-size:11px;color:#8A8677;line-height:1.8;padding:5px 0}.sub-ready{display:inline-flex;margin-top:4px;padding:3px 7px;background:#EAF0EB;color:#37724B;border-radius:100px;font-size:9px;font-weight:800}.sub-ready.waiting{background:#FFF4D8;color:#9A6C1E}.sub-locked{background:#FFF8E9;border:1px solid #F0E2B5;border-radius:16px;padding:16px;font-size:11.5px;color:#6E5A2C;line-height:1.9}.sub-locked b{display:block;color:#8C6418;font-family:'Almarai',sans-serif;font-size:13px;margin-bottom:5px}.qr-overlay{position:fixed;inset:0;background:rgba(11,11,12,.58);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px}.qr-sheet{max-width:360px;width:100%;background:#fff;border-radius:22px;padding:20px;text-align:center;position:relative}.qr-close{position:absolute;top:11px;left:11px;border:0;background:#F1F0EA;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer}.qr-sheet h3{font-family:'Almarai',sans-serif;font-size:16px;margin:5px 0 7px}.qr-sheet p{font-size:11px;color:#748178;line-height:1.8;margin:0 auto 15px;max-width:265px}.qr-large{width:270px;min-height:270px;max-width:100%;margin:0 auto 15px;border:1px solid #EDEAE0;border-radius:18px;display:grid;place-items:center;background:#fff}.qr-large-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qr-large-actions button{border:1px solid #EDEAE0;background:#FBFAF7;color:#163F2E;border-radius:11px;padding:11px 8px;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer}.qr-large-actions button:first-child{background:#0B0B0C;color:#fff;border-color:#0B0B0C}
 
   /* استجابة فورية للضغط — نفس مبدأ apple-design */
   .dh-page button{ transition:transform 100ms ease-out; }
   .dh-page button:active{ transform:scale(0.96); }
 `;
-
-const COMMON_FEATURES = [
-  "صفحة متوافقة مع الجوال",
-  "رابط خاص لكل منتج",
-  "مشاركة وQR للمتجر",
-  "هوية خاصة للمتجر",
-];
-
-const PACKAGES = [
-  {
-    id: "basic", name: "أساسية", price: "5",
-    desc: "لبداية بسيطة: متجر واضح ورابط جاهز لمشاركة منتجاتك.",
-    btn: "ابدأ متجرك",
-    features: ["حتى 10 منتجات", "صفحة متجر أصلية", "رابط ومشاركة للمنتجات"],
-  },
-  {
-    id: "pro", name: "احترافية", price: "10", highlight: "خيار النمو",
-    desc: "لمن يريد هوية واضحة للمتجر وتجربة أقوى للزائر.",
-    btn: "نمِّ متجرك",
-    features: ["كل مميزات الأساسية", "منتجات غير محدودة", "شعار وغلاف وألوان المتجر", "كوبونات خصم"],
-    soon: ["إنشاء باقات من عدة منتجات", "تقارير مبيعات مفصلة", "تصدير الطلبات والبيانات"],
-  },
-  {
-    id: "full", name: "متجر متكامل", price: "15",
-    desc: "لمن يريد متجرًا بهويته الخاصة وتجربة أقرب لموقعه المستقل.",
-    btn: "ابنِ علامتك",
-    features: ["كل مميزات الاحترافية", "هوية متجر خاصة", "تذييل هادئ مدعوم من مُونَة"],
-    soon: ["ربط دومينك الخاص", "تحليلات مصادر الزيارات", "دعم أولوية", "مساعدة في إعداد المتجر"],
-  },
-];
-
-const FEATURE_CATALOG = [
-  {
-    key: "smartSalesPage",
-    title: "تنسيق صفحة المنتج",
-    description: "يعرض ملخصًا واضحًا لنوع المنتج ومعاينته وطريقة الاستفسار داخل صفحته العامة.",
-  },
-  {
-    key: "productPreview",
-    title: "صور معاينة للمنتج",
-    description: "يوضح للزائر أن الصور المعروضة معاينة فقط، من دون كشف ملف المنتج نفسه.",
-  },
-  {
-    key: "campaignLinks",
-    title: "روابط حملات جاهزة",
-    description: "ينشئ رابطًا مختلفًا لواتساب أو إنستغرام أو تيك توك لكل منتج. الإحصاءات تأتي لاحقًا بعد تفعيلها واختبارها.",
-  },
-];
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -256,7 +210,7 @@ export default function Dashboard() {
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
     const t = parts[1];
-    return ["overview", "products", "coupons", "orders", "design", "features", "subscription"].includes(t) ? t : "overview";
+    return ["overview", "products", "orders", "design", "features", "subscription"].includes(t) ? t : "overview";
   }
   const [tab, setTabState] = useState(getTabFromHash);
 
@@ -300,6 +254,7 @@ export default function Dashboard() {
   const [productFilter, setProductFilter] = useState("all");
   const [togglingHiddenId, setTogglingHiddenId] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [launchInterests, setLaunchInterests] = useState({});
 
   // store design
@@ -814,7 +769,7 @@ export default function Dashboard() {
     setFeatureSaved(false);
     try {
       const cleanSelections = Object.fromEntries(
-        FEATURE_CATALOG.map((feature) => [feature.key, featureSelections[feature.key] === true])
+        ADD_ON_CATALOG.map((feature) => [feature.key, featureSelections[feature.key] === true])
       );
       await setDoc(doc(db, "stores", user.uid), {
         ownerId: user.uid,
@@ -828,65 +783,6 @@ export default function Dashboard() {
       setError("تعذر حفظ اختيار المزايا، حاول مرة ثانية.");
     }
     setFeatureSaving(false);
-  }
-
-  async function handleAddCoupon(e) {
-    e.preventDefault();
-    setCouponError("");
-    if (sellerPlan === "basic") {
-      setCouponError("كوبونات الخصم متاحة من الباقة الاحترافية فأعلى.");
-      return;
-    }
-    const cleanCode = couponCode.trim().toUpperCase().replace(/\s+/g, "");
-    const percentNum = Number(couponPercent);
-
-    if (!cleanCode) {
-      setCouponError("اكتب كود الخصم.");
-      return;
-    }
-    if (!percentNum || percentNum <= 0 || percentNum > 90) {
-      setCouponError("نسبة الخصم لازم تكون بين 1 و 90.");
-      return;
-    }
-    const exists = coupons.some((c) => c.code === cleanCode);
-    if (exists) {
-      setCouponError("عندك كود بنفس الاسم من قبل، اختر اسم ثاني.");
-      return;
-    }
-
-    setCouponSaving(true);
-    try {
-      await addDoc(collection(db, "coupons"), {
-        ownerId: user.uid,
-        code: cleanCode,
-        discountPercent: percentNum,
-        productId: couponScope === "all" ? null : couponScope,
-        active: true,
-        createdAt: serverTimestamp(),
-      });
-      setCouponCode("");
-      setCouponPercent("");
-      setCouponScope("all");
-    } catch (err) {
-      setCouponError("صار خطأ، حاول مرة ثانية.");
-    }
-    setCouponSaving(false);
-  }
-
-  async function deleteCoupon(couponId) {
-    setDeletingCouponId(couponId);
-    try {
-      await deleteDoc(doc(db, "coupons", couponId));
-    } catch (err) {
-      console.error(err);
-    }
-    setDeletingCouponId(null);
-  }
-
-  function couponScopeLabel(c) {
-    if (!c.productId) return "على كل منتجاتك";
-    const p = products.find((pr) => pr.id === c.productId);
-    return p ? `على منتج: ${p.name}` : "على منتج محذوف";
   }
 
   function handleLogout() {
@@ -951,12 +847,15 @@ export default function Dashboard() {
 
   if (checking) return null;
 
-  const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
+  const storeUrl = `https://www.monah-app.com/#store/${slug || user.uid}`;
   const initial = (storeName || "م").charAt(0);
   const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
   const hiddenProducts = products.filter((product) => product.hidden || product.suspended);
   const selectedStoreStyle = STORE_STYLES.find((style) => style.color === storeColor) || STORE_STYLES[0];
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`تصفح منتجات ${storeName || "متجري"}: ${storeUrl}`)}`;
+  const selectedSubscriptionFeatures = ADD_ON_CATALOG.filter((feature) => featureSelections[feature.key]);
+  const expectedMonthlyTotal = BASE_MONTHLY_PRICE + selectedSubscriptionFeatures.reduce((total, feature) => total + feature.price, 0);
+  const couponSelected = featureSelections.coupons === true;
 
   const assistantContext = {
     storeName,
@@ -981,8 +880,7 @@ export default function Dashboard() {
     const hasTagline = !!tagline;
     const hasContact = !!(whatsapp || instagram);
     const allDescribed = products.every((p) => !!p.description);
-    const hasCoupon = coupons.length > 0;
-    const stepsDone = [hasProduct, hasTagline, hasContact, hasProduct ? allDescribed : false, sellerPlan === "basic" ? true : hasCoupon].filter(Boolean).length;
+    const stepsDone = [hasProduct, hasTagline, hasContact, hasProduct ? allDescribed : false].filter(Boolean).length;
 
     if (!hasProduct) {
       return {
@@ -1028,17 +926,6 @@ export default function Dashboard() {
         progress: stepsDone,
       };
     }
-    if (sellerPlan !== "basic" && !hasCoupon) {
-      return {
-        key: "add-coupon",
-        badge: "✦ خطوتك التالية",
-        title: "جرب أول كود خصم لك",
-        text: "جهّز كود خصم ليصبح جاهزًا عند تفعيل الدفع واختباره.",
-        cta: "جهّز كود خصم",
-        onClick: () => setTab("coupons"),
-        progress: stepsDone,
-      };
-    }
     return {
       key: "share-store",
       badge: "✦ جاهز للانطلاق",
@@ -1062,17 +949,7 @@ export default function Dashboard() {
       return;
     }
     if (suggestion.kind === "coupon-idea") {
-      const exists = coupons.some((c) => c.code === suggestion.code);
-      if (exists) throw new Error("duplicate_code");
-      await addDoc(collection(db, "coupons"), {
-        ownerId: user.uid,
-        code: suggestion.code,
-        discountPercent: suggestion.percent,
-        productId: null,
-        active: true,
-        createdAt: serverTimestamp(),
-      });
-      return;
+      throw new Error("coupon_unavailable_until_payment");
     }
   }
 
@@ -1093,7 +970,6 @@ export default function Dashboard() {
       <div className="dh-tabs">
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
-        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>أكواد الخصم</button>
         <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
         <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
         <button className={"dh-tab" + (tab === "features" ? " active" : "")} onClick={() => setTab("features")}>مزايا متجرك</button>
@@ -1163,13 +1039,14 @@ export default function Dashboard() {
             </section>
 
             <section className="dh-qr">
-              <div className="dh-qr-code"><QRCodeSVG value={storeUrl} size={70} bgColor="#ffffff" fgColor={storeColor} level="M" /></div>
+              <button className="dh-qr-code" type="button" onClick={() => setQrOpen(true)} aria-label="تكبير رمز المتجر"><QRCodeSVG value={storeUrl} size={94} bgColor="#ffffff" fgColor={storeColor} level="H" includeMargin /></button>
               <div>
                 <div className="dh-qr-title">رمز متجرك</div>
-                <div className="dh-qr-sub">خله عندك في المعرض أو المطبوعات، والعميل يفتحه بكاميرا جواله.</div>
+                <div className="dh-qr-sub">اضغط عليه لتكبيره. خله في المعرض أو المطبوعات، والعميل يفتحه بكاميرا جواله.</div>
                 <div className="dh-qr-actions">
                   <button className="dh-mini-btn" onClick={() => copyLink(slug || user.uid, "store")}>نسخ الرابط</button>
                   <button className="dh-mini-btn" onClick={shareStore}>مشاركة</button>
+                  <button className="dh-mini-btn" type="button" onClick={() => setQrOpen(true)}>تكبير QR</button>
                 </div>
               </div>
             </section>
@@ -1447,79 +1324,15 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "coupons" && sellerPlan === "basic" && (
-          <div className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
+        {tab === "coupons" && (
+          <section className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
             <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
-            <div className="dh-title" style={{ marginBottom: 8 }}>أكواد الخصم تُجهّز قبل تفعيل الدفع</div>
-            <div className="dh-hint" style={{ marginBottom: 16 }}>لا نعرضها كخصم يعمل عند الشراء إلا بعد ربط ثواني واختبارها.</div>
-            <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 220, margin: "0 auto" }}>
-              شوف الباقات
+            <div className="dh-title" style={{ marginBottom: 8 }}>{couponSelected ? "كوبونات الخصم ضمن اشتراكك" : "كوبونات الخصم إضافة في اشتراكك"}</div>
+            <div className="dh-hint" style={{ maxWidth: 360, margin: "0 auto 16px", lineHeight: 1.9 }}>{couponSelected ? "اخترت الكوبونات ضمن اشتراكك. تظل مقفلة إلى أن نربط ثواني ونجرب خصمًا حقيقيًا من بداية الطلب حتى نهايته." : "تختار الكوبونات من قائمة مزايا الاشتراك قبل التسجيل. لن تظهر كميزة تعمل قبل ربط ثواني واختبارها."}</div>
+            <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 250, margin: "0 auto" }}>
+              عرض اشتراكي
             </button>
-          </div>
-        )}
-
-        {tab === "coupons" && sellerPlan !== "basic" && (
-          <>
-            <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>
-              {couponError && <div className="dh-error">{couponError}</div>}
-              <form onSubmit={handleAddCoupon}>
-                <div className="dh-field">
-                  <label>كود الخصم</label>
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="مثال: EID20"
-                    style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }}
-                  />
-                  <div className="dh-hint">أحرف إنجليزية وأرقام، بدون مسافات. يحفظ الكود الآن ويطبّق على الشراء فقط بعد تفعيل الدفع واختباره.</div>
-                </div>
-                <div className="dh-field">
-                  <label>نسبة الخصم (%)</label>
-                  <input type="number" value={couponPercent} onChange={(e) => setCouponPercent(e.target.value)} placeholder="20" />
-                </div>
-                <div className="dh-field">
-                  <label>ينطبق على</label>
-                  <select value={couponScope} onChange={(e) => setCouponScope(e.target.value)}>
-                    <option value="all">كل منتجاتك</option>
-                    {products.map((p) => (
-                      <option value={p.id} key={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <button className="dh-btn" type="submit" disabled={couponSaving}>
-                  {couponSaving ? "جاري الحفظ..." : "إنشاء الكود"}
-                </button>
-              </form>
-            </div>
-
-            <div className="dh-card">
-              <div className="dh-title-row">
-                <div className="dh-title">أكوادك الحالية</div>
-                <div className="dh-title-count mono">{coupons.length}</div>
-              </div>
-              {coupons.length === 0 && <div className="empty-note">ما أضفت أي كود خصم بعد.</div>}
-              {coupons.map((c) => (
-                <div className="cp-item" key={c.id}>
-                  <div className="cp-item-top">
-                    <span className="cp-code">{c.code}</span>
-                    <span className="cp-percent">خصم {c.discountPercent}٪</span>
-                  </div>
-                  <div className="cp-scope">{couponScopeLabel(c)}</div>
-                  <div className="dh-item-actions">
-                    <button
-                      className="dh-item-action danger"
-                      disabled={deletingCouponId === c.id}
-                      onClick={() => deleteCoupon(c.id)}
-                    >
-                      {deletingCouponId === c.id ? "جاري الحذف..." : "حذف الكود"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
+          </section>
         )}
 
         {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} />}
@@ -1653,62 +1466,40 @@ export default function Dashboard() {
 
         {tab === "features" && (
           <>
-            <div className="mf-intro">
-              اختر الأدوات التي تريد تشغيلها في متجرك. هذه الدفعة تعمل داخل الموقع الآن، ولا يوجد دفع أو رسوم مفعّلة في هذه الصفحة.
-            </div>
+            <div className="mf-intro">هذه صفحة متابعة فقط. اختيارات الاشتراك والسعر تتم قبل التسجيل، وهنا تعرف ما هو ضمن اشتراك متجرك الآن.</div>
             <section className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 6 }}>أدوات متاحة الآن</div>
-              <div className="dh-hint" style={{ marginBottom: 14 }}>كل أداة هنا لها وظيفة ظاهرة ومجربة في الموقع. احفظ اختيارك ثم افتح صفحة المنتج أو قائمة منتجاتك لتستخدمها.</div>
-              <div className="mf-grid">
-                {FEATURE_CATALOG.map((feature) => {
-                  const selected = featureSelections[feature.key] === true;
-                  return <label className={`mf-card ${selected ? "selected" : ""}`} key={feature.key}>
-                    <input className="mf-toggle" type="checkbox" checked={selected} onChange={(event) => setFeatureSelections((items) => ({ ...items, [feature.key]: event.target.checked }))} />
-                    <span className="mf-body">
-                      <span className="mf-title">{feature.title}</span>
-                      <span className="mf-text">{feature.description}</span>
-                      <span className="mf-status">تعمل الآن</span>
-                    </span>
-                  </label>;
-                })}
-              </div>
-              <div className="mf-save">
-                <span>{featureSaved ? "تم حفظ اختياراتك" : "لا تظهر هذه الأدوات للتاجر إلا بعد حفظ الاختيار."}</span>
-                <button className="dh-btn" style={{ width: "auto", padding: "10px 16px" }} type="button" onClick={handleSaveFeatureSelections} disabled={featureSaving}>{featureSaving ? "جاري الحفظ..." : "حفظ الاختيارات"}</button>
-              </div>
+              <div className="dh-title" style={{ marginBottom: 6 }}>مزايا اشتراكك</div>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>كل ميزة اخترتها تظهر هنا: ما يعمل الآن، وما ينتظر ربط الدفع بوضوح.</div>
+              {selectedSubscriptionFeatures.length ? <div className="mf-grid">{selectedSubscriptionFeatures.map((feature) => <div className="mf-card selected" key={feature.key}><span className="mf-body"><span className="mf-title">✓ {feature.title}</span><span className="mf-text">{feature.desc}</span><span className="mf-status">{feature.ready ? "تعمل الآن" : feature.status}</span></span></div>)}</div> : <div className="sub-empty">لا توجد إضافات مختارة بعد. المتجر الأساسي يعمل، ويمكن اختيار الإضافات قبل التسجيل عند إنشاء متجر جديد.</div>}
             </section>
-            <section className="dh-card mf-soon">
-              <div className="mf-soon-title">مزايا تنتظر ثواني</div>
-              <div className="mf-soon-text">الكوبونات عند الشراء، الحزم المدفوعة، التسليم التلقائي، التقارير، ومكتبة المشتري ستبقى مقفلة حتى يكتمل ربط الدفع وتجربة شراء حقيقية.</div>
+            <section className="sub-locked">
+              <b>إضافة مزايا جديدة لاحقًا</b>
+              بعد تفعيل ثواني، تختار الميزة وتدفع سعرها كاملًا فورًا، ثم تدخل في قيمة اشتراكك الشهري القادم. لن نفتح هذه الخطوة قبل اختبارها.
             </section>
           </>
         )}
 
         {tab === "subscription" && (
           <>
-            <div className="dh-hint" style={{ marginBottom: 14, lineHeight: 1.9 }}>
-              كل الباقات تشمل: {COMMON_FEATURES.join(" · ")}
-            </div>
-            {PACKAGES.map((pkg) => (
-              <div className={"pk-card" + (pkg.id === sellerPlan ? " current" : "")} key={pkg.id}>
-                {pkg.highlight && <div className="pk-badge">{pkg.highlight}</div>}
-                <div className="pk-name">{pkg.name}</div>
-                <div className="dh-hint" style={{ marginBottom: 10 }}>{pkg.desc}</div>
-                <div className="pk-price">{pkg.price} <span>ر.ع / شهريًا</span></div>
-                <div className="pk-features">
-                  {pkg.features.map((f) => <div key={f}>✓ {f}</div>)}
-                </div>
-                {pkg.soon && (
-                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #EDEAE0" }}>
-                    <div style={{ color: "#B9832F", fontSize: 10.5, fontWeight: 700, marginBottom: 4 }}>قادم قريبًا:</div>
-                    {pkg.soon.map((f) => (
-                      <div key={f} style={{ fontSize: 11.5, color: "#B0AC9C" }}>○ {f}</div>
-                    ))}
-                  </div>
-                )}
-                {pkg.id === sellerPlan && <div className="pk-current-tag">باقتك الحالية</div>}
-              </div>
-            ))}
+            <section className="sub-hero">
+              <div className="sub-kicker">اشتراكك الشهري</div>
+              <div className="sub-title">متجر أساسي + مزايا تختارها</div>
+              <div className="sub-total">{expectedMonthlyTotal.toFixed(2)} <span>ر.ع شهريًا عند تفعيل الدفع</span></div>
+              <div className="sub-note">لا يوجد تحصيل الآن. هذا ملخص سعر الاشتراك الذي اخترته قبل التسجيل.</div>
+            </section>
+            <section className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 8 }}>يشمل متجرك الأساسي</div>
+              <div className="sub-row"><span>متجر وصفحة منتج ورابط مشاركة</span><b>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b></div>
+              <div className="sub-row"><span>إدارة المنتجات ولوحة التاجر</span><b>ضمن الأساس</b></div>
+            </section>
+            <section className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 8 }}>الإضافات المفعلة</div>
+              {selectedSubscriptionFeatures.length ? selectedSubscriptionFeatures.map((feature) => <div className="sub-row" key={feature.key}><span>{feature.title}<span className={`sub-ready${feature.ready ? "" : " waiting"}`}>{feature.ready ? "تعمل الآن" : feature.status}</span></span><b>+{feature.price.toFixed(2)} ر.ع</b></div>) : <div className="sub-empty">لا توجد إضافات مختارة فوق المتجر الأساسي.</div>}
+            </section>
+            <section className="sub-locked">
+              <b>مزايا جديدة بعد ثواني</b>
+              الكوبونات والحزم والتقارير والحماية الموسعة ستظهر هنا بعد أن نربط الدفع ونختبر كل ميزة. لا يوجد زر دفع أو ترقية الآن.
+            </section>
           </>
         )}
 
@@ -1736,10 +1527,25 @@ export default function Dashboard() {
                 </div>
                 <div className="pv-desc">{description || "ما فيه وصف إضافي لهذا المنتج."}</div>
               </div>
-              <div className="pv-btn">ادفع واستلم الآن</div>
+              <div className="pv-btn">تواصل قبل الشراء</div>
               <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد</div>
             </div>
           </div>
+        </div>
+      )}
+
+      {qrOpen && (
+        <div className="qr-overlay" onClick={() => setQrOpen(false)}>
+          <section className="qr-sheet" onClick={(event) => event.stopPropagation()} aria-label="رمز QR للمتجر">
+            <button className="qr-close" type="button" onClick={() => setQrOpen(false)} aria-label="إغلاق">✕</button>
+            <h3>رمز متجرك</h3>
+            <p>امسحه بكاميرا جوال آخر، أو افتح الرابط أدناه للتأكد أنه يأخذ العميل إلى متجرك.</p>
+            <div className="qr-large"><QRCodeSVG value={storeUrl} size={238} bgColor="#ffffff" fgColor={storeColor} level="H" includeMargin /></div>
+            <div className="qr-large-actions">
+              <button type="button" onClick={() => window.open(storeUrl, "_blank", "noopener,noreferrer")}>افتح الرابط للاختبار</button>
+              <button type="button" onClick={() => copyLink(slug || user.uid, "store")}>{copied === "store" + (slug || user.uid) ? "تم النسخ" : "نسخ الرابط"}</button>
+            </div>
+          </section>
         </div>
       )}
 

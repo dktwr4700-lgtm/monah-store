@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
@@ -243,38 +244,6 @@ const STEPS = [
   { n: "01", title: "تسجّل وتجهّز متجرك", desc: "تدخل بياناتك وتختار شكل متجرك وأدواته المتاحة." },
   { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه." },
   { n: "03", title: "تشارك الرابط مع جمهورك", desc: "الدفع والتسليم التلقائي يتفعّلان بعد اكتمال الربط واختباره." },
-];
-
-const BASE_MONTHLY_PRICE = 3;
-
-const ADD_ON_CATALOG = [
-  { key: "smartSalesPage", group: "المتجر والمنتجات", title: "صفحة بيع مستقلة", price: 0.5, desc: "صفحة أوضح لعرض المنتج قبل التواصل.", status: "متاح الآن", ready: true },
-  { key: "productPreview", group: "المتجر والمنتجات", title: "معاينة صور للمنتج", price: 0.5, desc: "يوضح للزائر أن الصور معاينة من دون كشف الملف.", status: "متاح الآن", ready: true },
-  { key: "directLinks", group: "المتجر والمنتجات", title: "رابط بيع مباشر", price: 0.5, desc: "رابط مختلف لواتساب أو إنستغرام أو تيك توك.", status: "متاح الآن", ready: true },
-  { key: "storeDesign", group: "المتجر والمنتجات", title: "تخصيص تصميم المتجر", price: 1, desc: "شعار وغلاف وألوان وبيانات متجر خاصة.", status: "متاح الآن", ready: true },
-  { key: "customDomain", group: "المتجر والمنتجات", title: "دومين مخصص", price: 1, desc: "ربط اسم موقع خاص بالتاجر.", status: "يبنى قبل التفعيل", ready: false },
-  { key: "productBundles", group: "المتجر والمنتجات", title: "بيع عدة منتجات معًا", price: 0.5, desc: "عرض أكثر من منتج ضمن عملية شراء واحدة.", status: "بعد ثواني", ready: false },
-  { key: "bundles", group: "المتجر والمنتجات", title: "إنشاء Bundles", price: 1, desc: "حزمة بسعر خاص من منتجات التاجر.", status: "بعد ثواني", ready: false },
-  { key: "freeProducts", group: "المتجر والمنتجات", title: "منتجات مجانية", price: 0.5, desc: "منتج مجاني لجذب المهتمين.", status: "يبنى قبل التفعيل", ready: false },
-  { key: "autoDelivery", group: "الدفع والتسليم", title: "التسليم التلقائي", price: 1, desc: "تسليم المنتج بعد تأكيد الدفع.", status: "بعد ثواني", ready: false },
-  { key: "invoices", group: "الدفع والتسليم", title: "فاتورة تلقائية", price: 0.5, desc: "إيصال واضح للعملية بعد الدفع.", status: "بعد ثواني", ready: false },
-  { key: "coupons", group: "الدفع والتسليم", title: "كوبونات", price: 0.5, desc: "خصم يطبق عند عملية شراء مكتملة.", status: "بعد ثواني", ready: false },
-  { key: "timedOffers", group: "الدفع والتسليم", title: "عروض مؤقتة", price: 0.5, desc: "سعر أو خصم ينتهي في وقت محدد.", status: "بعد ثواني", ready: false },
-  { key: "giftCards", group: "الدفع والتسليم", title: "بطاقات هدايا", price: 1, desc: "شراء هدية رقمية لشخص آخر.", status: "مرحلة لاحقة", ready: false },
-  { key: "upsell", group: "زيادة المبيعات", title: "Upsell", price: 1.5, desc: "عرض إضافة مناسبة عند إكمال الشراء.", status: "بعد ثواني", ready: false },
-  { key: "crossSell", group: "زيادة المبيعات", title: "Cross-sell", price: 1, desc: "اقتراح منتجات مرتبطة للعميل.", status: "بعد ثواني", ready: false },
-  { key: "returningOffers", group: "زيادة المبيعات", title: "عروض للعملاء السابقين", price: 1, desc: "عرض خاص لمن اشترى سابقًا.", status: "بعد ثواني", ready: false },
-  { key: "campaignLinks", group: "زيادة المبيعات", title: "روابط تتبع الحملات", price: 1, desc: "روابط منفصلة لكل مكان نشر؛ التقارير عند تفعيلها.", status: "متاح الآن", ready: true },
-  { key: "affiliate", group: "زيادة المبيعات", title: "Affiliate", price: 2, desc: "مسوقون يشاركون روابطهم مقابل عمولة.", status: "مرحلة لاحقة", ready: false },
-  { key: "salesDashboard", group: "التحليلات والعملاء", title: "لوحة المبيعات", price: 1, desc: "مبيعات مسجلة بعد تفعيل الدفع.", status: "بعد ثواني", ready: false },
-  { key: "customerHistory", group: "التحليلات والعملاء", title: "سجل مشتريات العملاء", price: 0.5, desc: "يشاهد التاجر تاريخ شراء عملائه.", status: "بعد ثواني", ready: false },
-  { key: "customerSegments", group: "التحليلات والعملاء", title: "تقسيم العملاء", price: 1, desc: "ينظم العملاء حسب سلوك الشراء.", status: "مرحلة لاحقة", ready: false },
-  { key: "reportExport", group: "التحليلات والعملاء", title: "تصدير التقارير", price: 0.5, desc: "تنزيل تقرير مرتب من بيانات حقيقية.", status: "بعد ثواني", ready: false },
-  { key: "downloadLimits", group: "حماية المنتجات", title: "تحديد مرات التحميل", price: 0.5, desc: "يحدد عدد تنزيلات المنتج للمشتري.", status: "بعد ثواني", ready: false },
-  { key: "watermark", group: "حماية المنتجات", title: "علامة مائية للملفات", price: 1.5, desc: "إضافة علامة إلى ملفات مدعومة قبل التسليم.", status: "مرحلة لاحقة", ready: false },
-  { key: "aiDescription", group: "الذكاء والأتمتة", title: "كتابة وصف المنتج بالذكاء", price: 1, desc: "يساعد التاجر على كتابة وصف أوضح.", status: "يبنى قبل التفعيل", ready: false },
-  { key: "aiAdCopy", group: "الذكاء والأتمتة", title: "إنشاء نص إعلان", price: 1, desc: "مسودة إعلان يراجعها التاجر قبل استخدامها.", status: "يبنى قبل التفعيل", ready: false },
-  { key: "aiLaunch", group: "الذكاء والأتمتة", title: "إطلاق منتج بضغطة", price: 2.5, desc: "تجهيز اسم ووصف وسعر وصفحة بيع كمسودة.", status: "مرحلة لاحقة", ready: false },
 ];
 
 const FAQS = [
