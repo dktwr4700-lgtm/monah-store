@@ -97,6 +97,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
   it("يتيح تنزيل الملف المجاني فقط عبر رابط قصير ولا يفتح الملفات المدفوعة", async () => {
     const productPage = await source("src/ProductPage.jsx");
     const freeDownload = await source("api/free-download.js");
+    const protectedDownload = await source("api/download.js");
     const rules = await source("firestore.rules");
 
     expect(productPage).toContain('fetch("/api/free-download"');
@@ -104,6 +105,10 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(freeDownload).toContain("Number(product.price) === 0");
     expect(freeDownload).toContain("product.hidden === false");
     expect(freeDownload).toContain("SIGNED_URL_TTL_MS");
+    expect(freeDownload).toContain('from "firebase-admin/app"');
+    expect(freeDownload).not.toContain("admin.apps");
+    expect(protectedDownload).toContain("from 'firebase-admin/app'");
+    expect(protectedDownload).not.toContain("admin.apps");
     expect(rules).toContain("request.resource.data.price >= 0");
     expect(rules).toContain("request.resource.data.type == 'file'");
   });
@@ -120,6 +125,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("request.resource.data.visits == resource.data.visits");
     expect(tracking).toContain("db.runTransaction");
     expect(tracking).toContain("lastVisitedAt");
+    expect(tracking).toContain('from "firebase-admin/app"');
+    expect(tracking).not.toContain("admin.apps");
   });
 
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {

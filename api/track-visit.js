@@ -1,11 +1,12 @@
-import admin from "firebase-admin";
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) {
+if (!getApps().length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  initializeApp({ credential: cert(serviceAccount) });
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
 
       transaction.update(linkRef, {
         visits: (Number(link.visits) || 0) + 1,
-        lastVisitedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastVisitedAt: FieldValue.serverTimestamp(),
       });
       return link.productId;
     });
