@@ -226,6 +226,9 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("حزم المنتجات");
     expect(dashboard).toContain("حفظ الحزمة مقفلة");
     expect(dashboard).toContain('collection(db, "bundles")');
+    expect(dashboard).toContain("setBundleSaved(true)");
+    expect(dashboard).toContain("تم حفظ الحزمة وهي مقفلة الآن");
+    expect(dashboard).toContain("الحزم المحفوظة");
     expect(rules).toContain("match /bundles/{bundleId}");
     expect(rules).toContain("request.resource.data.hidden == true");
   });

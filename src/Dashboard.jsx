@@ -262,6 +262,7 @@ export default function Dashboard() {
   const [bundleDescription, setBundleDescription] = useState("");
   const [bundleProductIds, setBundleProductIds] = useState([]);
   const [bundleSaving, setBundleSaving] = useState(false);
+  const [bundleSaved, setBundleSaved] = useState(false);
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -641,6 +642,8 @@ export default function Dashboard() {
   async function handleCreateBundle() {
     const cleanName = bundleName.trim();
     const numericPrice = Number(bundlePrice);
+    setBundleSaved(false);
+    setError("");
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
       setError("اكتب اسم الحزمة وسعرًا صحيحًا أكبر من صفر.");
       return;
@@ -650,7 +653,6 @@ export default function Dashboard() {
       return;
     }
     setBundleSaving(true);
-    setError("");
     try {
       await addDoc(collection(db, "bundles"), {
         ownerId: user.uid,
@@ -666,6 +668,7 @@ export default function Dashboard() {
       setBundlePrice("");
       setBundleDescription("");
       setBundleProductIds([]);
+      setBundleSaved(true);
     } catch (err) {
       setError("تعذر حفظ الحزمة، حاول مرة ثانية.");
     }
@@ -1385,6 +1388,8 @@ export default function Dashboard() {
               <div className="dh-hint" style={{ marginBottom: 14 }}>
                 جهّز عرضًا من منتجين أو أكثر بسعر واحد الآن. الحزمة تبقى مخفية ولا يمكن شراؤها قبل ربط ثواني واختبار الدفع.
               </div>
+              {bundleSaved && <div className="dh-success" role="status">تم حفظ الحزمة وهي مقفلة الآن. ستجدها تحت هذا الزر.</div>}
+              {error && <div className="dh-error">{error}</div>}
               {products.filter((product) => !product.isLaunch).length < 2 ? (
                 <div className="empty-note">تحتاج منتجين عاديين على الأقل قبل تجهيز حزمة.</div>
               ) : (
@@ -1418,6 +1423,7 @@ export default function Dashboard() {
                 </>
               )}
               {bundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+                <div className="dh-title" style={{ fontSize: 12 }}>الحزم المحفوظة</div>
                 {bundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
                   <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag">مقفلة</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} ر.ع</span></div>
                   <div className="dh-hint">{bundle.productIds?.length || 0} منتجات · لن تظهر للزوار أو تسمح بالشراء قبل الدفع.</div>
