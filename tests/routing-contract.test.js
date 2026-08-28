@@ -173,6 +173,19 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain('onClick={() => toggleFeatured(p.id, !!p.featured)}');
   });
 
+  it("يوحد ترتيب لوحة التاجر الكاملة على الجوال دون تغيير حالة الاشتراك", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const orders = await source("src/Orders.jsx");
+
+    expect(dashboard).toContain("@media (max-width:390px)");
+    expect(dashboard).toContain("dh-studio-action.primary,.dh-share-btn.primary");
+    expect(dashboard).toContain("dh-subscription-base");
+    expect(dashboard).toContain("رابط التتبع");
+    expect(dashboard).toContain("نسخ الرابط");
+    expect(dashboard).toContain("لا يوجد تحصيل أو تجديد تلقائي الآن");
+    expect(orders).toContain(".ord-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }");
+  });
+
   it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {
     const dashboard = await source("src/Dashboard.jsx");
     const aiDescription = await source("api/ai-product-description.js");
