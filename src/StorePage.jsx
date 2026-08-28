@@ -43,7 +43,7 @@ function safeSocialUrl(value, type){
   return `https://instagram.com/${raw.replace(/^@/, "")}`;
 }
 
-export default function StorePage({ sellerId }) {
+export default function StorePage({ sellerId, customDomain = "" }) {
   const [products, setProducts] = useState([]);
   const [store, setStore] = useState(null);
   const [status, setStatus] = useState("loading");
@@ -55,10 +55,18 @@ export default function StorePage({ sellerId }) {
       try {
         let storeData = null;
         let resolvedOwnerId = sellerId;
-        const directSnap = await getDoc(doc(db, "stores", sellerId));
-        if (directSnap.exists()) {
-          storeData = directSnap.data();
+        if (customDomain) {
+          const domainQuery = query(collection(db, "stores"), where("customDomainVerified", "==", customDomain));
+          const domainSnap = await getDocs(domainQuery);
+          if (!domainSnap.empty) {
+            storeData = domainSnap.docs[0].data();
+            resolvedOwnerId = domainSnap.docs[0].id;
+          }
         } else {
+          const directSnap = await getDoc(doc(db, "stores", sellerId));
+          if (directSnap.exists()) storeData = directSnap.data();
+        }
+        if (!storeData && sellerId) {
           const storeQuery = query(collection(db, "stores"), where("slug", "==", sellerId));
           const storeSnap = await getDocs(storeQuery);
           if (!storeSnap.empty) {
@@ -89,7 +97,7 @@ export default function StorePage({ sellerId }) {
       }
     }
     fetchData();
-  }, [sellerId]);
+  }, [sellerId, customDomain]);
 
   const brandColor = store?.color || "#0B0B0C";
   const brandName = store?.name || "متجر رقمي";

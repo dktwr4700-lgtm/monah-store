@@ -196,6 +196,29 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).toContain('key: "aiAdCopy"');
   });
 
+  it("يجهز الدومين الخاص بموافقة صاحبه ويعرض سجلات الربط دون اعتباره موصولًا قبل التحقق", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const main = await source("src/main.jsx");
+    const store = await source("src/StorePage.jsx");
+    const domainApi = await source("api/custom-domain.js");
+
+    expect(dashboard).toContain("دومين خاص لمتجرك");
+    expect(dashboard).toContain("بعد ذلك نعرض لك السطر الذي تنسخه عند شركة الدومين");
+    expect(dashboard).toContain('fetch("/api/custom-domain"');
+    expect(domainApi).toContain("FIREBASE_SERVICE_ACCOUNT_KEY");
+    expect(domainApi).toContain("VERCEL_TOKEN");
+    expect(domainApi).toContain("customDomainRequested");
+    expect(domainApi).toContain("customDomainVerified");
+    expect(domainApi).toContain("customDomainStatus: verified ? \"connected\" : \"needs_dns\"");
+    expect(domainApi).toContain("ensureDomainIsAvailable");
+    expect(domainApi).toContain("هذا الدومين طلبه متجر آخر داخل مُونَة");
+    expect(domainApi).toContain("لديك دومين سابق قيد الربط");
+    expect(domainApi).toContain("/verify?teamId=");
+    expect(domainApi).toContain('method: "POST"');
+    expect(main).toContain("isMerchantDomain");
+    expect(store).toContain('where("customDomainVerified", "==", customDomain)');
+  });
+
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {
     const store = await source("src/StorePage.jsx");
     const dashboard = await source("src/Dashboard.jsx");

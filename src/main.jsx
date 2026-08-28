@@ -17,13 +17,21 @@ function PageLoading() {
 function Root() {
   const [hash, setHash] = React.useState(window.location.hash.replace("#", ""));
 
+  const currentHost = window.location.hostname.toLowerCase();
+  const isMerchantDomain = currentHost.includes(".")
+    && !currentHost.endsWith(".vercel.app")
+    && currentHost !== "monah-app.com"
+    && currentHost !== "www.monah-app.com"
+    && currentHost !== "localhost"
+    && currentHost !== "127.0.0.1";
+
   React.useEffect(() => {
     const onHashChange = () => setHash(window.location.hash.replace("#", ""));
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  let page = <App />;
+  let page = isMerchantDomain && !hash ? <StorePage customDomain={currentHost} /> : <App />;
   if (hash === "register") page = <Register />;
   else if (hash === "login") page = <Login />;
   else if (hash === "dashboard" || hash.startsWith("dashboard/")) page = <Dashboard />;

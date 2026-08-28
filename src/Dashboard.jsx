@@ -140,6 +140,7 @@ const styles = `
   .dh-file-picked{ background:#EAF0EB; color:#4B6152; font-size:11.5px; padding:9px 12px; border-radius:10px; margin-top:8px; }
   .dh-section{background:#FFFFFF;border:1px solid #EDEAE0;border-radius:16px;margin-bottom:14px;overflow:hidden}.dh-section>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;cursor:pointer}.dh-section>summary::-webkit-details-marker{display:none}.dh-section>summary::after{content:'⌄';font-size:19px;line-height:1;color:#8A8677;transition:transform .18s ease-out}.dh-section[open]>summary{border-bottom:1px solid #EDEAE0}.dh-section[open]>summary::after{transform:rotate(180deg)}.dh-section-body{padding:16px 18px 18px}.dh-section-summary{min-width:0}.dh-section-summary b{display:block;font-family:'Almarai',sans-serif;font-size:14px;color:#0B0B0C}.dh-section-summary span{display:block;margin-top:4px;font-size:10.5px;line-height:1.6;color:#8A8677}
   .dh-ai-draft{margin-top:9px;border:1px solid #D6E5D8;background:#F5F9F4;border-radius:12px;padding:12px}.dh-ai-draft-title{font-size:11px;font-weight:800;color:#163F2E;margin-bottom:6px}.dh-ai-draft p{font-size:12px;line-height:1.9;color:#3D4A66;margin:0;white-space:pre-line}.dh-ai-actions{display:flex;gap:8px;margin-top:10px}.dh-ai-btn{border:1px solid #C9DBC9;background:#fff;color:#163F2E;border-radius:100px;padding:8px 11px;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer}.dh-ai-btn.primary{background:#163F2E;border-color:#163F2E;color:#fff}
+  .dh-domain-section{margin:0 0 12px}.dh-domain-instructions{border:1px solid #E5D4B5;background:#FFF9ED;border-radius:12px;padding:12px;margin:12px 0}.dh-domain-instructions>b{display:block;font-size:11.5px;color:#815A1A;margin-bottom:4px}.dh-domain-instructions>span{display:block;font-size:10.5px;color:#8A6B39;line-height:1.7}.dh-domain-record{margin-top:10px}.dh-domain-record>div:first-child{display:flex;gap:8px;align-items:center;margin-bottom:5px;font-size:10px;color:#8A8677}.dh-domain-record>div:first-child b{background:#F3EBDD;color:#9C6D1F;border-radius:100px;padding:3px 7px;font-size:9px}.dh-domain-record>div:first-child span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dh-domain-steps{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px}.dh-domain-steps span{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#526057;background:#F7F7F2;border-radius:100px;padding:6px 9px}.dh-domain-steps b{display:inline-flex;align-items:center;justify-content:center;background:#163F2E;color:#fff;width:16px;height:16px;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:9px}
 
   .dh-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
   .dh-item:first-child{ border-top:none; }
@@ -296,6 +297,11 @@ export default function Dashboard() {
   const [coverError, setCoverError] = useState("");
   const [designSaved, setDesignSaved] = useState(false);
   const [designSaving, setDesignSaving] = useState(false);
+  const [customDomain, setCustomDomain] = useState("");
+  const [customDomainStatus, setCustomDomainStatus] = useState("");
+  const [customDomainVerification, setCustomDomainVerification] = useState([]);
+  const [customDomainBusy, setCustomDomainBusy] = useState(false);
+  const [customDomainError, setCustomDomainError] = useState("");
   const [designDirty, setDesignDirty] = useState(false);
   const [storeAbout, setStoreAbout] = useState("");
   const [storeFaqs, setStoreFaqs] = useState([]);
@@ -441,6 +447,9 @@ export default function Dashboard() {
         setCoverUrl(data.coverUrl || "");
         setStoreAbout(data.about || "");
         setStoreFaqs(Array.isArray(data.faqs) ? data.faqs : []);
+        setCustomDomain(data.customDomainRequested || data.customDomainVerified || "");
+        setCustomDomainStatus(data.customDomainStatus || (data.customDomainVerified ? "connected" : ""));
+        setCustomDomainVerification(Array.isArray(data.customDomainVerification) ? data.customDomainVerification : []);
       } else {
         setStoreName(user.email.split("@")[0]);
       }
@@ -937,6 +946,44 @@ export default function Dashboard() {
       setError("تعذر حفظ التصميم، حاول مرة ثانية.");
     }
     setDesignSaving(false);
+  }
+
+  async function handleCustomDomain(action = "start") {
+    const cleanDomain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/\.$/, "");
+    if (!/^(?=.{1,253}$)(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/i.test(cleanDomain)) {
+      setCustomDomainError("اكتب اسم دومين صحيح مثل: my-store.com");
+      return;
+    }
+    if (action === "start" && !window.confirm(`سيتم تجهيز ربط ${cleanDomain} بمتجرك. أكمل فقط إذا كان هذا الدومين ملكك.`)) return;
+    setCustomDomainBusy(true);
+    setCustomDomainError("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/custom-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action, domain: cleanDomain }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "تعذر فحص الدومين الآن.");
+      setCustomDomain(cleanDomain);
+      setCustomDomainStatus(data.status || "needs_dns");
+      setCustomDomainVerification(Array.isArray(data.verification) ? data.verification : []);
+    } catch (error) {
+      setCustomDomainError(error?.message || "تعذر فحص الدومين الآن.");
+    } finally {
+      setCustomDomainBusy(false);
+    }
+  }
+
+  async function copyDomainRecord(value) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(`domain-${value}`);
+      setTimeout(() => setCopied(""), 1500);
+    } catch {
+      setCustomDomainError("تعذر النسخ الآن. انسخ السطر يدويًا.");
+    }
   }
 
   async function handleAddCoupon(e) {
@@ -1814,6 +1861,36 @@ export default function Dashboard() {
                 {slugError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{slugError}</div>}
                 <div className="dh-hint">سيظهر متجرك على: monah-app.com/#store/{slug || "اسمك"}</div>
               </div>
+
+              <details className="dh-section dh-domain-section" open={customDomainStatus === "needs_dns"}>
+                <summary>
+                  <div className="dh-section-summary">
+                    <b>دومين خاص لمتجرك</b>
+                    <span>{customDomainStatus === "connected" ? `${customDomain} مربوط بمتجرك` : "اربط اسم موقعك الخاص بصفحة متجرك."}</span>
+                  </div>
+                </summary>
+                <div className="dh-section-body">
+                  {customDomainStatus === "connected" && <div className="dh-success">تم ربط <b style={{ direction: "ltr", display: "inline-block" }}>{customDomain}</b> بمتجرك.</div>}
+                  <div className="dh-hint" style={{ marginTop: 0, marginBottom: 14 }}>اكتب دومينًا تملكه مثل <b dir="ltr">my-store.com</b>. لا تكتب كلمة مرور أو رابطًا كاملًا. بعد ذلك نعرض لك السطر الذي تنسخه عند شركة الدومين.</div>
+                  <div className="dh-field" style={{ marginBottom: 10 }}>
+                    <label>اسم الدومين</label>
+                    <input type="text" dir="ltr" value={customDomain} onChange={(event) => { setCustomDomain(event.target.value); setCustomDomainError(""); }} placeholder="my-store.com" />
+                  </div>
+                  {customDomainError && <div className="dh-error">{customDomainError}</div>}
+                  {customDomainStatus === "needs_dns" && customDomainVerification.length > 0 && <div className="dh-domain-instructions">
+                    <b>باقي خطوة عند شركة الدومين</b>
+                    <span>انسخ السطر التالي كما هو، والصقه في إعدادات DNS عند شركة الدومين، ثم ارجع واضغط تحقق الآن.</span>
+                    {customDomainVerification.map((record, index) => <div className="dh-domain-record" key={`${record.domain}-${index}`}>
+                      <div><b>{record.type}</b><span dir="ltr">{record.domain}</span></div>
+                      <div className="dh-item-link"><span className="dh-item-link-text" dir="ltr">{record.value}</span><button className="dh-item-link-btn" type="button" onClick={() => copyDomainRecord(record.value)}>{copied === `domain-${record.value}` ? "تم" : "نسخ"}</button></div>
+                    </div>)}
+                  </div>}
+                  <div className="dh-domain-steps" aria-label="خطوات ربط الدومين">
+                    <span><b>1</b> اكتب الدومين</span><span><b>2</b> انسخ سطر الربط</span><span><b>3</b> اضغط تحقق</span>
+                  </div>
+                  <button className="dh-btn" type="button" onClick={() => handleCustomDomain(customDomainStatus === "needs_dns" ? "refresh" : "start")} disabled={customDomainBusy}>{customDomainBusy ? "جاري التحقق..." : customDomainStatus === "needs_dns" ? "تحقق من الربط الآن" : customDomainStatus === "connected" ? "تحقق من حالة الدومين" : "ابدأ ربط الدومين"}</button>
+                </div>
+              </details>
               <div className="dh-field">
                 <label>رقم واتساب (اختياري)</label>
                 <input type="text" value={whatsapp} onChange={(e) => { setWhatsapp(e.target.value); setDesignDirty(true); }} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} />
