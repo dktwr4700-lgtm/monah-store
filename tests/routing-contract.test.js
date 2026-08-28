@@ -162,6 +162,17 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("حفظ الحزمة مقفلة");
   });
 
+  it("يبقي بطاقة المنتج واضحة على الجوال دون تغيير أزرار إدارتها", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("grid-template-columns:repeat(2,minmax(0,1fr))");
+    expect(dashboard).toContain("رابط المنتج");
+    expect(dashboard).toContain("نسخ الرابط");
+    expect(dashboard).toContain('onClick={() => startEdit(p)}');
+    expect(dashboard).toContain('onClick={() => toggleHidden(p.id, p.hidden)}');
+    expect(dashboard).toContain('onClick={() => toggleFeatured(p.id, !!p.featured)}');
+  });
+
   it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {
     const dashboard = await source("src/Dashboard.jsx");
     const aiDescription = await source("api/ai-product-description.js");

@@ -202,6 +202,22 @@ const styles = `
   /* استجابة فورية للضغط — نفس مبدأ apple-design */
   .dh-page button{ transition:transform 100ms ease-out; }
   .dh-page button:active{ transform:scale(0.96); }
+
+  /* بطاقات المنتجات: تُقرأ بسهولة حتى على شاشة الجوال الضيقة */
+  .dh-item{ padding:16px 0; }
+  .dh-item-top{ align-items:flex-start; gap:12px; margin-bottom:9px; }
+  .dh-item-name{ min-width:0; font-size:14px; font-weight:800; line-height:1.65; }
+  .dh-item-price{ flex-shrink:0; color:#9C6D1F; font-weight:800; padding-top:2px; }
+  .dh-item-link{ gap:10px; min-width:0; border-radius:12px; padding:9px 10px; }
+  .dh-item-link-text{ min-width:0; display:flex; flex:1; flex-direction:column; gap:2px; color:#625F55; overflow:hidden; }
+  .dh-item-link-label{ color:#22372C; font-family:'Cairo',sans-serif; font-size:10px; font-weight:800; }
+  .dh-item-link-code{ overflow:hidden; color:#625F55; direction:ltr; font-family:'JetBrains Mono',monospace; font-size:9.5px; text-align:right; text-overflow:ellipsis; white-space:nowrap; }
+  .dh-item-link-btn{ flex-shrink:0; min-height:34px; border-radius:10px; padding:6px 11px; font-family:'Cairo',sans-serif; font-weight:800; }
+  .dh-item-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+  .dh-item-action{ min-width:0; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; padding:8px 10px; font-weight:800; line-height:1.45; }
+  .dh-sort-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:8px; }
+  .dh-sort-btn{ min-height:36px; border-radius:10px; font-size:10.5px; }
+  .dh-hint{ color:#625F55; font-size:11px; line-height:1.7; }
 `;
 
 export default function Dashboard() {
@@ -1542,9 +1558,9 @@ export default function Dashboard() {
                         <div className="dh-item-stock">مخزون: {p.codesCount || 0} كود</div>
                       )}
                       <div className="dh-item-link">
-                        <span className="dh-item-link-text">{`#product/${p.id}`}</span>
+                        <span className="dh-item-link-text"><span className="dh-item-link-label">رابط المنتج</span><span className="dh-item-link-code">{`#product/${p.id}`}</span></span>
                         <button className="dh-item-link-btn" onClick={() => copyLink(p.id, "product")}>
-                          {copied === "product" + p.id ? "تم" : "نسخ"}
+                          {copied === "product" + p.id ? "تم" : "نسخ الرابط"}
                         </button>
                       </div>
                       <button className="dh-ai-btn" onClick={() => generateAdCopy(p)} disabled={adCopyLoadingId === p.id} type="button" style={{ width: "100%", marginTop: 9 }}>
