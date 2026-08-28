@@ -138,6 +138,7 @@ const styles = `
   .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
   .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
   .dh-file-picked{ background:#EAF0EB; color:#4B6152; font-size:11.5px; padding:9px 12px; border-radius:10px; margin-top:8px; }
+  .dh-section{background:#FFFFFF;border:1px solid #EDEAE0;border-radius:16px;margin-bottom:14px;overflow:hidden}.dh-section>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;cursor:pointer}.dh-section>summary::-webkit-details-marker{display:none}.dh-section>summary::after{content:'⌄';font-size:19px;line-height:1;color:#8A8677;transition:transform .18s ease-out}.dh-section[open]>summary{border-bottom:1px solid #EDEAE0}.dh-section[open]>summary::after{transform:rotate(180deg)}.dh-section-body{padding:16px 18px 18px}.dh-section-summary{min-width:0}.dh-section-summary b{display:block;font-family:'Almarai',sans-serif;font-size:14px;color:#0B0B0C}.dh-section-summary span{display:block;margin-top:4px;font-size:10.5px;line-height:1.6;color:#8A8677}
   .dh-ai-draft{margin-top:9px;border:1px solid #D6E5D8;background:#F5F9F4;border-radius:12px;padding:12px}.dh-ai-draft-title{font-size:11px;font-weight:800;color:#163F2E;margin-bottom:6px}.dh-ai-draft p{font-size:12px;line-height:1.9;color:#3D4A66;margin:0;white-space:pre-line}.dh-ai-actions{display:flex;gap:8px;margin-top:10px}.dh-ai-btn{border:1px solid #C9DBC9;background:#fff;color:#163F2E;border-radius:100px;padding:8px 11px;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer}.dh-ai-btn.primary{background:#163F2E;border-color:#163F2E;color:#fff}
 
   .dh-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
@@ -1367,8 +1368,9 @@ export default function Dashboard() {
 
         {tab === "products" && (
           <>
-            <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 16 }}>أضف منتج جديد</div>
+            <details className="dh-section" open={products.length === 0}>
+              <summary><div className="dh-section-summary"><b>أضف منتج جديد</b><span>افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.</span></div></summary>
+              <div className="dh-section-body">
               {error && <div className="dh-error">{error}</div>}
               <form onSubmit={(e) => e.preventDefault()}>
                 <div className="dh-field">
@@ -1463,7 +1465,8 @@ export default function Dashboard() {
                   "حفظ كمسودة" يحفظ المنتج مخفيًا عن الزوار — تقدر تنشره بعدين من قائمة منتجاتك.
                 </div>
               </form>
-            </div>
+              </div>
+            </details>
 
             <div className="dh-card">
               <div className="dh-title-row">
@@ -1575,11 +1578,9 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="dh-card">
-              <div className="dh-title-row">
-                <div className="dh-title">روابط التتبع</div>
-                <div className="dh-title-count">زيارات الرابط</div>
-              </div>
+            <details className="dh-section">
+              <summary><div className="dh-section-summary"><b>روابط التتبع</b><span>{campaignLinks.length > 0 ? `${campaignVisitTotal} زيارة من ${campaignLinks.length} روابط` : "أنشئ رابطًا مختلفًا لكل مكان نشر."}</span></div></summary>
+              <div className="dh-section-body">
               <div className="dh-hint" style={{ marginBottom: 14 }}>أنشئ رابطًا مختلفًا لكل مكان تنشر فيه، مثل واتساب أو إنستغرام. نعرض عدد فتحات الرابط فقط، بدون جمع معلومات شخصية عن الزوار.</div>
               {campaignLinks.length > 0 && <div className="dh-product-health" style={{ marginBottom: 14 }}><div className="dh-title" style={{ fontSize: 12 }}>ملخص الزيارات</div><div className="dh-health-summary"><div className="dh-health-number"><b>{campaignVisitTotal}</b><span>إجمالي الزيارات</span></div><div className="dh-health-number"><b>{campaignLinks.length}</b><span>روابطك المنشأة</span></div></div>{topCampaignLink && <div className="dh-health-row"><span className="dh-health-name">أكثر رابط تمت زيارته: {topCampaignLink.label}</span><span className="dh-health-state live">{Number(topCampaignLink.visits) || 0} زيارة</span></div>}<div className="dh-hint">هذه الأرقام لفتحات روابط التتبع فقط، وليست مبيعات أو معلومات عن الزوار.</div></div>}
               {campaignError && <div className="dh-error">{campaignError}</div>}
@@ -1590,13 +1591,12 @@ export default function Dashboard() {
                 <button type="button" className="dh-item-action primary" style={{ width: "100%" }} onClick={createCampaignLink} disabled={campaignSaving}>{campaignSaving ? "جاري الإنشاء..." : "إنشاء رابط تتبع"}</button>
               </>}
               {campaignLinks.length > 0 && <div style={{ marginTop: 16 }}>{campaignLinks.map((link) => <div className="dh-item" key={link.id}><div className="dh-item-top"><span className="dh-item-name">{link.label}</span><span className="dh-item-price">{Number(link.visits) || 0} زيارة</span></div><div className="dh-hint">{products.find((product) => product.id === link.productId)?.name || "منتج غير متاح"}</div><div className="dh-item-link"><span className="dh-item-link-text">{trackedLinkUrl(link.id)}</span><button className="dh-item-link-btn" type="button" onClick={() => copyCampaignLink(link.id)}>{copied === `campaign${link.id}` ? "تم" : "نسخ"}</button></div><div className="dh-item-actions"><button className="dh-item-action danger" type="button" onClick={() => deleteCampaignLink(link.id)} disabled={deletingCampaignId === link.id}>{deletingCampaignId === link.id ? "جاري الحذف..." : "حذف الرابط"}</button></div></div>)}</div>}
-            </div>
-
-            <div className="dh-card">
-              <div className="dh-title-row">
-                <div className="dh-title">حزم المنتجات</div>
-                <div className="dh-title-count">مقفلة حتى تفعيل البيع الإلكتروني</div>
               </div>
+            </details>
+
+            <details className="dh-section">
+              <summary><div className="dh-section-summary"><b>حزم المنتجات</b><span>{activeBundles.length > 0 ? `${activeBundles.length} حزم محفوظة ومقفلة` : "جهّز الحزمة الآن؛ تبقى مقفلة حتى تفعيل البيع."}</span></div></summary>
+              <div className="dh-section-body">
               <div className="dh-hint" style={{ marginBottom: 14 }}>
                 جهّز عرضًا من منتجين أو أكثر بسعر واحد الآن. الحزمة تبقى مخفية ولا يمكن شراؤها قبل تفعيل البيع الإلكتروني.
               </div>
@@ -1663,7 +1663,8 @@ export default function Dashboard() {
                   </div>}
                 </div>)}
               </div>}
-            </div>
+              </div>
+            </details>
           </>
         )}
 
