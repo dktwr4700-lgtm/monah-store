@@ -17,7 +17,7 @@ export const ADD_ON_CATALOG = [
   { key: "upsell", group: "زيادة المبيعات", title: "Upsell", price: 1.5, desc: "عرض إضافة مناسبة عند إكمال الشراء.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "crossSell", group: "زيادة المبيعات", title: "Cross-sell", price: 1, desc: "اقتراح منتجات مرتبطة للعميل.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "returningOffers", group: "زيادة المبيعات", title: "عروض للعملاء السابقين", price: 1, desc: "عرض خاص لمن اشترى سابقًا.", status: "عند تفعيل البيع الإلكتروني", ready: false },
-  { key: "campaignTracking", group: "زيادة المبيعات", title: "روابط تتبع الحملات", price: 1, desc: "روابط منفصلة لكل مكان نشر مع نتائج فعلية بعد تجهيز التقارير.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "campaignTracking", group: "زيادة المبيعات", title: "روابط تتبع الحملات", price: 1, desc: "روابط منفصلة لكل مكان نشر مع عدادات زيارات حقيقية.", status: "متاح الآن", ready: true },
   { key: "affiliate", group: "زيادة المبيعات", title: "Affiliate", price: 2, desc: "مسوقون يشاركون روابطهم مقابل عمولة.", status: "مرحلة لاحقة", ready: false },
   { key: "salesDashboard", group: "التحليلات والعملاء", title: "لوحة المبيعات", price: 1, desc: "مبيعات مسجلة بعد تفعيل الدفع.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "customerHistory", group: "التحليلات والعملاء", title: "سجل مشتريات العملاء", price: 0.5, desc: "يشاهد التاجر تاريخ شراء عملائه.", status: "عند تفعيل البيع الإلكتروني", ready: false },
@@ -26,6 +26,6 @@ export const ADD_ON_CATALOG = [
   { key: "downloadLimits", group: "حماية المنتجات", title: "تحديد مرات التحميل", price: 0.5, desc: "يحدد عدد تنزيلات المنتج للمشتري.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "watermark", group: "حماية المنتجات", title: "علامة مائية للملفات", price: 1.5, desc: "إضافة علامة إلى ملفات مدعومة قبل التسليم.", status: "مرحلة لاحقة", ready: false },
   { key: "aiDescription", group: "الذكاء والأتمتة", title: "كتابة وصف المنتج بالذكاء", price: 1, desc: "ينشئ مسودة وصف يراجعها التاجر قبل أن يحفظها بنفسه.", status: "قيد التجربة", ready: false },
-  { key: "aiAdCopy", group: "الذكاء والأتمتة", title: "إنشاء نص إعلان", price: 1, desc: "مسودة إعلان يراجعها التاجر قبل استخدامها.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "aiAdCopy", group: "الذكاء والأتمتة", title: "إنشاء نص إعلان", price: 1, desc: "مسودة إعلان يراجعها التاجر وينسخها بنفسه، بلا نشر تلقائي.", status: "قيد التجربة", ready: false },
   { key: "aiLaunch", group: "الذكاء والأتمتة", title: "إطلاق منتج بضغطة", price: 2.5, desc: "تجهيز اسم ووصف وسعر وصفحة بيع كمسودة.", status: "مرحلة لاحقة", ready: false },
 ];

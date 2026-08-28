@@ -255,6 +255,10 @@ export default function Dashboard() {
   const [descriptionDraftTarget, setDescriptionDraftTarget] = useState("");
   const [descriptionDraftLoading, setDescriptionDraftLoading] = useState("");
   const [descriptionDraftError, setDescriptionDraftError] = useState("");
+  const [adCopy, setAdCopy] = useState("");
+  const [adCopyProductId, setAdCopyProductId] = useState("");
+  const [adCopyLoadingId, setAdCopyLoadingId] = useState("");
+  const [adCopyError, setAdCopyError] = useState("");
   const [bundles, setBundles] = useState([]);
   const [bundleName, setBundleName] = useState("");
   const [bundlePrice, setBundlePrice] = useState("");
@@ -501,6 +505,36 @@ export default function Dashboard() {
     else setEditDescription(descriptionDraft);
     setDescriptionDraft("");
     setDescriptionDraftTarget("");
+  }
+
+  async function generateAdCopy(product) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setAdCopyError("سجّل دخولك ثم حاول مرة ثانية.");
+      return;
+    }
+    setAdCopyError("");
+    setAdCopyLoadingId(product.id);
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/ai-ad-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId: product.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.copy) throw new Error(data?.error || "ad draft unavailable");
+      setAdCopy(data.copy);
+      setAdCopyProductId(product.id);
+    } catch (adError) {
+      setAdCopyError("تعذر تجهيز نص الإعلان الآن. حاول بعد قليل.");
+    }
+    setAdCopyLoadingId("");
+  }
+
+  function copyAdDraft() {
+    if (!adCopy) return;
+    navigator.clipboard.writeText(adCopy).then(() => setCopied("ad-copy")).catch(() => setAdCopyError("تعذر نسخ المسودة. انسخها يدويًا."));
   }
 
   async function handleAddProduct(e, publish) {
@@ -1064,6 +1098,8 @@ export default function Dashboard() {
   const initial = (storeName || "م").charAt(0);
   const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
   const hiddenProducts = products.filter((product) => product.hidden || product.suspended);
+  const campaignVisitTotal = campaignLinks.reduce((total, link) => total + (Number(link.visits) || 0), 0);
+  const topCampaignLink = campaignLinks.reduce((top, link) => !top || (Number(link.visits) || 0) > (Number(top.visits) || 0) ? link : top, null);
   const selectedStoreStyle = STORE_STYLES.find((style) => style.color === storeColor) || STORE_STYLES[0];
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`تصفح منتجات ${storeName || "متجري"}: ${storeUrl}`)}`;
 
@@ -1508,6 +1544,11 @@ export default function Dashboard() {
                           {copied === "product" + p.id ? "تم" : "نسخ"}
                         </button>
                       </div>
+                      <button className="dh-ai-btn" onClick={() => generateAdCopy(p)} disabled={adCopyLoadingId === p.id} type="button" style={{ width: "100%", marginTop: 9 }}>
+                        {adCopyLoadingId === p.id ? "جاري تجهيز الإعلان..." : "اكتب لي مسودة إعلان"}
+                      </button>
+                      {adCopyError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{adCopyError}</div>}
+                      {adCopyProductId === p.id && adCopy && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لن تُنشر من مُونَة</div><p>{adCopy}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" onClick={copyAdDraft} type="button">{copied === "ad-copy" ? "تم النسخ" : "نسخ النص"}</button><button className="dh-ai-btn" onClick={() => { setAdCopy(""); setAdCopyProductId(""); }} type="button">إغلاق</button></div></div>}
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
@@ -1540,6 +1581,7 @@ export default function Dashboard() {
                 <div className="dh-title-count">زيارات الرابط</div>
               </div>
               <div className="dh-hint" style={{ marginBottom: 14 }}>أنشئ رابطًا مختلفًا لكل مكان تنشر فيه، مثل واتساب أو إنستغرام. نعرض عدد فتحات الرابط فقط، بدون جمع معلومات شخصية عن الزوار.</div>
+              {campaignLinks.length > 0 && <div className="dh-product-health" style={{ marginBottom: 14 }}><div className="dh-title" style={{ fontSize: 12 }}>ملخص الزيارات</div><div className="dh-health-summary"><div className="dh-health-number"><b>{campaignVisitTotal}</b><span>إجمالي الزيارات</span></div><div className="dh-health-number"><b>{campaignLinks.length}</b><span>روابطك المنشأة</span></div></div>{topCampaignLink && <div className="dh-health-row"><span className="dh-health-name">أكثر رابط تمت زيارته: {topCampaignLink.label}</span><span className="dh-health-state live">{Number(topCampaignLink.visits) || 0} زيارة</span></div>}<div className="dh-hint">هذه الأرقام لفتحات روابط التتبع فقط، وليست مبيعات أو معلومات عن الزوار.</div></div>}
               {campaignError && <div className="dh-error">{campaignError}</div>}
               {campaignNotice && <div className="dh-success">{campaignNotice}</div>}
               {publishedProducts.length === 0 ? <div className="empty-note">انشر منتجًا أولًا حتى تنشئ له رابط تتبع.</div> : <>

@@ -136,6 +136,17 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(tracking).not.toContain("admin.apps");
   });
 
+  it("يعرض ملخصًا من عدادات الزيارات الحقيقية دون تسميتها مبيعات", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect(dashboard).toContain("campaignVisitTotal");
+    expect(dashboard).toContain("أكثر رابط تمت زيارته");
+    expect(dashboard).toContain("وليست مبيعات أو معلومات عن الزوار");
+    expect(catalog).toContain('key: "campaignTracking"');
+    expect(catalog).toContain('status: "متاح الآن", ready: true');
+  });
+
   it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {
     const dashboard = await source("src/Dashboard.jsx");
     const aiDescription = await source("api/ai-product-description.js");
@@ -152,6 +163,21 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("مسودة فقط");
     expect(catalog).toContain('key: "aiDescription"');
     expect(catalog).toContain('status: "قيد التجربة"');
+  });
+
+  it("يولد نص إعلان لمالك المنتج فقط ولا ينشره تلقائيًا", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const adCopy = await source("api/ai-ad-copy.js");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect(adCopy).toContain("identitytoolkit.googleapis.com/v1/accounts:lookup");
+    expect(adCopy).toContain('db.collection("products").doc(productId).get()');
+    expect(adCopy).toContain("productSnap.data().ownerId !== uid");
+    expect(adCopy).toContain("لا تعد بدفع أو شراء أو تسليم تلقائي");
+    expect(dashboard).toContain('fetch("/api/ai-ad-copy"');
+    expect(dashboard).toContain("اكتب لي مسودة إعلان");
+    expect(dashboard).toContain("لن تُنشر من مُونَة");
+    expect(catalog).toContain('key: "aiAdCopy"');
   });
 
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {
