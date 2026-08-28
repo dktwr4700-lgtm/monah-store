@@ -153,6 +153,16 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).toContain('status: "متاح الآن", ready: true');
   });
 
+  it("يرتب تبويب المنتجات إلى أقسام قابلة للفتح دون إزالة أدوات التاجر", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    expect(dashboard).toContain('<details className="dh-section" open={products.length === 0}>');
+    expect(dashboard).toContain("افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.");
+    expect(dashboard).toContain("روابط التتبع");
+    expect(dashboard).toContain("حزم المنتجات");
+    expect(dashboard).toContain("إنشاء رابط تتبع");
+    expect(dashboard).toContain("حفظ الحزمة مقفلة");
+  });
+
   it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {
     const dashboard = await source("src/Dashboard.jsx");
     const aiDescription = await source("api/ai-product-description.js");
