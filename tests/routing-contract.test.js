@@ -118,6 +118,12 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("request.resource.data.type == 'file'");
   });
 
+  it("يحدّث كتالوج المنتج المجاني بعد اختباره دون فتح المنتجات المدفوعة", async () => {
+    const catalog = await source("src/subscriptionCatalog.js");
+    expect(catalog).toContain('key: "freeProducts"');
+    expect(catalog).toContain('status: "متاح الآن", ready: true');
+  });
+
   it("ينشئ روابط تتبع يراها مالك المنتج فقط ويحفظ عدد الزيارات في الخادم", async () => {
     const dashboard = await source("src/Dashboard.jsx");
     const rules = await source("firestore.rules");

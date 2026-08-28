@@ -8,7 +8,7 @@ export const ADD_ON_CATALOG = [
   { key: "customDomain", group: "المتجر والمنتجات", title: "دومين مخصص", price: 1, desc: "ربط اسم موقع خاص بالتاجر.", status: "يبنى قبل التفعيل", ready: false },
   { key: "productBundles", group: "المتجر والمنتجات", title: "بيع عدة منتجات معًا", price: 0.5, desc: "عرض أكثر من منتج ضمن عملية شراء واحدة عند إتاحة البيع الإلكتروني.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "bundles", group: "المتجر والمنتجات", title: "تجهيز حزم المنتجات", price: 1, desc: "تجهيز حزمة من منتجات التاجر؛ إتاحتها للزوار تعتمد على تشغيل البيع الإلكتروني.", status: "مجهز للتجربة", ready: false },
-  { key: "freeProducts", group: "المتجر والمنتجات", title: "منتجات مجانية", price: 0.5, desc: "منتج مجاني لجذب المهتمين.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "freeProducts", group: "المتجر والمنتجات", title: "منتجات مجانية", price: 0.5, desc: "ملف مجاني للزوار مع تنزيل محمي.", status: "متاح الآن", ready: true },
   { key: "autoDelivery", group: "الدفع والتسليم", title: "التسليم التلقائي", price: 1, desc: "تسليم المنتج بعد تأكيد الدفع.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "invoices", group: "الدفع والتسليم", title: "فاتورة تلقائية", price: 0.5, desc: "إيصال واضح للعملية بعد الدفع.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "coupons", group: "الدفع والتسليم", title: "كوبونات", price: 0.5, desc: "خصم يطبق عند عملية شراء مكتملة.", status: "عند تفعيل البيع الإلكتروني", ready: false },
