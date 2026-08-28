@@ -262,6 +262,13 @@ export default function Dashboard() {
   const [togglingBundleId, setTogglingBundleId] = useState(null);
   const [confirmBundleDeleteId, setConfirmBundleDeleteId] = useState(null);
   const [deletingBundleId, setDeletingBundleId] = useState(null);
+  const [campaignLinks, setCampaignLinks] = useState([]);
+  const [campaignProductId, setCampaignProductId] = useState("");
+  const [campaignLabel, setCampaignLabel] = useState("");
+  const [campaignSaving, setCampaignSaving] = useState(false);
+  const [campaignError, setCampaignError] = useState("");
+  const [campaignNotice, setCampaignNotice] = useState("");
+  const [deletingCampaignId, setDeletingCampaignId] = useState(null);
 
   // store design
   const [storeName, setStoreName] = useState("");
@@ -372,6 +379,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
+    const campaignQuery = query(collection(db, "campaignLinks"), where("ownerId", "==", user.uid));
+    const unsub = onSnapshot(campaignQuery, (snap) => {
+      const links = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      links.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setCampaignLinks(links);
+    }, () => setCampaignError("تعذر عرض روابط التتبع الآن."));
+    return () => unsub();
+  }, [user]);
+  useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -439,8 +456,12 @@ export default function Dashboard() {
 
     const cleanName = name.trim();
     const numericPrice = Number(price);
-    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
-      setError("اكتب اسم المنتج وسعرًا صحيحًا أكبر من صفر.");
+    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
+      setError("اكتب اسم المنتج وسعرًا صحيحًا أو اكتب 0 للمنتج المجاني.");
+      return;
+    }
+    if (numericPrice === 0 && productType !== "file") {
+      setError("المنتج المجاني حاليًا متاح للملفات فقط.");
       return;
     }
 
@@ -534,8 +555,13 @@ export default function Dashboard() {
   async function saveEdit(productId) {
     const cleanName = editName.trim();
     const numericPrice = Number(editPrice);
-    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
-      setError("عبّي اسم المنتج والسعر.");
+    const product = products.find((item) => item.id === productId);
+    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
+      setError("عبّي اسم المنتج وسعرًا صحيحًا أو اكتب 0 للمنتج المجاني.");
+      return;
+    }
+    if (numericPrice === 0 && product?.type !== "file") {
+      setError("المنتج المجاني حاليًا متاح للملفات فقط.");
       return;
     }
     setEditSaving(true);
@@ -898,6 +924,56 @@ export default function Dashboard() {
     });
   }
 
+  function trackedLinkUrl(linkId) {
+    return `${window.location.origin}/api/track-visit?link=${encodeURIComponent(linkId)}`;
+  }
+  async function createCampaignLink() {
+    const cleanLabel = campaignLabel.trim();
+    setCampaignError("");
+    setCampaignNotice("");
+    if (!campaignProductId) {
+      setCampaignError("اختر المنتج أولًا.");
+      return;
+    }
+    if (cleanLabel.length < 2 || cleanLabel.length > 60) {
+      setCampaignError("اكتب اسمًا للرابط بين حرفين و60 حرفًا.");
+      return;
+    }
+    setCampaignSaving(true);
+    try {
+      await addDoc(collection(db, "campaignLinks"), {
+        ownerId: user.uid,
+        productId: campaignProductId,
+        label: cleanLabel,
+        visits: 0,
+        createdAt: serverTimestamp(),
+      });
+      setCampaignLabel("");
+      setCampaignNotice("تم إنشاء رابط التتبع. انسخه وشاركه في المكان الذي اخترته.");
+    } catch (error) {
+      setCampaignError("تعذر إنشاء رابط التتبع، حاول مرة ثانية.");
+    }
+    setCampaignSaving(false);
+  }
+  async function copyCampaignLink(linkId) {
+    try {
+      await navigator.clipboard.writeText(trackedLinkUrl(linkId));
+      setCopied(`campaign${linkId}`);
+      window.setTimeout(() => setCopied(""), 1500);
+    } catch (error) {
+      setCampaignError("تعذر نسخ الرابط. انسخه من شريط المتصفح.");
+    }
+  }
+  async function deleteCampaignLink(linkId) {
+    setDeletingCampaignId(linkId);
+    setCampaignError("");
+    try {
+      await deleteDoc(doc(db, "campaignLinks", linkId));
+    } catch (error) {
+      setCampaignError("تعذر حذف رابط التتبع، حاول مرة ثانية.");
+    }
+    setDeletingCampaignId(null);
+  }
   async function shareStore() {
     const shareData = { title: storeName || "متجري", text: `تصفح منتجات ${storeName || "متجري"}`, url: storeUrl };
     try {
@@ -1212,7 +1288,8 @@ export default function Dashboard() {
                 </div>
                 <div className="dh-field">
                   <label>السعر (ر.ع)</label>
-                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+                  <input type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+                  <div className="dh-hint">اكتب 0 إذا تريد تجعل هذا الملف مجانيًا للزوار.</div>
                 </div>
                 <div className="dh-field">
                   <label>التصنيف (مثل: قوالب، أيقونات، عروض تقديمية)</label>
@@ -1277,7 +1354,7 @@ export default function Dashboard() {
                     <div className="dh-hint">كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.</div>
                   </div>
                 )}
-                <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || !price} style={{ width: "100%", marginBottom: 8 }}>
+                <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || price === ""} style={{ width: "100%", marginBottom: 8 }}>
                   معاينة المنتج
                 </button>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1331,7 +1408,7 @@ export default function Dashboard() {
                       </div>
                       <div className="dh-field">
                         <label>السعر (ر.ع)</label>
-                        <input type="number" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+                        <input type="number" min="0" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
                       </div>
                       <div className="dh-field">
                         <label>التصنيف</label>
@@ -1392,6 +1469,22 @@ export default function Dashboard() {
                   )}
                 </div>
               ))}
+            </div>
+
+            <div className="dh-card">
+              <div className="dh-title-row">
+                <div className="dh-title">روابط التتبع</div>
+                <div className="dh-title-count">زيارات الرابط</div>
+              </div>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>أنشئ رابطًا مختلفًا لكل مكان تنشر فيه، مثل واتساب أو إنستغرام. نعرض عدد فتحات الرابط فقط، بدون جمع معلومات شخصية عن الزوار.</div>
+              {campaignError && <div className="dh-error">{campaignError}</div>}
+              {campaignNotice && <div className="dh-success">{campaignNotice}</div>}
+              {publishedProducts.length === 0 ? <div className="empty-note">انشر منتجًا أولًا حتى تنشئ له رابط تتبع.</div> : <>
+                <div className="dh-field"><label>المنتج</label><select value={campaignProductId} onChange={(event) => setCampaignProductId(event.target.value)}><option value="">اختر منتجًا منشورًا</option>{publishedProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></div>
+                <div className="dh-field"><label>اسم مكان النشر</label><input value={campaignLabel} onChange={(event) => setCampaignLabel(event.target.value)} placeholder="مثال: إنستغرام" maxLength="60" /></div>
+                <button type="button" className="dh-item-action primary" style={{ width: "100%" }} onClick={createCampaignLink} disabled={campaignSaving}>{campaignSaving ? "جاري الإنشاء..." : "إنشاء رابط تتبع"}</button>
+              </>}
+              {campaignLinks.length > 0 && <div style={{ marginTop: 16 }}>{campaignLinks.map((link) => <div className="dh-item" key={link.id}><div className="dh-item-top"><span className="dh-item-name">{link.label}</span><span className="dh-item-price">{Number(link.visits) || 0} زيارة</span></div><div className="dh-hint">{products.find((product) => product.id === link.productId)?.name || "منتج غير متاح"}</div><div className="dh-item-link"><span className="dh-item-link-text">{trackedLinkUrl(link.id)}</span><button className="dh-item-link-btn" type="button" onClick={() => copyCampaignLink(link.id)}>{copied === `campaign${link.id}` ? "تم" : "نسخ"}</button></div><div className="dh-item-actions"><button className="dh-item-action danger" type="button" onClick={() => deleteCampaignLink(link.id)} disabled={deletingCampaignId === link.id}>{deletingCampaignId === link.id ? "جاري الحذف..." : "حذف الرابط"}</button></div></div>)}</div>}
             </div>
 
             <div className="dh-card">

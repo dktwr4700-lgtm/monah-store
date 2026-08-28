@@ -1,15 +1,19 @@
-import admin from 'firebase-admin';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
-if (!admin.apps.length) {
+if (!getApps().length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+  initializeApp({
+    credential: cert(serviceAccount),
     storageBucket: 'pantry-app-148a7.firebasestorage.app',
   });
 }
 
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+const db = getFirestore();
+const bucket = getStorage().bucket();
+const auth = getAuth();
 
 // صلاحية الرابط الموقّع نفسه: قصيرة جدًا عمدًا (10 دقايق)
 // هذا مختلف عن صلاحية "unlock" الأطول (30 يوم) — كل ضغطة على "تحميل" تولّد رابط جديد
@@ -33,7 +37,7 @@ export default async function handler(req, res) {
 
   let uid;
   try {
-    const decoded = await admin.auth().verifyIdToken(idToken);
+    const decoded = await auth.verifyIdToken(idToken);
     uid = decoded.uid;
   } catch (err) {
     return res.status(401).json({ error: 'جلستك غير صالحة، حاول مرة ثانية.' });

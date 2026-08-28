@@ -35,7 +35,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("hidden: true");
     expect(dashboard).toContain("suspended: false");
     expect(dashboard).toContain("await updateDoc(doc(db, \"products\", productRef.id), { hidden: !publish })");
-    expect(dashboard).toContain("سعرًا صحيحًا أكبر من صفر");
+    expect(dashboard).toContain("اكتب 0 للمنتج المجاني");
   });
 
   it("لا يعرض تفاصيل الخطأ الداخلية للبائع", async () => {
@@ -92,6 +92,48 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("match /shared/{docId} { allow read, write: if false; }");
     expect(storageRules).toContain("request.resource.contentType.matches('image/.*')");
     expect(storageRules).toContain("allow update, delete: if false;");
+  });
+
+  it("يتيح تنزيل الملف المجاني فقط عبر رابط قصير ولا يفتح الملفات المدفوعة", async () => {
+    const productPage = await source("src/ProductPage.jsx");
+    const freeDownload = await source("api/free-download.js");
+    const protectedDownload = await source("api/download.js");
+    const rules = await source("firestore.rules");
+
+    expect(productPage).toContain('href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank"');
+    expect(productPage).not.toContain('window.location.assign(`/api/free-download?productId=${encodeURIComponent(product.id)}`)');
+    expect(productPage).toContain("احصل على المنتج مجانًا");
+    expect(freeDownload).toContain('req.method !== "POST" && req.method !== "GET"');
+    expect(freeDownload).toContain('res.redirect(302, url)');
+    expect(freeDownload).toContain('version: "v4"');
+    expect(freeDownload).toContain("responseDisposition");
+    expect(freeDownload).toContain("Number(product.price) === 0");
+    expect(freeDownload).toContain("product.hidden === false");
+    expect(freeDownload).toContain("SIGNED_URL_TTL_MS");
+    expect(freeDownload).toContain('from "firebase-admin/app"');
+    expect(freeDownload).not.toContain("admin.apps");
+    expect(protectedDownload).toContain("from 'firebase-admin/app'");
+    expect(protectedDownload).not.toContain("admin.apps");
+    expect(rules).toContain("request.resource.data.price >= 0");
+    expect(rules).toContain("request.resource.data.type == 'file'");
+  });
+
+  it("ينشئ روابط تتبع يراها مالك المنتج فقط ويحفظ عدد الزيارات في الخادم", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const rules = await source("firestore.rules");
+    const tracking = await source("api/track-visit.js");
+
+    expect(dashboard).toContain("روابط التتبع");
+    expect(dashboard).toContain('collection(db, "campaignLinks")');
+    expect(dashboard).toContain("إنشاء رابط تتبع");
+    expect(dashboard.indexOf("const [campaignLinks")).toBeLessThan(dashboard.indexOf("// store design"));
+    expect(dashboard.indexOf("const [campaignLinks", dashboard.indexOf("const [campaignLinks") + 1)).toBe(-1);
+    expect(rules).toContain("match /campaignLinks/{linkId}");
+    expect(rules).toContain("request.resource.data.visits == resource.data.visits");
+    expect(tracking).toContain("db.runTransaction");
+    expect(tracking).toContain("lastVisitedAt");
+    expect(tracking).toContain('from "firebase-admin/app"');
+    expect(tracking).not.toContain("admin.apps");
   });
 
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {
@@ -207,6 +249,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const legal = await source("src/LegalPage.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
     const customerAssistant = await source("api/customer-assistant.js");
+    const html = await source("index.html");
 
     expect(landing).toContain("خيارات البيع الإلكتروني عند تفعيلها");
     expect(landing).toContain("البيع الإلكتروني قيد التفعيل");
@@ -229,6 +272,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).not.toContain("ثواني");
     expect(catalog).toContain("مجهز للتجربة");
     expect(customerAssistant).not.toContain("دفع تلقائي فوري عبر المنصة");
+    expect(html).not.toContain("تسليم الملفات تلقائياً");
+    expect(html).not.toContain("بدون عمولة على المبيعات");
   });
 
   it("يجعل نصوص الشروط والخصوصية صادقة قبل تفعيل الدفع", async () => {
