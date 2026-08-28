@@ -1955,18 +1955,18 @@ export default function Dashboard() {
               <div className="dh-title-row">
                 <div>
                   <div className="dh-title">اشتراك متجرك</div>
-                  <div className="dh-hint" style={{ marginTop: 5 }}>تبني اشتراكك بنفسك، بدل الباقات الثابتة.</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.</div>
                 </div>
-                <span style={{ background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>قيد التجهيز</span>
+                <span style={{ background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>التفعيل لاحقًا</span>
               </div>
               <div style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
                   <b style={{ display: "block", color: "#0B0B0C", fontSize: 13 }}>المتجر الأساسي</b>
-                  <span className="dh-hint">هوية المتجر، المنتجات، وروابط المشاركة.</span>
+                  <span className="dh-hint">الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.</span>
                 </div>
                 <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b>
               </div>
-              <p className="dh-hint" style={{ margin: "13px 0 0", lineHeight: 1.9 }}>تختار الإضافات التي تحتاجها ويظهر لك مجموعك الشهري وتفاصيل التفعيل قبل أي تحصيل.</p>
+              <p className="dh-hint" style={{ margin: "13px 0 0", lineHeight: 1.9 }}>تختار الإضافات التي تحتاجها، ويظهر لك المجموع الشهري كاملًا قبل التأكيد عند تفعيل الاشتراك.</p>
             </div>
 
             {Array.from(new Set(ADD_ON_CATALOG.map((item) => item.group))).map((group) => (
@@ -1986,7 +1986,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ))}
-            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>الأسعار المعروضة توضح خطتك. لا يتم تفعيل أي إضافة أو تحصيل مبلغ إلا بعد إظهار طريقة التفعيل والسعر النهائي بوضوح.</div>
+            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>هذه الأسعار تشرح خطتك فقط. لا يوجد تحصيل أو تجديد تلقائي الآن. عند التفعيل يظهر المجموع الشهري قبل التأكيد، وأي ميزة تضيفها لاحقًا تدخل ضمن التجديد القادم.</div>
           </>
         )}
 
