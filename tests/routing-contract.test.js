@@ -239,7 +239,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
-    expect(dashboard).toContain("تبني اشتراكك بنفسك");
+    expect(dashboard).toContain("متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
     expect(dashboard).toContain("BASE_MONTHLY_PRICE.toFixed(2)");
     expect(dashboard).not.toContain("PACKAGES.map");
     expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 3");
@@ -262,6 +262,15 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).not.toContain('key: "aiLaunch"');
     expect(landing).toContain("البيع الرقمي — 2 ر.ع");
     expect(landing).toContain("حماية إضافية — 0.5 ر.ع");
+  });
+
+  it("يوحد اشتراك لوحة التاجر مع الأسعار المعتمدة دون ادعاء تحصيل قائم", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
+    expect(dashboard).toContain("الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.");
+    expect(dashboard).toContain("التفعيل لاحقًا");
+    expect(dashboard).toContain("هذه الأسعار تشرح خطتك فقط. لا يوجد تحصيل أو تجديد تلقائي الآن.");
   });
 
   it("يعرض أدوات التاجر المهمة مباشرة داخل لوحة التحكم", async () => {
