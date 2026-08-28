@@ -36,7 +36,6 @@ export default function ProductPage({ productId }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [activeImage, setActiveImage] = useState(0);
   const [shareStatus, setShareStatus] = useState("");
-  const [downloadStatus, setDownloadStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -117,11 +116,6 @@ export default function ProductPage({ productId }) {
     }
   }
 
-  function downloadFreeProduct() {
-    setDownloadStatus("جاري تجهيز التنزيل...");
-    window.location.assign(`/api/free-download?productId=${encodeURIComponent(product.id)}`);
-  }
-
   return (
     <div className="pp-page" dir="rtl" lang="ar" style={{ "--pp-brand": storeColor }}>
       <style>{styles}{extraStyles}</style>
@@ -143,7 +137,7 @@ export default function ProductPage({ productId }) {
             <div className="pp-store">من متجر <strong>{storeName}</strong></div>
             <div className="pp-price-row"><span className="pp-price-label">السعر المعروض</span><span className="pp-price">{isFreeFile ? "مجاني" : `${Number(product?.price || 0).toFixed(2)} ر.ع`}</span></div>
             <div className="pp-description">{product?.description || "لا يوجد وصف إضافي لهذا المنتج حاليًا."}</div>
-            {isFreeFile ? <button type="button" className="pp-contact" onClick={downloadFreeProduct}>{downloadStatus || "احصل على المنتج مجانًا"}</button> : (contact ? <a className="pp-contact" href={contact} target="_blank" rel="noopener noreferrer">تواصل مع البائع قبل الشراء</a> : <span className="pp-contact disabled">بيانات التواصل غير متاحة حاليًا</span>)}
+            {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">احصل على المنتج مجانًا</a> : (contact ? <a className="pp-contact" href={contact} target="_blank" rel="noopener noreferrer">تواصل مع البائع قبل الشراء</a> : <span className="pp-contact disabled">بيانات التواصل غير متاحة حاليًا</span>)}
             <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || "مشاركة رابط المنتج"}</button></div>
             <p className="pp-note">{isFreeFile ? "هذا المنتج مجاني. يبدأ تنزيل الملف بعد الضغط على الزر." : "تواصل مع صاحب المتجر للاستفسار عن المنتج وطريقة الاستلام المتاحة."}</p>
           </section>

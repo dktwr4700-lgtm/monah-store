@@ -100,7 +100,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const protectedDownload = await source("api/download.js");
     const rules = await source("firestore.rules");
 
-    expect(productPage).toContain('window.location.assign(`/api/free-download?productId=${encodeURIComponent(product.id)}`)');
+    expect(productPage).toContain('href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank"');
+    expect(productPage).not.toContain('window.location.assign(`/api/free-download?productId=${encodeURIComponent(product.id)}`)');
     expect(productPage).toContain("احصل على المنتج مجانًا");
     expect(freeDownload).toContain('req.method !== "POST" && req.method !== "GET"');
     expect(freeDownload).toContain('res.redirect(302, url)');
