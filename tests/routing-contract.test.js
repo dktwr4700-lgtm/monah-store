@@ -213,6 +213,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(domainApi).toContain("ensureDomainIsAvailable");
     expect(domainApi).toContain("هذا الدومين طلبه متجر آخر داخل مُونَة");
     expect(domainApi).toContain("لديك دومين سابق قيد الربط");
+    expect(domainApi).toContain("هذا دومين مُونَة الأساسي، ولا يمكن ربطه بمتجر تاجر");
+    expect(domainApi).toContain('domain.endsWith(".monah-app.com")');
     expect(domainApi).toContain("/verify?teamId=");
     expect(domainApi).toContain('method: "POST"');
     expect(main).toContain("isMerchantDomain");

@@ -25,7 +25,19 @@ function isValidDomain(domain) {
   return domain.length <= 253
     && /^(?=.{1,253}$)(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/i.test(domain)
     && !RESERVED_DOMAINS.has(domain)
+    && !domain.endsWith(".monah-app.com")
     && !domain.endsWith(".vercel.app");
+}
+
+function domainValidationError(domain) {
+  if (RESERVED_DOMAINS.has(domain) || domain.endsWith(".monah-app.com")) {
+    return "هذا دومين مُونَة الأساسي، ولا يمكن ربطه بمتجر تاجر.";
+  }
+  if (domain.endsWith(".vercel.app")) {
+    return "لا يمكن استخدام رابط الاستضافة كدومين متجر.";
+  }
+  if (!isValidDomain(domain)) return "اكتب اسم دومين صحيح مثل: my-store.com";
+  return "";
 }
 
 function safeVerification(records) {
@@ -116,9 +128,8 @@ export default async function handler(req, res) {
 
   const domain = cleanDomain(req.body?.domain);
   const action = req.body?.action === "refresh" ? "refresh" : "start";
-  if (!isValidDomain(domain)) {
-    return res.status(400).json({ error: "اكتب اسم دومين صحيح مثل: my-store.com" });
-  }
+  const validationError = domainValidationError(domain);
+  if (validationError) return res.status(400).json({ error: validationError });
   if (!process.env.VERCEL_TOKEN) {
     return res.status(503).json({ error: "ربط الدومين يحتاج تفعيلًا من صاحب منصة مُونَة أولًا." });
   }
