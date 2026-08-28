@@ -499,23 +499,27 @@ export default function App() {
             <div className="price-card reveal popular">
               <div className="price-badge">اشتراك مرن</div>
               <div className="price-name">متجرك الأساسي</div>
-              <div className="price-desc">صفحة متجر بهويتك، إدارة المنتجات، وروابط لمشاركة منتجاتك.</div>
+              <div className="price-desc">صفحة متجر بهويتك، إدارة المنتجات، والمشاركة والتتبع والمنتجات المجانية.</div>
               <div className="price-value mono">3<span>ر.ع / شهريًا بعد التفعيل</span></div>
               <div className="price-features">
                 <div>✓ لوحة تاجر عربية سهلة</div>
                 <div>✓ صفحة متجر وروابط مشاركة</div>
                 <div>✓ تخصيص الاسم والشعار والهوية</div>
+                <div>✓ منتج مجاني وروابط تتبع الزيارات</div>
               </div>
               <div className="price-soon">
                 <div className="price-soon-label">إضافات يختارها التاجر عند التفعيل:</div>
-                <div>○ حزم المنتجات: مجهزة ومقفلة حاليًا</div>
-                <div>○ الدفع والتسليم والحماية المقيدة للمشتري</div>
-                <div>○ الكوبونات والتقارير وباقي الإضافات</div>
+                <div>○ البيع الرقمي — 2 ر.ع</div>
+                <div>○ زيادة المبيعات — 1 ر.ع</div>
+                <div>○ إدارة المبيعات — 1 ر.ع</div>
+                <div>○ حماية إضافية — 0.5 ر.ع</div>
+                <div>○ أدوات الذكاء — 1 ر.ع</div>
+                <div>○ دومين خاص — 1 ر.ع</div>
               </div>
               <a className="price-btn" href="#register">جهّز متجرك</a>
             </div>
           </div>
-          <div className="pricing-note">تظهر تفاصيل التفعيل وطريقة الدفع والمجموع الشهري قبل أي تحصيل. وإذا أضاف التاجر ميزة لاحقًا، يظهر سعرها الكامل قبل تأكيد الإضافة وتدخل ضمن التجديد الشهري التالي عند توفر الاشتراك.</div>
+          <div className="pricing-note">لا يوجد تحصيل أو تجديد تلقائي الآن. عند تفعيل الاشتراك لاحقًا يظهر المجموع الشهري قبل التأكيد، وإذا أضاف التاجر ميزة خلال الشهر يدفع سعرها كاملًا وقت إضافتها ثم تدخل ضمن التجديد القادم.</div>
         </div>
       </section>
 

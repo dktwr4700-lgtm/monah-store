@@ -118,10 +118,9 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("request.resource.data.type == 'file'");
   });
 
-  it("يحدّث كتالوج المنتج المجاني بعد اختباره دون فتح المنتجات المدفوعة", async () => {
-    const catalog = await source("src/subscriptionCatalog.js");
-    expect(catalog).toContain('key: "freeProducts"');
-    expect(catalog).toContain('status: "متاح الآن", ready: true');
+  it("يبقي المنتج المجاني ضمن المتجر الأساسي بعد اختباره دون فتح المنتجات المدفوعة", async () => {
+    const landing = await source("src/App.jsx");
+    expect(landing).toContain("منتج مجاني وروابط تتبع الزيارات");
   });
 
   it("ينشئ روابط تتبع يراها مالك المنتج فقط ويحفظ عدد الزيارات في الخادم", async () => {
@@ -149,8 +148,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("campaignVisitTotal");
     expect(dashboard).toContain("أكثر رابط تمت زيارته");
     expect(dashboard).toContain("وليست مبيعات أو معلومات عن الزوار");
-    expect(catalog).toContain('key: "campaignTracking"');
-    expect(catalog).toContain('status: "متاح الآن", ready: true');
+    expect(catalog).toContain('key: "salesGrowth"');
+    expect(catalog).toContain('title: "زيادة المبيعات", price: 1');
   });
 
   it("يرتب تبويب المنتجات إلى أقسام قابلة للفتح دون إزالة أدوات التاجر", async () => {
@@ -177,8 +176,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("اكتب لي مسودة وصف");
     expect(dashboard).toContain("استخدم هذه المسودة");
     expect(dashboard).toContain("مسودة فقط");
-    expect(catalog).toContain('key: "aiDescription"');
-    expect(catalog).toContain('status: "قيد التجربة"');
+    expect(catalog).toContain('key: "aiTools"');
+    expect(catalog).toContain('status: "متاح الآن", ready: true');
   });
 
   it("يولد نص إعلان لمالك المنتج فقط ولا ينشره تلقائيًا", async () => {
@@ -193,7 +192,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain('fetch("/api/ai-ad-copy"');
     expect(dashboard).toContain("اكتب لي مسودة إعلان");
     expect(dashboard).toContain("لن تُنشر من مُونَة");
-    expect(catalog).toContain('key: "aiAdCopy"');
+    expect(catalog).toContain('key: "aiTools"');
   });
 
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {
@@ -240,10 +239,38 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
-    expect(dashboard).toContain("تبني اشتراكك بنفسك");
+    expect(dashboard).toContain("متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
     expect(dashboard).toContain("BASE_MONTHLY_PRICE.toFixed(2)");
     expect(dashboard).not.toContain("PACKAGES.map");
     expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 3");
+  });
+
+  it("يعرض فقط الإضافات والأسعار المعتمدة ولا يعيد المزايا المؤجلة", async () => {
+    const landing = await source("src/App.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect([...catalog.matchAll(/key: "/g)]).toHaveLength(6);
+    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2');
+    expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", price: 1');
+    expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", price: 1');
+    expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5');
+    expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1');
+    expect(catalog).toContain('key: "customDomain", group: "هوية المتجر", title: "دومين خاص", price: 1');
+    expect(catalog).not.toContain('key: "affiliate"');
+    expect(catalog).not.toContain('key: "giftCards"');
+    expect(catalog).not.toContain('key: "upsell"');
+    expect(catalog).not.toContain('key: "aiLaunch"');
+    expect(landing).toContain("البيع الرقمي — 2 ر.ع");
+    expect(landing).toContain("حماية إضافية — 0.5 ر.ع");
+  });
+
+  it("يوحد اشتراك لوحة التاجر مع الأسعار المعتمدة دون ادعاء تحصيل قائم", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+
+    expect(dashboard).toContain("متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
+    expect(dashboard).toContain("الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.");
+    expect(dashboard).toContain("التفعيل لاحقًا");
+    expect(dashboard).toContain("هذه الأسعار تشرح خطتك فقط. لا يوجد تحصيل أو تجديد تلقائي الآن.");
   });
 
   it("يعرض أدوات التاجر المهمة مباشرة داخل لوحة التحكم", async () => {
@@ -330,7 +357,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).not.toContain('>الطلبات</button>');
     expect(legal).not.toContain("ثواني");
     expect(catalog).not.toContain("ثواني");
-    expect(catalog).toContain("مجهز للتجربة");
+    expect(catalog).toContain("يتفعل بعد ربط الدفع");
     expect(customerAssistant).not.toContain("دفع تلقائي فوري عبر المنصة");
     expect(html).not.toContain("تسليم الملفات تلقائياً");
     expect(html).not.toContain("بدون عمولة على المبيعات");
