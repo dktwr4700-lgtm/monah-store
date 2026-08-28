@@ -202,6 +202,82 @@ const styles = `
   /* استجابة فورية للضغط — نفس مبدأ apple-design */
   .dh-page button{ transition:transform 100ms ease-out; }
   .dh-page button:active{ transform:scale(0.96); }
+
+  /* بطاقات المنتجات: تُقرأ بسهولة حتى على شاشة الجوال الضيقة */
+  .dh-item{ padding:16px 0; }
+  .dh-item-top{ align-items:flex-start; gap:12px; margin-bottom:9px; }
+  .dh-item-name{ min-width:0; font-size:14px; font-weight:800; line-height:1.65; }
+  .dh-item-price{ flex-shrink:0; color:#9C6D1F; font-weight:800; padding-top:2px; }
+  .dh-item-link{ gap:10px; min-width:0; border-radius:12px; padding:9px 10px; }
+  .dh-item-link-text{ min-width:0; display:flex; flex:1; flex-direction:column; gap:2px; color:#625F55; overflow:hidden; }
+  .dh-item-link-label{ color:#22372C; font-family:'Cairo',sans-serif; font-size:10px; font-weight:800; }
+  .dh-item-link-code{ overflow:hidden; color:#625F55; direction:ltr; font-family:'JetBrains Mono',monospace; font-size:9.5px; text-align:right; text-overflow:ellipsis; white-space:nowrap; }
+  .dh-item-link-btn{ flex-shrink:0; min-height:34px; border-radius:10px; padding:6px 11px; font-family:'Cairo',sans-serif; font-weight:800; }
+  .dh-item-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+  .dh-item-action{ min-width:0; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; padding:8px 10px; font-weight:800; line-height:1.45; }
+  .dh-sort-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:8px; }
+  .dh-sort-btn{ min-height:36px; border-radius:10px; font-size:10.5px; }
+  .dh-hint{ color:#625F55; font-size:11px; line-height:1.7; }
+
+  /* ترتيب موحد للجوال الضيق في كل تبويبات لوحة التاجر */
+  .dh-field label,.dh-section-summary span,.dh-title-count,.dh-store-label,.dh-share-sub,.dh-qr-sub,.dh-health-number span,.ds-preview-bar,.ds-preview-tag,.ds-save-status,.cp-scope{ color:#625F55; }
+  .dh-next-text{ color:rgba(244,241,232,.86); }
+  .dh-next-step{ color:rgba(244,241,232,.76); }
+  .dh-studio-tag{ color:rgba(255,255,255,.86); }
+  .dh-studio-meta{ color:rgba(255,255,255,.78); }
+  .dh-stat span{ color:#D5E2D6; }
+  @media (max-width:390px){
+    .dh-header{ align-items:flex-start; gap:10px; padding:13px 14px; }
+    .dh-header>div:last-child{ flex-shrink:0; gap:6px !important; }
+    .dh-brand{ min-width:0; font-size:14px; line-height:1.55; }
+    .dh-brand span{ display:block; margin:1px 0 0; font-size:10px; }
+    .dh-logout,.dh-admin-btn{ min-height:34px; padding:7px 9px; font-size:10px; margin-left:0; }
+    .dh-tabs{ gap:7px; padding:10px 14px 0; scroll-padding-inline:14px; }
+    .dh-tab{ padding:8px 12px; font-size:11px; }
+    .dh-wrap{ padding:14px; }
+    .dh-studio{ padding:17px; }
+    .dh-studio-head{ align-items:flex-start; }
+    .dh-studio-name{ font-size:15px; line-height:1.5; }
+    .dh-studio-tag{ font-size:10.5px; }
+    .dh-studio-actions,.dh-share-actions{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .dh-studio-action{ min-height:42px; padding:8px; }
+    .dh-studio-action.primary,.dh-share-btn.primary{ grid-column:1/-1; min-height:42px; }
+    .dh-studio-action.primary{ flex-direction:row; gap:6px; }
+    .dh-studio-action span{ font-size:14px; }
+    .dh-quick{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .dh-quick-btn{ min-width:0; padding:12px 8px; font-size:11px; }
+    .dh-share-head,.dh-title-row{ align-items:flex-start; }
+    .dh-share-head>div,.dh-title-row>div:first-child{ min-width:0; }
+    .dh-qr{ align-items:flex-start; gap:10px; padding:14px; }
+    .dh-qr-code{ width:74px; height:74px; padding:5px; }
+    .dh-qr>div:last-child{ min-width:0; flex:1; }
+    .dh-qr-actions{ flex-wrap:wrap; margin-top:8px; }
+    .dh-mini-btn{ min-height:34px; padding:7px 10px; }
+    .dh-health-name{ min-width:0; max-width:none; flex:1; font-size:11px; }
+    .dh-health-state{ flex-shrink:0; }
+    .dh-store-link,.dh-card{ padding:14px; }
+    .dh-store-row{ min-width:0; }
+    .dh-store-url{ font-size:10px; }
+    .dh-copy{ min-height:34px; padding:7px 10px; }
+    .dh-section>summary{ gap:10px; padding:15px 14px; }
+    .dh-section-body{ padding:14px; }
+    .dh-section-summary b{ font-size:13.5px; }
+    .dh-field input,.dh-field textarea,.dh-field select{ min-height:44px; font-size:14px; }
+    .dh-type-toggle,.dh-ai-actions,.dh-edit-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .dh-ai-btn{ min-height:38px; padding:8px 9px; }
+    .dh-item-top{ gap:8px; }
+    .ds-preview-bar{ gap:8px; }
+    .ds-preview-bar>span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ds-view-btn{ flex-shrink:0; }
+    .ds-cover-row,.dh-logo-row{ flex-wrap:wrap; }
+    .dh-logo-btn{ min-height:40px; }
+    .ds-swatches{ flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+    .ds-save-bar{ align-items:stretch; flex-direction:column; gap:8px; padding:10px 14px; margin:0 -14px; }
+    .ds-save-btn{ width:100%; min-height:44px; }
+    .dh-subscription-base{ align-items:flex-start !important; flex-direction:column; gap:10px !important; padding:14px !important; }
+    .dh-subscription-base>.mono{ align-self:flex-start; }
+    .dh-subscription-ready{ flex-shrink:0; }
+  }
 `;
 
 export default function Dashboard() {
@@ -1542,9 +1618,9 @@ export default function Dashboard() {
                         <div className="dh-item-stock">مخزون: {p.codesCount || 0} كود</div>
                       )}
                       <div className="dh-item-link">
-                        <span className="dh-item-link-text">{`#product/${p.id}`}</span>
+                        <span className="dh-item-link-text"><span className="dh-item-link-label">رابط المنتج</span><span className="dh-item-link-code">{`#product/${p.id}`}</span></span>
                         <button className="dh-item-link-btn" onClick={() => copyLink(p.id, "product")}>
-                          {copied === "product" + p.id ? "تم" : "نسخ"}
+                          {copied === "product" + p.id ? "تم" : "نسخ الرابط"}
                         </button>
                       </div>
                       <button className="dh-ai-btn" onClick={() => generateAdCopy(p)} disabled={adCopyLoadingId === p.id} type="button" style={{ width: "100%", marginTop: 9 }}>
@@ -1590,7 +1666,7 @@ export default function Dashboard() {
                 <div className="dh-field"><label>اسم مكان النشر</label><input value={campaignLabel} onChange={(event) => setCampaignLabel(event.target.value)} placeholder="مثال: إنستغرام" maxLength="60" /></div>
                 <button type="button" className="dh-item-action primary" style={{ width: "100%" }} onClick={createCampaignLink} disabled={campaignSaving}>{campaignSaving ? "جاري الإنشاء..." : "إنشاء رابط تتبع"}</button>
               </>}
-              {campaignLinks.length > 0 && <div style={{ marginTop: 16 }}>{campaignLinks.map((link) => <div className="dh-item" key={link.id}><div className="dh-item-top"><span className="dh-item-name">{link.label}</span><span className="dh-item-price">{Number(link.visits) || 0} زيارة</span></div><div className="dh-hint">{products.find((product) => product.id === link.productId)?.name || "منتج غير متاح"}</div><div className="dh-item-link"><span className="dh-item-link-text">{trackedLinkUrl(link.id)}</span><button className="dh-item-link-btn" type="button" onClick={() => copyCampaignLink(link.id)}>{copied === `campaign${link.id}` ? "تم" : "نسخ"}</button></div><div className="dh-item-actions"><button className="dh-item-action danger" type="button" onClick={() => deleteCampaignLink(link.id)} disabled={deletingCampaignId === link.id}>{deletingCampaignId === link.id ? "جاري الحذف..." : "حذف الرابط"}</button></div></div>)}</div>}
+              {campaignLinks.length > 0 && <div style={{ marginTop: 16 }}>{campaignLinks.map((link) => <div className="dh-item" key={link.id}><div className="dh-item-top"><span className="dh-item-name">{link.label}</span><span className="dh-item-price">{Number(link.visits) || 0} زيارة</span></div><div className="dh-hint">{products.find((product) => product.id === link.productId)?.name || "منتج غير متاح"}</div><div className="dh-item-link"><span className="dh-item-link-text"><span className="dh-item-link-label">رابط التتبع</span><span className="dh-item-link-code">{trackedLinkUrl(link.id)}</span></span><button className="dh-item-link-btn" type="button" onClick={() => copyCampaignLink(link.id)}>{copied === `campaign${link.id}` ? "تم النسخ" : "نسخ الرابط"}</button></div><div className="dh-item-actions"><button className="dh-item-action danger" type="button" onClick={() => deleteCampaignLink(link.id)} disabled={deletingCampaignId === link.id}>{deletingCampaignId === link.id ? "جاري الحذف..." : "حذف الرابط"}</button></div></div>)}</div>}
               </div>
             </details>
 
@@ -1880,9 +1956,9 @@ export default function Dashboard() {
                   <div className="dh-title">اشتراك متجرك</div>
                   <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.</div>
                 </div>
-                <span style={{ background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>التفعيل لاحقًا</span>
+                <span className="dh-subscription-ready" style={{ background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>التفعيل لاحقًا</span>
               </div>
-              <div style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div className="dh-subscription-base" style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
                   <b style={{ display: "block", color: "#0B0B0C", fontSize: 13 }}>المتجر الأساسي</b>
                   <span className="dh-hint">الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.</span>

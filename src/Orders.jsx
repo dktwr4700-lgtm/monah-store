@@ -51,6 +51,18 @@ const styles = `
 
   .ord-wrap button{ transition:transform 100ms ease-out; }
   .ord-wrap button:active{ transform:scale(0.96); }
+  @media (max-width:390px){
+    .ord-top{ align-items:center; margin-bottom:14px; }
+    .ord-card{ padding:15px; }
+    .ord-card-top{ gap:8px; }
+    .ord-badge{ flex-shrink:0; white-space:nowrap; }
+    .ord-product{ line-height:1.6; }
+    .ord-meta{ align-items:flex-start; line-height:1.7; word-break:break-word; }
+    .ord-footer{ gap:10px; }
+    .ord-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .ord-action-btn{ min-height:40px; border-radius:12px; padding:8px 10px; line-height:1.45; }
+    .ord-confirm-btn{ min-height:42px; }
+  }
 `;
 
 function formatDate(ts) {
