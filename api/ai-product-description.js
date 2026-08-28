@@ -1,5 +1,4 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 if (!getApps().length) {
@@ -7,8 +6,9 @@ if (!getApps().length) {
   initializeApp({ credential: cert(serviceAccount) });
 }
 
-const auth = getAuth();
 const db = getFirestore();
+// مفتاح Firebase للويب عام أصلًا وموجود في إعداد واجهة المتجر؛ لا يمنح وصولًا دون رمز دخول صالح.
+const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const MAX_NAME_LENGTH = 120;
 const MAX_CATEGORY_LENGTH = 60;
 const MAX_NOTES_LENGTH = 600;
@@ -34,6 +34,18 @@ function buildPrompt({ name, category, productType, notes }) {
 - اجعل الصياغة هادئة وواضحة ومناسبة للعربية في عُمان والخليج.`;
 }
 
+async function verifyMerchantToken(idToken) {
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  const account = data?.users?.[0];
+  return account?.localId && account?.email ? account : null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -47,7 +59,8 @@ export default async function handler(req, res) {
 
   let uid;
   try {
-    uid = (await auth.verifyIdToken(idToken)).uid;
+    uid = (await verifyMerchantToken(idToken))?.localId;
+    if (!uid) throw new Error("invalid token");
   } catch {
     return res.status(401).json({ error: "جلسة الدخول غير صالحة. سجّل دخولك ثم حاول مرة ثانية." });
   }

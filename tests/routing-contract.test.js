@@ -141,7 +141,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const aiDescription = await source("api/ai-product-description.js");
     const catalog = await source("src/subscriptionCatalog.js");
 
-    expect(aiDescription).toContain('auth.verifyIdToken(idToken)');
+    expect(aiDescription).toContain("identitytoolkit.googleapis.com/v1/accounts:lookup");
+    expect(aiDescription).toContain("idToken");
     expect(aiDescription).toContain('model: "claude-sonnet-4-6"');
     expect(aiDescription).toContain("لا تخترع محتوى");
     expect(aiDescription).toContain("لا تذكر أو تعد بدفع أو شراء أو تسليم تلقائي");
