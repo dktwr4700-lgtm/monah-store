@@ -50,6 +50,7 @@ export default async function handler(req, res) {
     }
 
     const [url] = await file.getSignedUrl({
+      version: "v4",
       action: "read",
       expires: Date.now() + SIGNED_URL_TTL_MS,
       responseDisposition: `attachment; filename="${product.filePath.split("/").pop()}"`,

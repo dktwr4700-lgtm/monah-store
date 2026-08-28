@@ -105,6 +105,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(productPage).toContain("احصل على المنتج مجانًا");
     expect(freeDownload).toContain('req.method !== "POST" && req.method !== "GET"');
     expect(freeDownload).toContain('res.redirect(302, url)');
+    expect(freeDownload).toContain('version: "v4"');
     expect(freeDownload).toContain("responseDisposition");
     expect(freeDownload).toContain("Number(product.price) === 0");
     expect(freeDownload).toContain("product.hidden === false");
