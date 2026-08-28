@@ -25,7 +25,7 @@ export const ADD_ON_CATALOG = [
   { key: "reportExport", group: "التحليلات والعملاء", title: "تصدير التقارير", price: 0.5, desc: "تنزيل تقرير مرتب من بيانات حقيقية.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "downloadLimits", group: "حماية المنتجات", title: "تحديد مرات التحميل", price: 0.5, desc: "يحدد عدد تنزيلات المنتج للمشتري.", status: "عند تفعيل البيع الإلكتروني", ready: false },
   { key: "watermark", group: "حماية المنتجات", title: "علامة مائية للملفات", price: 1.5, desc: "إضافة علامة إلى ملفات مدعومة قبل التسليم.", status: "مرحلة لاحقة", ready: false },
-  { key: "aiDescription", group: "الذكاء والأتمتة", title: "كتابة وصف المنتج بالذكاء", price: 1, desc: "يساعد التاجر على كتابة وصف أوضح.", status: "يبنى قبل التفعيل", ready: false },
+  { key: "aiDescription", group: "الذكاء والأتمتة", title: "كتابة وصف المنتج بالذكاء", price: 1, desc: "ينشئ مسودة وصف يراجعها التاجر قبل أن يحفظها بنفسه.", status: "قيد التجربة", ready: false },
   { key: "aiAdCopy", group: "الذكاء والأتمتة", title: "إنشاء نص إعلان", price: 1, desc: "مسودة إعلان يراجعها التاجر قبل استخدامها.", status: "يبنى قبل التفعيل", ready: false },
   { key: "aiLaunch", group: "الذكاء والأتمتة", title: "إطلاق منتج بضغطة", price: 2.5, desc: "تجهيز اسم ووصف وسعر وصفحة بيع كمسودة.", status: "مرحلة لاحقة", ready: false },
 ];

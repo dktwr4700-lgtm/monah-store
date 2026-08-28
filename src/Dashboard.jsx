@@ -138,6 +138,7 @@ const styles = `
   .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
   .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
   .dh-file-picked{ background:#EAF0EB; color:#4B6152; font-size:11.5px; padding:9px 12px; border-radius:10px; margin-top:8px; }
+  .dh-ai-draft{margin-top:9px;border:1px solid #D6E5D8;background:#F5F9F4;border-radius:12px;padding:12px}.dh-ai-draft-title{font-size:11px;font-weight:800;color:#163F2E;margin-bottom:6px}.dh-ai-draft p{font-size:12px;line-height:1.9;color:#3D4A66;margin:0;white-space:pre-line}.dh-ai-actions{display:flex;gap:8px;margin-top:10px}.dh-ai-btn{border:1px solid #C9DBC9;background:#fff;color:#163F2E;border-radius:100px;padding:8px 11px;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer}.dh-ai-btn.primary{background:#163F2E;border-color:#163F2E;color:#fff}
 
   .dh-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
   .dh-item:first-child{ border-top:none; }
@@ -250,6 +251,10 @@ export default function Dashboard() {
   const [productFilter, setProductFilter] = useState("all");
   const [togglingHiddenId, setTogglingHiddenId] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [descriptionDraftTarget, setDescriptionDraftTarget] = useState("");
+  const [descriptionDraftLoading, setDescriptionDraftLoading] = useState("");
+  const [descriptionDraftError, setDescriptionDraftError] = useState("");
   const [bundles, setBundles] = useState([]);
   const [bundleName, setBundleName] = useState("");
   const [bundlePrice, setBundlePrice] = useState("");
@@ -448,6 +453,54 @@ export default function Dashboard() {
       return;
     }
     setProductFile(file);
+  }
+
+  async function generateDescriptionDraft(target, product = null) {
+    const isNewProduct = target === "new";
+    const productName = isNewProduct ? name : product?.name;
+    const productCategory = isNewProduct ? category : product?.category;
+    const productNotes = isNewProduct ? description : editDescription;
+    const type = isNewProduct ? productType : product?.type;
+    if (!productName?.trim()) {
+      setDescriptionDraftError("اكتب اسم المنتج أولًا، ثم اطلب المسودة.");
+      return;
+    }
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setDescriptionDraftError("سجّل دخولك ثم حاول مرة ثانية.");
+      return;
+    }
+    setDescriptionDraftError("");
+    setDescriptionDraftLoading(target);
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/ai-product-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          productId: isNewProduct ? "" : product?.id,
+          name: productName,
+          category: productCategory,
+          notes: productNotes,
+          productType: type,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.description) throw new Error(data?.error || "draft unavailable");
+      setDescriptionDraft(data.description);
+      setDescriptionDraftTarget(target);
+    } catch (draftError) {
+      setDescriptionDraftError("تعذر تجهيز المسودة الآن. حاول بعد قليل.");
+    }
+    setDescriptionDraftLoading("");
+  }
+
+  function useDescriptionDraft(target) {
+    if (!descriptionDraft || descriptionDraftTarget !== target) return;
+    if (target === "new") setDescription(descriptionDraft);
+    else setEditDescription(descriptionDraft);
+    setDescriptionDraft("");
+    setDescriptionDraftTarget("");
   }
 
   async function handleAddProduct(e, publish) {
@@ -1298,6 +1351,11 @@ export default function Dashboard() {
                 <div className="dh-field">
                   <label>وصف مختصر (اختياري)</label>
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
+                  <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft("new")} disabled={descriptionDraftLoading === "new"} style={{ marginTop: 8 }}>
+                    {descriptionDraftLoading === "new" ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                  </button>
+                  {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
+                  {descriptionDraftTarget === "new" && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — عدّلها أو استخدمها إذا ناسبتك</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft("new")}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
                 </div>
                 <div className="dh-field">
                   <label>صور المنتج (حتى صورتين، اختياري)</label>
@@ -1417,6 +1475,11 @@ export default function Dashboard() {
                       <div className="dh-field">
                         <label>وصف مختصر</label>
                         <textarea rows="2" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                        <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft(p.id, p)} disabled={descriptionDraftLoading === p.id} style={{ marginTop: 8 }}>
+                          {descriptionDraftLoading === p.id ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                        </button>
+                        {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
+                        {descriptionDraftTarget === p.id && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لا تُحفظ إلا إذا ضغطت حفظ المنتج</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft(p.id)}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
                       </div>
                       {p.type !== "code" && (
                         <div className="dh-hint" style={{ marginBottom: 10 }}>

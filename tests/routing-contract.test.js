@@ -136,6 +136,23 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(tracking).not.toContain("admin.apps");
   });
 
+  it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const aiDescription = await source("api/ai-product-description.js");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect(aiDescription).toContain('auth.verifyIdToken(idToken)');
+    expect(aiDescription).toContain('model: "claude-sonnet-4-6"');
+    expect(aiDescription).toContain("لا تخترع محتوى");
+    expect(aiDescription).toContain("لا تذكر أو تعد بدفع أو شراء أو تسليم تلقائي");
+    expect(dashboard).toContain('fetch("/api/ai-product-description"');
+    expect(dashboard).toContain("اكتب لي مسودة وصف");
+    expect(dashboard).toContain("استخدم هذه المسودة");
+    expect(dashboard).toContain("مسودة فقط");
+    expect(catalog).toContain('key: "aiDescription"');
+    expect(catalog).toContain('status: "قيد التجربة"');
+  });
+
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {
     const store = await source("src/StorePage.jsx");
     const dashboard = await source("src/Dashboard.jsx");
