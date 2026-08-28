@@ -118,6 +118,12 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("request.resource.data.type == 'file'");
   });
 
+  it("يحدّث كتالوج المنتج المجاني بعد اختباره دون فتح المنتجات المدفوعة", async () => {
+    const catalog = await source("src/subscriptionCatalog.js");
+    expect(catalog).toContain('key: "freeProducts"');
+    expect(catalog).toContain('status: "متاح الآن", ready: true');
+  });
+
   it("ينشئ روابط تتبع يراها مالك المنتج فقط ويحفظ عدد الزيارات في الخادم", async () => {
     const dashboard = await source("src/Dashboard.jsx");
     const rules = await source("firestore.rules");
@@ -134,6 +140,50 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(tracking).toContain("lastVisitedAt");
     expect(tracking).toContain('from "firebase-admin/app"');
     expect(tracking).not.toContain("admin.apps");
+  });
+
+  it("يعرض ملخصًا من عدادات الزيارات الحقيقية دون تسميتها مبيعات", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect(dashboard).toContain("campaignVisitTotal");
+    expect(dashboard).toContain("أكثر رابط تمت زيارته");
+    expect(dashboard).toContain("وليست مبيعات أو معلومات عن الزوار");
+    expect(catalog).toContain('key: "campaignTracking"');
+    expect(catalog).toContain('status: "متاح الآن", ready: true');
+  });
+
+  it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const aiDescription = await source("api/ai-product-description.js");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect(aiDescription).toContain("identitytoolkit.googleapis.com/v1/accounts:lookup");
+    expect(aiDescription).toContain("idToken");
+    expect(aiDescription).toContain('model: "claude-sonnet-4-6"');
+    expect(aiDescription).toContain("لا تخترع محتوى");
+    expect(aiDescription).toContain("لا تذكر أو تعد بدفع أو شراء أو تسليم تلقائي");
+    expect(dashboard).toContain('fetch("/api/ai-product-description"');
+    expect(dashboard).toContain("اكتب لي مسودة وصف");
+    expect(dashboard).toContain("استخدم هذه المسودة");
+    expect(dashboard).toContain("مسودة فقط");
+    expect(catalog).toContain('key: "aiDescription"');
+    expect(catalog).toContain('status: "قيد التجربة"');
+  });
+
+  it("يولد نص إعلان لمالك المنتج فقط ولا ينشره تلقائيًا", async () => {
+    const dashboard = await source("src/Dashboard.jsx");
+    const adCopy = await source("api/ai-ad-copy.js");
+    const catalog = await source("src/subscriptionCatalog.js");
+
+    expect(adCopy).toContain("identitytoolkit.googleapis.com/v1/accounts:lookup");
+    expect(adCopy).toContain('db.collection("products").doc(productId).get()');
+    expect(adCopy).toContain("productSnap.data().ownerId !== uid");
+    expect(adCopy).toContain("لا تعد بدفع أو شراء أو تسليم تلقائي");
+    expect(dashboard).toContain('fetch("/api/ai-ad-copy"');
+    expect(dashboard).toContain("اكتب لي مسودة إعلان");
+    expect(dashboard).toContain("لن تُنشر من مُونَة");
+    expect(catalog).toContain('key: "aiAdCopy"');
   });
 
   it("يطلب للمتجر العام المنتجات المنشورة وغير الموقوفة فقط", async () => {

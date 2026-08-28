@@ -138,6 +138,7 @@ const styles = `
   .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
   .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
   .dh-file-picked{ background:#EAF0EB; color:#4B6152; font-size:11.5px; padding:9px 12px; border-radius:10px; margin-top:8px; }
+  .dh-ai-draft{margin-top:9px;border:1px solid #D6E5D8;background:#F5F9F4;border-radius:12px;padding:12px}.dh-ai-draft-title{font-size:11px;font-weight:800;color:#163F2E;margin-bottom:6px}.dh-ai-draft p{font-size:12px;line-height:1.9;color:#3D4A66;margin:0;white-space:pre-line}.dh-ai-actions{display:flex;gap:8px;margin-top:10px}.dh-ai-btn{border:1px solid #C9DBC9;background:#fff;color:#163F2E;border-radius:100px;padding:8px 11px;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer}.dh-ai-btn.primary{background:#163F2E;border-color:#163F2E;color:#fff}
 
   .dh-item{ padding:12px 0; border-top:1px dashed #EDEAE0; }
   .dh-item:first-child{ border-top:none; }
@@ -250,6 +251,14 @@ export default function Dashboard() {
   const [productFilter, setProductFilter] = useState("all");
   const [togglingHiddenId, setTogglingHiddenId] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [descriptionDraftTarget, setDescriptionDraftTarget] = useState("");
+  const [descriptionDraftLoading, setDescriptionDraftLoading] = useState("");
+  const [descriptionDraftError, setDescriptionDraftError] = useState("");
+  const [adCopy, setAdCopy] = useState("");
+  const [adCopyProductId, setAdCopyProductId] = useState("");
+  const [adCopyLoadingId, setAdCopyLoadingId] = useState("");
+  const [adCopyError, setAdCopyError] = useState("");
   const [bundles, setBundles] = useState([]);
   const [bundleName, setBundleName] = useState("");
   const [bundlePrice, setBundlePrice] = useState("");
@@ -448,6 +457,84 @@ export default function Dashboard() {
       return;
     }
     setProductFile(file);
+  }
+
+  async function generateDescriptionDraft(target, product = null) {
+    const isNewProduct = target === "new";
+    const productName = isNewProduct ? name : product?.name;
+    const productCategory = isNewProduct ? category : product?.category;
+    const productNotes = isNewProduct ? description : editDescription;
+    const type = isNewProduct ? productType : product?.type;
+    if (!productName?.trim()) {
+      setDescriptionDraftError("اكتب اسم المنتج أولًا، ثم اطلب المسودة.");
+      return;
+    }
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setDescriptionDraftError("سجّل دخولك ثم حاول مرة ثانية.");
+      return;
+    }
+    setDescriptionDraftError("");
+    setDescriptionDraftLoading(target);
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/ai-product-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          productId: isNewProduct ? "" : product?.id,
+          name: productName,
+          category: productCategory,
+          notes: productNotes,
+          productType: type,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.description) throw new Error(data?.error || "draft unavailable");
+      setDescriptionDraft(data.description);
+      setDescriptionDraftTarget(target);
+    } catch (draftError) {
+      setDescriptionDraftError("تعذر تجهيز المسودة الآن. حاول بعد قليل.");
+    }
+    setDescriptionDraftLoading("");
+  }
+
+  function useDescriptionDraft(target) {
+    if (!descriptionDraft || descriptionDraftTarget !== target) return;
+    if (target === "new") setDescription(descriptionDraft);
+    else setEditDescription(descriptionDraft);
+    setDescriptionDraft("");
+    setDescriptionDraftTarget("");
+  }
+
+  async function generateAdCopy(product) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setAdCopyError("سجّل دخولك ثم حاول مرة ثانية.");
+      return;
+    }
+    setAdCopyError("");
+    setAdCopyLoadingId(product.id);
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/ai-ad-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId: product.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.copy) throw new Error(data?.error || "ad draft unavailable");
+      setAdCopy(data.copy);
+      setAdCopyProductId(product.id);
+    } catch (adError) {
+      setAdCopyError("تعذر تجهيز نص الإعلان الآن. حاول بعد قليل.");
+    }
+    setAdCopyLoadingId("");
+  }
+
+  function copyAdDraft() {
+    if (!adCopy) return;
+    navigator.clipboard.writeText(adCopy).then(() => setCopied("ad-copy")).catch(() => setAdCopyError("تعذر نسخ المسودة. انسخها يدويًا."));
   }
 
   async function handleAddProduct(e, publish) {
@@ -1011,6 +1098,8 @@ export default function Dashboard() {
   const initial = (storeName || "م").charAt(0);
   const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
   const hiddenProducts = products.filter((product) => product.hidden || product.suspended);
+  const campaignVisitTotal = campaignLinks.reduce((total, link) => total + (Number(link.visits) || 0), 0);
+  const topCampaignLink = campaignLinks.reduce((top, link) => !top || (Number(link.visits) || 0) > (Number(top.visits) || 0) ? link : top, null);
   const selectedStoreStyle = STORE_STYLES.find((style) => style.color === storeColor) || STORE_STYLES[0];
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`تصفح منتجات ${storeName || "متجري"}: ${storeUrl}`)}`;
 
@@ -1298,6 +1387,11 @@ export default function Dashboard() {
                 <div className="dh-field">
                   <label>وصف مختصر (اختياري)</label>
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
+                  <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft("new")} disabled={descriptionDraftLoading === "new"} style={{ marginTop: 8 }}>
+                    {descriptionDraftLoading === "new" ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                  </button>
+                  {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
+                  {descriptionDraftTarget === "new" && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — عدّلها أو استخدمها إذا ناسبتك</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft("new")}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
                 </div>
                 <div className="dh-field">
                   <label>صور المنتج (حتى صورتين، اختياري)</label>
@@ -1417,6 +1511,11 @@ export default function Dashboard() {
                       <div className="dh-field">
                         <label>وصف مختصر</label>
                         <textarea rows="2" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                        <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft(p.id, p)} disabled={descriptionDraftLoading === p.id} style={{ marginTop: 8 }}>
+                          {descriptionDraftLoading === p.id ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                        </button>
+                        {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
+                        {descriptionDraftTarget === p.id && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لا تُحفظ إلا إذا ضغطت حفظ المنتج</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft(p.id)}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
                       </div>
                       {p.type !== "code" && (
                         <div className="dh-hint" style={{ marginBottom: 10 }}>
@@ -1445,6 +1544,11 @@ export default function Dashboard() {
                           {copied === "product" + p.id ? "تم" : "نسخ"}
                         </button>
                       </div>
+                      <button className="dh-ai-btn" onClick={() => generateAdCopy(p)} disabled={adCopyLoadingId === p.id} type="button" style={{ width: "100%", marginTop: 9 }}>
+                        {adCopyLoadingId === p.id ? "جاري تجهيز الإعلان..." : "اكتب لي مسودة إعلان"}
+                      </button>
+                      {adCopyError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{adCopyError}</div>}
+                      {adCopyProductId === p.id && adCopy && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لن تُنشر من مُونَة</div><p>{adCopy}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" onClick={copyAdDraft} type="button">{copied === "ad-copy" ? "تم النسخ" : "نسخ النص"}</button><button className="dh-ai-btn" onClick={() => { setAdCopy(""); setAdCopyProductId(""); }} type="button">إغلاق</button></div></div>}
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
@@ -1477,6 +1581,7 @@ export default function Dashboard() {
                 <div className="dh-title-count">زيارات الرابط</div>
               </div>
               <div className="dh-hint" style={{ marginBottom: 14 }}>أنشئ رابطًا مختلفًا لكل مكان تنشر فيه، مثل واتساب أو إنستغرام. نعرض عدد فتحات الرابط فقط، بدون جمع معلومات شخصية عن الزوار.</div>
+              {campaignLinks.length > 0 && <div className="dh-product-health" style={{ marginBottom: 14 }}><div className="dh-title" style={{ fontSize: 12 }}>ملخص الزيارات</div><div className="dh-health-summary"><div className="dh-health-number"><b>{campaignVisitTotal}</b><span>إجمالي الزيارات</span></div><div className="dh-health-number"><b>{campaignLinks.length}</b><span>روابطك المنشأة</span></div></div>{topCampaignLink && <div className="dh-health-row"><span className="dh-health-name">أكثر رابط تمت زيارته: {topCampaignLink.label}</span><span className="dh-health-state live">{Number(topCampaignLink.visits) || 0} زيارة</span></div>}<div className="dh-hint">هذه الأرقام لفتحات روابط التتبع فقط، وليست مبيعات أو معلومات عن الزوار.</div></div>}
               {campaignError && <div className="dh-error">{campaignError}</div>}
               {campaignNotice && <div className="dh-success">{campaignNotice}</div>}
               {publishedProducts.length === 0 ? <div className="empty-note">انشر منتجًا أولًا حتى تنشئ له رابط تتبع.</div> : <>
