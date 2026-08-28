@@ -15,12 +15,12 @@ const bucket = getStorage().bucket();
 const SIGNED_URL_TTL_MS = 10 * 60 * 1000;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+  if (req.method !== "POST" && req.method !== "GET") {
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { productId } = req.body || {};
+  const productId = req.method === "POST" ? req.body?.productId : req.query?.productId;
   if (!productId || typeof productId !== "string") {
     return res.status(400).json({ error: "المنتج غير صالح." });
   }
@@ -52,8 +52,12 @@ export default async function handler(req, res) {
     const [url] = await file.getSignedUrl({
       action: "read",
       expires: Date.now() + SIGNED_URL_TTL_MS,
+      responseDisposition: `attachment; filename="${product.filePath.split("/").pop()}"`,
     });
     res.setHeader("Cache-Control", "no-store");
+    if (req.method === "GET") {
+      return res.redirect(302, url);
+    }
     return res.status(200).json({ url });
   } catch (error) {
     console.error("free download endpoint error:", error);

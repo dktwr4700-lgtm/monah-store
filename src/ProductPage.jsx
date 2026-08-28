@@ -117,21 +117,9 @@ export default function ProductPage({ productId }) {
     }
   }
 
-  async function downloadFreeProduct() {
+  function downloadFreeProduct() {
     setDownloadStatus("جاري تجهيز التنزيل...");
-    try {
-      const response = await fetch("/api/free-download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: product.id }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data?.url) throw new Error("download unavailable");
-      window.location.assign(data.url);
-      setDownloadStatus("بدأ التنزيل");
-    } catch (error) {
-      setDownloadStatus("تعذر تجهيز التنزيل الآن. حاول مرة ثانية.");
-    }
+    window.location.assign(`/api/free-download?productId=${encodeURIComponent(product.id)}`);
   }
 
   return (
