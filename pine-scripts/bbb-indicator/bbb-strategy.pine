@@ -1,0 +1,116 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation, not affiliated with or copied from any invite-only script.
+// Same breakout logic as bbb-indicator.pine, wired up as a strategy() so it
+// can be run through TradingView's Strategy Tester for real win-rate /
+// drawdown numbers instead of guessed performance claims.
+//@version=5
+strategy("BBB Strategy (Session Range Breakout)", shorttitle = "BBB-Strat", overlay = true,
+     default_qty_type = strategy.percent_of_equity, default_qty_value = 100,
+     commission_type = strategy.commission.percent, commission_value = 0.05,
+     process_orders_on_close = true, calc_on_every_tick = false)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Inputs
+// ─────────────────────────────────────────────────────────────────────────
+grpSession = "Session Range"
+sessionString = input.session("0000-0800", "Range Session (e.g. Asian)", group = grpSession)
+sessionTZ     = input.string("UTC", "Session Timezone", group = grpSession)
+
+grpBreak = "Breakout"
+breakoutSource = input.string("Close", "Breakout Confirmed By", options = ["Close", "Wick"], group = grpBreak)
+oneSignalPerSession = input.bool(true, "Only First Breakout Per Session", group = grpBreak)
+
+grpRisk = "Risk / Target Calculation"
+riskMethod = input.string("Range", "Stop-Loss Method", options = ["Range", "ATR", "Percentage", "Fixed Points"], group = grpRisk)
+atrLen     = input.int(14, "ATR Length", minval = 1, group = grpRisk)
+atrMult    = input.float(1.0, "ATR Multiplier", minval = 0.1, step = 0.1, group = grpRisk)
+pctValue   = input.float(0.5, "Stop-Loss Percentage (%)", minval = 0.01, step = 0.05, group = grpRisk)
+fixedPts   = input.float(50, "Stop-Loss Fixed Points", minval = 0, group = grpRisk)
+
+targetMethod  = input.string("Fixed Points", "Take-Profit Method", options = ["Fixed Points", "R:R Ratio"], group = grpRisk)
+tpFixedPoints = input.float(100, "Take-Profit Fixed Points", minval = 0, group = grpRisk)
+rrRatio       = input.float(2.0, "Risk : Reward Ratio (used if method = R:R Ratio)", minval = 0.1, step = 0.1, group = grpRisk)
+
+grpBacktest = "Backtest Realism"
+slippageTicks = input.int(2, "Slippage (ticks)", minval = 0, group = grpBacktest, tooltip = "Set this in Properties > Slippage too — this input is a reminder, TradingView reads slippage from Properties, not from a script input.")
+onlyOneOpenTrade = input.bool(true, "Skip New Signal If a Trade Is Still Open", group = grpBacktest)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Session range tracking
+// ─────────────────────────────────────────────────────────────────────────
+inSession = not na(time(timeframe.period, sessionString, sessionTZ))
+newSession = inSession and not inSession[1]
+sessionEnded = not inSession and inSession[1]
+
+var float rangeHigh = na
+var float rangeLow  = na
+var bool  rangeReady = false
+var bool  signalTakenThisSession = false
+
+if newSession
+    rangeHigh := high
+    rangeLow := low
+    rangeReady := false
+    signalTakenThisSession := false
+
+if inSession
+    rangeHigh := math.max(rangeHigh, high)
+    rangeLow := math.min(rangeLow, low)
+
+if sessionEnded
+    rangeReady := true
+
+// ─────────────────────────────────────────────────────────────────────────
+// Breakout detection
+// ─────────────────────────────────────────────────────────────────────────
+atrVal = ta.atr(atrLen)
+
+bullBreakSrc = breakoutSource == "Close" ? close : high
+bearBreakSrc = breakoutSource == "Close" ? close : low
+
+flat = strategy.position_size == 0
+canSignal = rangeReady and not inSession and (not oneSignalPerSession or not signalTakenThisSession) and (not onlyOneOpenTrade or flat)
+
+bullBreak = canSignal and bullBreakSrc > rangeHigh and bullBreakSrc[1] <= rangeHigh
+bearBreak = canSignal and bearBreakSrc < rangeLow and bearBreakSrc[1] >= rangeLow
+
+calcStop(isLong, entryPrice) =>
+    float stop = na
+    if riskMethod == "Range"
+        stop := isLong ? rangeLow : rangeHigh
+    else if riskMethod == "ATR"
+        stop := isLong ? entryPrice - atrVal * atrMult : entryPrice + atrVal * atrMult
+    else if riskMethod == "Percentage"
+        stop := isLong ? entryPrice * (1 - pctValue / 100) : entryPrice * (1 + pctValue / 100)
+    else
+        stop := isLong ? entryPrice - fixedPts : entryPrice + fixedPts
+    stop
+
+// ─────────────────────────────────────────────────────────────────────────
+// Orders
+// ─────────────────────────────────────────────────────────────────────────
+if bullBreak or bearBreak
+    signalTakenThisSession := true
+
+    isLong = bullBreak
+    entryPrice = close
+    stopPrice = calcStop(isLong, entryPrice)
+    riskDist = math.abs(entryPrice - stopPrice)
+    targetPrice = targetMethod == "Fixed Points" ?
+         (isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints) :
+         (isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio)
+
+    if isLong
+        strategy.entry("Long", strategy.long)
+        strategy.exit("Long Exit", "Long", stop = stopPrice, limit = targetPrice)
+    else
+        strategy.entry("Short", strategy.short)
+        strategy.exit("Short Exit", "Short", stop = stopPrice, limit = targetPrice)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Visuals (kept minimal — this file is for the Strategy Tester, not for
+// day-to-day chart reading; use bbb-indicator.pine for that)
+// ─────────────────────────────────────────────────────────────────────────
+plotshape(bullBreak, title = "Buy Signal", style = shape.triangleup, location = location.belowbar, color = color.new(color.teal, 0), size = size.small)
+plotshape(bearBreak, title = "Sell Signal", style = shape.triangledown, location = location.abovebar, color = color.new(color.red, 0), size = size.small)
+bgcolor(inSession ? color.new(color.blue, 90) : na, title = "Session Highlight")
