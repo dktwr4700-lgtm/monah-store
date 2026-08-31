@@ -93,8 +93,10 @@ volOK       = not useVolFilter or rangeWidth >= atrVal * minRangeATRMult
 bullBreakSrc = breakoutSource == "Close" ? close : high
 bearBreakSrc = breakoutSource == "Close" ? close : low
 
-bullCount = bullBreakSrc > rangeHigh ? nz(bullCount[1]) + 1 : 0
-bearCount = bearBreakSrc < rangeLow ? nz(bearCount[1]) + 1 : 0
+var int bullCount = 0
+var int bearCount = 0
+bullCount := bullBreakSrc > rangeHigh ? bullCount + 1 : 0
+bearCount := bearBreakSrc < rangeLow ? bearCount + 1 : 0
 
 canSignal = rangeReady and not inSession and (not oneSignalPerSession or not signalTakenThisSession)
 
