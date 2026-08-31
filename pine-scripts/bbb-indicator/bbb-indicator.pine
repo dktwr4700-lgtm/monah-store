@@ -30,7 +30,7 @@ grpStyle = "Style"
 colRange   = input.color(color.new(color.blue, 85), "Range Box", group = grpStyle, display = display.data_window)
 colUp      = input.color(color.new(color.teal, 0), "Bullish Setup", group = grpStyle, display = display.data_window)
 colDown    = input.color(color.new(color.red, 0), "Bearish Setup", group = grpStyle, display = display.data_window)
-showPanel  = input.bool(true, "Show Signal Panel (Corner Table)", group = grpStyle, display = display.data_window)
+showTags   = input.bool(true, "Show Entry / SL / TP Price Tags on Chart", group = grpStyle, display = display.data_window)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Session range tracking
@@ -91,12 +91,6 @@ calcStop(isLong, entryPrice) =>
         stop := isLong ? entryPrice - fixedPts : entryPrice + fixedPts
     stop
 
-var table infoPanel = table.new(position.top_right, 2, 5, border_width = 1)
-var string lastSide = ""
-var float lastEntry = na
-var float lastStop = na
-var float lastTarget = na
-
 if bullBreak or bearBreak
     signalTakenThisSession := true
 
@@ -109,34 +103,30 @@ if bullBreak or bearBreak
          (isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio)
 
     lineColor = isLong ? colUp : colDown
-    line.new(bar_index, entryPrice, bar_index + extendBoxBars, entryPrice, color = lineColor, width = 1)
-    line.new(bar_index, stopPrice, bar_index + extendBoxBars, stopPrice, color = color.new(color.red, 0), style = line.style_dashed, width = 1)
-    line.new(bar_index, targetPrice, bar_index + extendBoxBars, targetPrice, color = color.new(color.green, 0), style = line.style_dashed, width = 1)
+    lineEnd = bar_index + extendBoxBars
 
-    lastSide := isLong ? "BUY" : "SELL"
-    lastEntry := entryPrice
-    lastStop := stopPrice
-    lastTarget := targetPrice
+    line.new(bar_index, entryPrice, lineEnd, entryPrice, color = lineColor, width = 1)
+    line.new(bar_index, stopPrice, lineEnd, stopPrice, color = color.new(color.red, 0), style = line.style_dashed, width = 1)
+    line.new(bar_index, targetPrice, lineEnd, targetPrice, color = color.new(color.green, 0), style = line.style_dashed, width = 1)
 
-if showPanel and lastSide != ""
-    sideColor = lastSide == "BUY" ? colUp : colDown
-    table.cell(infoPanel, 0, 0, "BBB Signal", text_color = color.white, bgcolor = color.new(color.gray, 0), text_size = size.small)
-    table.cell(infoPanel, 1, 0, lastSide, text_color = color.white, bgcolor = sideColor, text_size = size.small)
-    table.cell(infoPanel, 0, 1, "Entry", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(infoPanel, 1, 1, str.tostring(math.round_to_mintick(lastEntry)), text_color = color.white, bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(infoPanel, 0, 2, "Stop Loss", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(infoPanel, 1, 2, str.tostring(math.round_to_mintick(lastStop)), text_color = color.red, bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(infoPanel, 0, 3, "Target", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(infoPanel, 1, 3, str.tostring(math.round_to_mintick(lastTarget)), text_color = color.green, bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(infoPanel, 0, 4, "TP Mode", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(infoPanel, 1, 4, targetMethod == "Fixed Points" ? str.tostring(tpFixedPoints) + " pts" : "1 : " + str.tostring(rrRatio), text_color = color.white, bgcolor = color.new(color.black, 80), text_size = size.small)
+    // Small BUY/SELL tag right on the breakout bar, offset above/below so it doesn't sit on the candle body.
+    label.new(bar_index, isLong ? low : high, isLong ? "BUY" : "SELL",
+         yloc = isLong ? yloc.belowbar : yloc.abovebar,
+         style = isLong ? label.style_label_up : label.style_label_down,
+         color = lineColor, textcolor = color.white, size = size.small)
+
+    if showTags
+        // Price tags anchored at the right end of each line, away from the candles, one per price level.
+        label.new(lineEnd, entryPrice, "Entry " + str.tostring(math.round_to_mintick(entryPrice)),
+             style = label.style_label_left, color = lineColor, textcolor = color.white, size = size.small)
+        label.new(lineEnd, stopPrice, "SL " + str.tostring(math.round_to_mintick(stopPrice)),
+             style = label.style_label_left, color = color.new(color.red, 0), textcolor = color.white, size = size.small)
+        label.new(lineEnd, targetPrice, "TP " + str.tostring(math.round_to_mintick(targetPrice)),
+             style = label.style_label_left, color = color.new(color.green, 0), textcolor = color.white, size = size.small)
 
 // ─────────────────────────────────────────────────────────────────────────
-// Plots & alerts
+// Background & alerts
 // ─────────────────────────────────────────────────────────────────────────
-plotshape(bullBreak, title = "Bullish Breakout", style = shape.triangleup, location = location.belowbar, color = colUp, size = size.small)
-plotshape(bearBreak, title = "Bearish Breakout", style = shape.triangledown, location = location.abovebar, color = colDown, size = size.small)
-
 bgcolor(inSession ? colRange : na, title = "Session Highlight")
 
 alertcondition(bullBreak, title = "BBB Bullish Breakout", message = "BBB: Bullish breakout above session range high")
