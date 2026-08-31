@@ -27,9 +27,9 @@ atrMult    = input.float(1.0, "ATR Multiplier", minval = 0.1, step = 0.1, group 
 pctValue   = input.float(0.5, "Stop-Loss Percentage (%)", minval = 0.01, step = 0.05, group = grpRisk)
 fixedPts   = input.float(50, "Stop-Loss Fixed Points", minval = 0, group = grpRisk)
 
-targetMethod  = input.string("Fixed Points", "Take-Profit Method", options = ["Fixed Points", "R:R Ratio"], group = grpRisk)
+targetMethod  = input.string("R:R Ratio", "Take-Profit Method", options = ["Fixed Points", "R:R Ratio"], group = grpRisk)
 tpFixedPoints = input.float(100, "Take-Profit Fixed Points", minval = 0, group = grpRisk)
-rrRatio       = input.float(2.0, "Risk : Reward Ratio (used if method = R:R Ratio)", minval = 0.1, step = 0.1, group = grpRisk)
+rrRatio       = input.float(1.5, "Risk : Reward Ratio (used if method = R:R Ratio)", minval = 0.1, step = 0.1, group = grpRisk)
 
 grpBacktest = "Backtest Realism"
 slippageTicks = input.int(2, "Slippage (ticks)", minval = 0, group = grpBacktest, tooltip = "Set this in Properties > Slippage too — this input is a reminder, TradingView reads slippage from Properties, not from a script input.")
