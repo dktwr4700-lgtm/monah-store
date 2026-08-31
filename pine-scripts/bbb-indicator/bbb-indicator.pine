@@ -7,27 +7,27 @@ indicator("BBB Indicator (Session Range Breakout)", shorttitle = "BBB", overlay 
 // Inputs
 // ─────────────────────────────────────────────────────────────────────────
 grpSession = "Session Range"
-sessionString = input.session("0000-0800", "Range Session (e.g. Asian)", group = grpSession)
-sessionTZ     = input.string("UTC", "Session Timezone", group = grpSession)
-extendBoxBars = input.int(20, "Extend Range Box (bars)", minval = 0, group = grpSession)
+sessionString = input.session("0000-0800", "Range Session (e.g. Asian)", group = grpSession, display = display.data_window)
+sessionTZ     = input.string("UTC", "Session Timezone", group = grpSession, display = display.data_window)
+extendBoxBars = input.int(20, "Extend Range Box (bars)", minval = 0, group = grpSession, display = display.data_window)
 
 grpBreak = "Breakout"
-breakoutSource = input.string("Close", "Breakout Confirmed By", options = ["Close", "Wick"], group = grpBreak)
-oneSignalPerSession = input.bool(true, "Only First Breakout Per Session", group = grpBreak)
+breakoutSource = input.string("Close", "Breakout Confirmed By", options = ["Close", "Wick"], group = grpBreak, display = display.data_window)
+oneSignalPerSession = input.bool(true, "Only First Breakout Per Session", group = grpBreak, display = display.data_window)
 
 grpRisk = "Risk / Target Calculation"
-riskMethod = input.string("Range", "Stop-Loss Method", options = ["Range", "ATR", "Percentage", "Fixed Points"], group = grpRisk)
-atrLen     = input.int(14, "ATR Length", minval = 1, group = grpRisk)
-atrMult    = input.float(1.0, "ATR Multiplier", minval = 0.1, step = 0.1, group = grpRisk)
-pctValue   = input.float(0.5, "Stop-Loss Percentage (%)", minval = 0.01, step = 0.05, group = grpRisk)
-fixedPts   = input.float(50, "Stop-Loss Fixed Points", minval = 0, group = grpRisk)
-rrRatio    = input.float(2.0, "Risk : Reward Ratio", minval = 0.1, step = 0.1, group = grpRisk)
+riskMethod = input.string("Range", "Stop-Loss Method", options = ["Range", "ATR", "Percentage", "Fixed Points"], group = grpRisk, display = display.data_window)
+atrLen     = input.int(14, "ATR Length", minval = 1, group = grpRisk, display = display.data_window)
+atrMult    = input.float(1.0, "ATR Multiplier", minval = 0.1, step = 0.1, group = grpRisk, display = display.data_window)
+pctValue   = input.float(0.5, "Stop-Loss Percentage (%)", minval = 0.01, step = 0.05, group = grpRisk, display = display.data_window)
+fixedPts   = input.float(50, "Stop-Loss Fixed Points", minval = 0, group = grpRisk, display = display.data_window)
+rrRatio    = input.float(2.0, "Risk : Reward Ratio", minval = 0.1, step = 0.1, group = grpRisk, display = display.data_window)
 
 grpStyle = "Style"
-colRange   = input.color(color.new(color.blue, 85), "Range Box", group = grpStyle)
-colUp      = input.color(color.new(color.teal, 0), "Bullish Setup", group = grpStyle)
-colDown    = input.color(color.new(color.red, 0), "Bearish Setup", group = grpStyle)
-showLabels = input.bool(true, "Show Entry / SL / TP Labels", group = grpStyle)
+colRange   = input.color(color.new(color.blue, 85), "Range Box", group = grpStyle, display = display.data_window)
+colUp      = input.color(color.new(color.teal, 0), "Bullish Setup", group = grpStyle, display = display.data_window)
+colDown    = input.color(color.new(color.red, 0), "Bearish Setup", group = grpStyle, display = display.data_window)
+showPanel  = input.bool(true, "Show Signal Panel (Corner Table)", group = grpStyle, display = display.data_window)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Session range tracking
@@ -88,6 +88,12 @@ calcStop(isLong, entryPrice) =>
         stop := isLong ? entryPrice - fixedPts : entryPrice + fixedPts
     stop
 
+var table infoPanel = table.new(position.top_right, 2, 5, border_width = 1)
+var string lastSide = ""
+var float lastEntry = na
+var float lastStop = na
+var float lastTarget = na
+
 if bullBreak or bearBreak
     signalTakenThisSession := true
 
@@ -98,17 +104,27 @@ if bullBreak or bearBreak
     targetPrice = isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio
 
     lineColor = isLong ? colUp : colDown
-    entryLine  = line.new(bar_index, entryPrice, bar_index + extendBoxBars, entryPrice, color = lineColor, width = 1)
-    stopLine   = line.new(bar_index, stopPrice, bar_index + extendBoxBars, stopPrice, color = color.new(color.red, 0), style = line.style_dashed, width = 1)
-    targetLine = line.new(bar_index, targetPrice, bar_index + extendBoxBars, targetPrice, color = color.new(color.green, 0), style = line.style_dashed, width = 1)
+    line.new(bar_index, entryPrice, bar_index + extendBoxBars, entryPrice, color = lineColor, width = 1)
+    line.new(bar_index, stopPrice, bar_index + extendBoxBars, stopPrice, color = color.new(color.red, 0), style = line.style_dashed, width = 1)
+    line.new(bar_index, targetPrice, bar_index + extendBoxBars, targetPrice, color = color.new(color.green, 0), style = line.style_dashed, width = 1)
 
-    if showLabels
-        label.new(bar_index, entryPrice, (isLong ? "▲ BUY " : "▼ SELL ") + str.tostring(math.round_to_mintick(entryPrice)) +
-             "\nSL: " + str.tostring(math.round_to_mintick(stopPrice)) +
-             "\nTP: " + str.tostring(math.round_to_mintick(targetPrice)) +
-             "\nR:R 1:" + str.tostring(rrRatio),
-             style = isLong ? label.style_label_up : label.style_label_down,
-             color = lineColor, textcolor = color.white, size = size.small)
+    lastSide := isLong ? "BUY" : "SELL"
+    lastEntry := entryPrice
+    lastStop := stopPrice
+    lastTarget := targetPrice
+
+if showPanel and lastSide != ""
+    sideColor = lastSide == "BUY" ? colUp : colDown
+    table.cell(infoPanel, 0, 0, "BBB Signal", text_color = color.white, bgcolor = color.new(color.gray, 0), text_size = size.small)
+    table.cell(infoPanel, 1, 0, lastSide, text_color = color.white, bgcolor = sideColor, text_size = size.small)
+    table.cell(infoPanel, 0, 1, "Entry", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
+    table.cell(infoPanel, 1, 1, str.tostring(math.round_to_mintick(lastEntry)), text_color = color.white, bgcolor = color.new(color.black, 80), text_size = size.small)
+    table.cell(infoPanel, 0, 2, "Stop Loss", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
+    table.cell(infoPanel, 1, 2, str.tostring(math.round_to_mintick(lastStop)), text_color = color.red, bgcolor = color.new(color.black, 80), text_size = size.small)
+    table.cell(infoPanel, 0, 3, "Target", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
+    table.cell(infoPanel, 1, 3, str.tostring(math.round_to_mintick(lastTarget)), text_color = color.green, bgcolor = color.new(color.black, 80), text_size = size.small)
+    table.cell(infoPanel, 0, 4, "R : R", text_color = color.gray, bgcolor = color.new(color.black, 80), text_size = size.small)
+    table.cell(infoPanel, 1, 4, "1 : " + str.tostring(rrRatio), text_color = color.white, bgcolor = color.new(color.black, 80), text_size = size.small)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Plots & alerts
