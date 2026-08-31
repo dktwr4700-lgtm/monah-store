@@ -14,6 +14,13 @@ extendBoxBars = input.int(20, "Extend Range Box (bars)", minval = 0, group = grp
 grpBreak = "Breakout"
 breakoutSource = input.string("Close", "Breakout Confirmed By", options = ["Close", "Wick"], group = grpBreak, display = display.data_window)
 oneSignalPerSession = input.bool(true, "Only First Breakout Per Session", group = grpBreak, display = display.data_window)
+confirmBars = input.int(2, "Confirmation Bars (consecutive closes beyond level)", minval = 1, group = grpBreak, display = display.data_window)
+
+grpFilter = "Signal Filters"
+useTrendFilter  = input.bool(true, "Only Trade With the Daily Trend", group = grpFilter, display = display.data_window)
+trendMALen      = input.int(200, "Daily MA Length", minval = 1, group = grpFilter, display = display.data_window)
+useVolFilter    = input.bool(true, "Require a Wide-Enough Session Range", group = grpFilter, display = display.data_window)
+minRangeATRMult = input.float(1.0, "Min Session Range (x ATR)", minval = 0.1, step = 0.1, group = grpFilter, display = display.data_window)
 
 grpRisk = "Risk / Target Calculation"
 riskMethod = input.string("Range", "Stop-Loss Method", options = ["Range", "ATR", "Percentage", "Fixed Points"], group = grpRisk, display = display.data_window)
@@ -68,17 +75,31 @@ if rangeReady and not na(rangeBox)
     box.set_right(rangeBox, bar_index)
 
 // ─────────────────────────────────────────────────────────────────────────
-// Breakout detection
+// Filters: daily trend direction + minimum session-range volatility
 // ─────────────────────────────────────────────────────────────────────────
 atrVal = ta.atr(atrLen)
+rangeWidth = rangeHigh - rangeLow
 
+dailyMA = request.security(syminfo.tickerid, "D", ta.sma(close, trendMALen)[1], lookahead = barmerge.lookahead_off)
+
+trendUpOK   = not useTrendFilter or close > dailyMA
+trendDownOK = not useTrendFilter or close < dailyMA
+volOK       = not useVolFilter or rangeWidth >= atrVal * minRangeATRMult
+
+// ─────────────────────────────────────────────────────────────────────────
+// Breakout detection — requires `confirmBars` consecutive closes beyond
+// the session range, not just a single-bar poke through the level.
+// ─────────────────────────────────────────────────────────────────────────
 bullBreakSrc = breakoutSource == "Close" ? close : high
 bearBreakSrc = breakoutSource == "Close" ? close : low
 
+bullCount = bullBreakSrc > rangeHigh ? nz(bullCount[1]) + 1 : 0
+bearCount = bearBreakSrc < rangeLow ? nz(bearCount[1]) + 1 : 0
+
 canSignal = rangeReady and not inSession and (not oneSignalPerSession or not signalTakenThisSession)
 
-bullBreak = canSignal and bullBreakSrc > rangeHigh and bullBreakSrc[1] <= rangeHigh
-bearBreak = canSignal and bearBreakSrc < rangeLow and bearBreakSrc[1] >= rangeLow
+bullBreak = canSignal and bullCount == confirmBars and trendUpOK and volOK
+bearBreak = canSignal and bearCount == confirmBars and trendDownOK and volOK
 
 calcStop(isLong, entryPrice) =>
     float stop = na
@@ -125,6 +146,7 @@ if bullBreak or bearBreak
 // ─────────────────────────────────────────────────────────────────────────
 // Background & alerts
 // ─────────────────────────────────────────────────────────────────────────
+plot(useTrendFilter ? dailyMA : na, title = "Daily Trend MA", color = color.new(color.gray, 40), linewidth = 1)
 bgcolor(inSession ? colRange : na, title = "Session Highlight")
 
 alertcondition(bullBreak, title = "BBB Bullish Breakout", message = "BBB: Bullish breakout above session range high")
