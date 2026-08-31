@@ -30,7 +30,8 @@ grpStyle = "Style"
 colRange   = input.color(color.new(color.blue, 85), "Range Box", group = grpStyle, display = display.data_window)
 colUp      = input.color(color.new(color.teal, 0), "Bullish Setup", group = grpStyle, display = display.data_window)
 colDown    = input.color(color.new(color.red, 0), "Bearish Setup", group = grpStyle, display = display.data_window)
-showTags   = input.bool(true, "Show Entry / SL / TP Price Tags on Chart", group = grpStyle, display = display.data_window)
+showTags   = input.bool(true, "Show SL / TP Tags on Chart", group = grpStyle, display = display.data_window)
+tagOffsetBars = input.int(3, "Tag Offset (bars after breakout)", minval = 1, group = grpStyle, display = display.data_window)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Session range tracking
@@ -102,27 +103,24 @@ if bullBreak or bearBreak
          (isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints) :
          (isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio)
 
-    lineColor = isLong ? colUp : colDown
-    lineEnd = bar_index + extendBoxBars
-
-    line.new(bar_index, entryPrice, lineEnd, entryPrice, color = lineColor, width = 1)
-    line.new(bar_index, stopPrice, lineEnd, stopPrice, color = color.new(color.red, 0), style = line.style_dashed, width = 1)
-    line.new(bar_index, targetPrice, lineEnd, targetPrice, color = color.new(color.green, 0), style = line.style_dashed, width = 1)
+    sideColor = isLong ? colUp : colDown
+    tagBar = bar_index + tagOffsetBars
 
     // Small BUY/SELL tag right on the breakout bar, offset above/below so it doesn't sit on the candle body.
     label.new(bar_index, isLong ? low : high, isLong ? "BUY" : "SELL",
          yloc = isLong ? yloc.belowbar : yloc.abovebar,
          style = isLong ? label.style_label_up : label.style_label_down,
-         color = lineColor, textcolor = color.white, size = size.small)
+         color = sideColor, textcolor = color.white, size = size.small)
 
     if showTags
-        // Price tags anchored at the right end of each line, away from the candles, one per price level.
-        label.new(lineEnd, entryPrice, "Entry " + str.tostring(math.round_to_mintick(entryPrice)),
-             style = label.style_label_left, color = lineColor, textcolor = color.white, size = size.small)
-        label.new(lineEnd, stopPrice, "SL " + str.tostring(math.round_to_mintick(stopPrice)),
-             style = label.style_label_left, color = color.new(color.red, 0), textcolor = color.white, size = size.small)
-        label.new(lineEnd, targetPrice, "TP " + str.tostring(math.round_to_mintick(targetPrice)),
-             style = label.style_label_left, color = color.new(color.green, 0), textcolor = color.white, size = size.small)
+        // Short stub + a small tag fixed a few bars after the breakout — it stays put, it never
+        // extends further as new bars form.
+        line.new(bar_index, stopPrice, tagBar, stopPrice, color = colDown, style = line.style_dashed, width = 1)
+        line.new(bar_index, targetPrice, tagBar, targetPrice, color = colUp, style = line.style_dashed, width = 1)
+        label.new(tagBar, stopPrice, "🛑 SL " + str.tostring(math.round_to_mintick(stopPrice)),
+             style = label.style_label_left, color = colDown, textcolor = color.white, size = size.small)
+        label.new(tagBar, targetPrice, "🎯 TP " + str.tostring(math.round_to_mintick(targetPrice)),
+             style = label.style_label_left, color = colUp, textcolor = color.white, size = size.small)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Background & alerts
