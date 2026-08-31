@@ -38,6 +38,11 @@ targetMethod  = input.string("R:R Ratio", "Take-Profit Method", options = ["Fixe
 tpFixedPoints = input.float(100, "Take-Profit Fixed Points", minval = 0, group = grpRisk)
 rrRatio       = input.float(1.5, "Risk : Reward Ratio (used if method = R:R Ratio)", minval = 0.1, step = 0.1, group = grpRisk)
 
+grpTrail = "Trailing Stop"
+useTrailingStop      = input.bool(true, "Use Trailing Stop Instead of Fixed TP", group = grpTrail)
+trailActivationATRMult = input.float(1.0, "Activate Trail After (x ATR profit)", minval = 0, step = 0.1, group = grpTrail)
+trailDistanceATRMult   = input.float(2.0, "Trail Distance Behind Peak (x ATR)", minval = 0.1, step = 0.1, group = grpTrail)
+
 grpBacktest = "Backtest Realism"
 slippageTicks = input.int(2, "Slippage (ticks)", minval = 0, group = grpBacktest, tooltip = "Set this in Properties > Slippage too — this input is a reminder, TradingView reads slippage from Properties, not from a script input.")
 onlyOneOpenTrade = input.bool(true, "Skip New Signal If a Trade Is Still Open", group = grpBacktest)
@@ -123,12 +128,23 @@ if bullBreak or bearBreak
          (isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints) :
          (isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio)
 
+    // strategy.exit's trail_points/trail_offset are specified in ticks, so
+    // convert the ATR-based price distances into ticks here.
+    trailPointsTicks = (atrVal * trailActivationATRMult) / syminfo.mintick
+    trailOffsetTicks = (atrVal * trailDistanceATRMult) / syminfo.mintick
+
     if isLong
         strategy.entry("Long", strategy.long)
-        strategy.exit("Long Exit", "Long", stop = stopPrice, limit = targetPrice)
+        if useTrailingStop
+            strategy.exit("Long Exit", "Long", stop = stopPrice, trail_points = trailPointsTicks, trail_offset = trailOffsetTicks)
+        else
+            strategy.exit("Long Exit", "Long", stop = stopPrice, limit = targetPrice)
     else
         strategy.entry("Short", strategy.short)
-        strategy.exit("Short Exit", "Short", stop = stopPrice, limit = targetPrice)
+        if useTrailingStop
+            strategy.exit("Short Exit", "Short", stop = stopPrice, trail_points = trailPointsTicks, trail_offset = trailOffsetTicks)
+        else
+            strategy.exit("Short Exit", "Short", stop = stopPrice, limit = targetPrice)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Visuals (kept minimal — this file is for the Strategy Tester, not for
