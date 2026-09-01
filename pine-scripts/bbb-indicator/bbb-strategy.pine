@@ -4,7 +4,7 @@
 // can be run through TradingView's Strategy Tester for real win-rate /
 // drawdown numbers instead of guessed performance claims.
 //@version=5
-strategy("BBB Strategy (Session Range Breakout)", shorttitle = "BBB-Strat", overlay = true,
+strategy("BBB Strategy V3 - Trailing Stop Test", shorttitle = "BBB-V3-TRAIL", overlay = true,
      default_qty_type = strategy.percent_of_equity, default_qty_value = 100,
      commission_type = strategy.commission.percent, commission_value = 0.05,
      process_orders_on_close = true, calc_on_every_tick = false)
