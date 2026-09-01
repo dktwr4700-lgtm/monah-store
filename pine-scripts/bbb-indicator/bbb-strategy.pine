@@ -4,48 +4,88 @@
 // can be run through TradingView's Strategy Tester for real win-rate /
 // drawdown numbers instead of guessed performance claims.
 //@version=5
-strategy("BBB Strategy V3 - Trailing Stop Test", shorttitle = "BBB-V3-TRAIL", overlay = true,
-     default_qty_type = strategy.percent_of_equity, default_qty_value = 100,
-     commission_type = strategy.commission.percent, commission_value = 0.05,
-     process_orders_on_close = true, calc_on_every_tick = false)
+strategy(
+     "BBB Strategy V3 - Trailing Stop Test",
+     shorttitle = "BBB-V3-TRAIL",
+     overlay = true,
+     default_qty_type = strategy.percent_of_equity,
+     default_qty_value = 100,
+     commission_type = strategy.commission.percent,
+     commission_value = 0.05,
+     process_orders_on_close = true,
+     calc_on_every_tick = false)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Inputs
 // ─────────────────────────────────────────────────────────────────────────
 grpSession = "Session Range"
-sessionString = input.session("0000-0800", "Range Session (e.g. Asian)", group = grpSession)
-sessionTZ     = input.string("UTC", "Session Timezone", group = grpSession)
+sessionString = input.session(
+     "0000-0800", "Range Session (e.g. Asian)", group = grpSession)
+sessionTZ = input.string(
+     "UTC", "Session Timezone", group = grpSession)
 
 grpBreak = "Breakout"
-breakoutSource = input.string("Close", "Breakout Confirmed By", options = ["Close", "Wick"], group = grpBreak)
-oneSignalPerSession = input.bool(true, "Only First Breakout Per Session", group = grpBreak)
-confirmBars = input.int(2, "Confirmation Bars (consecutive closes beyond level)", minval = 1, group = grpBreak)
+breakoutSource = input.string(
+     "Close", "Breakout Confirmed By",
+     options = ["Close", "Wick"], group = grpBreak)
+oneSignalPerSession = input.bool(
+     true, "Only First Breakout Per Session", group = grpBreak)
+confirmBars = input.int(
+     2, "Confirmation Bars (consecutive closes beyond level)",
+     minval = 1, group = grpBreak)
 
 grpFilter = "Signal Filters"
-useTrendFilter  = input.bool(true, "Only Trade With the Daily Trend", group = grpFilter)
-trendMALen      = input.int(200, "Daily MA Length", minval = 1, group = grpFilter)
-useVolFilter    = input.bool(true, "Require a Wide-Enough Session Range", group = grpFilter)
-minRangeATRMult = input.float(1.0, "Min Session Range (x ATR)", minval = 0.1, step = 0.1, group = grpFilter)
+useTrendFilter = input.bool(
+     true, "Only Trade With the Daily Trend", group = grpFilter)
+trendMALen = input.int(
+     200, "Daily MA Length", minval = 1, group = grpFilter)
+useVolFilter = input.bool(
+     true, "Require a Wide-Enough Session Range", group = grpFilter)
+minRangeATRMult = input.float(
+     1.0, "Min Session Range (x ATR)",
+     minval = 0.1, step = 0.1, group = grpFilter)
 
 grpRisk = "Risk / Target Calculation"
-riskMethod = input.string("Range", "Stop-Loss Method", options = ["Range", "ATR", "Percentage", "Fixed Points"], group = grpRisk)
-atrLen     = input.int(14, "ATR Length", minval = 1, group = grpRisk)
-atrMult    = input.float(1.0, "ATR Multiplier", minval = 0.1, step = 0.1, group = grpRisk)
-pctValue   = input.float(0.5, "Stop-Loss Percentage (%)", minval = 0.01, step = 0.05, group = grpRisk)
-fixedPts   = input.float(50, "Stop-Loss Fixed Points", minval = 0, group = grpRisk)
+riskMethod = input.string(
+     "Range", "Stop-Loss Method",
+     options = ["Range", "ATR", "Percentage", "Fixed Points"],
+     group = grpRisk)
+atrLen = input.int(
+     14, "ATR Length", minval = 1, group = grpRisk)
+atrMult = input.float(
+     1.0, "ATR Multiplier", minval = 0.1, step = 0.1, group = grpRisk)
+pctValue = input.float(
+     0.5, "Stop-Loss Percentage (%)",
+     minval = 0.01, step = 0.05, group = grpRisk)
+fixedPts = input.float(
+     50, "Stop-Loss Fixed Points", minval = 0, group = grpRisk)
 
-targetMethod  = input.string("R:R Ratio", "Take-Profit Method", options = ["Fixed Points", "R:R Ratio"], group = grpRisk)
-tpFixedPoints = input.float(100, "Take-Profit Fixed Points", minval = 0, group = grpRisk)
-rrRatio       = input.float(1.5, "Risk : Reward Ratio (used if method = R:R Ratio)", minval = 0.1, step = 0.1, group = grpRisk)
+targetMethod = input.string(
+     "R:R Ratio", "Take-Profit Method",
+     options = ["Fixed Points", "R:R Ratio"], group = grpRisk)
+tpFixedPoints = input.float(
+     100, "Take-Profit Fixed Points", minval = 0, group = grpRisk)
+rrRatio = input.float(
+     1.5, "Risk Reward Ratio",
+     minval = 0.1, step = 0.1, group = grpRisk)
 
 grpTrail = "Trailing Stop"
-useTrailingStop      = input.bool(true, "Use Trailing Stop Instead of Fixed TP", group = grpTrail)
-trailActivationATRMult = input.float(1.0, "Activate Trail After (x ATR profit)", minval = 0, step = 0.1, group = grpTrail)
-trailDistanceATRMult   = input.float(2.0, "Trail Distance Behind Peak (x ATR)", minval = 0.1, step = 0.1, group = grpTrail)
+useTrailingStop = input.bool(
+     true, "Use Trailing Stop Instead of Fixed TP", group = grpTrail)
+trailActivationATRMult = input.float(
+     1.0, "Activate Trail After (x ATR profit)",
+     minval = 0, step = 0.1, group = grpTrail)
+trailDistanceATRMult = input.float(
+     2.0, "Trail Distance Behind Peak (x ATR)",
+     minval = 0.1, step = 0.1, group = grpTrail)
 
 grpBacktest = "Backtest Realism"
-slippageTicks = input.int(2, "Slippage (ticks)", minval = 0, group = grpBacktest, tooltip = "Set this in Properties > Slippage too — this input is a reminder, TradingView reads slippage from Properties, not from a script input.")
-onlyOneOpenTrade = input.bool(true, "Skip New Signal If a Trade Is Still Open", group = grpBacktest)
+slippageTicks = input.int(
+     2, "Slippage Ticks (set in Properties too)",
+     minval = 0, group = grpBacktest)
+onlyOneOpenTrade = input.bool(
+     true, "Skip New Signal If a Trade Is Still Open",
+     group = grpBacktest)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Session range tracking
@@ -55,9 +95,9 @@ newSession = inSession and not inSession[1]
 sessionEnded = not inSession and inSession[1]
 
 var float rangeHigh = na
-var float rangeLow  = na
-var bool  rangeReady = false
-var bool  signalTakenThisSession = false
+var float rangeLow = na
+var bool rangeReady = false
+var bool signalTakenThisSession = false
 
 if newSession
     rangeHigh := high
@@ -78,11 +118,14 @@ if sessionEnded
 atrVal = ta.atr(atrLen)
 rangeWidth = rangeHigh - rangeLow
 
-dailyMA = request.security(syminfo.tickerid, "D", ta.sma(close, trendMALen)[1], lookahead = barmerge.lookahead_off)
+dailyMA = request.security(
+     syminfo.tickerid, "D",
+     ta.sma(close, trendMALen)[1],
+     lookahead = barmerge.lookahead_off)
 
-trendUpOK   = not useTrendFilter or close > dailyMA
+trendUpOK = not useTrendFilter or close > dailyMA
 trendDownOK = not useTrendFilter or close < dailyMA
-volOK       = not useVolFilter or rangeWidth >= atrVal * minRangeATRMult
+volOK = not useVolFilter or rangeWidth >= atrVal * minRangeATRMult
 
 // ─────────────────────────────────────────────────────────────────────────
 // Breakout detection — requires `confirmBars` consecutive closes beyond
@@ -97,7 +140,9 @@ bullCount := bullBreakSrc > rangeHigh ? bullCount + 1 : 0
 bearCount := bearBreakSrc < rangeLow ? bearCount + 1 : 0
 
 flat = strategy.position_size == 0
-canSignal = rangeReady and not inSession and (not oneSignalPerSession or not signalTakenThisSession) and (not onlyOneOpenTrade or flat)
+skipGate = not onlyOneOpenTrade or flat
+sessionGate = not oneSignalPerSession or not signalTakenThisSession
+canSignal = rangeReady and not inSession and sessionGate and skipGate
 
 bullBreak = canSignal and bullCount == confirmBars and trendUpOK and volOK
 bearBreak = canSignal and bearCount == confirmBars and trendDownOK and volOK
@@ -114,6 +159,15 @@ calcStop(isLong, entryPrice) =>
         stop := isLong ? entryPrice - fixedPts : entryPrice + fixedPts
     stop
 
+calcTarget(isLong, entryPrice, stopPrice) =>
+    riskDist = math.abs(entryPrice - stopPrice)
+    float target = na
+    if targetMethod == "Fixed Points"
+        target := isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints
+    else
+        target := isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio
+    target
+
 // ─────────────────────────────────────────────────────────────────────────
 // Orders
 // ─────────────────────────────────────────────────────────────────────────
@@ -123,10 +177,7 @@ if bullBreak or bearBreak
     isLong = bullBreak
     entryPrice = close
     stopPrice = calcStop(isLong, entryPrice)
-    riskDist = math.abs(entryPrice - stopPrice)
-    targetPrice = targetMethod == "Fixed Points" ?
-         (isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints) :
-         (isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio)
+    targetPrice = calcTarget(isLong, entryPrice, stopPrice)
 
     // strategy.exit's trail_points/trail_offset are specified in ticks, so
     // convert the ATR-based price distances into ticks here.
@@ -136,21 +187,45 @@ if bullBreak or bearBreak
     if isLong
         strategy.entry("Long", strategy.long)
         if useTrailingStop
-            strategy.exit("Long Exit", "Long", stop = stopPrice, trail_points = trailPointsTicks, trail_offset = trailOffsetTicks)
+            strategy.exit(
+                 "Long Exit", "Long",
+                 stop = stopPrice,
+                 trail_points = trailPointsTicks,
+                 trail_offset = trailOffsetTicks)
         else
-            strategy.exit("Long Exit", "Long", stop = stopPrice, limit = targetPrice)
+            strategy.exit(
+                 "Long Exit", "Long",
+                 stop = stopPrice, limit = targetPrice)
     else
         strategy.entry("Short", strategy.short)
         if useTrailingStop
-            strategy.exit("Short Exit", "Short", stop = stopPrice, trail_points = trailPointsTicks, trail_offset = trailOffsetTicks)
+            strategy.exit(
+                 "Short Exit", "Short",
+                 stop = stopPrice,
+                 trail_points = trailPointsTicks,
+                 trail_offset = trailOffsetTicks)
         else
-            strategy.exit("Short Exit", "Short", stop = stopPrice, limit = targetPrice)
+            strategy.exit(
+                 "Short Exit", "Short",
+                 stop = stopPrice, limit = targetPrice)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Visuals (kept minimal — this file is for the Strategy Tester, not for
 // day-to-day chart reading; use bbb-indicator.pine for that)
 // ─────────────────────────────────────────────────────────────────────────
-plot(useTrendFilter ? dailyMA : na, title = "Daily Trend MA", color = color.new(color.gray, 40), linewidth = 1)
-plotshape(bullBreak, title = "Buy Signal", style = shape.triangleup, location = location.belowbar, color = color.new(color.teal, 0), size = size.small)
-plotshape(bearBreak, title = "Sell Signal", style = shape.triangledown, location = location.abovebar, color = color.new(color.red, 0), size = size.small)
-bgcolor(inSession ? color.new(color.blue, 90) : na, title = "Session Highlight")
+plot(
+     useTrendFilter ? dailyMA : na,
+     title = "Daily Trend MA",
+     color = color.new(color.gray, 40),
+     linewidth = 1)
+plotshape(
+     bullBreak, title = "Buy Signal",
+     style = shape.triangleup, location = location.belowbar,
+     color = color.new(color.teal, 0), size = size.small)
+plotshape(
+     bearBreak, title = "Sell Signal",
+     style = shape.triangledown, location = location.abovebar,
+     color = color.new(color.red, 0), size = size.small)
+bgcolor(
+     inSession ? color.new(color.blue, 90) : na,
+     title = "Session Highlight")
