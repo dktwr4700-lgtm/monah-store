@@ -1,44 +1,106 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // © monah-store — original implementation, not affiliated with or copied from any invite-only script.
 //@version=5
-indicator("BBB Indicator (Session Range Breakout)", shorttitle = "BBB", overlay = true, max_boxes_count = 50, max_lines_count = 500, max_labels_count = 500)
+indicator(
+     "BBB Indicator (Session Range Breakout + Retest)",
+     shorttitle = "BBB",
+     overlay = true,
+     max_boxes_count = 50,
+     max_lines_count = 500,
+     max_labels_count = 500)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Inputs
 // ─────────────────────────────────────────────────────────────────────────
 grpSession = "Session Range"
-sessionString = input.session("0000-0800", "Range Session (e.g. Asian)", group = grpSession, display = display.data_window)
-sessionTZ     = input.string("UTC", "Session Timezone", group = grpSession, display = display.data_window)
-extendBoxBars = input.int(20, "Extend Range Box (bars)", minval = 0, group = grpSession, display = display.data_window)
+sessionString = input.session(
+     "0000-0800", "Range Session (e.g. Asian)",
+     group = grpSession, display = display.data_window)
+sessionTZ = input.string(
+     "UTC", "Session Timezone",
+     group = grpSession, display = display.data_window)
+extendBoxBars = input.int(
+     20, "Extend Range Box (bars)", minval = 0,
+     group = grpSession, display = display.data_window)
 
-grpBreak = "Breakout"
-breakoutSource = input.string("Close", "Breakout Confirmed By", options = ["Close", "Wick"], group = grpBreak, display = display.data_window)
-oneSignalPerSession = input.bool(true, "Only First Breakout Per Session", group = grpBreak, display = display.data_window)
-confirmBars = input.int(2, "Confirmation Bars (consecutive closes beyond level)", minval = 1, group = grpBreak, display = display.data_window)
+grpBreak = "Breakout + Retest"
+breakoutSource = input.string(
+     "Close", "Breakout Confirmed By",
+     options = ["Close", "Wick"],
+     group = grpBreak, display = display.data_window)
+oneSignalPerSession = input.bool(
+     true, "Only First Signal Per Session",
+     group = grpBreak, display = display.data_window)
+retestTimeoutBars = input.int(
+     15, "Retest Timeout (bars)", minval = 1,
+     group = grpBreak, display = display.data_window)
+retestToleranceATRMult = input.float(
+     0.3, "Retest Touch Tolerance (x ATR)",
+     minval = 0, step = 0.1,
+     group = grpBreak, display = display.data_window)
 
 grpFilter = "Signal Filters"
-useTrendFilter  = input.bool(true, "Only Trade With the Daily Trend", group = grpFilter, display = display.data_window)
-trendMALen      = input.int(200, "Daily MA Length", minval = 1, group = grpFilter, display = display.data_window)
-useVolFilter    = input.bool(true, "Require a Wide-Enough Session Range", group = grpFilter, display = display.data_window)
-minRangeATRMult = input.float(1.0, "Min Session Range (x ATR)", minval = 0.1, step = 0.1, group = grpFilter, display = display.data_window)
+useTrendFilter = input.bool(
+     true, "Only Trade With the Daily Trend",
+     group = grpFilter, display = display.data_window)
+trendMALen = input.int(
+     200, "Daily MA Length", minval = 1,
+     group = grpFilter, display = display.data_window)
+useVolFilter = input.bool(
+     true, "Require a Wide-Enough Session Range",
+     group = grpFilter, display = display.data_window)
+minRangeATRMult = input.float(
+     1.0, "Min Session Range (x ATR)",
+     minval = 0.1, step = 0.1,
+     group = grpFilter, display = display.data_window)
 
 grpRisk = "Risk / Target Calculation"
-riskMethod = input.string("Range", "Stop-Loss Method", options = ["Range", "ATR", "Percentage", "Fixed Points"], group = grpRisk, display = display.data_window)
-atrLen     = input.int(14, "ATR Length", minval = 1, group = grpRisk, display = display.data_window)
-atrMult    = input.float(1.0, "ATR Multiplier", minval = 0.1, step = 0.1, group = grpRisk, display = display.data_window)
-pctValue   = input.float(0.5, "Stop-Loss Percentage (%)", minval = 0.01, step = 0.05, group = grpRisk, display = display.data_window)
-fixedPts   = input.float(50, "Stop-Loss Fixed Points", minval = 0, group = grpRisk, display = display.data_window)
+riskMethod = input.string(
+     "Range", "Stop-Loss Method",
+     options = ["Range", "ATR", "Percentage", "Fixed Points"],
+     group = grpRisk, display = display.data_window)
+atrLen = input.int(
+     14, "ATR Length", minval = 1,
+     group = grpRisk, display = display.data_window)
+atrMult = input.float(
+     1.0, "ATR Multiplier", minval = 0.1, step = 0.1,
+     group = grpRisk, display = display.data_window)
+pctValue = input.float(
+     0.5, "Stop-Loss Percentage (%)",
+     minval = 0.01, step = 0.05,
+     group = grpRisk, display = display.data_window)
+fixedPts = input.float(
+     50, "Stop-Loss Fixed Points", minval = 0,
+     group = grpRisk, display = display.data_window)
 
-targetMethod  = input.string("R:R Ratio", "Take-Profit Method", options = ["Fixed Points", "R:R Ratio"], group = grpRisk, display = display.data_window)
-tpFixedPoints = input.float(100, "Take-Profit Fixed Points", minval = 0, group = grpRisk, display = display.data_window)
-rrRatio       = input.float(1.5, "Risk : Reward Ratio (used if method = R:R Ratio)", minval = 0.1, step = 0.1, group = grpRisk, display = display.data_window)
+targetMethod = input.string(
+     "R:R Ratio", "Take-Profit Method",
+     options = ["Fixed Points", "R:R Ratio"],
+     group = grpRisk, display = display.data_window)
+tpFixedPoints = input.float(
+     100, "Take-Profit Fixed Points", minval = 0,
+     group = grpRisk, display = display.data_window)
+rrRatio = input.float(
+     1.5, "Risk Reward Ratio",
+     minval = 0.1, step = 0.1,
+     group = grpRisk, display = display.data_window)
 
 grpStyle = "Style"
-colRange   = input.color(color.new(color.blue, 85), "Range Box", group = grpStyle, display = display.data_window)
-colUp      = input.color(color.new(color.teal, 0), "Bullish Setup", group = grpStyle, display = display.data_window)
-colDown    = input.color(color.new(color.red, 0), "Bearish Setup", group = grpStyle, display = display.data_window)
-showTags   = input.bool(true, "Show SL / TP Tags on Chart", group = grpStyle, display = display.data_window)
-tagOffsetBars = input.int(3, "Tag Offset (bars after breakout)", minval = 1, group = grpStyle, display = display.data_window)
+colRange = input.color(
+     color.new(color.blue, 85), "Range Box",
+     group = grpStyle, display = display.data_window)
+colUp = input.color(
+     color.new(color.teal, 0), "Bullish Setup",
+     group = grpStyle, display = display.data_window)
+colDown = input.color(
+     color.new(color.red, 0), "Bearish Setup",
+     group = grpStyle, display = display.data_window)
+showTags = input.bool(
+     true, "Show SL / TP Tags on Chart",
+     group = grpStyle, display = display.data_window)
+tagOffsetBars = input.int(
+     3, "Tag Offset (bars after signal)", minval = 1,
+     group = grpStyle, display = display.data_window)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Session range tracking
@@ -48,11 +110,11 @@ newSession = inSession and not inSession[1]
 sessionEnded = not inSession and inSession[1]
 
 var float rangeHigh = na
-var float rangeLow  = na
-var int   rangeStartBar = na
-var box   rangeBox = na
-var bool  rangeReady = false
-var bool  signalTakenThisSession = false
+var float rangeLow = na
+var int rangeStartBar = na
+var box rangeBox = na
+var bool rangeReady = false
+var bool signalTakenThisSession = false
 
 if newSession
     rangeHigh := high
@@ -69,7 +131,10 @@ if sessionEnded
     rangeReady := true
     if not na(rangeBox)
         box.delete(rangeBox)
-    rangeBox := box.new(rangeStartBar, rangeHigh, bar_index + extendBoxBars, rangeLow, border_color = color.new(color.blue, 40), bgcolor = colRange, extend = extend.none)
+    rangeBox := box.new(
+         rangeStartBar, rangeHigh, bar_index + extendBoxBars, rangeLow,
+         border_color = color.new(color.blue, 40),
+         bgcolor = colRange, extend = extend.none)
 
 if rangeReady and not na(rangeBox)
     box.set_right(rangeBox, bar_index)
@@ -80,33 +145,75 @@ if rangeReady and not na(rangeBox)
 atrVal = ta.atr(atrLen)
 rangeWidth = rangeHigh - rangeLow
 
-dailyMA = request.security(syminfo.tickerid, "D", ta.sma(close, trendMALen)[1], lookahead = barmerge.lookahead_off)
+dailyMA = request.security(
+     syminfo.tickerid, "D",
+     ta.sma(close, trendMALen)[1],
+     lookahead = barmerge.lookahead_off)
 
-trendUpOK   = not useTrendFilter or close > dailyMA
+trendUpOK = not useTrendFilter or close > dailyMA
 trendDownOK = not useTrendFilter or close < dailyMA
-volOK       = not useVolFilter or rangeWidth >= atrVal * minRangeATRMult
+volOK = not useVolFilter or rangeWidth >= atrVal * minRangeATRMult
 
 // ─────────────────────────────────────────────────────────────────────────
-// Breakout detection — requires `confirmBars` consecutive closes beyond
-// the session range, not just a single-bar poke through the level.
+// Breakout + retest state machine.
+// state: 0 = idle, 1 = broke up / waiting retest, 2 = retested up / waiting
+// confirm, -1 = broke down / waiting retest, -2 = retested down / waiting
+// confirm. A signal only fires after price pulls back to re-touch the
+// broken level and then resumes in the breakout direction — this filters
+// out breakouts that never look back and often reverse quickly.
 // ─────────────────────────────────────────────────────────────────────────
 bullBreakSrc = breakoutSource == "Close" ? close : high
 bearBreakSrc = breakoutSource == "Close" ? close : low
 
-var int bullCount = 0
-var int bearCount = 0
-bullCount := bullBreakSrc > rangeHigh ? bullCount + 1 : 0
-bearCount := bearBreakSrc < rangeLow ? bearCount + 1 : 0
+canStart = rangeReady and not inSession
+     and (not oneSignalPerSession or not signalTakenThisSession)
 
-canSignal = rangeReady and not inSession and (not oneSignalPerSession or not signalTakenThisSession)
+initialBullBreak = canStart and bullBreakSrc > rangeHigh
+     and bullBreakSrc[1] <= rangeHigh
+initialBearBreak = canStart and bearBreakSrc < rangeLow
+     and bearBreakSrc[1] >= rangeLow
 
-bullBreak = canSignal and bullCount == confirmBars and trendUpOK and volOK
-bearBreak = canSignal and bearCount == confirmBars and trendDownOK and volOK
+var int state = 0
+var float level = na
+var float oppositeLevel = na
+var int stateBar = na
 
-calcStop(isLong, entryPrice) =>
+if state == 0 and initialBullBreak
+    state := 1
+    level := rangeHigh
+    oppositeLevel := rangeLow
+    stateBar := bar_index
+
+if state == 0 and initialBearBreak
+    state := -1
+    level := rangeLow
+    oppositeLevel := rangeHigh
+    stateBar := bar_index
+
+timedOut = not na(stateBar) and (bar_index - stateBar > retestTimeoutBars)
+
+// Cancel a pending long setup if it times out or fully reverses back
+// through the whole session range; likewise for a pending short.
+if (state == 1 or state == 2) and (timedOut or close < oppositeLevel)
+    state := 0
+if (state == -1 or state == -2) and (timedOut or close > oppositeLevel)
+    state := 0
+
+if state == 1 and low <= level + retestToleranceATRMult * atrVal
+    state := 2
+    stateBar := bar_index
+
+if state == -1 and high >= level - retestToleranceATRMult * atrVal
+    state := -2
+    stateBar := bar_index
+
+bullBreak = state == 2 and close > level and trendUpOK and volOK
+bearBreak = state == -2 and close < level and trendDownOK and volOK
+
+calcStop(isLong, entryPrice, oppLevel) =>
     float stop = na
     if riskMethod == "Range"
-        stop := isLong ? rangeLow : rangeHigh
+        stop := oppLevel
     else if riskMethod == "ATR"
         stop := isLong ? entryPrice - atrVal * atrMult : entryPrice + atrVal * atrMult
     else if riskMethod == "Percentage"
@@ -117,10 +224,11 @@ calcStop(isLong, entryPrice) =>
 
 if bullBreak or bearBreak
     signalTakenThisSession := true
+    state := 0
 
     isLong = bullBreak
     entryPrice = close
-    stopPrice = calcStop(isLong, entryPrice)
+    stopPrice = calcStop(isLong, entryPrice, oppositeLevel)
     riskDist = math.abs(entryPrice - stopPrice)
     targetPrice = targetMethod == "Fixed Points" ?
          (isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints) :
@@ -129,27 +237,35 @@ if bullBreak or bearBreak
     sideColor = isLong ? colUp : colDown
     tagBar = bar_index + tagOffsetBars
 
-    // Small BUY/SELL tag right on the breakout bar, offset above/below so it doesn't sit on the candle body.
+    // Small BUY/SELL tag right on the signal bar, offset above/below so
+    // it doesn't sit on the candle body.
     label.new(bar_index, isLong ? low : high, isLong ? "BUY" : "SELL",
          yloc = isLong ? yloc.belowbar : yloc.abovebar,
          style = isLong ? label.style_label_up : label.style_label_down,
          color = sideColor, textcolor = color.white, size = size.small)
 
     if showTags
-        // Short stub + a small tag fixed a few bars after the breakout — it stays put, it never
-        // extends further as new bars form.
-        line.new(bar_index, stopPrice, tagBar, stopPrice, color = colDown, style = line.style_dashed, width = 1)
-        line.new(bar_index, targetPrice, tagBar, targetPrice, color = colUp, style = line.style_dashed, width = 1)
+        // Short stub + a small tag fixed a few bars after the signal — it
+        // stays put, it never extends further as new bars form.
+        line.new(bar_index, stopPrice, tagBar, stopPrice,
+             color = colDown, style = line.style_dashed, width = 1)
+        line.new(bar_index, targetPrice, tagBar, targetPrice,
+             color = colUp, style = line.style_dashed, width = 1)
         label.new(tagBar, stopPrice, "🛑 SL " + str.tostring(math.round_to_mintick(stopPrice)),
-             style = label.style_label_left, color = colDown, textcolor = color.white, size = size.small)
+             style = label.style_label_left, color = colDown,
+             textcolor = color.white, size = size.small)
         label.new(tagBar, targetPrice, "🎯 TP " + str.tostring(math.round_to_mintick(targetPrice)),
-             style = label.style_label_left, color = colUp, textcolor = color.white, size = size.small)
+             style = label.style_label_left, color = colUp,
+             textcolor = color.white, size = size.small)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Background & alerts
 // ─────────────────────────────────────────────────────────────────────────
-plot(useTrendFilter ? dailyMA : na, title = "Daily Trend MA", color = color.new(color.gray, 40), linewidth = 1)
+plot(useTrendFilter ? dailyMA : na, title = "Daily Trend MA",
+     color = color.new(color.gray, 40), linewidth = 1)
 bgcolor(inSession ? colRange : na, title = "Session Highlight")
 
-alertcondition(bullBreak, title = "BBB Bullish Breakout", message = "BBB: Bullish breakout above session range high")
-alertcondition(bearBreak, title = "BBB Bearish Breakout", message = "BBB: Bearish breakout below session range low")
+alertcondition(bullBreak, title = "BBB Bullish Signal",
+     message = "BBB: Bullish retest confirmed above session range high")
+alertcondition(bearBreak, title = "BBB Bearish Signal",
+     message = "BBB: Bearish retest confirmed below session range low")
