@@ -52,6 +52,14 @@ cooldownBars = input.int(
 tagOffsetBars = input.int(
      3, "Tag Offset (bars after signal)", minval = 1, group = grpSignal)
 
+grpColor = "Line Colors"
+colorByStrength = input.bool(
+     true, "Color Strong Levels Differently From the Rest", group = grpColor)
+strongLevelColor = input.color(
+     #ffd700, "Strong Level Color (>= threshold above)", group = grpColor)
+otherLevelColor = input.color(
+     color.new(color.gray, 35), "Other Levels Color", group = grpColor)
+
 max = ta.highest(close, lookback)
 min = ta.lowest(close, lookback)
 
@@ -144,7 +152,7 @@ calculate_statistics(bin, lb) =>
 [sr9_ss, sr9_rs] = calculate_statistics(sr9, lookback)
 [sr10_ss, sr10_rs] = calculate_statistics(sr10, lookback)
 
-// Gradient colours
+// Gradient colours (used only when "Color Lines by Strength" is off)
 color[] gradient_array = array.from(#ff00c8, #e100ff, #0d00ff, #007bff, #00ffd5, #00ff15, #00ff15, #ffc400, #ff7700, #ff1500, #ff008c, #e3000b)
 
 // Combine data
@@ -153,14 +161,24 @@ support_success_array = array.from(sr1_ss, sr2_ss, sr3_ss, sr4_ss, sr5_ss, sr6_s
 resistance_success_array = array.from(sr1_rs, sr2_rs, sr3_rs, sr4_rs, sr5_rs, sr6_rs, sr7_rs, sr8_rs, sr9_rs, sr10_rs, 100, 0)
 num_array = array.from(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 
+// ─────────────────────────────────────────────────────────────────────────
+// Line color: instead of a 12-color rainbow, group levels into two looks —
+// "strong" levels (price historically bounces from them at/above the same
+// % used for signals) get one solid color, every other level gets a dim,
+// uniform color so the strong ones stand out at a glance.
+// ─────────────────────────────────────────────────────────────────────────
+lineColor(idx) =>
+    isStrong = idx <= 9 and math.max(array.get(support_success_array, idx), array.get(resistance_success_array, idx)) >= minSuccessPct
+    colorByStrength ? (isStrong ? strongLevelColor : otherLevelColor) : array.get(gradient_array, idx)
+
 create_label(idx) =>
-    lineColor = array.get(gradient_array, idx)
+    lc = lineColor(idx)
     supportPct = str.tostring(math.round(array.get(support_success_array, idx), 0))
     resistPct = str.tostring(math.round(array.get(resistance_success_array, idx), 0))
     label.new(
          bar_index + offset, array.get(sr_array, idx),
          text = "S:" + supportPct + "% R:" + resistPct + "%",
-         color = color.new(lineColor, 80), textcolor = lineColor,
+         color = color.new(lc, 80), textcolor = lc,
          style = label.style_label_left, size = size.tiny)
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -193,17 +211,18 @@ if barstate.islast and shouldRecalc
     var table data = table.new(position.middle_right, 3, 14, bgcolor = color.new(color.rgb(0, 0, 0), 65))
 
     for i = 0 to array.size(sr_array) - 1
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = array.get(gradient_array, i), width = 1))
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 70), width = 3))
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 80), width = 6))
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 95), width = 8))
+        lc = lineColor(i)
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = lc, width = 1))
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(lc, 70), width = 3))
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(lc, 80), width = 6))
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(lc, 95), width = 8))
         if displaylabel == "On SR lines"
             array.push(srLabels, create_label(i))
         if displaylabel == "Table"
             array.push(srLabels, label.new(bar_index + offset, array.get(sr_array, i), text = str.tostring(array.get(num_array, i)), color = na, textcolor = color.white))
             table.cell(data, 1, 1, text = "SR Line", text_color = color.white)
             table.cell(data, 2, 1, text = "Backtest Results", text_color = color.white)
-            table.cell(data, 1, 2 + i, text = str.tostring(array.get(num_array, i)), bgcolor = array.get(gradient_array, i), text_color = color.black)
+            table.cell(data, 1, 2 + i, text = str.tostring(array.get(num_array, i)), bgcolor = lc, text_color = color.black)
             table.cell(data, 2, 2 + i, text = "% Support Success: " + str.tostring(math.round(array.get(support_success_array, i), 2)) + "\n % Resistance Success: " + str.tostring(math.round(array.get(resistance_success_array, i), 2)), text_color = color.white)
 
     needsRecalc := false
