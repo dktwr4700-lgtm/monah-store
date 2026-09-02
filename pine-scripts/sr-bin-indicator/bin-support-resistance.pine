@@ -226,7 +226,7 @@ trendDownOK = not useTrendFilter or close < dailyMA
 var int[] topIdx = array.new<int>()
 var int dailyTradeCount = 0
 
-if newDay
+if newDay or barstate.isfirst
     dailyTradeCount := 0
     scores = array.new<float>(10, 0.0)
     for i = 0 to 9
@@ -250,12 +250,13 @@ slBuf = slBufferATRMult * atrValSig
 
 nearestIdx = -1
 nearestDist = 1e10
-for j = 0 to array.size(topIdx) - 1
-    idx = array.get(topIdx, j)
-    d = math.abs(close - array.get(sr_array, idx))
-    if d < nearestDist
-        nearestDist := d
-        nearestIdx := idx
+if array.size(topIdx) > 0
+    for j = 0 to array.size(topIdx) - 1
+        idx = array.get(topIdx, j)
+        d = math.abs(close - array.get(sr_array, idx))
+        if d < nearestDist
+            nearestDist := d
+            nearestIdx := idx
 
 hasLevel = nearestIdx >= 0
 nearestLevel = hasLevel ? array.get(sr_array, nearestIdx) : na
