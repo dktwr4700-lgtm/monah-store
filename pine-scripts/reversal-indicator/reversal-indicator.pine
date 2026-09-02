@@ -16,10 +16,10 @@ indicator(
 // ─────────────────────────────────────────────────────────────────────────
 grpPivot = "Pivot Detection"
 pivotLeftBars = input.int(
-     5, "Pivot Left Bars", minval = 1,
+     3, "Pivot Left Bars", minval = 1,
      group = grpPivot, display = display.data_window)
 pivotRightBars = input.int(
-     5, "Pivot Right Bars (confirmation delay)", minval = 1,
+     3, "Pivot Right Bars (confirmation delay)", minval = 1,
      group = grpPivot, display = display.data_window)
 
 grpRsi = "RSI"
@@ -27,7 +27,7 @@ rsiLen = input.int(
      14, "RSI Length", minval = 1,
      group = grpRsi, display = display.data_window)
 useExtremeFilter = input.bool(
-     true, "Only Signal From Overbought / Oversold RSI",
+     false, "Only Signal From Overbought / Oversold RSI",
      group = grpRsi, display = display.data_window)
 oversoldLevel = input.int(
      30, "Oversold Level", minval = 1, maxval = 50,
@@ -38,7 +38,7 @@ overboughtLevel = input.int(
 
 grpConfirm = "Candle Confirmation"
 useCandleConfirm = input.bool(
-     true, "Require a Reversal Candle at the Pivot",
+     false, "Require a Reversal Candle at the Pivot",
      group = grpConfirm, display = display.data_window)
 
 grpStyle = "Style"
