@@ -162,13 +162,42 @@ resistance_success_array = array.from(sr1_rs, sr2_rs, sr3_rs, sr4_rs, sr5_rs, sr
 num_array = array.from(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 
 // ─────────────────────────────────────────────────────────────────────────
-// Line color: instead of a 12-color rainbow, group levels into two looks —
-// "strong" levels (price historically bounces from them at/above the same
-// % used for signals) get one solid color, every other level gets a dim,
-// uniform color so the strong ones stand out at a glance.
+// Rank the 10 levels by their own historical success % once per day and
+// keep only the strongest N (topLevelsToTrade) — these are the only
+// levels that can ever fire a trade signal, and also the only ones
+// colored as "strong" below, so the color on the chart always matches
+// what the indicator actually trades (not just any level over a %).
+// ─────────────────────────────────────────────────────────────────────────
+newDay = ta.change(time("D")) != 0
+
+var int[] topIdx = array.new<int>()
+var int dailyTradeCount = 0
+
+if newDay or barstate.isfirst
+    dailyTradeCount := 0
+    scores = array.new<float>(10, 0.0)
+    for i = 0 to 9
+        array.set(scores, i, math.max(array.get(support_success_array, i), array.get(resistance_success_array, i)))
+    array.clear(topIdx)
+    for k = 1 to topLevelsToTrade
+        bestI = -1
+        bestV = -1.0
+        for i = 0 to 9
+            v = array.get(scores, i)
+            if v > bestV
+                bestV := v
+                bestI := i
+        if bestI >= 0
+            array.push(topIdx, bestI)
+            array.set(scores, bestI, -1.0)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Line color: instead of a 12-color rainbow, only the levels actually
+// being traded today (the top N ranked above) get a solid color, every
+// other level gets a dim, uniform color.
 // ─────────────────────────────────────────────────────────────────────────
 lineColor(idx) =>
-    isStrong = idx <= 9 and math.max(array.get(support_success_array, idx), array.get(resistance_success_array, idx)) >= minSuccessPct
+    isStrong = idx <= 9 and array.includes(topIdx, idx)
     colorByStrength ? (isStrong ? strongLevelColor : otherLevelColor) : array.get(gradient_array, idx)
 
 create_label(idx) =>
@@ -188,7 +217,6 @@ create_label(idx) =>
 // a new day starts (or on first load), so the lines stay fixed the rest
 // of the day.
 // ─────────────────────────────────────────────────────────────────────────
-newDay = ta.change(time("D")) != 0
 var bool needsRecalc = true
 if newDay
     needsRecalc := true
@@ -229,9 +257,9 @@ if barstate.islast and shouldRecalc
 
 // ─────────────────────────────────────────────────────────────────────────
 // Entry / exit signals — a curated day plan, not "trade every touch":
-//   1. Each new day, rank the 10 levels by their own historical success %
-//      and keep only the strongest N (topLevelsToTrade) — the rest are
-//      ignored for signals all day, even though they still get drawn.
+//   1. Only the top-ranked levels (computed above) can ever fire — the
+//      rest are ignored for signals all day, even though they still
+//      get drawn on the chart.
 //   2. Only trade with the daily trend.
 //   3. Hard cap of maxTradesPerDay signals, whichever comes first.
 // ─────────────────────────────────────────────────────────────────────────
@@ -241,27 +269,6 @@ dailyMA = request.security(
      lookahead = barmerge.lookahead_off)
 trendUpOK = not useTrendFilter or close > dailyMA
 trendDownOK = not useTrendFilter or close < dailyMA
-
-var int[] topIdx = array.new<int>()
-var int dailyTradeCount = 0
-
-if newDay or barstate.isfirst
-    dailyTradeCount := 0
-    scores = array.new<float>(10, 0.0)
-    for i = 0 to 9
-        array.set(scores, i, math.max(array.get(support_success_array, i), array.get(resistance_success_array, i)))
-    array.clear(topIdx)
-    for k = 1 to topLevelsToTrade
-        bestI = -1
-        bestV = -1.0
-        for i = 0 to 9
-            v = array.get(scores, i)
-            if v > bestV
-                bestV := v
-                bestI := i
-        if bestI >= 0
-            array.push(topIdx, bestI)
-            array.set(scores, bestI, -1.0)
 
 atrValSig = ta.atr(atrLenSignal)
 touchTol = touchToleranceATRMult * atrValSig
