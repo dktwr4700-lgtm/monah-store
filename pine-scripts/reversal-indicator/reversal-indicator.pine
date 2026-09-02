@@ -1,0 +1,146 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation.
+// Reversal detector based on RSI divergence + a reversal-candle
+// confirmation. Defaults are tuned for a 5-minute chart, but every
+// setting can be adjusted for other timeframes.
+//@version=5
+indicator(
+     "Reversal Detector (RSI Divergence)",
+     shorttitle = "RevDet",
+     overlay = true,
+     max_lines_count = 100,
+     max_labels_count = 200)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Inputs
+// ─────────────────────────────────────────────────────────────────────────
+grpPivot = "Pivot Detection"
+pivotLeftBars = input.int(
+     5, "Pivot Left Bars", minval = 1,
+     group = grpPivot, display = display.data_window)
+pivotRightBars = input.int(
+     5, "Pivot Right Bars (confirmation delay)", minval = 1,
+     group = grpPivot, display = display.data_window)
+
+grpRsi = "RSI"
+rsiLen = input.int(
+     14, "RSI Length", minval = 1,
+     group = grpRsi, display = display.data_window)
+useExtremeFilter = input.bool(
+     true, "Only Signal From Overbought / Oversold RSI",
+     group = grpRsi, display = display.data_window)
+oversoldLevel = input.int(
+     30, "Oversold Level", minval = 1, maxval = 50,
+     group = grpRsi, display = display.data_window)
+overboughtLevel = input.int(
+     70, "Overbought Level", minval = 50, maxval = 99,
+     group = grpRsi, display = display.data_window)
+
+grpConfirm = "Candle Confirmation"
+useCandleConfirm = input.bool(
+     true, "Require a Reversal Candle at the Pivot",
+     group = grpConfirm, display = display.data_window)
+
+grpStyle = "Style"
+colUp = input.color(
+     color.new(color.teal, 0), "Bullish Signal",
+     group = grpStyle, display = display.data_window)
+colDown = input.color(
+     color.new(color.red, 0), "Bearish Signal",
+     group = grpStyle, display = display.data_window)
+showDivLines = input.bool(
+     true, "Draw Divergence Lines",
+     group = grpStyle, display = display.data_window)
+
+// ─────────────────────────────────────────────────────────────────────────
+// RSI + pivots
+// ─────────────────────────────────────────────────────────────────────────
+rsiVal = ta.rsi(close, rsiLen)
+
+pl = ta.pivotlow(low, pivotLeftBars, pivotRightBars)
+ph = ta.pivothigh(high, pivotLeftBars, pivotRightBars)
+
+var float lastPLPrice = na
+var float lastPLRSI = na
+var int lastPLBar = na
+var float prevPLPrice = na
+var float prevPLRSI = na
+var int prevPLBar = na
+
+var float lastPHPrice = na
+var float lastPHRSI = na
+var int lastPHBar = na
+var float prevPHPrice = na
+var float prevPHRSI = na
+var int prevPHBar = na
+
+if not na(pl)
+    prevPLPrice := lastPLPrice
+    prevPLRSI := lastPLRSI
+    prevPLBar := lastPLBar
+    lastPLPrice := pl
+    lastPLRSI := rsiVal[pivotRightBars]
+    lastPLBar := bar_index - pivotRightBars
+
+if not na(ph)
+    prevPHPrice := lastPHPrice
+    prevPHRSI := lastPHRSI
+    prevPHBar := lastPHBar
+    lastPHPrice := ph
+    lastPHRSI := rsiVal[pivotRightBars]
+    lastPHBar := bar_index - pivotRightBars
+
+// ─────────────────────────────────────────────────────────────────────────
+// Divergence conditions
+// price makes a lower low while RSI makes a higher low (bullish), or
+// price makes a higher high while RSI makes a lower high (bearish).
+// ─────────────────────────────────────────────────────────────────────────
+rawBullishDiv = not na(pl) and not na(prevPLPrice)
+     and pl < prevPLPrice and lastPLRSI > prevPLRSI
+
+rawBearishDiv = not na(ph) and not na(prevPHPrice)
+     and ph > prevPHPrice and lastPHRSI < prevPHRSI
+
+extremeOK_bull = not useExtremeFilter or lastPLRSI < oversoldLevel
+extremeOK_bear = not useExtremeFilter or lastPHRSI > overboughtLevel
+
+// Candle confirmation checked at the pivot bar itself (bullish = close
+// above open on the low bar; bearish = close below open on the high bar).
+candleOK_bull = not useCandleConfirm or close[pivotRightBars] > open[pivotRightBars]
+candleOK_bear = not useCandleConfirm or close[pivotRightBars] < open[pivotRightBars]
+
+bullishSignal = rawBullishDiv and extremeOK_bull and candleOK_bull
+bearishSignal = rawBearishDiv and extremeOK_bear and candleOK_bear
+
+// ─────────────────────────────────────────────────────────────────────────
+// Plots — markers and lines are drawn at the pivot bar (in the past),
+// not at the current bar, since a pivot only confirms `pivotRightBars`
+// bars after it actually happened.
+// ─────────────────────────────────────────────────────────────────────────
+plotshape(bullishSignal, title = "Bullish Reversal",
+     style = shape.triangleup, location = location.belowbar,
+     color = colUp, size = size.small, offset = -pivotRightBars)
+plotshape(bearishSignal, title = "Bearish Reversal",
+     style = shape.triangledown, location = location.abovebar,
+     color = colDown, size = size.small, offset = -pivotRightBars)
+
+if bullishSignal
+    label.new(lastPLBar, lastPLPrice, "BUY",
+         yloc = yloc.belowbar, style = label.style_label_up,
+         color = colUp, textcolor = color.white, size = size.small)
+    if showDivLines and not na(prevPLBar)
+        line.new(prevPLBar, prevPLPrice, lastPLBar, lastPLPrice,
+             color = colUp, style = line.style_dashed, width = 1)
+
+if bearishSignal
+    label.new(lastPHBar, lastPHPrice, "SELL",
+         yloc = yloc.abovebar, style = label.style_label_down,
+         color = colDown, textcolor = color.white, size = size.small)
+    if showDivLines and not na(prevPHBar)
+        line.new(prevPHBar, prevPHPrice, lastPHBar, lastPHPrice,
+             color = colDown, style = line.style_dashed, width = 1)
+
+alertcondition(bullishSignal, title = "Bullish Reversal",
+     message = "RevDet: Bullish RSI divergence confirmed")
+alertcondition(bearishSignal, title = "Bearish Reversal",
+     message = "RevDet: Bearish RSI divergence confirmed")
