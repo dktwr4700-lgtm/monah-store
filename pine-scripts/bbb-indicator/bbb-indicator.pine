@@ -85,6 +85,14 @@ rrRatio = input.float(
      minval = 0.1, step = 0.1,
      group = grpRisk, display = display.data_window)
 
+grpSymbol = "Symbol Restriction"
+restrictToSymbol = input.bool(
+     true, "Only Give Signals on This Symbol",
+     group = grpSymbol, display = display.data_window)
+allowedSymbol = input.string(
+     "US30", "Symbol (must appear in the chart's ticker)",
+     group = grpSymbol, display = display.data_window)
+
 grpStyle = "Style"
 colRange = input.color(
      color.new(color.blue, 85), "Range Box",
@@ -207,8 +215,10 @@ if state == -1 and high >= level - retestToleranceATRMult * atrVal
     state := -2
     stateBar := bar_index
 
-bullBreak = state == 2 and close > level and trendUpOK and volOK
-bearBreak = state == -2 and close < level and trendDownOK and volOK
+symbolOK = not restrictToSymbol or str.contains(syminfo.ticker, allowedSymbol)
+
+bullBreak = state == 2 and close > level and trendUpOK and volOK and symbolOK
+bearBreak = state == -2 and close < level and trendDownOK and volOK and symbolOK
 
 calcStop(isLong, entryPrice, oppLevel) =>
     float stop = na
@@ -264,6 +274,16 @@ if bullBreak or bearBreak
 plot(useTrendFilter ? dailyMA : na, title = "Daily Trend MA",
      color = color.new(color.gray, 40), linewidth = 1)
 bgcolor(inSession ? colRange : na, title = "Session Highlight")
+
+if barstate.islast and not symbolOK
+    label.new(
+         bar_index,
+         high,
+         "⚠ BBB signals are off — set for " + allowedSymbol,
+         style = label.style_label_down,
+         color = color.new(color.orange, 20),
+         textcolor = color.white,
+         size = size.small)
 
 alertcondition(bullBreak, title = "BBB Bullish Signal",
      message = "BBB: Bullish retest confirmed above session range high")
