@@ -5,10 +5,12 @@
 // support/resistance line on every realtime tick of the last bar, which
 // made the lines visibly "jump" as the rolling lookback window shifted.
 // This version adds a "Recalculate Once Per Day" mode (now the default)
-// that freezes the lines for the rest of the day once computed, plus a
-// fix for the results table being re-created inside its own loop.
+// that freezes the lines for the rest of the day once computed, fixes the
+// results table being re-created inside its own loop, and shows the
+// percentages in clear, compact Arabic text instead of long overlapping
+// English sentences.
 //@version=6
-indicator("BIN Based Support and Resistance [SS]", overlay=true, max_lines_count=100, max_labels_count=200)
+indicator("BIN Based Support and Resistance [SS]", overlay=true, max_lines_count=100, max_labels_count=100)
 
 lookback = input.int(500, "Lookback Length")
 displaylabel = input.string("On SR lines", "Where would you like the statistics to display?", ["On SR lines", "Table", "OFF"])
@@ -16,49 +18,6 @@ offset = input.int(100, "Offset the lines ahead")
 recalcMode = input.string(
      "Once Per Day", "Recalculate",
      options = ["Once Per Day", "Every Bar (Original, can jitter)"])
-
-// ─────────────────────────────────────────────────────────────────────────
-// Trade signal strategy: use each level's own historical bounce-success %
-// as a probability filter. Enter when price touches a level that has a
-// high historical success rate in the expected direction and shows a
-// rejection candle; stop just past the level; target the next S/R level
-// in the trade's direction.
-// ─────────────────────────────────────────────────────────────────────────
-grpSignal = "Trade Signals"
-showSignals = input.bool(
-     true, "Show Entry / SL / TP Signals", group = grpSignal)
-topLevelsToTrade = input.int(
-     2, "Only Trade the Top N Strongest Levels Per Day",
-     minval = 1, maxval = 10, group = grpSignal)
-maxTradesPerDay = input.int(
-     3, "Max Trades Per Day", minval = 1, group = grpSignal)
-minSuccessPct = input.float(
-     65, "Minimum Historical Success % to Trade",
-     minval = 50, maxval = 99, group = grpSignal)
-useTrendFilter = input.bool(
-     true, "Only Trade With the Daily Trend", group = grpSignal)
-trendMALen = input.int(
-     200, "Daily MA Length", minval = 1, group = grpSignal)
-touchToleranceATRMult = input.float(
-     0.15, "Touch Tolerance (x ATR)",
-     minval = 0.01, step = 0.05, group = grpSignal)
-slBufferATRMult = input.float(
-     0.3, "Stop-Loss Buffer Beyond Level (x ATR)",
-     minval = 0.05, step = 0.05, group = grpSignal)
-atrLenSignal = input.int(
-     14, "ATR Length", minval = 1, group = grpSignal)
-cooldownBars = input.int(
-     30, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
-tagOffsetBars = input.int(
-     3, "Tag Offset (bars after signal)", minval = 1, group = grpSignal)
-
-grpColor = "Line Colors"
-colorByStrength = input.bool(
-     true, "Color Strong Levels Differently From the Rest", group = grpColor)
-strongLevelColor = input.color(
-     #ffd700, "Strong Level Color (>= threshold above)", group = grpColor)
-otherLevelColor = input.color(
-     color.new(color.gray, 35), "Other Levels Color", group = grpColor)
 
 max = ta.highest(close, lookback)
 min = ta.lowest(close, lookback)
@@ -152,7 +111,7 @@ calculate_statistics(bin, lb) =>
 [sr9_ss, sr9_rs] = calculate_statistics(sr9, lookback)
 [sr10_ss, sr10_rs] = calculate_statistics(sr10, lookback)
 
-// Gradient colours (used only when "Color Lines by Strength" is off)
+// Gradient colours
 color[] gradient_array = array.from(#ff00c8, #e100ff, #0d00ff, #007bff, #00ffd5, #00ff15, #00ff15, #ffc400, #ff7700, #ff1500, #ff008c, #e3000b)
 
 // Combine data
@@ -162,53 +121,24 @@ resistance_success_array = array.from(sr1_rs, sr2_rs, sr3_rs, sr4_rs, sr5_rs, sr
 num_array = array.from(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 
 // ─────────────────────────────────────────────────────────────────────────
-// Rank the 10 levels by their own historical success % once per day and
-// keep only the strongest N (topLevelsToTrade) — these are the only
-// levels that can ever fire a trade signal, and also the only ones
-// colored as "strong" below, so the color on the chart always matches
-// what the indicator actually trades (not just any level over a %).
+// Arabic, compact, single-line labels — the original showed two long
+// English sentences per line ("% Success as Support: 28.57142...") which
+// overlapped heavily once several lines were close together. This rounds
+// the numbers and puts a short Arabic label on one line instead.
 // ─────────────────────────────────────────────────────────────────────────
-newDay = ta.change(time("D")) != 0
-
-var int[] topIdx = array.new<int>()
-var int dailyTradeCount = 0
-
-if newDay or barstate.isfirst
-    dailyTradeCount := 0
-    scores = array.new<float>(10, 0.0)
-    for i = 0 to 9
-        array.set(scores, i, math.max(array.get(support_success_array, i), array.get(resistance_success_array, i)))
-    array.clear(topIdx)
-    for k = 1 to topLevelsToTrade
-        bestI = -1
-        bestV = -1.0
-        for i = 0 to 9
-            v = array.get(scores, i)
-            if v > bestV
-                bestV := v
-                bestI := i
-        if bestI >= 0
-            array.push(topIdx, bestI)
-            array.set(scores, bestI, -1.0)
-
-// ─────────────────────────────────────────────────────────────────────────
-// Line color: instead of a 12-color rainbow, only the levels actually
-// being traded today (the top N ranked above) get a solid color, every
-// other level gets a dim, uniform color.
-// ─────────────────────────────────────────────────────────────────────────
-lineColor(idx) =>
-    isStrong = idx <= 9 and array.includes(topIdx, idx)
-    colorByStrength ? (isStrong ? strongLevelColor : otherLevelColor) : array.get(gradient_array, idx)
-
 create_label(idx) =>
-    lc = lineColor(idx)
+    lineCol = array.get(gradient_array, idx)
     supportPct = str.tostring(math.round(array.get(support_success_array, idx), 0))
     resistPct = str.tostring(math.round(array.get(resistance_success_array, idx), 0))
+    labelText = "دعم " + supportPct + "% • مقاومة " + resistPct + "%"
     label.new(
-         bar_index + offset, array.get(sr_array, idx),
-         text = "S:" + supportPct + "% R:" + resistPct + "%",
-         color = color.new(lc, 80), textcolor = lc,
-         style = label.style_label_left, size = size.tiny)
+         bar_index + offset,
+         array.get(sr_array, idx),
+         labelText,
+         color = color.new(lineCol, 80),
+         textcolor = lineCol,
+         style = label.style_label_left,
+         size = size.tiny)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Recalculation gate — the original redrew every line on every realtime
@@ -217,157 +147,33 @@ create_label(idx) =>
 // a new day starts (or on first load), so the lines stay fixed the rest
 // of the day.
 // ─────────────────────────────────────────────────────────────────────────
+newDay = ta.change(time("D")) != 0
 var bool needsRecalc = true
 if newDay
     needsRecalc := true
 
 shouldRecalc = recalcMode == "Every Bar (Original, can jitter)" or needsRecalc
 
-// Track only the objects this block draws, so redrawing the S/R lines
-// never wipes out the trade-signal labels/lines drawn below.
-var line[] srLines = array.new<line>()
-var label[] srLabels = array.new<label>()
-
 if barstate.islast and shouldRecalc
-    for ln in srLines
-        line.delete(ln)
-    array.clear(srLines)
-    for lb in srLabels
-        label.delete(lb)
-    array.clear(srLabels)
+    for lines in line.all
+        line.delete(lines)
+    for labels in label.all
+        label.delete(labels)
 
     var table data = table.new(position.middle_right, 3, 14, bgcolor = color.new(color.rgb(0, 0, 0), 65))
 
     for i = 0 to array.size(sr_array) - 1
-        lc = lineColor(i)
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = lc, width = 1))
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(lc, 70), width = 3))
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(lc, 80), width = 6))
-        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(lc, 95), width = 8))
+        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = array.get(gradient_array, i), width = 1)
+        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 70), width = 3)
+        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 80), width = 6)
+        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 95), width = 8)
         if displaylabel == "On SR lines"
-            array.push(srLabels, create_label(i))
+            create_label(i)
         if displaylabel == "Table"
-            array.push(srLabels, label.new(bar_index + offset, array.get(sr_array, i), text = str.tostring(array.get(num_array, i)), color = na, textcolor = color.white))
-            table.cell(data, 1, 1, text = "SR Line", text_color = color.white)
-            table.cell(data, 2, 1, text = "Backtest Results", text_color = color.white)
-            table.cell(data, 1, 2 + i, text = str.tostring(array.get(num_array, i)), bgcolor = lc, text_color = color.black)
-            table.cell(data, 2, 2 + i, text = "% Support Success: " + str.tostring(math.round(array.get(support_success_array, i), 2)) + "\n % Resistance Success: " + str.tostring(math.round(array.get(resistance_success_array, i), 2)), text_color = color.white)
+            label.new(bar_index + offset, array.get(sr_array, i), text = str.tostring(array.get(num_array, i)), color = na, textcolor = color.white)
+            table.cell(data, 1, 1, text = "الخط", text_color = color.white)
+            table.cell(data, 2, 1, text = "نتائج الاختبار", text_color = color.white)
+            table.cell(data, 1, 2 + i, text = str.tostring(array.get(num_array, i)), bgcolor = array.get(gradient_array, i), text_color = color.black)
+            table.cell(data, 2, 2 + i, text = "دعم " + str.tostring(math.round(array.get(support_success_array, i), 0)) + "% • مقاومة " + str.tostring(math.round(array.get(resistance_success_array, i), 0)) + "%", text_color = color.white)
 
     needsRecalc := false
-
-// ─────────────────────────────────────────────────────────────────────────
-// Entry / exit signals — a curated day plan, not "trade every touch":
-//   1. Only the top-ranked levels (computed above) can ever fire — the
-//      rest are ignored for signals all day, even though they still
-//      get drawn on the chart.
-//   2. Only trade with the daily trend.
-//   3. Hard cap of maxTradesPerDay signals, whichever comes first.
-// ─────────────────────────────────────────────────────────────────────────
-dailyMA = request.security(
-     syminfo.tickerid, "D",
-     ta.sma(close, trendMALen)[1],
-     lookahead = barmerge.lookahead_off)
-trendUpOK = not useTrendFilter or close > dailyMA
-trendDownOK = not useTrendFilter or close < dailyMA
-
-atrValSig = ta.atr(atrLenSignal)
-touchTol = touchToleranceATRMult * atrValSig
-slBuf = slBufferATRMult * atrValSig
-
-nearestIdx = -1
-nearestDist = 1e10
-if array.size(topIdx) > 0
-    for j = 0 to array.size(topIdx) - 1
-        idx = array.get(topIdx, j)
-        d = math.abs(close - array.get(sr_array, idx))
-        if d < nearestDist
-            nearestDist := d
-            nearestIdx := idx
-
-hasLevel = nearestIdx >= 0
-nearestLevel = hasLevel ? array.get(sr_array, nearestIdx) : na
-nearestSupportPct = hasLevel ? array.get(support_success_array, nearestIdx) : na
-nearestResistPct = hasLevel ? array.get(resistance_success_array, nearestIdx) : na
-
-longTouch = hasLevel and low <= nearestLevel + touchTol and close > nearestLevel
-shortTouch = hasLevel and high >= nearestLevel - touchTol and close < nearestLevel
-
-var int lastSignalBar = na
-canSignal = (na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars)
-     and dailyTradeCount < maxTradesPerDay
-
-longSignal = showSignals and canSignal and longTouch and nearestSupportPct >= minSuccessPct and trendUpOK
-shortSignal = showSignals and canSignal and shortTouch and nearestResistPct >= minSuccessPct and trendDownOK
-
-if longSignal or shortSignal
-    lastSignalBar := bar_index
-    dailyTradeCount := dailyTradeCount + 1
-    isLong = longSignal
-    entryPrice = close
-    stopPrice = isLong ? nearestLevel - slBuf : nearestLevel + slBuf
-    riskDist = math.abs(entryPrice - stopPrice)
-
-    targetIdx = isLong ? nearestIdx + 1 : nearestIdx - 1
-    hasTarget = targetIdx >= 0 and targetIdx <= 9
-    targetPrice = hasTarget ? array.get(sr_array, targetIdx) :
-         (isLong ? entryPrice + riskDist * 1.5 : entryPrice - riskDist * 1.5)
-
-    sideColor = isLong ? color.teal : color.red
-    tagBar = bar_index + tagOffsetBars
-
-    sideText = isLong ? "BUY" : "SELL"
-    sideYloc = isLong ? yloc.belowbar : yloc.abovebar
-    sideStyle = isLong ? label.style_label_up : label.style_label_down
-    label.new(
-         bar_index,
-         isLong ? low : high,
-         sideText,
-         yloc = sideYloc,
-         style = sideStyle,
-         color = sideColor,
-         textcolor = color.white,
-         size = size.small)
-
-    line.new(
-         bar_index,
-         stopPrice,
-         tagBar,
-         stopPrice,
-         color = color.red,
-         style = line.style_dashed,
-         width = 1)
-    line.new(
-         bar_index,
-         targetPrice,
-         tagBar,
-         targetPrice,
-         color = color.teal,
-         style = line.style_dashed,
-         width = 1)
-
-    slPriceText = str.tostring(math.round_to_mintick(stopPrice))
-    slText = "🛑 SL " + slPriceText
-    label.new(
-         tagBar,
-         stopPrice,
-         slText,
-         style = label.style_label_left,
-         color = color.red,
-         textcolor = color.white,
-         size = size.small)
-
-    tpPriceText = str.tostring(math.round_to_mintick(targetPrice))
-    tpText = "🎯 TP " + tpPriceText
-    label.new(
-         tagBar,
-         targetPrice,
-         tpText,
-         style = label.style_label_left,
-         color = color.teal,
-         textcolor = color.white,
-         size = size.small)
-
-alertcondition(longSignal, title = "S/R Long Signal",
-     message = "BIN S/R: bullish bounce confirmed off a high-success support level")
-alertcondition(shortSignal, title = "S/R Short Signal",
-     message = "BIN S/R: bearish rejection confirmed off a high-success resistance level")
