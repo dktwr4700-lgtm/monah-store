@@ -101,9 +101,6 @@ showTags = input.bool(
 tagOffsetBars = input.int(
      3, "Tag Offset (bars after signal)", minval = 1,
      group = grpStyle, display = display.data_window)
-showStatsPanel = input.bool(
-     true, "Show Live Win / Loss Tracker",
-     group = grpStyle, display = display.data_window)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Session range tracking
@@ -225,30 +222,6 @@ calcStop(isLong, entryPrice, oppLevel) =>
         stop := isLong ? entryPrice - fixedPts : entryPrice + fixedPts
     stop
 
-// ─────────────────────────────────────────────────────────────────────────
-// Live win/loss tracker — resolves the last signal against whichever of
-// its SL/TP price gets touched first on later bars, so you get a running
-// track record straight on the chart without exporting anything.
-// ─────────────────────────────────────────────────────────────────────────
-var bool tradeActive = false
-var bool tradeIsLong = false
-var float tradeStop = na
-var float tradeTarget = na
-var int winCount = 0
-var int lossCount = 0
-
-if tradeActive
-    hitStop = tradeIsLong ? low <= tradeStop : high >= tradeStop
-    hitTarget = tradeIsLong ? high >= tradeTarget : low <= tradeTarget
-    // If both levels are touched on the same bar, count the stop first —
-    // that is the conservative assumption.
-    if hitStop
-        lossCount := lossCount + 1
-        tradeActive := false
-    else if hitTarget
-        winCount := winCount + 1
-        tradeActive := false
-
 if bullBreak or bearBreak
     signalTakenThisSession := true
     state := 0
@@ -260,12 +233,6 @@ if bullBreak or bearBreak
     targetPrice = targetMethod == "Fixed Points" ?
          (isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints) :
          (isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio)
-
-    if not tradeActive
-        tradeActive := true
-        tradeIsLong := isLong
-        tradeStop := stopPrice
-        tradeTarget := targetPrice
 
     sideColor = isLong ? colUp : colDown
     tagBar = bar_index + tagOffsetBars
@@ -292,31 +259,11 @@ if bullBreak or bearBreak
              textcolor = color.white, size = size.small)
 
 // ─────────────────────────────────────────────────────────────────────────
-// Background, live stats panel & alerts
+// Background & alerts
 // ─────────────────────────────────────────────────────────────────────────
 plot(useTrendFilter ? dailyMA : na, title = "Daily Trend MA",
      color = color.new(color.gray, 40), linewidth = 1)
 bgcolor(inSession ? colRange : na, title = "Session Highlight")
-
-var table statsPanel = table.new(
-     position.top_right, 2, 3, border_width = 1)
-
-if showStatsPanel and barstate.islast
-    totalTrades = winCount + lossCount
-    winRateTxt = totalTrades == 0 ? "—" :
-         str.tostring(math.round(winCount / totalTrades * 100), "#") + "%"
-    table.cell(statsPanel, 0, 0, "Wins", text_color = color.white,
-         bgcolor = color.new(color.teal, 0), text_size = size.small)
-    table.cell(statsPanel, 1, 0, str.tostring(winCount), text_color = color.white,
-         bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(statsPanel, 0, 1, "Losses", text_color = color.white,
-         bgcolor = color.new(color.red, 0), text_size = size.small)
-    table.cell(statsPanel, 1, 1, str.tostring(lossCount), text_color = color.white,
-         bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(statsPanel, 0, 2, "Win Rate", text_color = color.gray,
-         bgcolor = color.new(color.black, 80), text_size = size.small)
-    table.cell(statsPanel, 1, 2, winRateTxt, text_color = color.white,
-         bgcolor = color.new(color.black, 80), text_size = size.small)
 
 alertcondition(bullBreak, title = "BBB Bullish Signal",
      message = "BBB: Bullish retest confirmed above session range high")
