@@ -27,9 +27,18 @@ recalcMode = input.string(
 grpSignal = "Trade Signals"
 showSignals = input.bool(
      true, "Show Entry / SL / TP Signals", group = grpSignal)
+topLevelsToTrade = input.int(
+     2, "Only Trade the Top N Strongest Levels Per Day",
+     minval = 1, maxval = 10, group = grpSignal)
+maxTradesPerDay = input.int(
+     3, "Max Trades Per Day", minval = 1, group = grpSignal)
 minSuccessPct = input.float(
-     55, "Minimum Historical Success % to Trade",
+     65, "Minimum Historical Success % to Trade",
      minval = 50, maxval = 99, group = grpSignal)
+useTrendFilter = input.bool(
+     true, "Only Trade With the Daily Trend", group = grpSignal)
+trendMALen = input.int(
+     200, "Daily MA Length", minval = 1, group = grpSignal)
 touchToleranceATRMult = input.float(
      0.15, "Touch Tolerance (x ATR)",
      minval = 0.01, step = 0.05, group = grpSignal)
@@ -39,7 +48,7 @@ slBufferATRMult = input.float(
 atrLenSignal = input.int(
      14, "ATR Length", minval = 1, group = grpSignal)
 cooldownBars = input.int(
-     10, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
+     30, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
 tagOffsetBars = input.int(
      3, "Tag Offset (bars after signal)", minval = 1, group = grpSignal)
 
@@ -200,36 +209,72 @@ if barstate.islast and shouldRecalc
     needsRecalc := false
 
 // ─────────────────────────────────────────────────────────────────────────
-// Entry / exit signals — nearest S/R level to price, filtered by its own
-// historical success %, confirmed by a rejection candle.
+// Entry / exit signals — a curated day plan, not "trade every touch":
+//   1. Each new day, rank the 10 levels by their own historical success %
+//      and keep only the strongest N (topLevelsToTrade) — the rest are
+//      ignored for signals all day, even though they still get drawn.
+//   2. Only trade with the daily trend.
+//   3. Hard cap of maxTradesPerDay signals, whichever comes first.
 // ─────────────────────────────────────────────────────────────────────────
+dailyMA = request.security(
+     syminfo.tickerid, "D",
+     ta.sma(close, trendMALen)[1],
+     lookahead = barmerge.lookahead_off)
+trendUpOK = not useTrendFilter or close > dailyMA
+trendDownOK = not useTrendFilter or close < dailyMA
+
+var int[] topIdx = array.new<int>()
+var int dailyTradeCount = 0
+
+if newDay
+    dailyTradeCount := 0
+    scores = array.new<float>(10, 0.0)
+    for i = 0 to 9
+        array.set(scores, i, math.max(array.get(support_success_array, i), array.get(resistance_success_array, i)))
+    array.clear(topIdx)
+    for k = 1 to topLevelsToTrade
+        bestI = -1
+        bestV = -1.0
+        for i = 0 to 9
+            v = array.get(scores, i)
+            if v > bestV
+                bestV := v
+                bestI := i
+        if bestI >= 0
+            array.push(topIdx, bestI)
+            array.set(scores, bestI, -1.0)
+
 atrValSig = ta.atr(atrLenSignal)
 touchTol = touchToleranceATRMult * atrValSig
 slBuf = slBufferATRMult * atrValSig
 
-nearestIdx = 0
+nearestIdx = -1
 nearestDist = 1e10
-for i = 0 to 9
-    d = math.abs(close - array.get(sr_array, i))
+for j = 0 to array.size(topIdx) - 1
+    idx = array.get(topIdx, j)
+    d = math.abs(close - array.get(sr_array, idx))
     if d < nearestDist
         nearestDist := d
-        nearestIdx := i
+        nearestIdx := idx
 
-nearestLevel = array.get(sr_array, nearestIdx)
-nearestSupportPct = array.get(support_success_array, nearestIdx)
-nearestResistPct = array.get(resistance_success_array, nearestIdx)
+hasLevel = nearestIdx >= 0
+nearestLevel = hasLevel ? array.get(sr_array, nearestIdx) : na
+nearestSupportPct = hasLevel ? array.get(support_success_array, nearestIdx) : na
+nearestResistPct = hasLevel ? array.get(resistance_success_array, nearestIdx) : na
 
-longTouch = low <= nearestLevel + touchTol and close > nearestLevel
-shortTouch = high >= nearestLevel - touchTol and close < nearestLevel
+longTouch = hasLevel and low <= nearestLevel + touchTol and close > nearestLevel
+shortTouch = hasLevel and high >= nearestLevel - touchTol and close < nearestLevel
 
 var int lastSignalBar = na
-canSignal = na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars
+canSignal = (na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars)
+     and dailyTradeCount < maxTradesPerDay
 
-longSignal = showSignals and canSignal and longTouch and nearestSupportPct >= minSuccessPct
-shortSignal = showSignals and canSignal and shortTouch and nearestResistPct >= minSuccessPct
+longSignal = showSignals and canSignal and longTouch and nearestSupportPct >= minSuccessPct and trendUpOK
+shortSignal = showSignals and canSignal and shortTouch and nearestResistPct >= minSuccessPct and trendDownOK
 
 if longSignal or shortSignal
     lastSignalBar := bar_index
+    dailyTradeCount := dailyTradeCount + 1
     isLong = longSignal
     entryPrice = close
     stopPrice = isLong ? nearestLevel - slBuf : nearestLevel + slBuf
