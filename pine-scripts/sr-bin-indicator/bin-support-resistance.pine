@@ -315,21 +315,57 @@ if longSignal or shortSignal
     sideColor = isLong ? color.teal : color.red
     tagBar = bar_index + tagOffsetBars
 
-    label.new(bar_index, isLong ? low : high, isLong ? "BUY" : "SELL",
-         yloc = isLong ? yloc.belowbar : yloc.abovebar,
-         style = isLong ? label.style_label_up : label.style_label_down,
-         color = sideColor, textcolor = color.white, size = size.small)
+    sideText = isLong ? "BUY" : "SELL"
+    sideYloc = isLong ? yloc.belowbar : yloc.abovebar
+    sideStyle = isLong ? label.style_label_up : label.style_label_down
+    label.new(
+         bar_index,
+         isLong ? low : high,
+         sideText,
+         yloc = sideYloc,
+         style = sideStyle,
+         color = sideColor,
+         textcolor = color.white,
+         size = size.small)
 
-    line.new(bar_index, stopPrice, tagBar, stopPrice,
-         color = color.red, style = line.style_dashed, width = 1)
-    line.new(bar_index, targetPrice, tagBar, targetPrice,
-         color = color.teal, style = line.style_dashed, width = 1)
-    label.new(tagBar, stopPrice, "🛑 SL " + str.tostring(math.round_to_mintick(stopPrice)),
-         style = label.style_label_left, color = color.red,
-         textcolor = color.white, size = size.small)
-    label.new(tagBar, targetPrice, "🎯 TP " + str.tostring(math.round_to_mintick(targetPrice)),
-         style = label.style_label_left, color = color.teal,
-         textcolor = color.white, size = size.small)
+    line.new(
+         bar_index,
+         stopPrice,
+         tagBar,
+         stopPrice,
+         color = color.red,
+         style = line.style_dashed,
+         width = 1)
+    line.new(
+         bar_index,
+         targetPrice,
+         tagBar,
+         targetPrice,
+         color = color.teal,
+         style = line.style_dashed,
+         width = 1)
+
+    slPriceText = str.tostring(math.round_to_mintick(stopPrice))
+    slText = "🛑 SL " + slPriceText
+    label.new(
+         tagBar,
+         stopPrice,
+         slText,
+         style = label.style_label_left,
+         color = color.red,
+         textcolor = color.white,
+         size = size.small)
+
+    tpPriceText = str.tostring(math.round_to_mintick(targetPrice))
+    tpText = "🎯 TP " + tpPriceText
+    label.new(
+         tagBar,
+         targetPrice,
+         tpText,
+         style = label.style_label_left,
+         color = color.teal,
+         textcolor = color.white,
+         size = size.small)
 
 alertcondition(longSignal, title = "S/R Long Signal",
      message = "BIN S/R: bullish bounce confirmed off a high-success support level")
