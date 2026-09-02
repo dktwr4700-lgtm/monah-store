@@ -8,7 +8,7 @@
 // that freezes the lines for the rest of the day once computed, plus a
 // fix for the results table being re-created inside its own loop.
 //@version=6
-indicator("BIN Based Support and Resistance [SS]", overlay=true)
+indicator("BIN Based Support and Resistance [SS]", overlay=true, max_lines_count=100, max_labels_count=200)
 
 lookback = input.int(500, "Lookback Length")
 displaylabel = input.string("On SR lines", "Where would you like the statistics to display?", ["On SR lines", "Table", "OFF"])
@@ -16,6 +16,32 @@ offset = input.int(100, "Offset the lines ahead")
 recalcMode = input.string(
      "Once Per Day", "Recalculate",
      options = ["Once Per Day", "Every Bar (Original, can jitter)"])
+
+// ─────────────────────────────────────────────────────────────────────────
+// Trade signal strategy: use each level's own historical bounce-success %
+// as a probability filter. Enter when price touches a level that has a
+// high historical success rate in the expected direction and shows a
+// rejection candle; stop just past the level; target the next S/R level
+// in the trade's direction.
+// ─────────────────────────────────────────────────────────────────────────
+grpSignal = "Trade Signals"
+showSignals = input.bool(
+     true, "Show Entry / SL / TP Signals", group = grpSignal)
+minSuccessPct = input.float(
+     55, "Minimum Historical Success % to Trade",
+     minval = 50, maxval = 99, group = grpSignal)
+touchToleranceATRMult = input.float(
+     0.15, "Touch Tolerance (x ATR)",
+     minval = 0.01, step = 0.05, group = grpSignal)
+slBufferATRMult = input.float(
+     0.3, "Stop-Loss Buffer Beyond Level (x ATR)",
+     minval = 0.05, step = 0.05, group = grpSignal)
+atrLenSignal = input.int(
+     14, "ATR Length", minval = 1, group = grpSignal)
+cooldownBars = input.int(
+     10, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
+tagOffsetBars = input.int(
+     3, "Tag Offset (bars after signal)", minval = 1, group = grpSignal)
 
 max = ta.highest(close, lookback)
 min = ta.lowest(close, lookback)
@@ -142,26 +168,98 @@ if newDay
 
 shouldRecalc = recalcMode == "Every Bar (Original, can jitter)" or needsRecalc
 
+// Track only the objects this block draws, so redrawing the S/R lines
+// never wipes out the trade-signal labels/lines drawn below.
+var line[] srLines = array.new<line>()
+var label[] srLabels = array.new<label>()
+
 if barstate.islast and shouldRecalc
-    for lines in line.all
-        line.delete(lines)
-    for labels in label.all
-        label.delete(labels)
+    for ln in srLines
+        line.delete(ln)
+    array.clear(srLines)
+    for lb in srLabels
+        label.delete(lb)
+    array.clear(srLabels)
 
     var table data = table.new(position.middle_right, 3, 14, bgcolor = color.new(color.rgb(0, 0, 0), 65))
 
     for i = 0 to array.size(sr_array) - 1
-        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = array.get(gradient_array, i), width = 1)
-        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 70), width = 3)
-        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 80), width = 6)
-        line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 95), width = 8)
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = array.get(gradient_array, i), width = 1))
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 70), width = 3))
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 80), width = 6))
+        array.push(srLines, line.new(bar_index - lookback, array.get(sr_array, i), bar_index + offset, array.get(sr_array, i), color = color.new(array.get(gradient_array, i), 95), width = 8))
         if displaylabel == "On SR lines"
-            create_label(i)
+            array.push(srLabels, create_label(i))
         if displaylabel == "Table"
-            label.new(bar_index + offset, array.get(sr_array, i), text = str.tostring(array.get(num_array, i)), color = na, textcolor = color.white)
+            array.push(srLabels, label.new(bar_index + offset, array.get(sr_array, i), text = str.tostring(array.get(num_array, i)), color = na, textcolor = color.white))
             table.cell(data, 1, 1, text = "SR Line", text_color = color.white)
             table.cell(data, 2, 1, text = "Backtest Results", text_color = color.white)
             table.cell(data, 1, 2 + i, text = str.tostring(array.get(num_array, i)), bgcolor = array.get(gradient_array, i), text_color = color.black)
             table.cell(data, 2, 2 + i, text = "% Support Success: " + str.tostring(math.round(array.get(support_success_array, i), 2)) + "\n % Resistance Success: " + str.tostring(math.round(array.get(resistance_success_array, i), 2)), text_color = color.white)
 
     needsRecalc := false
+
+// ─────────────────────────────────────────────────────────────────────────
+// Entry / exit signals — nearest S/R level to price, filtered by its own
+// historical success %, confirmed by a rejection candle.
+// ─────────────────────────────────────────────────────────────────────────
+atrValSig = ta.atr(atrLenSignal)
+touchTol = touchToleranceATRMult * atrValSig
+slBuf = slBufferATRMult * atrValSig
+
+nearestIdx = 0
+nearestDist = 1e10
+for i = 0 to 9
+    d = math.abs(close - array.get(sr_array, i))
+    if d < nearestDist
+        nearestDist := d
+        nearestIdx := i
+
+nearestLevel = array.get(sr_array, nearestIdx)
+nearestSupportPct = array.get(support_success_array, nearestIdx)
+nearestResistPct = array.get(resistance_success_array, nearestIdx)
+
+longTouch = low <= nearestLevel + touchTol and close > nearestLevel
+shortTouch = high >= nearestLevel - touchTol and close < nearestLevel
+
+var int lastSignalBar = na
+canSignal = na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars
+
+longSignal = showSignals and canSignal and longTouch and nearestSupportPct >= minSuccessPct
+shortSignal = showSignals and canSignal and shortTouch and nearestResistPct >= minSuccessPct
+
+if longSignal or shortSignal
+    lastSignalBar := bar_index
+    isLong = longSignal
+    entryPrice = close
+    stopPrice = isLong ? nearestLevel - slBuf : nearestLevel + slBuf
+    riskDist = math.abs(entryPrice - stopPrice)
+
+    targetIdx = isLong ? nearestIdx + 1 : nearestIdx - 1
+    hasTarget = targetIdx >= 0 and targetIdx <= 9
+    targetPrice = hasTarget ? array.get(sr_array, targetIdx) :
+         (isLong ? entryPrice + riskDist * 1.5 : entryPrice - riskDist * 1.5)
+
+    sideColor = isLong ? color.teal : color.red
+    tagBar = bar_index + tagOffsetBars
+
+    label.new(bar_index, isLong ? low : high, isLong ? "BUY" : "SELL",
+         yloc = isLong ? yloc.belowbar : yloc.abovebar,
+         style = isLong ? label.style_label_up : label.style_label_down,
+         color = sideColor, textcolor = color.white, size = size.small)
+
+    line.new(bar_index, stopPrice, tagBar, stopPrice,
+         color = color.red, style = line.style_dashed, width = 1)
+    line.new(bar_index, targetPrice, tagBar, targetPrice,
+         color = color.teal, style = line.style_dashed, width = 1)
+    label.new(tagBar, stopPrice, "🛑 SL " + str.tostring(math.round_to_mintick(stopPrice)),
+         style = label.style_label_left, color = color.red,
+         textcolor = color.white, size = size.small)
+    label.new(tagBar, targetPrice, "🎯 TP " + str.tostring(math.round_to_mintick(targetPrice)),
+         style = label.style_label_left, color = color.teal,
+         textcolor = color.white, size = size.small)
+
+alertcondition(longSignal, title = "S/R Long Signal",
+     message = "BIN S/R: bullish bounce confirmed off a high-success support level")
+alertcondition(shortSignal, title = "S/R Short Signal",
+     message = "BIN S/R: bearish rejection confirmed off a high-success resistance level")
