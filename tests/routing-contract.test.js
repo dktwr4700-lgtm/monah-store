@@ -405,7 +405,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("يرفع إثبات التحويل");
     expect(landing).toContain("بعد تأكيد التاجر استلام المبلغ");
     expect(landing).toContain("متجرك الأساسي");
-    expect(landing).toContain("إضافات يختارها التاجر عند التفعيل");
+    expect(landing).toContain("إضافات تكبّر مبيعاتك عند التفعيل");
     expect(landing).not.toContain("PACKAGES.map");
     expect(landing).not.toContain("وفّر شهرين");
     expect(landing).not.toContain("وصل الملف للعميل تلقائيًا الآن");

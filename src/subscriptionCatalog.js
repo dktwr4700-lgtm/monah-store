@@ -1,10 +1,10 @@
 export const BASE_MONTHLY_PRICE = 3;
 
 export const ADD_ON_CATALOG = [
-  { key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2, desc: "الدفع الإلكتروني والتنزيل الآمن بعد تأكيد الدفع.", status: "يتفعل بعد ربط الدفع", ready: false },
-  { key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", price: 1, desc: "بيع الحزم وكوبونات الخصم في مكان واحد.", status: "يتفعل بعد ربط الدفع", ready: false },
-  { key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", price: 1, desc: "لوحة مبيعات وسجل مشتريات وفاتورة أو إيصال بسيط.", status: "يتفعل بعد ربط الدفع", ready: false },
-  { key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5, desc: "تحديد عدد مرات تنزيل الملف للمشتري بعد الشراء.", status: "يتفعل بعد ربط الدفع", ready: false },
-  { key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1, desc: "مسودة وصف المنتج ومسودة نص الإعلان؛ التاجر يراجعها بنفسه.", status: "متاح الآن", ready: true },
-  { key: "customDomain", group: "هوية المتجر", title: "دومين خاص", price: 1, desc: "ربط دومين يملكه التاجر بمتجره بعد إثبات الملكية.", status: "ينتظر اختبار دومين حقيقي", ready: false },
+  { key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2, desc: "عميلك يدفع ببطاقته أو محفظته ويستلم ملفه فورًا خلال ثوانٍ، بدون ما تراجع أو تؤكد شي بنفسك.", status: "يتفعل بعد ربط الدفع", ready: false },
+  { key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", price: 1, desc: "بيع أكثر بضغطة وحدة: اجمع منتجاتك في حزم بسعر مغري، وفعّل كوبونات خصم توصّل عميلك أسرع للشراء.", status: "يتفعل بعد ربط الدفع", ready: false },
+  { key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", price: 1, desc: "فاتورة رسمية بشعار متجرك تنزل تلقائيًا لعميلك بعد كل عملية بيع، تعطيك مظهر احترافي بدون أي جهد إضافي.", status: "يتفعل بعد ربط الدفع", ready: false },
+  { key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5, desc: "امنع تسريب ملفك بعد البيع: حدد عدد مرات التنزيل المسموحة، ويتوقف الرابط تلقائيًا بعدها.", status: "يتفعل بعد ربط الدفع", ready: false },
+  { key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1, desc: "وصف منتج جذاب ونص إعلان جاهز خلال ثوانٍ يكتبه لك الذكاء الاصطناعي — تراجعه وتنشره بنفسك.", status: "متاح الآن", ready: true },
+  { key: "customDomain", group: "هوية المتجر", title: "دومين خاص", price: 1, desc: "متجرك بعنوان يخصك أنت بدل رابط عام، يعزز ثقة عميلك من أول نظرة على الرابط.", status: "ينتظر اختبار دومين حقيقي", ready: false },
 ];

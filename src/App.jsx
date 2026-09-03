@@ -495,8 +495,8 @@ export default function App() {
       <section className="section" id="pricing" style={{ background: "#FBFAF7" }}>
         <div className="wrap">
           <div className="section-eyebrow reveal">الاشتراك</div>
-          <h2 className="section-title reveal">ابنِ اشتراك متجرك</h2>
-          <div className="section-sub reveal">تبدأ بمتجر أساسي، ثم تختار الإضافات التي تحتاجها ويظهر لك مجموعك الشهري قبل أي تفعيل.</div>
+          <h2 className="section-title reveal">ابدأ بسيط، وكبّر متجرك متى احتجت</h2>
+          <div className="section-sub reveal">متجر أساسي يشتغل من أول يوم بسعر واضح، وإضافات تفتح لك مبيعات أسرع وأذكى وقت ما تحتاجها — بدون التزام بأكثر من اللي تختاره.</div>
 
           <div className="pricing">
             <div className="price-card reveal popular">
@@ -511,9 +511,12 @@ export default function App() {
                 <div>✓ منتج مجاني وروابط تتبع الزيارات</div>
               </div>
               <div className="price-soon">
-                <div className="price-soon-label">إضافات يختارها التاجر عند التفعيل:</div>
+                <div className="price-soon-label">إضافات تكبّر مبيعاتك عند التفعيل:</div>
                 {ADD_ON_CATALOG.map((item) => (
-                  <div key={item.key}>○ {item.title} — {item.price} ر.ع</div>
+                  <div key={item.key} style={{ marginBottom: 10 }}>
+                    <div>○ <b>{item.title}</b> — {item.price} ر.ع</div>
+                    <div style={{ color: "#8A8677", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{item.desc}</div>
+                  </div>
                 ))}
               </div>
               <a className="price-btn" href={INVITE_REQUEST_URL} target="_blank" rel="noopener noreferrer">اطلب رابط دعوة</a>
