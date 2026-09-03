@@ -323,8 +323,9 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).not.toContain('key: "giftCards"');
     expect(catalog).not.toContain('key: "upsell"');
     expect(catalog).not.toContain('key: "aiLaunch"');
-    expect(landing).toContain("البيع الرقمي — 2 ر.ع");
-    expect(landing).toContain("حماية إضافية — 0.5 ر.ع");
+    expect(landing).toContain('import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js"');
+    expect(landing).toContain("ADD_ON_CATALOG.map((item) =>");
+    expect(landing).not.toContain("البيع الرقمي — 2 ر.ع");
   });
 
   it("يوحد اشتراك لوحة التاجر مع الأسعار المعتمدة دون ادعاء تحصيل قائم", async () => {
@@ -401,8 +402,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const customerAssistant = await source("api/customer-assistant.js");
     const html = await source("index.html");
 
-    expect(landing).toContain("خيارات البيع الإلكتروني عند تفعيلها");
-    expect(landing).toContain("البيع الإلكتروني قيد التفعيل");
+    expect(landing).toContain("يرفع إثبات التحويل");
+    expect(landing).toContain("بعد تأكيد التاجر استلام المبلغ");
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).toContain("إضافات يختارها التاجر عند التفعيل");
     expect(landing).not.toContain("PACKAGES.map");

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
@@ -206,16 +207,16 @@ const styles = `
 `;
 
 const FEATURES = [
-  { title: "التسليم الرقمي", desc: "يصبح متاحًا عند تفعيل خدمة البيع الإلكتروني في المنصة. حتى ذلك الوقت يجهّز التاجر منتجه ورابط مشاركته.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+  { title: "التسليم الرقمي", desc: "يفتح تلقائيًا للعميل بعد ما يرفع إثبات التحويل ويؤكد التاجر استلام المبلغ من لوحة الطلبات.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
   { title: "رابط لكل منتج", desc: "كل منتج له رابط خاص فيه، تشاركه بأي مكان تحب.", icon: <path d="M12 3v18M3 12h18" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/> },
-  { title: "متابعة المتجر", desc: "تابع منتجاتك ومسوداتك من لوحة التاجر. التقارير المتقدمة تظهر عند تفعيل خدمات البيع الإلكتروني.", icon: <><rect x="3" y="4" width="18" height="14" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 9h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
+  { title: "متابعة المتجر", desc: "تابع منتجاتك وطلباتك من لوحة التاجر. لوحة المبيعات والتقارير المتقدمة تظهر عند تفعيل الدفع الإلكتروني لاحقًا.", icon: <><rect x="3" y="4" width="18" height="14" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 9h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
   { title: "إعداد بدقائق", desc: "بدون خبرة تقنية، وبدون كمبيوتر أو استضافة خارجية.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
 ];
 
 const PROTECTION = [
-  { title: "روابط تحميل مقيّدة", desc: "تتاح عند تفعيل الشراء الإلكتروني للمحافظة على خصوصية المنتج وعدم مشاركة الرابط بصورة دائمة.", icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
-  { title: "حفظ الملفات بشكل محمي", desc: "ملف المنتج لا يظهر للزائر في المتجر العام. وصول العميل يتاح ضمن خدمات البيع عند تفعيلها.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
-  { title: "حماية وصول العميل", desc: "إتاحة الرابط للمشتري تُدار ضمن خدمة البيع الإلكتروني عند تشغيلها.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: "روابط تحميل مقيّدة", desc: "رابط التنزيل يفتح للعميل فقط بعد تأكيد التاجر استلام المبلغ، ولا يبقى صالحًا للمشاركة بصورة دائمة.", icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: "حفظ الملفات بشكل محمي", desc: "ملف المنتج لا يظهر للزائر في المتجر العام. وصول العميل يتاح فقط بعد تأكيد التاجر استلام المبلغ.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: "حماية وصول العميل", desc: "إتاحة الرابط للمشتري تُدار تلقائيًا بعد تأكيد التاجر استلام المبلغ من لوحة الطلبات.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
 ];
 
 const WHY = [
@@ -241,11 +242,11 @@ const INVITE_REQUEST_URL = "https://wa.me/96876630905?text=" + encodeURIComponen
 const STEPS = [
   { n: "01", title: "تطلب دعوة وتفعّل متجرك", desc: "يوصلك رابط خاص، ثم تدخل بياناتك وتختار كلمة مرورك بنفسك." },
   { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه." },
-  { n: "03", title: "تشارك الرابط وتجهّز البيع", desc: "تظهر خيارات البيع الإلكتروني عند تفعيلها في المنصة." },
+  { n: "03", title: "تشارك الرابط وتستلم الطلبات", desc: "العميل يطلب المنتج ويرفع إثبات التحويل، وأنت تؤكد الاستلام فيفتح التنزيل له تلقائيًا." },
 ];
 
 const FAQS = [
-  { q: "هل أحتاج خبرة تقنية؟", a: "أبدًا. ترفع ملفك وتحدد سعرًا مبدئيًا، ثم تشارك رابط منتجك. خيارات البيع الإلكتروني تظهر عند تفعيلها في المنصة." },
+  { q: "هل أحتاج خبرة تقنية؟", a: "أبدًا. ترفع ملفك وتحدد السعر، تشارك رابط منتجك، والعميل يطلبه ويرفع إثبات التحويل — وأنت تؤكد الاستلام ليوصله الملف." },
   { q: "وش أنواع الملفات المسموحة؟", a: "أي ملف رقمي: PDF، تصاميم، أكواد، فيديوهات، وغيرها." },
   { q: "فيه عمولة على مبيعاتي؟", a: "لا توجد عمولة إضافية على المبيعات. وتظهر تفاصيل الاشتراك والسعر قبل أي تفعيل." },
   { q: "أقدر أربط دومين خاص فيني؟", a: "هذي ميزة قادمة قريبًا للباقة المتكاملة، لسا قيد التطوير." },
@@ -368,8 +369,8 @@ export default function App() {
                   </div>
                   <div className={"slide" + (slide === 1 ? " active" : "")}>
                     <div className="confirm-badge">✓</div>
-                    <div className="confirm-title">البيع الإلكتروني قيد التفعيل</div>
-                    <div className="confirm-sub">تظهر خيارات الدفع والتسليم عند تفعيل الخدمة</div>
+                    <div className="confirm-title">بانتظار تأكيدك للتحويل</div>
+                    <div className="confirm-sub">العميل رفع إثبات التحويل؛ أكّد الاستلام ليفتح التنزيل</div>
                     <div className="confirm-amount mono">٥.٠٠ ر.ع</div>
                   </div>
                 </div>
@@ -388,8 +389,8 @@ export default function App() {
 
         <div className="stats">
           <div className="stat"><b>٪٠</b><span>عمولة على البيع</span></div>
-          <div className="stat"><b>عند التفعيل</b><span>تسليم الملف</span></div>
-          <div className="stat"><b>قيد التجهيز</b><span>روابط تحميل محمية</span></div>
+          <div className="stat"><b>بعد تأكيدك</b><span>تسليم الملف</span></div>
+          <div className="stat"><b>مفعّلة</b><span>روابط تحميل محمية</span></div>
         </div>
       </div>
 
@@ -502,7 +503,7 @@ export default function App() {
               <div className="price-badge">اشتراك مرن</div>
               <div className="price-name">متجرك الأساسي</div>
               <div className="price-desc">صفحة متجر بهويتك، إدارة المنتجات، والمشاركة والتتبع والمنتجات المجانية.</div>
-              <div className="price-value mono">3<span>ر.ع / شهريًا بعد التفعيل</span></div>
+              <div className="price-value mono">{BASE_MONTHLY_PRICE}<span>ر.ع / شهريًا بعد التفعيل</span></div>
               <div className="price-features">
                 <div>✓ لوحة تاجر عربية سهلة</div>
                 <div>✓ صفحة متجر وروابط مشاركة</div>
@@ -511,12 +512,9 @@ export default function App() {
               </div>
               <div className="price-soon">
                 <div className="price-soon-label">إضافات يختارها التاجر عند التفعيل:</div>
-                <div>○ البيع الرقمي — 2 ر.ع</div>
-                <div>○ زيادة المبيعات — 1 ر.ع</div>
-                <div>○ إدارة المبيعات — 1 ر.ع</div>
-                <div>○ حماية إضافية — 0.5 ر.ع</div>
-                <div>○ أدوات الذكاء — 1 ر.ع</div>
-                <div>○ دومين خاص — 1 ر.ع</div>
+                {ADD_ON_CATALOG.map((item) => (
+                  <div key={item.key}>○ {item.title} — {item.price} ر.ع</div>
+                ))}
               </div>
               <a className="price-btn" href={INVITE_REQUEST_URL} target="_blank" rel="noopener noreferrer">اطلب رابط دعوة</a>
             </div>
