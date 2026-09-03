@@ -337,15 +337,32 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+  if (!currentUser) {
     return (
       <div className="admin-page" dir="rtl" lang="ar">
         <style>{styles}</style>
         <div className="admin-denied">
           <div>
             <div style={{ fontSize: 40, marginBottom: 10 }}>🔒</div>
-            <b>ما عندك صلاحية دخول هذي الصفحة</b>
-            <p>هذي الصفحة خاصة بصاحب المنصة فقط.</p>
+            <b>سجّل دخولك أولًا</b>
+            <p>ادخل بحساب مالك مُونة، وبعدها تقدر تدير دعوات التجار.</p>
+            <a className="admin-logout" href="#login">تسجيل الدخول</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentUser.email !== ADMIN_EMAIL) {
+    return (
+      <div className="admin-page" dir="rtl" lang="ar">
+        <style>{styles}</style>
+        <div className="admin-denied">
+          <div>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>🔒</div>
+            <b>دخلت بحساب غير حساب المالك</b>
+            <p>هذه الصفحة خاصة بصاحب مُونة. سجل خروج ثم ادخل بحساب المالك.</p>
+            <button className="admin-logout" onClick={() => signOut(auth)}>تسجيل الخروج</button>
           </div>
         </div>
       </div>
