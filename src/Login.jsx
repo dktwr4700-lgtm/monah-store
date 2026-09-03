@@ -106,7 +106,7 @@ export default function Login() {
         </form>
 
         <div className="auth-switch">
-          ما عندك حساب؟ <a href="#register">أنشئ حساب بائع</a>
+          ما عندك حساب؟ اطلب رابط دعوة خاص من صاحب مُونة.
         </div>
       </div>
     </div>

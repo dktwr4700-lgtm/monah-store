@@ -67,6 +67,13 @@ const styles = `
   .ap-owner b{ color:#3D4A66; }
   .badge-suspended{ background:#F3EBDD; color:#B9832F; }
   .ap-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .invite-panel{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:16px; padding:18px; margin-bottom:14px; }
+  .invite-title{ font-family:'Almarai',sans-serif; font-weight:800; font-size:15px; margin-bottom:5px; }.invite-sub{ color:#625F55; font-size:11.5px; line-height:1.75; margin-bottom:15px; }
+  .invite-field{ margin-bottom:11px; }.invite-field label{ display:block; color:#625F55; font-size:11.5px; font-weight:800; margin-bottom:5px; }.invite-field input,.invite-field select{ width:100%; box-sizing:border-box; padding:11px 12px; border:1px solid #E4E0D3; border-radius:10px; background:#FBFAF7; color:#16233F; font:13px 'Cairo',sans-serif; }
+  .invite-create{ width:100%; min-height:42px; border:0; border-radius:100px; background:#16233F; color:#fff; font:700 12.5px 'Cairo',sans-serif; cursor:pointer; }.invite-create:disabled{ opacity:.6; }.invite-message{ margin:0 0 12px; padding:9px 11px; border-radius:10px; font-size:11.5px; line-height:1.7; }.invite-message.error{ background:#F6E9E5; color:#A34839; }.invite-message.success{ background:#EAF0EB; color:#37724B; }
+  .invite-link{ display:flex; align-items:center; gap:8px; border:1px solid #D8E5D8; background:#F5F9F4; border-radius:11px; padding:8px 9px; direction:ltr; }.invite-link code{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#22372C; font:10px 'JetBrains Mono',monospace; }.invite-copy{ flex-shrink:0; border:0; border-radius:8px; background:#16233F; color:#fff; padding:7px 10px; font:700 10.5px 'Cairo',sans-serif; cursor:pointer; }
+  .invite-row{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:14px 16px; margin-bottom:10px; }.invite-row-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }.invite-name{ font-weight:800; font-size:14px; }.invite-email{ color:#625F55; font-size:11.5px; margin-top:3px; }.invite-meta{ color:#625F55; font-size:10.5px; margin-top:8px; }.badge-pending{ background:#F3EBDD; color:#8A5B18; }.badge-accepted{ background:#EAF0EB; color:#37724B; }.badge-revoked,.badge-expired{ background:#F6E9E5; color:#A34839; }
+  @media (max-width:390px){.admin-wrap{padding:16px 14px 48px}.admin-header{margin-bottom:16px}.admin-tabs{overflow-x:auto;padding-bottom:2px}.admin-tab{white-space:nowrap;padding:8px 12px}.invite-panel,.invite-row{padding:14px}.invite-row-top{gap:8px}.seller-badge{flex-shrink:0}.invite-link{align-items:flex-start}.invite-copy{min-height:34px}}
 `;
 
 function planLabel(plan) {
@@ -75,6 +82,13 @@ function planLabel(plan) {
   if (plan === "full") return "متجر متكامل";
   return "بدون باقة";
 }
+
+const STORE_TYPES = {
+  books: "كتب رقمية",
+  videos: "فيديوهات ودورات",
+  codes: "أكواد وتراخيص",
+  files: "ملفات وقوالب",
+};
 
 export default function AdminDashboard() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -94,6 +108,16 @@ export default function AdminDashboard() {
   const [allProductsLoading, setAllProductsLoading] = useState(false);
   const [allProductsLoaded, setAllProductsLoaded] = useState(false);
   const [busyProductId, setBusyProductId] = useState(null);
+  const [invites, setInvites] = useState([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [inviteStoreName, setInviteStoreName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteStoreType, setInviteStoreType] = useState("files");
+  const [inviteCreating, setInviteCreating] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSuccess, setInviteSuccess] = useState("");
+  const [latestInviteUrl, setLatestInviteUrl] = useState("");
+  const [revokingInviteId, setRevokingInviteId] = useState("");
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -106,6 +130,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authChecked || !currentUser || currentUser.email !== ADMIN_EMAIL) return;
     loadSellers();
+    loadInvites();
   }, [authChecked, currentUser]);
 
   async function loadSellers() {
@@ -119,6 +144,79 @@ export default function AdminDashboard() {
       console.error(e);
     }
     setLoading(false);
+  }
+
+  async function inviteRequest(action, payload = {}) {
+    const token = await currentUser.getIdToken();
+    const response = await fetch("/api/merchant-invites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "تعذر تنفيذ الدعوة الآن.");
+    return data;
+  }
+
+  async function loadInvites() {
+    setInvitesLoading(true);
+    try {
+      const data = await inviteRequest("list");
+      setInvites(data.invites || []);
+    } catch (error) {
+      console.error(error);
+    }
+    setInvitesLoading(false);
+  }
+
+  async function createInvite(event) {
+    event.preventDefault();
+    setInviteError("");
+    setInviteSuccess("");
+    setLatestInviteUrl("");
+    setInviteCreating(true);
+    try {
+      const data = await inviteRequest("create", { storeName: inviteStoreName, email: inviteEmail, storeType: inviteStoreType });
+      const link = `${window.location.origin}${window.location.pathname}#invite/${data.token}`;
+      setLatestInviteUrl(link);
+      setInviteSuccess("تم إنشاء الرابط. انسخه الآن وأرسله للتاجر؛ ينتهي بعد 3 أيام.");
+      setInviteStoreName("");
+      setInviteEmail("");
+      setInviteStoreType("files");
+      loadInvites();
+    } catch (error) {
+      setInviteError(error.message);
+    }
+    setInviteCreating(false);
+  }
+
+  async function copyInviteLink() {
+    if (!latestInviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(latestInviteUrl);
+      setInviteSuccess("تم نسخ رابط الدعوة. أرسله للتاجر على واتساب.");
+    } catch {
+      setInviteError("تعذر النسخ تلقائيًا. انسخ الرابط يدويًا.");
+    }
+  }
+
+  async function revokeInvite(invite) {
+    if (!window.confirm(`تبي توقف دعوة ${invite.storeName}؟ الرابط لن يفتح بعد الآن.`)) return;
+    setRevokingInviteId(invite.id);
+    try {
+      await inviteRequest("revoke", { inviteId: invite.id });
+      setInvites((items) => items.map((item) => item.id === invite.id ? { ...item, status: "revoked" } : item));
+    } catch (error) {
+      setInviteError(error.message);
+    }
+    setRevokingInviteId("");
+  }
+
+  function inviteStatusLabel(status) {
+    if (status === "accepted") return "مفعّلة";
+    if (status === "revoked") return "موقوفة";
+    if (status === "expired") return "منتهية";
+    return "بانتظار التفعيل";
   }
 
   async function toggleDisabled(seller) {
@@ -299,6 +397,9 @@ export default function AdminDashboard() {
           <button className={"admin-tab" + (view === "products" ? " active" : "")} onClick={openProductsView}>
             كل المنتجات
           </button>
+          <button className={"admin-tab" + (view === "invites" ? " active" : "")} onClick={() => { setView("invites"); loadInvites(); }}>
+            دعوات التجار
+          </button>
         </div>
 
         {view === "sellers" && (
@@ -434,8 +535,31 @@ export default function AdminDashboard() {
               })}
           </>
         )}
+
+        {view === "invites" && (
+          <>
+            <form className="invite-panel" onSubmit={createInvite}>
+              <div className="invite-title">دعوة تاجر جديد</div>
+              <div className="invite-sub">اختر نوع متجره ثم أرسل له الرابط. التاجر يحدد كلمة مروره بنفسه، والرابط يستخدم مرة واحدة.</div>
+              {inviteError && <div className="invite-message error">{inviteError}</div>}
+              {inviteSuccess && <div className="invite-message success">{inviteSuccess}</div>}
+              {latestInviteUrl && <div className="invite-link"><code>{latestInviteUrl}</code><button className="invite-copy" type="button" onClick={copyInviteLink}>نسخ الرابط</button></div>}
+              <div className="invite-field"><label>اسم المتجر</label><input value={inviteStoreName} onChange={(event) => setInviteStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
+              <div className="invite-field"><label>بريد التاجر</label><input type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@example.com" required /></div>
+              <div className="invite-field"><label>ماذا يبيع؟</label><select value={inviteStoreType} onChange={(event) => setInviteStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+              <button className="invite-create" type="submit" disabled={inviteCreating}>{inviteCreating ? "جاري إنشاء الرابط..." : "إنشاء رابط دعوة"}</button>
+            </form>
+
+            {invitesLoading && <div className="loading">جاري تحميل الدعوات...</div>}
+            {!invitesLoading && invites.length === 0 && <div className="empty">ما فيه دعوات حتى الآن.</div>}
+            {!invitesLoading && invites.map((invite) => <div className="invite-row" key={invite.id}>
+              <div className="invite-row-top"><div><div className="invite-name">{invite.storeName}</div><div className="invite-email">{invite.email}</div></div><span className={`seller-badge badge-${invite.status}`}>{inviteStatusLabel(invite.status)}</span></div>
+              <div className="invite-meta">{STORE_TYPES[invite.storeType] || "منتجات رقمية"} · تنتهي {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString("ar") : "—"}</div>
+              {invite.status === "pending" && <div className="seller-actions"><button className="seller-btn warn" type="button" onClick={() => revokeInvite(invite)} disabled={revokingInviteId === invite.id}>{revokingInviteId === invite.id ? "جاري الإيقاف..." : "إيقاف الدعوة"}</button></div>}
+            </div>)}
+          </>
+        )}
       </div>
     </div>
   );
 }
-

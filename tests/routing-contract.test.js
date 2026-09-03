@@ -399,4 +399,42 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(legal).not.toContain("يُجدد تلقائيًا");
     expect(legal).not.toContain("تُسلّم فورًا");
   });
+
+  it("يقصر إنشاء متجر جديد على دعوة خاصة ولا يكشف سجلات الدعوات للمتصفح", async () => {
+    const landing = await source("src/App.jsx");
+    const main = await source("src/main.jsx");
+    const register = await source("src/Register.jsx");
+    const login = await source("src/Login.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+    const admin = await source("src/AdminDashboard.jsx");
+    const invitePage = await source("src/InviteActivation.jsx");
+    const inviteApi = await source("api/merchant-invites.js");
+    const rules = await source("firestore.rules");
+
+    expect(main).toContain('lazy(() => import("./InviteActivation.jsx"))');
+    expect(main).toContain('hash.startsWith("invite/")');
+    expect(landing).toContain("INVITE_REQUEST_URL");
+    expect(landing).toContain("اطلب دعوة لمتجرك");
+    expect(landing).not.toContain('href="#register"');
+    expect(register).toContain("التسجيل بدعوة خاصة");
+    expect(register).not.toContain("createUserWithEmailAndPassword");
+    expect(login).toContain("اطلب رابط دعوة خاص من صاحب مُونة.");
+    expect(login).not.toContain("أنشئ حساب بائع");
+    expect(dashboard).not.toContain("ensureSellerProfile");
+    expect(dashboard).toContain("ما عندك دعوة مفعّلة");
+    expect(admin).toContain("دعوات التجار");
+    expect(admin).toContain("إنشاء رابط دعوة");
+    expect(invitePage).toContain('inviteRequest("inspect", { token })');
+    expect(invitePage).toContain('inviteRequest("activate", { token }, idToken)');
+    expect(inviteApi).toContain("randomBytes(32)");
+    expect(inviteApi).toContain('createHash("sha256")');
+    expect(inviteApi).toContain("const INVITE_TTL_MS = 72 * 60 * 60 * 1000");
+    expect(inviteApi).toContain('status: "accepted"');
+    expect(inviteApi).toContain("requireOwner");
+    expect(inviteApi).toContain('where("email", "==", email).limit(1).get()');
+    expect(inviteApi).toContain("هذا البريد لديه متجر مفعّل بالفعل.");
+    expect(rules).toContain("match /merchantInvites/{inviteId}");
+    expect(rules).toContain("allow create: if false;");
+    expect(rules).toContain("allow read, write: if false;");
+  });
 });

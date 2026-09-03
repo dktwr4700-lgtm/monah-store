@@ -40,6 +40,12 @@ const STORE_STYLES = [
 const COLORS = STORE_STYLES.map((style) => style.color);
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const MAX_PRODUCT_FILE_MB = 50;
+const STORE_TYPE_LABELS = {
+  books: "كتب رقمية",
+  videos: "فيديوهات ودورات",
+  codes: "أكواد وتراخيص",
+  files: "ملفات وقوالب",
+};
 
 const styles = `
   .dh-page{ min-height:100vh; background:#FFFFFF; font-family:'Cairo', sans-serif; }
@@ -283,6 +289,8 @@ const styles = `
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [sellerAccess, setSellerAccess] = useState("checking");
+  const [sellerStoreType, setSellerStoreType] = useState("files");
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
     const t = parts[1];
@@ -410,61 +418,48 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.email === ADMIN_EMAIL) return;
-    async function ensureSellerProfile() {
-      try {
-        const sellerRef = doc(db, "sellers", user.uid);
-        const snap = await getDoc(sellerRef);
-        if (!snap.exists()) {
-          await setDoc(sellerRef, {
-            storeName: user.email.split("@")[0],
-            email: user.email,
-            createdAt: new Date().toISOString(),
-            plan: null,
-          });
-        }
-      } catch (err) {
-        console.error("ensureSellerProfile:", err);
-      }
+    if (user.email === ADMIN_EMAIL) {
+      window.location.hash = "admin";
+      return;
     }
-    ensureSellerProfile();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    async function loadSellerPlan() {
+    let cancelled = false;
+    async function verifySellerAccess() {
       try {
         const snap = await getDoc(doc(db, "sellers", user.uid));
-        if (snap.exists()) {
-          setSellerPlan(snap.data().plan || "basic");
-        }
+        if (cancelled) return;
+        if (!snap.exists()) return setSellerAccess("denied");
+        setSellerPlan(snap.data().plan || "basic");
+        setSellerStoreType(snap.data().storeType || "files");
+        setSellerAccess("active");
       } catch (err) {
         console.error(err);
+        if (!cancelled) setSellerAccess("denied");
       }
     }
-    loadSellerPlan();
+    verifySellerAccess();
+    return () => { cancelled = true; };
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || sellerAccess !== "active") return;
     const q = query(collection(db, "products"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsub();
-  }, [user]);
+  }, [user, sellerAccess]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || sellerAccess !== "active") return;
     const q = query(collection(db, "bundles"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setBundles(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
     }, () => setBundleError("تعذر عرض الحزم المحفوظة الآن."));
     return () => unsub();
-  }, [user]);
+  }, [user, sellerAccess]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || sellerAccess !== "active") return;
     const campaignQuery = query(collection(db, "campaignLinks"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(campaignQuery, (snap) => {
       const links = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -472,18 +467,18 @@ export default function Dashboard() {
       setCampaignLinks(links);
     }, () => setCampaignError("تعذر عرض روابط التتبع الآن."));
     return () => unsub();
-  }, [user]);
+  }, [user, sellerAccess]);
   useEffect(() => {
-    if (!user) return;
+    if (!user || sellerAccess !== "active") return;
     const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsub();
-  }, [user]);
+  }, [user, sellerAccess]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || sellerAccess !== "active") return;
     const q = query(collection(db, "orders"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(
       q,
@@ -499,10 +494,10 @@ export default function Dashboard() {
       () => setSellerOrders([])
     );
     return () => unsub();
-  }, [user]);
+  }, [user, sellerAccess]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || sellerAccess !== "active") return;
     async function loadStore() {
       const snap = await getDoc(doc(db, "stores", user.uid));
       if (snap.exists()) {
@@ -522,7 +517,7 @@ export default function Dashboard() {
       }
     }
     loadStore();
-  }, [user]);
+  }, [user, sellerAccess]);
 
   function handleFilePick(e) {
     const file = e.target.files[0];
@@ -1169,7 +1164,11 @@ export default function Dashboard() {
     setDesignDirty(true);
   }
 
-  if (checking) return null;
+  if (checking || !user || sellerAccess === "checking") return null;
+
+  if (sellerAccess !== "active") {
+    return <div className="dh-page" dir="rtl" lang="ar"><style>{styles}</style><main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}><section style={{ maxWidth: 380, textAlign: "center", border: "1px solid #EDEAE0", borderRadius: 18, padding: 24 }}><strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>ما عندك دعوة مفعّلة</strong><p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>هذا الحساب يحتاج رابط دعوة خاص من صاحب مُونة حتى يفتح متجرًا.</p><button className="dh-logout" onClick={handleLogout}>تسجيل الخروج</button></section></main></div>;
+  }
 
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
   const initial = (storeName || "م").charAt(0);
@@ -1303,7 +1302,7 @@ export default function Dashboard() {
     <div className="dh-page" dir="rtl" lang="ar">
       <style>{styles}</style>
       <div className="dh-header">
-        <div className="dh-brand">{storeName || "متجرك"} <span>· لوحة التاجر</span></div>
+        <div className="dh-brand">{storeName || "متجرك"} <span>· لوحة التاجر · {STORE_TYPE_LABELS[sellerStoreType] || "منتجات رقمية"}</span></div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {user.email === ADMIN_EMAIL && (
             <a href="#admin" className="dh-admin-btn">لوحة الأدمن</a>
