@@ -6,6 +6,7 @@ const Register = lazy(() => import("./Register.jsx"));
 const Login = lazy(() => import("./Login.jsx"));
 const Dashboard = lazy(() => import("./Dashboard.jsx"));
 const ProductPage = lazy(() => import("./ProductPage.jsx"));
+const Purchases = lazy(() => import("./Purchases.jsx"));
 const StorePage = lazy(() => import("./StorePage.jsx"));
 const LegalPage = lazy(() => import("./LegalPage.jsx"));
 const AdminDashboard = lazy(() => import("./AdminDashboard.jsx"));
@@ -33,6 +34,7 @@ function Root() {
   else if (hash === "admin") page = <AdminDashboard />;
   else if (hash.startsWith("invite/")) page = <InviteActivation token={hash.split("/")[1]} />;
   else if (hash.startsWith("product/")) page = <ProductPage productId={hash.split("/")[1]} />;
+  else if (hash === "purchases") page = <Purchases />;
   else if (hash.startsWith("store/")) page = <StorePage sellerId={hash.split("/")[1]} />;
   return <Suspense fallback={<PageLoading />}>{page}</Suspense>;
 }

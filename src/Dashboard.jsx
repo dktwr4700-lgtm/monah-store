@@ -383,6 +383,7 @@ export default function Dashboard() {
   const [designDirty, setDesignDirty] = useState(false);
   const [storeAbout, setStoreAbout] = useState("");
   const [storeFaqs, setStoreFaqs] = useState([]);
+  const [paymentInstructions, setPaymentInstructions] = useState("");
 
   // coupons
   const [coupons, setCoupons] = useState([]);
@@ -430,6 +431,7 @@ export default function Dashboard() {
         if (!snap.exists()) return setSellerAccess("denied");
         setSellerPlan(snap.data().plan || "basic");
         setSellerStoreType(snap.data().storeType || "files");
+        setPaymentInstructions(snap.data().paymentInstructions || "");
         setSellerAccess("active");
       } catch (err) {
         console.error(err);
@@ -1192,8 +1194,8 @@ export default function Dashboard() {
       description: p.description,
       hidden: !!p.hidden,
     })),
-    ordersCount: sellerOrders.length,
-    totalSales: sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0),
+    ordersCount: sellerOrders.filter((o) => o.status !== "draft").length,
+    totalSales: sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0),
   };
 
   // يحدد أهم خطوة ناقصة بمتجر التاجر حاليًا — تُستخدم ببطاقة "خطوتك التالية" وبترحيب المساعد الذكي
@@ -1315,6 +1317,7 @@ export default function Dashboard() {
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
         <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
+        <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
         <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
       </div>
 
@@ -1349,8 +1352,8 @@ export default function Dashboard() {
             </div>
 
             <div className="dh-stats">
-              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "pending").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع إجمالي</span></div>
-              <div className="dh-stat"><b className="mono">{sellerOrders.length}</b><span>عملية بيع</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع مؤكدة</span></div>
+              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "draft").length}</b><span>طلب مُرسل</span></div>
               <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
             </div>
 
@@ -1428,7 +1431,7 @@ export default function Dashboard() {
               {sellerOrders.length === 0 && (
                 <div className="empty-note">أضف منتجك الأول، ثم شارك رابطه على واتساب أو إنستغرام لتبدأ استقبال المبيعات.</div>
               )}
-              {sellerOrders.slice(0, 5).map((o) => (
+              {sellerOrders.filter((o) => o.status !== "draft").slice(0, 5).map((o) => (
                 <div className="dh-item" key={o.id}>
                   <div className="dh-item-top">
                     <span className="dh-item-name">{o.productName}</span>
@@ -1516,7 +1519,7 @@ export default function Dashboard() {
                         ✓ {productFile.name} ({(productFile.size / 1024 / 1024).toFixed(1)} م.ب)
                       </div>
                     )}
-                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. وصول العميل للملف يُتاح عند تفعيل البيع الإلكتروني. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
+                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
                   </div>
                 ) : (
                   <div className="dh-field">
@@ -1818,7 +1821,7 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} />}
+        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} paymentInstructions={paymentInstructions} onPaymentInstructionsSaved={setPaymentInstructions} />}
 
         {tab === "design" && (
           <>
