@@ -433,6 +433,9 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(inviteApi).toContain('createHash("sha256")');
     expect(inviteApi).toContain("const INVITE_TTL_MS = 72 * 60 * 60 * 1000");
     expect(inviteApi).toContain('status: "accepted"');
+    expect(inviteApi).toContain('currentInvite.status !== "pending" || isExpired(currentInvite)');
+    expect(inviteApi).toContain('if (snapshot.data().status !== "pending")');
+    expect(inviteApi).toContain('status: "revoked"');
     expect(inviteApi).toContain("requireOwner");
     expect(inviteApi).toContain('where("email", "==", email).limit(1).get()');
     expect(inviteApi).toContain("هذا البريد لديه متجر مفعّل بالفعل.");
