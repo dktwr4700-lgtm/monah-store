@@ -236,8 +236,10 @@ const USECASES = [
   { title: "برستات ومحتوى", desc: "قوالب سوشيال ميديا", color: "#8A8677" },
 ];
 
+const INVITE_REQUEST_URL = "https://wa.me/96876630905?text=" + encodeURIComponent("السلام عليكم، أبغى رابط دعوة خاص لفتح متجر في مُونة.");
+
 const STEPS = [
-  { n: "01", title: "تسجّل وتجهّز متجرك", desc: "تدخل بياناتك وتختار ما يناسب متجرك. تفاصيل الاشتراك تظهر قبل تفعيلها." },
+  { n: "01", title: "تطلب دعوة وتفعّل متجرك", desc: "يوصلك رابط خاص، ثم تدخل بياناتك وتختار كلمة مرورك بنفسك." },
   { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه." },
   { n: "03", title: "تشارك الرابط وتجهّز البيع", desc: "تظهر خيارات البيع الإلكتروني عند تفعيلها في المنصة." },
 ];
@@ -323,7 +325,7 @@ export default function App() {
           </div>
           <div className="nav-btns">
             <a className="nav-link" href="#login">تسجيل الدخول</a>
-            <a className="nav-cta" href="#register">أنشئ متجرك</a>
+            <a className="nav-cta" href={INVITE_REQUEST_URL} target="_blank" rel="noopener noreferrer">اطلب دعوة</a>
           </div>
         </div>
       </div>
@@ -334,7 +336,7 @@ export default function App() {
             <div className="hero-eyebrow">بدون عمولة على أي عملية بيع</div>
             <h1>بيع منتجك الرقمي<br/>من رابط واحد</h1>
             <p>ارفع ملفاتك الرقمية وشارك رابط كل منتج على واتساب وإنستغرام. تظهر خيارات البيع الإلكتروني عند تفعيلها في المنصة.</p>
-            <a className="pill-black" href="#register">أنشئ متجرك الآن ←</a>
+            <a className="pill-black" href={INVITE_REQUEST_URL} target="_blank" rel="noopener noreferrer">اطلب دعوة لمتجرك ←</a>
             <a className="hero-ghost" href="#how">شاهد كيف تعمل</a>
             <div className="hero-signals">
               <span><i>✓</i> واجهة عربية سهلة</span>
@@ -516,7 +518,7 @@ export default function App() {
                 <div>○ أدوات الذكاء — 1 ر.ع</div>
                 <div>○ دومين خاص — 1 ر.ع</div>
               </div>
-              <a className="price-btn" href="#register">جهّز متجرك</a>
+              <a className="price-btn" href={INVITE_REQUEST_URL} target="_blank" rel="noopener noreferrer">اطلب رابط دعوة</a>
             </div>
           </div>
           <div className="pricing-note">لا يوجد تحصيل أو تجديد تلقائي الآن. عند تفعيل الاشتراك لاحقًا يظهر المجموع الشهري قبل التأكيد، وإذا أضاف التاجر ميزة خلال الشهر يدفع سعرها كاملًا وقت إضافتها ثم تدخل ضمن التجديد القادم.</div>
@@ -539,8 +541,8 @@ export default function App() {
             <div className="final-copy">
               <div className="final-kicker">خطوتك القادمة</div>
               <h3>خلّ منتجك جاهزًا للمشاركة</h3>
-              <p>أنشئ متجرك، رتّب صفحته، وخذ رابطك الخاص في مكان واحد وبشكل واضح.</p>
-              <a className="pill-black" href="#register">أنشئ متجرك الآن ←</a>
+              <p>اطلب دعوة لمتجرك، ثم رتّب صفحته وخذ رابطك الخاص في مكان واحد وبشكل واضح.</p>
+              <a className="pill-black" href={INVITE_REQUEST_URL} target="_blank" rel="noopener noreferrer">اطلب دعوة لمتجرك ←</a>
             </div>
             <div className="final-orbit" aria-hidden="true">
               <div className="orbit-plane" />

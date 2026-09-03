@@ -15,10 +15,36 @@ service firebase.storage {
     function ownsNamedFile(fileName) {
       return signedIn() && fileName.matches(request.auth.uid + '-.*');
     }
+    function ownsProofOrder(buyerUid, orderId) {
+      return signedIn()
+        && buyerUid == request.auth.uid
+        && firestore.exists(/databases/(default)/documents/orders/$(orderId))
+        && firestore.get(/databases/(default)/documents/orders/$(orderId)).data.buyerUid == request.auth.uid;
+    }
+    function merchantCanReadProof(orderId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/orders/$(orderId))
+        && firestore.get(/databases/(default)/documents/orders/$(orderId)).data.ownerId == request.auth.uid
+        && (firestore.get(/databases/(default)/documents/orders/$(orderId)).data.status == 'awaiting_seller_confirmation'
+          || firestore.get(/databases/(default)/documents/orders/$(orderId)).data.status == 'confirmed');
+    }
 
     match /secure/{productId}/{fileName} {
       allow read: if ownsProduct(productId) || hasValidUnlock(productId);
       allow create: if ownsProduct(productId) && request.resource.size < 50 * 1024 * 1024;
+      allow update, delete: if false;
+    }
+
+    match /payment-proofs/{buyerUid}/{orderId}/{fileName} {
+      allow read: if ownsProofOrder(buyerUid, orderId) || merchantCanReadProof(orderId);
+      allow create: if ownsProofOrder(buyerUid, orderId)
+        && firestore.get(/databases/(default)/documents/orders/$(orderId)).data.status == 'draft'
+        && request.resource.size > 0
+        && request.resource.size < 5 * 1024 * 1024
+        && (request.resource.contentType == 'image/jpeg'
+          || request.resource.contentType == 'image/png'
+          || request.resource.contentType == 'image/webp'
+          || request.resource.contentType == 'application/pdf');
       allow update, delete: if false;
     }
 

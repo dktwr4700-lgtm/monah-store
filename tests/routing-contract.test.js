@@ -118,6 +118,45 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("request.resource.data.type == 'file'");
   });
 
+  it("يحصر طلب التحويل والإيصال والتسليم بين العميل والتاجر ولا يفتح التنزيل قبل التأكيد", async () => {
+    const productPage = await source("src/ProductPage.jsx");
+    const orderPanel = await source("src/ProductOrderPanel.jsx");
+    const purchases = await source("src/Purchases.jsx");
+    const orders = await source("src/Orders.jsx");
+    const orderApi = await source("api/orders.js");
+    const protectedDownload = await source("api/download.js");
+    const rules = await source("firestore.rules");
+    const storageRules = await source("storage.rules");
+
+    expect(productPage).toContain("<ProductOrderPanel product={product} />");
+    expect(orderPanel).toContain('orderRequest("submit_proof"');
+    expect(orderPanel).toContain("payment-proofs/${auth.currentUser.uid}/${order.id}/");
+    expect(orderPanel).toContain("nextFile.size >= MAX_PROOF_BYTES");
+    expect(orderPanel).toContain("لا يتم تأكيد التحويل تلقائيًا");
+    expect(orders).toContain('orderRequest("confirm"');
+    expect(orders).toContain("تأكيد استلام المبلغ وفتح التنزيل");
+    expect(purchases).toContain('fetch("/api/download"');
+    expect(orderApi).toContain('status: "awaiting_seller_confirmation"');
+    expect(orderApi).toContain('db.collection("sellers").doc(product.ownerId)');
+    expect(orderApi).not.toContain('db.collection("stores").doc(product.ownerId).get()');
+    expect(orderApi).toContain("if (order.ownerId !== account.uid)");
+    expect(orderApi).toContain("لديك طلب سابق لهذا المنتج على هذا الجهاز");
+    expect(orderApi).toContain('doc(`${account.uid}_${productId}`)');
+    expect(orderApi).toContain("db.runTransaction");
+    expect(orderApi).toContain("isAllowedProof({ size, contentType })");
+    expect(orderApi).toContain('db.collection("unlocks").doc(`${order.buyerUid}_${order.productId}`)');
+    expect(orderApi).toContain("transaction.set(unlockRef");
+    expect(orderApi).toContain("codesCount: Math.max(0, Number(product.codesCount || 0) - 1)");
+    expect(orderApi).toContain('if (order.status === "confirmed")');
+    expect(protectedDownload).toContain("responseDisposition");
+    expect(rules).toContain("resource.data.buyerUid == request.auth.uid");
+    expect(rules).toContain("allow create, update, delete: if false;");
+    expect(storageRules).toContain("match /payment-proofs/{buyerUid}/{orderId}/{fileName}");
+    expect(storageRules).toContain("merchantCanReadProof(orderId)");
+    expect(storageRules).toContain("request.resource.contentType == 'application/pdf'");
+    expect(storageRules).toContain("allow update, delete: if false;");
+  });
+
   it("يبقي المنتج المجاني ضمن المتجر الأساسي بعد اختباره دون فتح المنتجات المدفوعة", async () => {
     const landing = await source("src/App.jsx");
     expect(landing).toContain("منتج مجاني وروابط تتبع الزيارات");
@@ -183,7 +222,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("رابط التتبع");
     expect(dashboard).toContain("نسخ الرابط");
     expect(dashboard).toContain("لا يوجد تحصيل أو تجديد تلقائي الآن");
-    expect(orders).toContain(".ord-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }");
+    expect(orders).toContain(".ord-confirm-btn,.ord-proof-btn{width:100%;margin-left:0;min-height:42px}");
   });
 
   it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {
@@ -373,12 +412,12 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).not.toContain("تدفع الاشتراك الشهري بس");
     expect(landing).not.toContain('<b>فوري</b><span>تسليم الملف</span>');
     expect(landing).not.toContain("ثواني");
-    expect(dashboard).toContain("وصول العميل للملف يُتاح عند تفعيل البيع الإلكتروني");
+    expect(dashboard).toContain("يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات");
     expect(dashboard).not.toContain("رابط تحميله يتوفر فقط للمشتري بعد إتمام الدفع");
     expect(dashboard).not.toContain("ادفع واستلم الآن");
     expect(dashboard).not.toContain("ثواني");
     expect(dashboard).not.toContain('>الخصومات</button>');
-    expect(dashboard).not.toContain('>الطلبات</button>');
+    expect(dashboard).toContain('>الطلبات</button>');
     expect(legal).not.toContain("ثواني");
     expect(catalog).not.toContain("ثواني");
     expect(catalog).toContain("يتفعل بعد ربط الدفع");
@@ -398,5 +437,49 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(legal).not.toContain("اشتراك شهري أو سنوي");
     expect(legal).not.toContain("يُجدد تلقائيًا");
     expect(legal).not.toContain("تُسلّم فورًا");
+  });
+
+  it("يقصر إنشاء متجر جديد على دعوة خاصة ولا يكشف سجلات الدعوات للمتصفح", async () => {
+    const landing = await source("src/App.jsx");
+    const main = await source("src/main.jsx");
+    const register = await source("src/Register.jsx");
+    const login = await source("src/Login.jsx");
+    const dashboard = await source("src/Dashboard.jsx");
+    const admin = await source("src/AdminDashboard.jsx");
+    const invitePage = await source("src/InviteActivation.jsx");
+    const inviteApi = await source("api/merchant-invites.js");
+    const rules = await source("firestore.rules");
+
+    expect(main).toContain('lazy(() => import("./InviteActivation.jsx"))');
+    expect(main).toContain('hash.startsWith("invite/")');
+    expect(landing).toContain("INVITE_REQUEST_URL");
+    expect(landing).toContain("اطلب دعوة لمتجرك");
+    expect(landing).not.toContain('href="#register"');
+    expect(register).toContain("التسجيل بدعوة خاصة");
+    expect(register).not.toContain("createUserWithEmailAndPassword");
+    expect(login).toContain("اطلب رابط دعوة خاص من صاحب مُونة.");
+    expect(login).not.toContain("أنشئ حساب بائع");
+    expect(admin).toContain("سجّل دخولك أولًا");
+    expect(admin).toContain("دخلت بحساب غير حساب المالك");
+    expect(admin).toContain("سجل خروج ثم ادخل بحساب المالك.");
+    expect(dashboard).not.toContain("ensureSellerProfile");
+    expect(dashboard).toContain("ما عندك دعوة مفعّلة");
+    expect(admin).toContain("دعوات التجار");
+    expect(admin).toContain("إنشاء رابط دعوة");
+    expect(invitePage).toContain('inviteRequest("inspect", { token })');
+    expect(invitePage).toContain('inviteRequest("activate", { token }, idToken)');
+    expect(inviteApi).toContain("randomBytes(32)");
+    expect(inviteApi).toContain('createHash("sha256")');
+    expect(inviteApi).toContain("const INVITE_TTL_MS = 72 * 60 * 60 * 1000");
+    expect(inviteApi).toContain('status: "accepted"');
+    expect(inviteApi).toContain('currentInvite.status !== "pending" || isExpired(currentInvite)');
+    expect(inviteApi).toContain('if (snapshot.data().status !== "pending")');
+    expect(inviteApi).toContain('status: "revoked"');
+    expect(inviteApi).toContain("requireOwner");
+    expect(inviteApi).toContain('where("email", "==", email).limit(1).get()');
+    expect(inviteApi).toContain("هذا البريد لديه متجر مفعّل بالفعل.");
+    expect(rules).toContain("match /merchantInvites/{inviteId}");
+    expect(rules).toContain("allow create: if false;");
+    expect(rules).toContain("allow read, write: if false;");
   });
 });

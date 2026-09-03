@@ -1,127 +1,20 @@
-import React, { useState } from "react";
-import { auth, db } from "./firebase.js";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import React from "react";
 
 const styles = `
-  .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#FFFFFF; padding:20px; font-family:'Cairo', sans-serif; }
-  .auth-card{ width:100%; max-width:380px; background:#fff; border:1px solid #EDEAE0; border-radius:20px; padding:28px 24px; }
-  .auth-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#0B0B0C; text-align:center; margin-bottom:6px; }
-  .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:6px; color:#0B0B0C; }
-
-  .auth-steps{ display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:22px; }
-  .auth-step{ display:flex; align-items:center; gap:6px; }
-  .auth-step-dot{ width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; font-family:'Cairo'; }
-  .auth-step-dot.active{ background:#0B0B0C; color:#fff; }
-  .auth-step-dot.pending{ background:#F1F0EA; color:#B0AC9C; }
-  .auth-step-label{ font-size:9.5px; color:#8A8677; }
-  .auth-step-line{ width:16px; height:1px; background:#EDEAE0; }
-
-  .auth-field{ margin-bottom:14px; }
-  .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#8A8677; }
-  .auth-field input{ width:100%; padding:12px 14px; border:1px solid #EDEAE0; border-radius:10px; font-family:'Cairo'; font-size:13.5px; background:#FBFAF7; box-sizing:border-box; }
-  .auth-btn{ width:100%; background:#0B0B0C; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:100px; cursor:pointer; margin-top:6px; }
-  .auth-btn:disabled{ opacity:.6; }
-  .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px; }
-  .auth-error a{ color:#B24C3A; font-weight:700; text-decoration:underline; }
-  .auth-next-hint{ text-align:center; color:#8A8677; font-size:11px; line-height:1.8; margin-top:14px; }
-  .auth-switch{ text-align:center; font-size:12.5px; color:#8A8677; margin-top:16px; }
-  .auth-switch a{ color:#0B0B0C; font-weight:700; text-decoration:none; }
-
-  .auth-page button{ transition:transform 100ms ease-out; }
-  .auth-page button:active{ transform:scale(0.96); }
+  .auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FFFFFF;padding:20px;font-family:'Cairo',sans-serif}.auth-card{width:100%;max-width:380px;background:#fff;border:1px solid #EDEAE0;border-radius:20px;padding:28px 24px;text-align:center}.auth-brand{font-family:'Almarai',sans-serif;font-weight:800;font-size:19px;color:#0B0B0C;margin-bottom:8px}.auth-title{font-family:'Almarai',sans-serif;font-weight:800;font-size:17px;color:#0B0B0C;margin-bottom:10px}.auth-text{font-size:12.5px;line-height:1.9;color:#625F55;margin:0 auto 18px;max-width:290px}.auth-btn{display:block;background:#0B0B0C;color:#fff;font-weight:700;font-size:13px;padding:12px;border-radius:100px;text-decoration:none}.auth-back{display:block;margin-top:14px;color:#3D4A66;font-size:12px;font-weight:700;text-decoration:none}
 `;
 
-const STEPS = [
-  { n: "1", label: "الحساب" },
-  { n: "2", label: "المتجر" },
-  { n: "3", label: "المنتج" },
-  { n: "4", label: "المشاركة" },
-];
-
 export default function Register() {
-  const [storeName, setStoreName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    if (!storeName.trim()) return setError("اكتب اسم متجرك.");
-    if (password.length < 6) return setError("كلمة المرور لازم تكون ٦ أحرف أو أكثر.");
-
-    setLoading(true);
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "sellers", cred.user.uid), {
-        storeName: storeName.trim(),
-        email,
-        createdAt: new Date().toISOString(),
-        plan: null,
-      });
-      window.location.hash = "dashboard";
-    } catch (err) {
-      if (err.code === "auth/email-already-in-use") {
-        setError(<>هذا البريد مسجّل من قبل. تبي <a href="#login">تسجّل دخولك</a> بدل كذا؟</>);
-      } else if (err.code === "auth/invalid-email") {
-        setError("البريد الإلكتروني غير صحيح، تأكد من كتابته صح.");
-      } else if (err.code === "auth/weak-password") {
-        setError("كلمة المرور ضعيفة، جرّب كلمة مرور أطول وأقوى.");
-      } else {
-        setError("صار خطأ غير متوقع، حاول مرة ثانية بعد شوي.");
-      }
-    }
-    setLoading(false);
-  }
-
   return (
     <div className="auth-page" dir="rtl" lang="ar">
       <style>{styles}</style>
-      <div className="auth-card">
-        <div className="auth-brand">Monah</div>
-        <div className="auth-title">إنشاء حساب بائع</div>
-
-        <div className="auth-steps">
-          {STEPS.map((s, i) => (
-            <React.Fragment key={s.n}>
-              <div className="auth-step">
-                <div className={"auth-step-dot " + (i === 0 ? "active" : "pending")}>{s.n}</div>
-              </div>
-              {i < STEPS.length - 1 && <div className="auth-step-line"></div>}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {error && <div className="auth-error">{error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="auth-field">
-            <label>اسم متجرك</label>
-            <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="مثال: متجر هند للتصاميم" />
-          </div>
-          <div className="auth-field">
-            <label>البريد الإلكتروني</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div className="auth-field">
-            <label>كلمة المرور</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-          <button className="auth-btn" type="submit" disabled={loading}>
-            {loading ? "جاري الإنشاء..." : "إنشاء الحساب"}
-          </button>
-        </form>
-
-        <div className="auth-next-hint">
-          بعد إنشاء الحساب: تضبط شكل متجرك ← ترفع أول منتج ← تأخذ رابط المشاركة
-        </div>
-
-        <div className="auth-switch">
-          عندك حساب؟ <a href="#login">سجّل دخولك</a>
-        </div>
-      </div>
+      <main className="auth-card">
+        <div className="auth-brand">مُونة</div>
+        <div className="auth-title">التسجيل بدعوة خاصة</div>
+        <p className="auth-text">تُفعَّل متاجر التجار عبر رابط دعوة خاص يرسله لك صاحب المنصة. افتح الرابط الذي وصلك وحدد كلمة مرورك بنفسك.</p>
+        <a className="auth-btn" href="#login">عندي حساب، تسجيل الدخول</a>
+        <a className="auth-back" href="#">العودة للموقع</a>
+      </main>
     </div>
   );
 }
