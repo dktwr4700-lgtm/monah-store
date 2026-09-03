@@ -82,9 +82,12 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'تعذر إيجاد ملف المنتج على السيرفر.' });
     }
 
+    const safeFileName = String(product.filePath.split('/').pop() || 'product').replace(/["\\]/g, '_');
     const [signedUrl] = await file.getSignedUrl({
+      version: 'v4',
       action: 'read',
       expires: Date.now() + SIGNED_URL_TTL_MS,
+      responseDisposition: `attachment; filename="${safeFileName}"`,
     });
 
     return res.status(200).json({ url: signedUrl });
