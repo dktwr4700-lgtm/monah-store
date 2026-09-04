@@ -184,10 +184,18 @@ async function createBundleOrder(req, res, account) {
   }
 
   const orderRef = db.collection("orders").doc(`${account.uid}_bundle_${bundleId}`);
+  let responseOrder = null;
   await db.runTransaction(async (transaction) => {
     const existingOrder = await transaction.get(orderRef);
-    if (existingOrder.exists && hasActiveBuyerOrder([existingOrder.data()], `bundle_${bundleId}`)) {
-      throw new OrderError(409, "لديك طلب سابق لهذه الحزمة على هذا الجهاز. افتح «طلباتي» للمتابعة.");
+    if (existingOrder.exists) {
+      const existing = existingOrder.data();
+      if (existing.status === "draft") {
+        responseOrder = { id: orderRef.id, paymentInstructions: existing.paymentInstructions, price: Number(existing.price) };
+        return;
+      }
+      if (hasActiveBuyerOrder([existing], `bundle_${bundleId}`)) {
+        throw new OrderError(409, "لديك طلب سابق لهذه الحزمة على هذا الجهاز. افتح «طلباتي» للمتابعة.");
+      }
     }
     transaction.set(orderRef, {
       ownerId: bundle.ownerId,
@@ -204,8 +212,9 @@ async function createBundleOrder(req, res, account) {
       paymentInstructions,
       createdAt: FieldValue.serverTimestamp(),
     });
+    responseOrder = { id: orderRef.id, paymentInstructions, price: Number(bundle.price) };
   });
-  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: Number(bundle.price) } });
+  return res.status(201).json({ order: responseOrder });
 }
 
 async function createOrder(req, res, account) {
@@ -245,10 +254,24 @@ async function createOrder(req, res, account) {
     : originalPrice;
 
   const orderRef = db.collection("orders").doc(`${account.uid}_${productId}`);
+  let responseOrder = null;
   await db.runTransaction(async (transaction) => {
     const existingOrder = await transaction.get(orderRef);
-    if (existingOrder.exists && hasActiveBuyerOrder([existingOrder.data()], productId)) {
-      throw new OrderError(409, "لديك طلب سابق لهذا المنتج على هذا الجهاز. افتح «طلباتي» للمتابعة.");
+    if (existingOrder.exists) {
+      const existing = existingOrder.data();
+      if (existing.status === "draft") {
+        responseOrder = {
+          id: orderRef.id,
+          paymentInstructions: existing.paymentInstructions,
+          price: Number(existing.price),
+          originalPrice: Number(existing.originalPrice),
+          couponCode: existing.couponCode || "",
+        };
+        return;
+      }
+      if (hasActiveBuyerOrder([existing], productId)) {
+        throw new OrderError(409, "لديك طلب سابق لهذا المنتج على هذا الجهاز. افتح «طلباتي» للمتابعة.");
+      }
     }
     transaction.set(orderRef, {
       ownerId: product.ownerId,
@@ -264,8 +287,9 @@ async function createOrder(req, res, account) {
       paymentInstructions,
       createdAt: FieldValue.serverTimestamp(),
     });
+    responseOrder = { id: orderRef.id, paymentInstructions, price: finalPrice, originalPrice, couponCode };
   });
-  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: finalPrice, originalPrice, couponCode } });
+  return res.status(201).json({ order: responseOrder });
 }
 
 async function submitProof(req, res, account) {

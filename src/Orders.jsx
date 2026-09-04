@@ -16,7 +16,7 @@ function digitsOnly(value) {
 }
 
 function deliveryLink(order) {
-  return `${window.location.origin}/#deliver/${order.id}/${order.deliveryToken}`;
+  return `${window.location.origin}/l/deliver/${order.id}/${order.deliveryToken}`;
 }
 
 async function orderRequest(action, payload) {

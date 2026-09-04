@@ -135,6 +135,9 @@ export default function Purchases() {
             {order.status === "confirmed" && (
               <a className="buy-copy" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href={`#receipt/${order.id}`}>عرض الفاتورة</a>
             )}
+            {order.status === "draft" && (
+              <a className="buy-copy" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href={order.type === "bundle" ? `#bundle/${order.bundleId}` : `#product/${order.productId}`}>أكمل الطلب وارفع إثبات التحويل</a>
+            )}
           </article>
         ))}
       </main>

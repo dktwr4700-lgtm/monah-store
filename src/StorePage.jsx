@@ -109,14 +109,19 @@ export default function StorePage({ sellerId }) {
   }), [products, search, activeCategory]);
   const featuredProducts = products.filter((product) => product.featured).slice(0, 3);
 
+  function scrollToProducts() {
+    document.getElementById("products")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function shareStore() {
-    const shareData = { title: brandName, text: `تصفح منتجات ${brandName}`, url: window.location.href };
+    const shareUrl = `${window.location.origin}/l/store/${sellerId}`;
+    const shareData = { title: brandName, text: `تصفح منتجات ${brandName}`, url: shareUrl };
     try {
       if (navigator.share) {
         await navigator.share(shareData);
         return;
       }
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareUrl);
     } catch (error) {
       if (error?.name !== "AbortError") console.error("Unable to share store", error);
     }
@@ -130,8 +135,8 @@ export default function StorePage({ sellerId }) {
           <div className="mc-wordmark"><span className="mc-store-mark">{logoUrl ? <img src={logoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : brandName.charAt(0)}</span><span>{brandName}</span><span className="mc-gold-dot" /></div>
           <div className="mc-top-actions">
             <button className="mc-icon-btn" type="button" onClick={shareStore} title="مشاركة المتجر" aria-label="مشاركة المتجر"><ShareIcon /></button>
-            <a className="mc-icon-btn" href="#products" title="المنتجات"><SearchIcon /></a>
-            <a className="mc-icon-btn" href="#products" title="المشتريات"><CartIcon /></a>
+            <button className="mc-icon-btn" type="button" onClick={scrollToProducts} title="المنتجات" aria-label="المنتجات"><SearchIcon /></button>
+            <a className="mc-icon-btn" href="#purchases" title="المشتريات"><CartIcon /></a>
           </div>
         </div>
       </header>
