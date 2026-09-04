@@ -113,7 +113,7 @@ export default function BundlePage({ bundleId }) {
             <div className="bp-items-title">تشمل {items.length} منتجات</div>
             {items.map((item) => <div className="bp-item" key={item.id}><span>✓</span>{item.name}</div>)}
           </div>
-          <ProductOrderPanel bundle={bundle} />
+          <ProductOrderPanel bundle={bundle} sellerWhatsapp={store?.whatsapp} />
           <p className="bp-note">التحويل يُراجع يدويًا من التاجر، ولا يفتح تنزيل أي منتج من الحزمة إلا بعد تأكيده.</p>
         </section>
         <footer className="bp-note" style={{ marginTop: 22 }}><a href="/" style={{ color: "var(--pp-brand)", fontWeight: 800, textDecoration: "none" }}>مدعوم من مُونَة</a></footer>

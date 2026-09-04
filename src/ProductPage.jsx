@@ -130,7 +130,7 @@ export default function ProductPage({ productId }) {
             <div className="pp-store">من متجر <strong>{storeName}</strong></div>
             <div className="pp-price-row"><span className="pp-price-label">السعر المعروض</span><span className="pp-price">{isFreeFile ? "مجاني" : `${Number(product?.price || 0).toFixed(2)} ر.ع`}</span></div>
             <div className="pp-description">{product?.description || "لا يوجد وصف إضافي لهذا المنتج حاليًا."}</div>
-            {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">احصل على المنتج مجانًا</a> : <ProductOrderPanel product={product} />}
+            {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">احصل على المنتج مجانًا</a> : <ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} />}
             <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || "مشاركة رابط المنتج"}</button></div>
             <p className="pp-note">{isFreeFile ? "هذا المنتج مجاني. يبدأ تنزيل الملف بعد الضغط على الزر." : "التحويل يُراجع يدويًا من التاجر، ولا يفتح التنزيل إلا بعد تأكيده."}</p>
           </section>

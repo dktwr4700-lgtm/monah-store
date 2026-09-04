@@ -27,9 +27,17 @@ function safeName(name) {
   return String(name || "receipt").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "receipt";
 }
 
-export default function ProductOrderPanel({ product, bundle }) {
+function notifySellerLink(sellerWhatsapp, itemName) {
+  const digits = String(sellerWhatsapp || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const message = `مرحبًا، طلبت "${itemName || "منتج"}" من متجرك على مُونَة وأرسلت إثبات التحويل. الرجاء مراجعة الطلب وتأكيده من لوحة التاجر.`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
+export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
   const isBundle = Boolean(bundle);
   const item = isBundle ? bundle : product;
+  const notifyLink = notifySellerLink(sellerWhatsapp, item?.name);
   const [open, setOpen] = useState(false);
   const [buyerPhone, setBuyerPhone] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -104,6 +112,7 @@ export default function ProductOrderPanel({ product, bundle }) {
         <div className="ppo-title">طلبك بانتظار مراجعة التاجر</div>
         <div className="ppo-copy">عند تأكيد التاجر استلام التحويل، يفتح زر تنزيل المنتج هنا في مُونَة.</div>
         <div className="ppo-success">لا يتم تأكيد التحويل تلقائيًا. التاجر يراجعه بنفسه.</div>
+        {notifyLink && <a className="ppo-primary" style={{ display: "block", textAlign: "center", textDecoration: "none", marginTop: 12 }} href={notifyLink} target="_blank" rel="noopener noreferrer">نبّه التاجر الآن عبر واتساب</a>}
         <a className="ppo-orders-link" href="#purchases">متابعة طلباتي</a>
       </> : !order ? <>
         <div className="ppo-step">1 من 2 · إنشاء الطلب</div>
