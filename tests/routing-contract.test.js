@@ -222,7 +222,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("رابط التتبع");
     expect(dashboard).toContain("نسخ الرابط");
     expect(dashboard).toContain("لا يوجد تحصيل أو تجديد تلقائي الآن");
-    expect(orders).toContain(".ord-confirm-btn,.ord-proof-btn{width:100%;margin-left:0;min-height:42px}");
+    expect(orders).toContain(".ord-confirm-btn,.ord-proof-btn,.ord-deliver-btn{width:100%;margin-left:0;min-height:42px}");
   });
 
   it("يولد مسودة وصف للتاجر من الخادم ولا يحفظها أو ينشرها تلقائيًا", async () => {

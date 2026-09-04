@@ -1461,7 +1461,7 @@ export default function Dashboard() {
                     <span className="dh-item-name">{o.productName}</span>
                     <span className="dh-item-price">{Number(o.price).toFixed(2)} ر.ع</span>
                   </div>
-                  <div className="dh-item-stock">{o.buyerEmail}</div>
+                  <div className="dh-item-stock">{o.buyerPhone}</div>
                 </div>
               ))}
             </div>
