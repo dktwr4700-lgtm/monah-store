@@ -62,30 +62,52 @@ async function requireSeller(uid) {
   if (!sellerSnap.exists) throw new OrderError(403, "هذه العملية خاصة بصاحب المتجر.");
 }
 
-function publicOrder(order, id, unlock) {
-  const confirmed = order.status === "confirmed";
-  const isFile = order.type !== "code";
+function unlockView(unlock, confirmed) {
+  const isFile = !unlock || unlock.type !== "code";
   const downloadsRemaining = isFile && unlock
     ? Math.max(0, MAX_FILE_DOWNLOADS - Number(unlock.downloadCount || 0))
     : null;
   return {
+    downloadReady: confirmed && isFile && Boolean(unlock) && downloadsRemaining > 0,
+    downloadsRemaining,
+    maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
+    licenseCode: confirmed && unlock?.type === "code" ? (unlock.licenseCode || "") : "",
+  };
+}
+
+function publicOrder(order, id, unlockData) {
+  const confirmed = order.status === "confirmed";
+  const base = {
     id,
     productId: order.productId,
     productName: order.productName,
     price: Number(order.price || 0),
     originalPrice: order.couponCode ? Number(order.originalPrice || order.price || 0) : null,
     couponCode: order.couponCode || "",
-    type: order.type === "code" ? "code" : "file",
     status: order.status,
     createdAt: order.createdAt?.toDate?.().toISOString?.() || null,
     confirmedAt: order.confirmedAt?.toDate?.().toISOString?.() || null,
     paymentInstructions: order.paymentInstructions || "",
     proofSubmitted: Boolean(order.proofPath),
-    downloadReady: confirmed && isFile && Boolean(unlock) && downloadsRemaining > 0,
-    downloadsRemaining,
-    maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
-    licenseCode: confirmed && order.type === "code" ? (unlock?.licenseCode || "") : "",
   };
+
+  if (order.type === "bundle") {
+    const productIds = Array.isArray(order.productIds) ? order.productIds : [];
+    const productNames = Array.isArray(order.productNames) ? order.productNames : [];
+    const unlocksByProductId = unlockData || {};
+    return {
+      ...base,
+      type: "bundle",
+      bundleId: order.bundleId,
+      items: productIds.map((productId, index) => ({
+        productId,
+        productName: productNames[index] || "منتج رقمي",
+        ...unlockView(unlocksByProductId[productId] || null, confirmed),
+      })),
+    };
+  }
+
+  return { ...base, type: order.type === "code" ? "code" : "file", ...unlockView(unlockData, confirmed) };
 }
 
 async function resolveCoupon(rawCode, productId, ownerId) {
@@ -108,7 +130,63 @@ async function resolveCoupon(rawCode, productId, ownerId) {
   return { discountPercent, couponCode: code };
 }
 
+async function createBundleOrder(req, res, account) {
+  const bundleId = cleanText(req.body?.bundleId, 160);
+  const buyerEmail = cleanEmail(req.body?.buyerEmail || account.email);
+  if (!isValidId(bundleId)) throw new OrderError(400, "رابط الحزمة غير واضح.");
+  if (!validEmail(buyerEmail)) throw new OrderError(400, "اكتب بريدك الإلكتروني بشكل صحيح.");
+
+  const bundleSnap = await db.collection("bundles").doc(bundleId).get();
+  if (!bundleSnap.exists) throw new OrderError(404, "الحزمة غير موجودة.");
+  const bundle = bundleSnap.data();
+  if (bundle.hidden !== false || bundle.suspended) {
+    throw new OrderError(409, "هذه الحزمة غير متاحة للطلب الآن.");
+  }
+  const productIds = Array.isArray(bundle.productIds) ? bundle.productIds : [];
+  if (productIds.length < 2) throw new OrderError(409, "هذه الحزمة غير جاهزة للطلب الآن.");
+
+  const productSnaps = await Promise.all(productIds.map((id) => db.collection("products").doc(id).get()));
+  for (const snap of productSnaps) {
+    if (!snap.exists) throw new OrderError(409, "أحد منتجات الحزمة لم يعد متاحًا.");
+    const item = snap.data();
+    if (item.suspended) throw new OrderError(409, "أحد منتجات الحزمة غير متاح حاليًا.");
+    if (item.type === "file" && !item.filePath) throw new OrderError(409, "أحد ملفات الحزمة غير جاهز للتسليم الآن.");
+    if (item.type === "code" && Number(item.codesCount || 0) < 1) throw new OrderError(409, "أحد أكواد الحزمة نفذ حاليًا.");
+  }
+
+  const sellerSnap = await db.collection("sellers").doc(bundle.ownerId).get();
+  const paymentInstructions = cleanText(sellerSnap.exists ? sellerSnap.data().paymentInstructions : "", 800);
+  if (paymentInstructions.length < 6) {
+    throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذه الحزمة بعد.");
+  }
+
+  const orderRef = db.collection("orders").doc(`${account.uid}_bundle_${bundleId}`);
+  await db.runTransaction(async (transaction) => {
+    const existingOrder = await transaction.get(orderRef);
+    if (existingOrder.exists && hasActiveBuyerOrder([existingOrder.data()], `bundle_${bundleId}`)) {
+      throw new OrderError(409, "لديك طلب سابق لهذه الحزمة على هذا الجهاز. افتح «طلباتي» للمتابعة.");
+    }
+    transaction.set(orderRef, {
+      ownerId: bundle.ownerId,
+      buyerUid: account.uid,
+      buyerEmail,
+      bundleId,
+      productId: `bundle_${bundleId}`,
+      productIds,
+      productNames: productSnaps.map((snap) => cleanText(snap.data().name, 160) || "منتج رقمي"),
+      productName: cleanText(bundle.name, 160) || "حزمة منتجات",
+      price: Number(bundle.price),
+      type: "bundle",
+      status: "draft",
+      paymentInstructions,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: Number(bundle.price) } });
+}
+
 async function createOrder(req, res, account) {
+  if (req.body?.bundleId) return createBundleOrder(req, res, account);
   const productId = cleanText(req.body?.productId, 160);
   const buyerEmail = cleanEmail(req.body?.buyerEmail || account.email);
   if (!isValidId(productId)) throw new OrderError(400, "رابط المنتج غير واضح.");
@@ -203,6 +281,49 @@ async function submitProof(req, res, account) {
   return res.status(200).json({ ok: true, status: "awaiting_seller_confirmation" });
 }
 
+async function unlockOneProduct(transaction, { productId, buyerUid, buyerEmail, orderId, ownerId }) {
+  const productRef = db.collection("products").doc(productId);
+  const productSnap = await transaction.get(productRef);
+  if (!productSnap.exists || productSnap.data().ownerId !== ownerId || productSnap.data().suspended) {
+    throw new OrderError(409, "أحد المنتجات لم يعد متاحًا للتسليم الآن.");
+  }
+  const product = productSnap.data();
+  let codeDoc = null;
+  if (product.type === "code") {
+    const availableCodes = await transaction.get(productRef.collection("codes").where("used", "==", false).limit(1));
+    if (availableCodes.empty) throw new OrderError(409, "لا توجد أكواد غير مستخدمة لأحد منتجات هذا الطلب الآن.");
+    codeDoc = availableCodes.docs[0];
+    if (!codeDoc.data().code) throw new OrderError(409, "تعذر تجهيز كود لأحد منتجات هذا الطلب.");
+  } else if (!product.filePath) {
+    throw new OrderError(409, "ملف أحد منتجات هذا الطلب غير جاهز للتسليم الآن.");
+  }
+
+  return () => {
+    const unlockRef = db.collection("unlocks").doc(`${buyerUid}_${productId}`);
+    const unlockPayload = {
+      uid: buyerUid,
+      productId,
+      orderId,
+      ownerId,
+      type: product.type === "code" ? "code" : "file",
+      downloadCount: 0,
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromDate(new Date(Date.now() + UNLOCK_TTL_MS)),
+    };
+    if (codeDoc) {
+      transaction.update(codeDoc.ref, {
+        used: true,
+        usedBy: buyerEmail,
+        usedByUid: buyerUid,
+        usedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(productRef, { codesCount: Math.max(0, Number(product.codesCount || 0) - 1) });
+      unlockPayload.licenseCode = codeDoc.data().code;
+    }
+    transaction.set(unlockRef, unlockPayload, { merge: true });
+  };
+}
+
 async function confirmPayment(req, res, account) {
   const orderId = cleanText(req.body?.orderId, 160);
   if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
@@ -219,49 +340,30 @@ async function confirmPayment(req, res, account) {
       throw new OrderError(409, "هذا الطلب ليس جاهزًا لتأكيد التحويل.");
     }
 
-    const productRef = db.collection("products").doc(order.productId);
-    const productSnap = await transaction.get(productRef);
-    if (!productSnap.exists || productSnap.data().ownerId !== account.uid || productSnap.data().suspended) {
-      throw new OrderError(409, "المنتج غير متاح للتسليم الآن.");
+    const productIds = order.type === "bundle" ? order.productIds : [order.productId];
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      throw new OrderError(409, "بيانات هذا الطلب غير مكتملة.");
     }
-    const product = productSnap.data();
-    const unlockRef = db.collection("unlocks").doc(`${order.buyerUid}_${order.productId}`);
-    const unlockPayload = {
-      uid: order.buyerUid,
-      productId: order.productId,
-      orderId,
-      ownerId: account.uid,
-      type: product.type === "code" ? "code" : "file",
-      downloadCount: 0,
-      createdAt: FieldValue.serverTimestamp(),
-      expiresAt: Timestamp.fromDate(new Date(Date.now() + UNLOCK_TTL_MS)),
-    };
-
-    if (product.type === "code") {
-      const availableCodes = await transaction.get(productRef.collection("codes").where("used", "==", false).limit(1));
-      if (availableCodes.empty) throw new OrderError(409, "لا توجد أكواد غير مستخدمة لهذا المنتج الآن.");
-      const codeDoc = availableCodes.docs[0];
-      const code = codeDoc.data().code;
-      if (!code) throw new OrderError(409, "تعذر تجهيز كود لهذا المنتج.");
-      transaction.update(codeDoc.ref, {
-        used: true,
-        usedBy: order.buyerEmail,
-        usedByUid: order.buyerUid,
-        usedAt: FieldValue.serverTimestamp(),
-      });
-      transaction.update(productRef, { codesCount: Math.max(0, Number(product.codesCount || 0) - 1) });
-      unlockPayload.licenseCode = code;
-    } else if (!product.filePath) {
-      throw new OrderError(409, "ملف المنتج غير جاهز للتسليم الآن.");
+    // كل قراءات المنتجات والأكواد لازم تنتهي قبل أي كتابة داخل نفس المعاملة،
+    // فنجهّز دوال الكتابة أولًا (unlockOneProduct) ثم ننفذها كلها بعدين.
+    const applyUnlocks = [];
+    for (const productId of productIds) {
+      applyUnlocks.push(await unlockOneProduct(transaction, {
+        productId,
+        buyerUid: order.buyerUid,
+        buyerEmail: order.buyerEmail,
+        orderId,
+        ownerId: account.uid,
+      }));
     }
+    applyUnlocks.forEach((apply) => apply());
 
-    transaction.set(unlockRef, unlockPayload, { merge: true });
     transaction.update(orderRef, {
       status: "confirmed",
       confirmedAt: FieldValue.serverTimestamp(),
       confirmedBy: account.uid,
     });
-    return { alreadyConfirmed: false, type: unlockPayload.type };
+    return { alreadyConfirmed: false, type: order.type };
   });
   return res.status(200).json({ ok: true, alreadyConfirmed: result.alreadyConfirmed, type: result.type });
 }
@@ -270,9 +372,17 @@ async function listBuyerOrders(req, res, account) {
   const snap = await db.collection("orders").where("buyerUid", "==", account.uid).limit(100).get();
   const rows = await Promise.all(snap.docs.map(async (document) => {
     const order = document.data();
-    const unlock = order.status === "confirmed"
-      ? (await db.collection("unlocks").doc(`${account.uid}_${order.productId}`).get()).data()
-      : null;
+    if (order.status !== "confirmed") return publicOrder(order, document.id, null);
+    if (order.type === "bundle") {
+      const productIds = Array.isArray(order.productIds) ? order.productIds : [];
+      const unlockSnaps = await Promise.all(
+        productIds.map((productId) => db.collection("unlocks").doc(`${account.uid}_${productId}`).get())
+      );
+      const unlocksByProductId = {};
+      productIds.forEach((productId, index) => { unlocksByProductId[productId] = unlockSnaps[index].data(); });
+      return publicOrder(order, document.id, unlocksByProductId);
+    }
+    const unlock = (await db.collection("unlocks").doc(`${account.uid}_${order.productId}`).get()).data();
     return publicOrder(order, document.id, unlock);
   }));
   rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
@@ -301,6 +411,7 @@ async function receipt(req, res, account) {
       storeName,
       storeLogoUrl,
       productName: order.productName,
+      items: order.type === "bundle" && Array.isArray(order.productNames) ? order.productNames : null,
       price: Number(order.price || 0),
       originalPrice: order.couponCode ? Number(order.originalPrice || order.price || 0) : null,
       couponCode: order.couponCode || "",

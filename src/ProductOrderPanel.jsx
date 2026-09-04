@@ -27,7 +27,9 @@ function safeName(name) {
   return String(name || "receipt").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "receipt";
 }
 
-export default function ProductOrderPanel({ product }) {
+export default function ProductOrderPanel({ product, bundle }) {
+  const isBundle = Boolean(bundle);
+  const item = isBundle ? bundle : product;
   const [open, setOpen] = useState(false);
   const [buyerEmail, setBuyerEmail] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -47,7 +49,10 @@ export default function ProductOrderPanel({ product }) {
     setBusy(true);
     try {
       await ensureAnonymousAuth();
-      const data = await orderRequest("create", { productId: product.id, buyerEmail: email, couponCode: couponCode.trim() });
+      const payload = isBundle
+        ? { bundleId: item.id, buyerEmail: email }
+        : { productId: item.id, buyerEmail: email, couponCode: couponCode.trim() };
+      const data = await orderRequest("create", payload);
       setOrder(data.order);
     } catch (requestError) {
       setError(requestError.message || "تعذر بدء الطلب الآن.");
@@ -88,7 +93,7 @@ export default function ProductOrderPanel({ product }) {
   }
 
   if (!open) {
-    return <><style>{styles}</style><button type="button" className="ppo-start" onClick={() => setOpen(true)}>اطلب المنتج داخل مُونَة</button></>;
+    return <><style>{styles}</style><button type="button" className="ppo-start" onClick={() => setOpen(true)}>{isBundle ? "اطلب الحزمة داخل مُونَة" : "اطلب المنتج داخل مُونَة"}</button></>;
   }
 
   return (
@@ -105,7 +110,7 @@ export default function ProductOrderPanel({ product }) {
         <div className="ppo-title">اكتب بريدك للطلب</div>
         <div className="ppo-copy">تستخدمه كتفاصيل للطلب لدى التاجر. لا تدخل كلمة مرور أو رمز تحقق.</div>
         <div className="ppo-field"><label htmlFor="buyer-email">البريد الإلكتروني</label><input id="buyer-email" type="email" value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" /></div>
-        <div className="ppo-field"><label htmlFor="coupon-code">كود الخصم (اختياري)</label><input id="coupon-code" type="text" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="اتركه فارغًا إذا ما عندك كود" /></div>
+        {!isBundle && <div className="ppo-field"><label htmlFor="coupon-code">كود الخصم (اختياري)</label><input id="coupon-code" type="text" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="اتركه فارغًا إذا ما عندك كود" /></div>}
         {error && <div className="ppo-error">{error}</div>}
         <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>رجوع</button><button type="button" className="ppo-primary" onClick={startOrder} disabled={busy}>{busy ? "جاري التجهيز..." : "متابعة للتحويل"}</button></div>
         <div className="ppo-small">في نسخة التجربة، متابعة الطلب والتنزيل مرتبطة بهذا الجهاز والمتصفح.</div>

@@ -77,7 +77,8 @@ export default function Receipt({ orderId }) {
 
             <div className="rcpt-divider" />
 
-            <div className="rcpt-row"><span>المنتج</span><span>{data.productName}</span></div>
+            <div className="rcpt-row"><span>{data.items ? "الحزمة" : "المنتج"}</span><span>{data.productName}</span></div>
+            {data.items && <div className="rcpt-label" style={{ marginBottom: 6 }}>تشمل: {data.items.join("، ")}</div>}
             <div className="rcpt-row"><span>البريد الإلكتروني</span><span>{data.buyerEmail}</span></div>
             <div className="rcpt-row"><span>تاريخ التأكيد</span><span>{dateFor(data.confirmedAt)}</span></div>
             {data.couponCode && <div className="rcpt-row"><span>كوبون الخصم</span><span>{data.couponCode}</span></div>}

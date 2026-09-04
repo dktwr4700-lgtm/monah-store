@@ -144,7 +144,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(orderApi).toContain('doc(`${account.uid}_${productId}`)');
     expect(orderApi).toContain("db.runTransaction");
     expect(orderApi).toContain("isAllowedProof({ size, contentType })");
-    expect(orderApi).toContain('db.collection("unlocks").doc(`${order.buyerUid}_${order.productId}`)');
+    expect(orderApi).toContain('db.collection("unlocks").doc(`${buyerUid}_${productId}`)');
     expect(orderApi).toContain("transaction.set(unlockRef");
     expect(orderApi).toContain("codesCount: Math.max(0, Number(product.codesCount || 0) - 1)");
     expect(orderApi).toContain('if (order.status === "confirmed")');
@@ -198,7 +198,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("روابط التتبع");
     expect(dashboard).toContain("حزم المنتجات");
     expect(dashboard).toContain("إنشاء رابط تتبع");
-    expect(dashboard).toContain("حفظ الحزمة مقفلة");
+    expect(dashboard).toContain("حفظ الحزمة كمسودة");
   });
 
   it("يبقي بطاقة المنتج واضحة على الجوال دون تغيير أزرار إدارتها", async () => {
@@ -372,26 +372,33 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("}, { merge: true });");
   });
 
-  it("يحفظ حزم المنتجات مقفلة ويمنع ظهورها أو شرائها قبل الدفع", async () => {
+  it("يحفظ حزم المنتجات كمسودة ويسمح بنشرها وبيعها عبر إثبات التحويل", async () => {
     const dashboard = await source("src/Dashboard.jsx");
-    const store = await source("src/StorePage.jsx");
+    const bundlePage = await source("src/BundlePage.jsx");
+    const orderPanel = await source("src/ProductOrderPanel.jsx");
+    const orderApi = await source("api/orders.js");
     const rules = await source("firestore.rules");
 
     expect(dashboard).toContain('collection(db, "bundles")');
-    expect(dashboard).toContain("حفظ الحزمة مقفلة");
-    expect(dashboard).toContain("تم حفظ الحزمة وهي مقفلة الآن");
+    expect(dashboard).toContain("حفظ الحزمة كمسودة");
+    expect(dashboard).toContain("تم حفظ الحزمة كمسودة");
     expect(dashboard).toContain("الحزم المحفوظة");
-    expect(dashboard).toContain("إخفاء الحزمة");
-    expect(dashboard).toContain("الحزم المخفية");
+    expect(dashboard).toContain("نشر الحزمة");
+    expect(dashboard).toContain("نسخ رابط الحزمة");
+    expect(dashboard).toContain("أرشفة الحزمة");
+    expect(dashboard).toContain("الحزم المؤرشفة");
     expect(dashboard).toContain("حذف نهائيًا");
     expect(dashboard).toContain("نعم، احذف الحزمة");
     expect(dashboard).toContain("تم حذف الحزمة فقط. منتجاتك بقيت كما هي.");
     expect(dashboard).toContain("hidden: true");
-    expect(dashboard).toContain("لن تظهر للزوار أو تسمح بالشراء قبل الدفع");
-    expect(store).not.toContain('collection(db, "bundles")');
+    expect(dashboard).toContain("updateDoc(doc(db, \"bundles\", bundle.id), { hidden: !bundle.hidden })");
+    expect(bundlePage).toContain('ProductOrderPanel bundle={bundle}');
+    expect(orderPanel).toContain("isBundle");
+    expect(orderApi).toContain("createBundleOrder");
+    expect(orderApi).toContain("unlockOneProduct");
     expect(rules).toContain("match /bundles/{bundleId}");
-    expect(rules).toContain("request.resource.data.hidden == true");
-    expect(rules).toContain("request.resource.data.archived is bool");
+    expect(rules).toContain("bundleIsPublic()");
+    expect(rules).toContain("request.resource.data.hidden is bool");
   });
 
   it("لا يسمي بوابة دفع ولا يعد بالدفع أو التسليم قبل إتاحة الخدمة", async () => {
