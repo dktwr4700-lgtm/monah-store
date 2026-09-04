@@ -30,21 +30,12 @@ function cleanText(value, maxLength) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
-async function requireActiveSeller(sellerSnap) {
+function requireActiveSeller(sellerSnap) {
   if (!sellerSnap.exists) return {};
   const seller = sellerSnap.data();
   if (seller.disabled) throw new OrderError(409, "هذا المتجر متوقف حاليًا. تواصل مع التاجر.");
   if (seller.subscriptionExpiresAt && new Date(seller.subscriptionExpiresAt) < new Date()) {
     throw new OrderError(409, "اشتراك هذا المتجر منتهي حاليًا. تواصل مع التاجر.");
-  }
-  try {
-    const authUser = await auth.getUser(sellerSnap.id);
-    if (!authUser.emailVerified) {
-      throw new OrderError(409, "صاحب هذا المتجر لم يؤكد بريده الإلكتروني بعد. تواصل معه لإتمام التفعيل.");
-    }
-  } catch (error) {
-    if (error instanceof OrderError) throw error;
-    throw new OrderError(409, "تعذر التحقق من حالة هذا المتجر الآن. حاول لاحقًا.");
   }
   return seller;
 }
@@ -177,7 +168,7 @@ async function createBundleOrder(req, res, account) {
   }
 
   const sellerSnap = await db.collection("sellers").doc(bundle.ownerId).get();
-  const seller = await requireActiveSeller(sellerSnap);
+  const seller = requireActiveSeller(sellerSnap);
   const paymentInstructions = cleanText(seller.paymentInstructions, 800);
   if (paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذه الحزمة بعد.");
@@ -241,7 +232,7 @@ async function createOrder(req, res, account) {
   }
 
   const sellerSnap = await db.collection("sellers").doc(product.ownerId).get();
-  const seller = await requireActiveSeller(sellerSnap);
+  const seller = requireActiveSeller(sellerSnap);
   const paymentInstructions = cleanText(seller.paymentInstructions, 800);
   if (paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذا المنتج بعد.");
