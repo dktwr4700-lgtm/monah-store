@@ -106,6 +106,7 @@ export default function AdminDashboard() {
 
   const [expiryDrafts, setExpiryDrafts] = useState({});
   const [savingExpiryId, setSavingExpiryId] = useState(null);
+  const [emailVerifiedMap, setEmailVerifiedMap] = useState({});
 
   const [expandedId, setExpandedId] = useState(null);
   const [sellerProducts, setSellerProducts] = useState({});
@@ -141,6 +142,7 @@ export default function AdminDashboard() {
     if (!authChecked || !currentUser || currentUser.email !== ADMIN_EMAIL) return;
     loadSellers();
     loadInvites();
+    loadSellerStatus();
   }, [authChecked, currentUser]);
 
   async function loadSellers() {
@@ -154,6 +156,15 @@ export default function AdminDashboard() {
       console.error(e);
     }
     setLoading(false);
+  }
+
+  async function loadSellerStatus() {
+    try {
+      const data = await inviteRequest("sellerStatus");
+      setEmailVerifiedMap(data.statuses || {});
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async function inviteRequest(action, payload = {}) {
@@ -500,6 +511,12 @@ export default function AdminDashboard() {
                 </span>
                 {isSubscriptionExpired(s) && (
                   <span className="seller-badge badge-expired">منتهي الاشتراك</span>
+                )}
+                {emailVerifiedMap[s.id] === false && (
+                  <span className="seller-badge badge-expired">البريد غير مؤكد</span>
+                )}
+                {emailVerifiedMap[s.id] === true && (
+                  <span className="seller-badge badge-active">البريد مؤكد</span>
                 )}
               </div>
 

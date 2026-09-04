@@ -1,4 +1,5 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { createHash, randomBytes } from "node:crypto";
 
@@ -8,6 +9,7 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
+const auth = getAuth();
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const INVITE_TTL_MS = 72 * 60 * 60 * 1000;
@@ -217,6 +219,20 @@ async function deleteInvite(req, res) {
   return res.status(200).json({ ok: true });
 }
 
+async function sellerStatus(req, res) {
+  const owner = await requireOwner(req, res);
+  if (!owner) return;
+  const snapshot = await db.collection("sellers").get();
+  const uids = snapshot.docs.map((document) => document.id).slice(0, 100);
+  const statuses = {};
+  if (uids.length) {
+    const result = await auth.getUsers(uids.map((uid) => ({ uid })));
+    for (const account of result.users) statuses[account.uid] = Boolean(account.emailVerified);
+    for (const missing of result.notFound) statuses[missing.uid] = false;
+  }
+  return res.status(200).json({ statuses });
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
@@ -231,6 +247,7 @@ export default async function handler(req, res) {
     if (action === "list") return await listInvites(req, res);
     if (action === "revoke") return await revokeInvite(req, res);
     if (action === "delete") return await deleteInvite(req, res);
+    if (action === "sellerStatus") return await sellerStatus(req, res);
     return res.status(400).json({ error: "طلب الدعوة غير واضح." });
   } catch (error) {
     console.error("merchant invite endpoint error:", error?.message || "unknown");
