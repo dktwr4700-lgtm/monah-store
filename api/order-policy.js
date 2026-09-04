@@ -8,11 +8,6 @@ export function isAllowedProof({ size, contentType }) {
     && ACCEPTED_PROOF_TYPES.has(String(contentType || "").toLowerCase());
 }
 
-export function hasActiveBuyerOrder(orders, productId) {
-  return orders.some((order) => order.productId === productId
-    && ["draft", "awaiting_seller_confirmation", "confirmed"].includes(order.status));
-}
-
 export function canSellerConfirmOrder(order, sellerUid) {
   return Boolean(order)
     && order.ownerId === sellerUid

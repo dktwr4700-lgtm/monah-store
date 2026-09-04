@@ -3,7 +3,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { hasActiveBuyerOrder, isAllowedProof, canSellerConfirmOrder } from "./order-policy.js";
+import { isAllowedProof, canSellerConfirmOrder } from "./order-policy.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -174,38 +174,34 @@ async function createBundleOrder(req, res, account) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذه الحزمة بعد.");
   }
 
-  const orderRef = db.collection("orders").doc(`${account.uid}_bundle_${bundleId}`);
-  let responseOrder = null;
-  await db.runTransaction(async (transaction) => {
-    const existingOrder = await transaction.get(orderRef);
-    if (existingOrder.exists) {
-      const existing = existingOrder.data();
-      if (existing.status === "draft") {
-        responseOrder = { id: orderRef.id, paymentInstructions: existing.paymentInstructions, price: Number(existing.price) };
-        return;
-      }
-      if (hasActiveBuyerOrder([existing], `bundle_${bundleId}`)) {
-        throw new OrderError(409, "لديك طلب سابق لهذه الحزمة على هذا الجهاز. افتح «طلباتي» للمتابعة.");
-      }
-    }
-    transaction.set(orderRef, {
-      ownerId: bundle.ownerId,
-      buyerUid: account.uid,
-      buyerPhone,
-      bundleId,
-      productId: `bundle_${bundleId}`,
-      productIds,
-      productNames: productSnaps.map((snap) => cleanText(snap.data().name, 160) || "منتج رقمي"),
-      productName: cleanText(bundle.name, 160) || "حزمة منتجات",
-      price: Number(bundle.price),
-      type: "bundle",
-      status: "draft",
-      paymentInstructions,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-    responseOrder = { id: orderRef.id, paymentInstructions, price: Number(bundle.price) };
+  const draftSnap = await db.collection("orders")
+    .where("buyerUid", "==", account.uid)
+    .where("productId", "==", `bundle_${bundleId}`)
+    .where("status", "==", "draft")
+    .limit(1)
+    .get();
+  if (!draftSnap.empty) {
+    const existing = draftSnap.docs[0].data();
+    return res.status(200).json({ order: { id: draftSnap.docs[0].id, paymentInstructions: existing.paymentInstructions, price: Number(existing.price) } });
+  }
+
+  const orderRef = db.collection("orders").doc();
+  await orderRef.set({
+    ownerId: bundle.ownerId,
+    buyerUid: account.uid,
+    buyerPhone,
+    bundleId,
+    productId: `bundle_${bundleId}`,
+    productIds,
+    productNames: productSnaps.map((snap) => cleanText(snap.data().name, 160) || "منتج رقمي"),
+    productName: cleanText(bundle.name, 160) || "حزمة منتجات",
+    price: Number(bundle.price),
+    type: "bundle",
+    status: "draft",
+    paymentInstructions,
+    createdAt: FieldValue.serverTimestamp(),
   });
-  return res.status(201).json({ order: responseOrder });
+  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: Number(bundle.price) } });
 }
 
 async function createOrder(req, res, account) {
@@ -244,43 +240,41 @@ async function createOrder(req, res, account) {
     ? Math.max(0.01, Math.round(originalPrice * (1 - discountPercent / 100) * 100) / 100)
     : originalPrice;
 
-  const orderRef = db.collection("orders").doc(`${account.uid}_${productId}`);
-  let responseOrder = null;
-  await db.runTransaction(async (transaction) => {
-    const existingOrder = await transaction.get(orderRef);
-    if (existingOrder.exists) {
-      const existing = existingOrder.data();
-      if (existing.status === "draft") {
-        responseOrder = {
-          id: orderRef.id,
-          paymentInstructions: existing.paymentInstructions,
-          price: Number(existing.price),
-          originalPrice: Number(existing.originalPrice),
-          couponCode: existing.couponCode || "",
-        };
-        return;
-      }
-      if (hasActiveBuyerOrder([existing], productId)) {
-        throw new OrderError(409, "لديك طلب سابق لهذا المنتج على هذا الجهاز. افتح «طلباتي» للمتابعة.");
-      }
-    }
-    transaction.set(orderRef, {
-      ownerId: product.ownerId,
-      buyerUid: account.uid,
-      buyerPhone,
-      productId,
-      productName: cleanText(product.name, 160) || "منتج رقمي",
-      price: finalPrice,
-      originalPrice,
-      couponCode,
-      type: product.type,
-      status: "draft",
-      paymentInstructions,
-      createdAt: FieldValue.serverTimestamp(),
+  const draftSnap = await db.collection("orders")
+    .where("buyerUid", "==", account.uid)
+    .where("productId", "==", productId)
+    .where("status", "==", "draft")
+    .limit(1)
+    .get();
+  if (!draftSnap.empty) {
+    const existing = draftSnap.docs[0].data();
+    return res.status(200).json({
+      order: {
+        id: draftSnap.docs[0].id,
+        paymentInstructions: existing.paymentInstructions,
+        price: Number(existing.price),
+        originalPrice: Number(existing.originalPrice),
+        couponCode: existing.couponCode || "",
+      },
     });
-    responseOrder = { id: orderRef.id, paymentInstructions, price: finalPrice, originalPrice, couponCode };
+  }
+
+  const orderRef = db.collection("orders").doc();
+  await orderRef.set({
+    ownerId: product.ownerId,
+    buyerUid: account.uid,
+    buyerPhone,
+    productId,
+    productName: cleanText(product.name, 160) || "منتج رقمي",
+    price: finalPrice,
+    originalPrice,
+    couponCode,
+    type: product.type,
+    status: "draft",
+    paymentInstructions,
+    createdAt: FieldValue.serverTimestamp(),
   });
-  return res.status(201).json({ order: responseOrder });
+  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: finalPrice, originalPrice, couponCode } });
 }
 
 async function submitProof(req, res, account) {
