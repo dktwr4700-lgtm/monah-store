@@ -1,6 +1,5 @@
 {
   "rewrites": [
-    { "source": "/l/deliver/:orderId/:token", "destination": "/api/link-preview?type=deliver&orderId=:orderId&token=:token" },
     { "source": "/l/store/:sellerId", "destination": "/api/link-preview?type=store&sellerId=:sellerId" }
   ],
   "headers": [

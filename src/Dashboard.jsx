@@ -1861,7 +1861,7 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} paymentInstructions={paymentInstructions} onPaymentInstructionsSaved={setPaymentInstructions} />}
+        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} paymentInstructions={paymentInstructions} onPaymentInstructionsSaved={setPaymentInstructions} storeName={storeName} />}
 
         {tab === "design" && (
           <>

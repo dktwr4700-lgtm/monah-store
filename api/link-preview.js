@@ -26,29 +26,6 @@ function isCrawler(userAgent) {
   return CRAWLER_PATTERN.test(String(userAgent || ""));
 }
 
-function deliveryTokenValid(order, token) {
-  if (!token || !order?.deliveryToken || token !== order.deliveryToken) return false;
-  const expiresAt = order.deliveryTokenExpiresAt?.toDate?.();
-  return Boolean(expiresAt) && expiresAt > new Date();
-}
-
-async function deliverMeta(orderId, token) {
-  if (!orderId || !token) return null;
-  const orderSnap = await db.collection("orders").doc(orderId).get();
-  if (!orderSnap.exists) return null;
-  const order = orderSnap.data();
-  if (!deliveryTokenValid(order, token)) return null;
-  const storeSnap = await db.collection("stores").doc(order.ownerId).get();
-  const storeData = storeSnap.exists ? storeSnap.data() : {};
-  const storeName = cleanText(storeData.name, 120) || "متجر رقمي";
-  const productName = cleanText(order.productName, 160) || "منتجك";
-  return {
-    title: `${storeName} — استلم طلبك`,
-    description: `اضغط الرابط عشان تستلم "${productName}" من ${storeName}.`,
-    image: cleanText(storeData.logoUrl, 500) || DEFAULT_IMAGE,
-  };
-}
-
 async function storeMeta(sellerId) {
   if (!sellerId) return null;
   let storeData = null;
@@ -100,12 +77,7 @@ export default async function handler(req, res) {
   let meta = null;
 
   try {
-    if (type === "deliver") {
-      const orderId = cleanText(req.query?.orderId, 160);
-      const token = cleanText(req.query?.token, 80);
-      appPath = `/#deliver/${encodeURIComponent(orderId)}/${encodeURIComponent(token)}`;
-      meta = await deliverMeta(orderId, token);
-    } else if (type === "store") {
+    if (type === "store") {
       const sellerId = cleanText(req.query?.sellerId, 160);
       appPath = `/#store/${encodeURIComponent(sellerId)}`;
       meta = await storeMeta(sellerId);
