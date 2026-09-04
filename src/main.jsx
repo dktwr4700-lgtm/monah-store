@@ -11,6 +11,7 @@ const StorePage = lazy(() => import("./StorePage.jsx"));
 const LegalPage = lazy(() => import("./LegalPage.jsx"));
 const AdminDashboard = lazy(() => import("./AdminDashboard.jsx"));
 const InviteActivation = lazy(() => import("./InviteActivation.jsx"));
+const Receipt = lazy(() => import("./Receipt.jsx"));
 
 function PageLoading() {
   return <div dir="rtl" style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Cairo, sans-serif", color: "#4B6152", background: "#FBFAF7" }}>جاري التحميل…</div>;
@@ -35,6 +36,7 @@ function Root() {
   else if (hash.startsWith("invite/")) page = <InviteActivation token={hash.split("/")[1]} />;
   else if (hash.startsWith("product/")) page = <ProductPage productId={hash.split("/")[1]} />;
   else if (hash === "purchases") page = <Purchases />;
+  else if (hash.startsWith("receipt/")) page = <Receipt orderId={hash.split("/")[1]} />;
   else if (hash.startsWith("store/")) page = <StorePage sellerId={hash.split("/")[1]} />;
   return <Suspense fallback={<PageLoading />}>{page}</Suspense>;
 }

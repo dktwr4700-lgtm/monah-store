@@ -249,6 +249,35 @@ async function listBuyerOrders(req, res, account) {
   return res.status(200).json({ orders: rows });
 }
 
+async function receipt(req, res, account) {
+  const orderId = cleanText(req.body?.orderId, 160);
+  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
+  const orderSnap = await db.collection("orders").doc(orderId).get();
+  if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
+  const order = orderSnap.data();
+  const canRead = order.buyerUid === account.uid || order.ownerId === account.uid;
+  if (!canRead) throw new OrderError(403, "لا تملك صلاحية رؤية هذه الفاتورة.");
+  if (order.status !== "confirmed") throw new OrderError(409, "الفاتورة تظهر فقط بعد تأكيد التاجر استلام المبلغ.");
+
+  const storeSnap = await db.collection("stores").doc(order.ownerId).get();
+  const storeData = storeSnap.exists ? storeSnap.data() : {};
+  const storeName = cleanText(storeData.name, 120) || "متجر مُونَة";
+  const storeLogoUrl = cleanText(storeData.logoUrl, 500);
+
+  return res.status(200).json({
+    receipt: {
+      orderId,
+      receiptNumber: orderId.slice(0, 8).toUpperCase(),
+      storeName,
+      storeLogoUrl,
+      productName: order.productName,
+      price: Number(order.price || 0),
+      buyerEmail: order.buyerEmail,
+      confirmedAt: order.confirmedAt?.toDate?.().toISOString?.() || null,
+    },
+  });
+}
+
 async function proofUrl(req, res, account) {
   const orderId = cleanText(req.body?.orderId, 160);
   if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
@@ -291,6 +320,7 @@ export default async function handler(req, res) {
     if (action === "confirm") return await confirmPayment(req, res, account);
     if (action === "list_buyer") return await listBuyerOrders(req, res, account);
     if (action === "proof_url") return await proofUrl(req, res, account);
+    if (action === "receipt") return await receipt(req, res, account);
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {
