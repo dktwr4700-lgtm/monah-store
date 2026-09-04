@@ -127,6 +127,7 @@ export default function AdminDashboard() {
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [latestInviteUrl, setLatestInviteUrl] = useState("");
   const [revokingInviteId, setRevokingInviteId] = useState("");
+  const [deletingInviteId, setDeletingInviteId] = useState("");
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -219,6 +220,18 @@ export default function AdminDashboard() {
       setInviteError(error.message);
     }
     setRevokingInviteId("");
+  }
+
+  async function deleteInvite(invite) {
+    if (!window.confirm(`تبي تحذف دعوة ${invite.storeName} نهائيًا؟ هذا يحذف سجل الدعوة فقط، ولا يحذف حساب التاجر لو كان فعّلها.`)) return;
+    setDeletingInviteId(invite.id);
+    try {
+      await inviteRequest("delete", { inviteId: invite.id });
+      setInvites((items) => items.filter((item) => item.id !== invite.id));
+    } catch (error) {
+      setInviteError(error.message);
+    }
+    setDeletingInviteId("");
   }
 
   function inviteStatusLabel(status) {
@@ -625,7 +638,10 @@ export default function AdminDashboard() {
             {!invitesLoading && invites.map((invite) => <div className="invite-row" key={invite.id}>
               <div className="invite-row-top"><div><div className="invite-name">{invite.storeName}</div><div className="invite-email">{invite.email}</div></div><span className={`seller-badge badge-${invite.status}`}>{inviteStatusLabel(invite.status)}</span></div>
               <div className="invite-meta">{STORE_TYPES[invite.storeType] || "منتجات رقمية"} · تنتهي {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString("ar") : "—"}</div>
-              {invite.status === "pending" && <div className="seller-actions"><button className="seller-btn warn" type="button" onClick={() => revokeInvite(invite)} disabled={revokingInviteId === invite.id}>{revokingInviteId === invite.id ? "جاري الإيقاف..." : "إيقاف الدعوة"}</button></div>}
+              <div className="seller-actions">
+                {invite.status === "pending" && <button className="seller-btn warn" type="button" onClick={() => revokeInvite(invite)} disabled={revokingInviteId === invite.id}>{revokingInviteId === invite.id ? "جاري الإيقاف..." : "إيقاف الدعوة"}</button>}
+                <button className="seller-btn danger" type="button" onClick={() => deleteInvite(invite)} disabled={deletingInviteId === invite.id}>{deletingInviteId === invite.id ? "جاري الحذف..." : "حذف الدعوة نهائيًا"}</button>
+              </div>
             </div>)}
           </>
         )}

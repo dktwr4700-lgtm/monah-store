@@ -11,6 +11,11 @@ const db = getFirestore();
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const INVITE_TTL_MS = 72 * 60 * 60 * 1000;
+const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+
+function isoDate(date) {
+  return date.toISOString().slice(0, 10);
+}
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
 
 function cleanText(value, maxLength) {
@@ -164,6 +169,7 @@ async function activateInvite(req, res) {
         inviteId: invite.ref.id,
         createdAt: FieldValue.serverTimestamp(),
         plan: "basic",
+        subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
       });
       transaction.update(invite.ref, {
         status: "accepted",
@@ -199,6 +205,18 @@ async function revokeInvite(req, res) {
   return res.status(200).json({ ok: true });
 }
 
+async function deleteInvite(req, res) {
+  const owner = await requireOwner(req, res);
+  if (!owner) return;
+  const inviteId = cleanText(req.body?.inviteId, 120);
+  if (!inviteId) return res.status(400).json({ error: "رابط الدعوة غير محدد." });
+  const ref = db.collection("merchantInvites").doc(inviteId);
+  const snapshot = await ref.get();
+  if (!snapshot.exists) return res.status(404).json({ error: "لم نجد هذه الدعوة." });
+  await ref.delete();
+  return res.status(200).json({ ok: true });
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
@@ -212,6 +230,7 @@ export default async function handler(req, res) {
     if (action === "activate") return await activateInvite(req, res);
     if (action === "list") return await listInvites(req, res);
     if (action === "revoke") return await revokeInvite(req, res);
+    if (action === "delete") return await deleteInvite(req, res);
     return res.status(400).json({ error: "طلب الدعوة غير واضح." });
   } catch (error) {
     console.error("merchant invite endpoint error:", error?.message || "unknown");
