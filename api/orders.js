@@ -8,6 +8,7 @@ import { isAllowedProof, canSellerConfirmOrder } from "./order-policy.js";
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DELIVERY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const TAP_API_BASE = "https://api.tap.company/v2";
 export const MAX_FILE_DOWNLOADS = 5;
 
 if (!getApps().length) {
@@ -357,28 +358,20 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
   };
 }
 
-async function confirmPayment(req, res, account) {
-  const orderId = cleanText(req.body?.orderId, 160);
-  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
-  await requireSeller(account.uid);
-
-  const orderRef = db.collection("orders").doc(orderId);
-  const result = await db.runTransaction(async (transaction) => {
+// يشترك فيها تأكيد التاجر اليدوي وتأكيد الدفع التلقائي ببطاقة عبر Tap.
+// كل قراءات المنتجات والأكواد لازم تنتهي قبل أي كتابة داخل نفس المعاملة،
+// فنجهّز دوال الكتابة أولًا (unlockOneProduct) ثم ننفذها كلها بعدين.
+async function markOrderConfirmed(orderRef, orderId, confirmedBy) {
+  return await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.get(orderRef);
     if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
     const order = orderSnap.data();
-    if (order.ownerId !== account.uid) throw new OrderError(403, "لا تملك هذا الطلب.");
     if (order.status === "confirmed") return { alreadyConfirmed: true, type: order.type };
-    if (!canSellerConfirmOrder(order, account.uid)) {
-      throw new OrderError(409, "هذا الطلب ليس جاهزًا لتأكيد التحويل.");
-    }
 
     const productIds = order.type === "bundle" ? order.productIds : [order.productId];
     if (!Array.isArray(productIds) || productIds.length === 0) {
       throw new OrderError(409, "بيانات هذا الطلب غير مكتملة.");
     }
-    // كل قراءات المنتجات والأكواد لازم تنتهي قبل أي كتابة داخل نفس المعاملة،
-    // فنجهّز دوال الكتابة أولًا (unlockOneProduct) ثم ننفذها كلها بعدين.
     const applyUnlocks = [];
     for (const productId of productIds) {
       applyUnlocks.push(await unlockOneProduct(transaction, {
@@ -386,7 +379,7 @@ async function confirmPayment(req, res, account) {
         buyerUid: order.buyerUid,
         buyerPhone: order.buyerPhone,
         orderId,
-        ownerId: account.uid,
+        ownerId: order.ownerId,
       }));
     }
     applyUnlocks.forEach((apply) => apply());
@@ -395,13 +388,114 @@ async function confirmPayment(req, res, account) {
     transaction.update(orderRef, {
       status: "confirmed",
       confirmedAt: FieldValue.serverTimestamp(),
-      confirmedBy: account.uid,
+      confirmedBy,
       deliveryToken,
       deliveryTokenExpiresAt: Timestamp.fromDate(new Date(Date.now() + DELIVERY_TOKEN_TTL_MS)),
     });
     return { alreadyConfirmed: false, type: order.type };
   });
+}
+
+async function confirmPayment(req, res, account) {
+  const orderId = cleanText(req.body?.orderId, 160);
+  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
+  await requireSeller(account.uid);
+
+  const orderRef = db.collection("orders").doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
+  const order = orderSnap.data();
+  if (order.ownerId !== account.uid) throw new OrderError(403, "لا تملك هذا الطلب.");
+  if (order.status !== "confirmed" && !canSellerConfirmOrder(order, account.uid)) {
+    throw new OrderError(409, "هذا الطلب ليس جاهزًا لتأكيد التحويل.");
+  }
+
+  const result = await markOrderConfirmed(orderRef, orderId, account.uid);
   return res.status(200).json({ ok: true, alreadyConfirmed: result.alreadyConfirmed, type: result.type });
+}
+
+// افتراض عملي: أرقام واتساب المشترين مكتوبة بدون كود الدولة (نفس افتراض بقية الموقع، مُونَة مخصصة لعُمان حاليًا).
+function splitPhoneForTap(rawPhone) {
+  const digits = String(rawPhone || "").replace(/\D/g, "");
+  const local = digits.startsWith("968") && digits.length > 8 ? digits.slice(3) : digits;
+  return { country_code: 968, number: Number(local) || 0 };
+}
+
+async function tapRequest(method, path, body) {
+  const secretKey = process.env.TAP_SECRET_KEY;
+  if (!secretKey) throw new OrderError(409, "الدفع بالبطاقة غير مفعّل حاليًا. استخدم التحويل اليدوي.");
+  const response = await fetch(`${TAP_API_BASE}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error("Tap API error:", data?.errors || data);
+    throw new OrderError(502, "تعذر الاتصال ببوابة الدفع الآن. جرب التحويل اليدوي.");
+  }
+  return data;
+}
+
+async function createCardCharge(req, res, account) {
+  const orderId = cleanText(req.body?.orderId, 160);
+  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
+  const orderRef = db.collection("orders").doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
+    throw new OrderError(403, "لا تملك هذا الطلب.");
+  }
+  const order = orderSnap.data();
+  if (order.status !== "draft") {
+    throw new OrderError(409, "هذا الطلب لا يقبل الدفع الآن.");
+  }
+
+  const origin = `https://${req.headers.host || "monah-app.com"}`;
+  const charge = await tapRequest("POST", "/charges/", {
+    amount: Number(Number(order.price).toFixed(3)),
+    currency: "OMR",
+    customer: {
+      first_name: "عميل مُونَة",
+      email: `buyer-${account.uid}@monah-app.com`,
+      phone: splitPhoneForTap(order.buyerPhone),
+    },
+    source: { id: "src_all" },
+    threeDSecure: true,
+    description: cleanText(order.productName, 160) || "طلب من مُونَة",
+    reference: { order: orderId },
+    metadata: { orderId },
+    redirect: { url: `${origin}/#pay-result/${orderId}` },
+  });
+
+  if (!charge.id || !charge.transaction?.url) {
+    throw new OrderError(502, "تعذر تجهيز صفحة الدفع الآن. جرب التحويل اليدوي.");
+  }
+  await orderRef.update({ tapChargeId: charge.id });
+  return res.status(200).json({ url: charge.transaction.url });
+}
+
+async function verifyCardCharge(req, res, account) {
+  const orderId = cleanText(req.body?.orderId, 160);
+  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
+  const orderRef = db.collection("orders").doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
+    throw new OrderError(403, "لا تملك هذا الطلب.");
+  }
+  const order = orderSnap.data();
+  if (order.status === "confirmed") {
+    return res.status(200).json({ paid: true, type: order.type });
+  }
+  if (!order.tapChargeId) {
+    throw new OrderError(409, "لا توجد عملية دفع بالبطاقة لهذا الطلب.");
+  }
+
+  const charge = await tapRequest("GET", `/charges/${order.tapChargeId}`);
+  if (charge.status !== "CAPTURED") {
+    return res.status(200).json({ paid: false, status: charge.status || "unknown" });
+  }
+  const result = await markOrderConfirmed(orderRef, orderId, "tap");
+  return res.status(200).json({ paid: true, type: result.type });
 }
 
 async function listBuyerOrders(req, res, account) {
@@ -527,6 +621,8 @@ export default async function handler(req, res) {
     if (action === "create") return await createOrder(req, res, account);
     if (action === "submit_proof") return await submitProof(req, res, account);
     if (action === "confirm") return await confirmPayment(req, res, account);
+    if (action === "create_card_charge") return await createCardCharge(req, res, account);
+    if (action === "verify_card_charge") return await verifyCardCharge(req, res, account);
     if (action === "list_buyer") return await listBuyerOrders(req, res, account);
     if (action === "proof_url") return await proofUrl(req, res, account);
     if (action === "receipt") return await receipt(req, res, account);

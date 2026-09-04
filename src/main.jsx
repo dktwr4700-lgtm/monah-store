@@ -14,6 +14,7 @@ const InviteActivation = lazy(() => import("./InviteActivation.jsx"));
 const Receipt = lazy(() => import("./Receipt.jsx"));
 const BundlePage = lazy(() => import("./BundlePage.jsx"));
 const Deliver = lazy(() => import("./Deliver.jsx"));
+const PayResult = lazy(() => import("./PayResult.jsx"));
 
 function PageLoading() {
   return <div dir="rtl" style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Cairo, sans-serif", color: "#4B6152", background: "#FBFAF7" }}>جاري التحميل…</div>;
@@ -41,6 +42,7 @@ function Root() {
   else if (hash === "purchases") page = <Purchases />;
   else if (hash.startsWith("receipt/")) page = <Receipt orderId={hash.split("/")[1]} token={hash.split("/")[2]} />;
   else if (hash.startsWith("deliver/")) page = <Deliver orderId={hash.split("/")[1]} token={hash.split("/")[2]} />;
+  else if (hash.startsWith("pay-result/")) page = <PayResult orderId={hash.split("/")[1]} />;
   else if (hash.startsWith("store/")) page = <StorePage sellerId={hash.split("/")[1]} />;
   return <Suspense fallback={<PageLoading />}>{page}</Suspense>;
 }

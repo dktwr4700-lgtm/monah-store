@@ -81,6 +81,18 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
     setProofFile(nextFile);
   }
 
+  async function payByCard() {
+    setError("");
+    setBusy(true);
+    try {
+      const data = await orderRequest("create_card_charge", { orderId: order.id });
+      window.location.assign(data.url);
+    } catch (requestError) {
+      setError(requestError.message || "تعذر بدء الدفع بالبطاقة الآن.");
+      setBusy(false);
+    }
+  }
+
   async function uploadProof() {
     if (!order || !proofFile || !auth.currentUser) {
       setError("اختر إثبات التحويل أولًا.");
@@ -124,18 +136,20 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
         <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>رجوع</button><button type="button" className="ppo-primary" onClick={startOrder} disabled={busy}>{busy ? "جاري التجهيز..." : "متابعة للتحويل"}</button></div>
         <div className="ppo-small">في نسخة التجربة، متابعة الطلب والتنزيل مرتبطة بهذا الجهاز والمتصفح، وتقدر أيضًا تستلم رابط منتجك على واتساب.</div>
       </> : <>
-        <div className="ppo-step">2 من 2 · التحويل ورفع الإثبات</div>
-        <div className="ppo-title">تعليمات التحويل</div>
+        <div className="ppo-step">2 من 2 · الدفع</div>
+        <div className="ppo-title">اختر طريقة الدفع</div>
         {order.couponCode ? (
-          <div className="ppo-success">تم تطبيق كوبون {order.couponCode}. المبلغ المطلوب تحويله: {order.price.toFixed(2)} ر.ع بدل {order.originalPrice.toFixed(2)} ر.ع.</div>
+          <div className="ppo-success">تم تطبيق كوبون {order.couponCode}. المبلغ المطلوب: {order.price.toFixed(2)} ر.ع بدل {order.originalPrice.toFixed(2)} ر.ع.</div>
         ) : (
-          <div className="ppo-copy">المبلغ المطلوب تحويله: <b>{order.price.toFixed(2)} ر.ع</b></div>
+          <div className="ppo-copy">المبلغ المطلوب: <b>{order.price.toFixed(2)} ر.ع</b></div>
         )}
+        {error && <div className="ppo-error">{error}</div>}
+        <button type="button" className="ppo-primary" style={{ width: "100%", marginTop: 12 }} onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : "ادفع الآن بالبطاقة"}</button>
+        <div className="ppo-small" style={{ textAlign: "center", margin: "13px 0" }}>— أو حوّل يدويًا —</div>
         <div className="ppo-instructions">{order.paymentInstructions}</div>
-        <div className="ppo-copy">بعد التحويل، ارفع صورة أو PDF للإثبات. يظهر الإيصال للتاجر فقط لمراجعته.</div>
+        <div className="ppo-copy">بعد التحويل اليدوي، ارفع صورة أو PDF للإثبات. يظهر الإيصال للتاجر فقط لمراجعته.</div>
         <div className="ppo-field"><label htmlFor="payment-proof">إثبات التحويل</label><input id="payment-proof" className="ppo-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={chooseProof} /></div>
         {proofFile && <div className="ppo-small">تم اختيار: {proofFile.name}</div>}
-        {error && <div className="ppo-error">{error}</div>}
         <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>أكمل لاحقًا</button><button type="button" className="ppo-primary" onClick={uploadProof} disabled={busy || !proofFile}>{busy ? "جاري رفع الإثبات..." : "إرسال الإثبات للتاجر"}</button></div>
         <div className="ppo-small">لا تضغط الإرسال إلا بعد إتمام التحويل. لا تطلب مُونَة كلمات المرور أو رموز التحقق.</div>
       </>}
