@@ -6,6 +6,7 @@ import { hasActiveBuyerOrder, isAllowedProof, canSellerConfirmOrder } from "./or
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const MAX_FILE_DOWNLOADS = 5;
 
 if (!getApps().length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
@@ -63,6 +64,10 @@ async function requireSeller(uid) {
 
 function publicOrder(order, id, unlock) {
   const confirmed = order.status === "confirmed";
+  const isFile = order.type !== "code";
+  const downloadsRemaining = isFile && unlock
+    ? Math.max(0, MAX_FILE_DOWNLOADS - Number(unlock.downloadCount || 0))
+    : null;
   return {
     id,
     productId: order.productId,
@@ -74,7 +79,9 @@ function publicOrder(order, id, unlock) {
     confirmedAt: order.confirmedAt?.toDate?.().toISOString?.() || null,
     paymentInstructions: order.paymentInstructions || "",
     proofSubmitted: Boolean(order.proofPath),
-    downloadReady: confirmed && order.type === "file" && Boolean(unlock),
+    downloadReady: confirmed && isFile && Boolean(unlock) && downloadsRemaining > 0,
+    downloadsRemaining,
+    maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
     licenseCode: confirmed && order.type === "code" ? (unlock?.licenseCode || "") : "",
   };
 }
@@ -195,6 +202,7 @@ async function confirmPayment(req, res, account) {
       orderId,
       ownerId: account.uid,
       type: product.type === "code" ? "code" : "file",
+      downloadCount: 0,
       createdAt: FieldValue.serverTimestamp(),
       expiresAt: Timestamp.fromDate(new Date(Date.now() + UNLOCK_TTL_MS)),
     };
