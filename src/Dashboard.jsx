@@ -1015,10 +1015,6 @@ export default function Dashboard() {
   async function handleAddCoupon(e) {
     e.preventDefault();
     setCouponError("");
-    if (sellerPlan === "basic") {
-      setCouponError("كوبونات الخصم متاحة من الباقة الاحترافية فأعلى.");
-      return;
-    }
     const cleanCode = couponCode.trim().toUpperCase().replace(/\s+/g, "");
     const percentNum = Number(couponPercent);
 
@@ -1251,7 +1247,7 @@ export default function Dashboard() {
         progress: stepsDone,
       };
     }
-    if (sellerPlan !== "basic" && !hasCoupon) {
+    if (!hasCoupon) {
       return {
         key: "add-coupon",
         badge: "✦ خطوتك التالية",
@@ -1746,18 +1742,7 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "coupons" && sellerPlan === "basic" && (
-          <div className="dh-card" style={{ textAlign: "center", padding: "34px 20px" }}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
-            <div className="dh-title" style={{ marginBottom: 8 }}>كوبونات الخصم متاحة من الباقة الاحترافية</div>
-            <div className="dh-hint" style={{ marginBottom: 16 }}>رقّي باقتك عشان تقدر تسوي أكواد خصم لمنتجاتك.</div>
-            <button className="dh-btn" onClick={() => setTab("subscription")} type="button" style={{ maxWidth: 220, margin: "0 auto" }}>
-              شوف الباقات
-            </button>
-          </div>
-        )}
-
-        {tab === "coupons" && sellerPlan !== "basic" && (
+        {tab === "coupons" && (
           <>
             <div className="dh-card">
               <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>

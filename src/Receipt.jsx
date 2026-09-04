@@ -80,6 +80,8 @@ export default function Receipt({ orderId }) {
             <div className="rcpt-row"><span>المنتج</span><span>{data.productName}</span></div>
             <div className="rcpt-row"><span>البريد الإلكتروني</span><span>{data.buyerEmail}</span></div>
             <div className="rcpt-row"><span>تاريخ التأكيد</span><span>{dateFor(data.confirmedAt)}</span></div>
+            {data.couponCode && <div className="rcpt-row"><span>كوبون الخصم</span><span>{data.couponCode}</span></div>}
+            {data.originalPrice != null && <div className="rcpt-row"><span>السعر قبل الخصم</span><span>{data.originalPrice.toFixed(2)} ر.ع</span></div>}
 
             <div className="rcpt-total">
               <span>الإجمالي</span>

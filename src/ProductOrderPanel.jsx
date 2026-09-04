@@ -30,6 +30,7 @@ function safeName(name) {
 export default function ProductOrderPanel({ product }) {
   const [open, setOpen] = useState(false);
   const [buyerEmail, setBuyerEmail] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [order, setOrder] = useState(null);
   const [proofFile, setProofFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -46,7 +47,7 @@ export default function ProductOrderPanel({ product }) {
     setBusy(true);
     try {
       await ensureAnonymousAuth();
-      const data = await orderRequest("create", { productId: product.id, buyerEmail: email });
+      const data = await orderRequest("create", { productId: product.id, buyerEmail: email, couponCode: couponCode.trim() });
       setOrder(data.order);
     } catch (requestError) {
       setError(requestError.message || "تعذر بدء الطلب الآن.");
@@ -104,12 +105,18 @@ export default function ProductOrderPanel({ product }) {
         <div className="ppo-title">اكتب بريدك للطلب</div>
         <div className="ppo-copy">تستخدمه كتفاصيل للطلب لدى التاجر. لا تدخل كلمة مرور أو رمز تحقق.</div>
         <div className="ppo-field"><label htmlFor="buyer-email">البريد الإلكتروني</label><input id="buyer-email" type="email" value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" /></div>
+        <div className="ppo-field"><label htmlFor="coupon-code">كود الخصم (اختياري)</label><input id="coupon-code" type="text" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="اتركه فارغًا إذا ما عندك كود" /></div>
         {error && <div className="ppo-error">{error}</div>}
         <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>رجوع</button><button type="button" className="ppo-primary" onClick={startOrder} disabled={busy}>{busy ? "جاري التجهيز..." : "متابعة للتحويل"}</button></div>
         <div className="ppo-small">في نسخة التجربة، متابعة الطلب والتنزيل مرتبطة بهذا الجهاز والمتصفح.</div>
       </> : <>
         <div className="ppo-step">2 من 2 · التحويل ورفع الإثبات</div>
         <div className="ppo-title">تعليمات التحويل</div>
+        {order.couponCode ? (
+          <div className="ppo-success">تم تطبيق كوبون {order.couponCode}. المبلغ المطلوب تحويله: {order.price.toFixed(2)} ر.ع بدل {order.originalPrice.toFixed(2)} ر.ع.</div>
+        ) : (
+          <div className="ppo-copy">المبلغ المطلوب تحويله: <b>{order.price.toFixed(2)} ر.ع</b></div>
+        )}
         <div className="ppo-instructions">{order.paymentInstructions}</div>
         <div className="ppo-copy">بعد التحويل، ارفع صورة أو PDF للإثبات. يظهر الإيصال للتاجر فقط لمراجعته.</div>
         <div className="ppo-field"><label htmlFor="payment-proof">إثبات التحويل</label><input id="payment-proof" className="ppo-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={chooseProof} /></div>

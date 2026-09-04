@@ -73,6 +73,8 @@ function publicOrder(order, id, unlock) {
     productId: order.productId,
     productName: order.productName,
     price: Number(order.price || 0),
+    originalPrice: order.couponCode ? Number(order.originalPrice || order.price || 0) : null,
+    couponCode: order.couponCode || "",
     type: order.type === "code" ? "code" : "file",
     status: order.status,
     createdAt: order.createdAt?.toDate?.().toISOString?.() || null,
@@ -84,6 +86,26 @@ function publicOrder(order, id, unlock) {
     maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
     licenseCode: confirmed && order.type === "code" ? (unlock?.licenseCode || "") : "",
   };
+}
+
+async function resolveCoupon(rawCode, productId, ownerId) {
+  const code = cleanText(rawCode, 40).toUpperCase();
+  if (!code) return { discountPercent: 0, couponCode: "" };
+  const couponSnap = await db.collection("coupons")
+    .where("code", "==", code)
+    .where("ownerId", "==", ownerId)
+    .where("active", "==", true)
+    .limit(5)
+    .get();
+  const match = couponSnap.docs.find((item) => {
+    const scope = item.data().productId;
+    return scope === null || scope === undefined || scope === productId;
+  });
+  if (!match) {
+    throw new OrderError(400, "كود الخصم غير صالح أو غير متاح لهذا المنتج.");
+  }
+  const discountPercent = Number(match.data().discountPercent || 0);
+  return { discountPercent, couponCode: code };
 }
 
 async function createOrder(req, res, account) {
@@ -114,6 +136,12 @@ async function createOrder(req, res, account) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذا المنتج بعد.");
   }
 
+  const originalPrice = Number(product.price);
+  const { discountPercent, couponCode } = await resolveCoupon(req.body?.couponCode, productId, product.ownerId);
+  const finalPrice = couponCode
+    ? Math.max(0.01, Math.round(originalPrice * (1 - discountPercent / 100) * 100) / 100)
+    : originalPrice;
+
   const orderRef = db.collection("orders").doc(`${account.uid}_${productId}`);
   await db.runTransaction(async (transaction) => {
     const existingOrder = await transaction.get(orderRef);
@@ -126,14 +154,16 @@ async function createOrder(req, res, account) {
       buyerEmail,
       productId,
       productName: cleanText(product.name, 160) || "منتج رقمي",
-      price: Number(product.price),
+      price: finalPrice,
+      originalPrice,
+      couponCode,
       type: product.type,
       status: "draft",
       paymentInstructions,
       createdAt: FieldValue.serverTimestamp(),
     });
   });
-  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions } });
+  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: finalPrice, originalPrice, couponCode } });
 }
 
 async function submitProof(req, res, account) {
@@ -272,6 +302,8 @@ async function receipt(req, res, account) {
       storeLogoUrl,
       productName: order.productName,
       price: Number(order.price || 0),
+      originalPrice: order.couponCode ? Number(order.originalPrice || order.price || 0) : null,
+      couponCode: order.couponCode || "",
       buyerEmail: order.buyerEmail,
       confirmedAt: order.confirmedAt?.toDate?.().toISOString?.() || null,
     },
