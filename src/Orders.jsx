@@ -16,7 +16,7 @@ function digitsOnly(value) {
 }
 
 function deliveryLink(order) {
-  return `${window.location.origin}/l/deliver/${order.id}/${order.deliveryToken}`;
+  return `${window.location.origin}/#deliver/${order.id}/${order.deliveryToken}`;
 }
 
 async function orderRequest(action, payload) {
@@ -27,7 +27,7 @@ async function orderRequest(action, payload) {
   return data;
 }
 
-export default function Orders({ ownerId, onAddProduct, paymentInstructions, onPaymentInstructionsSaved }) {
+export default function Orders({ ownerId, onAddProduct, paymentInstructions, onPaymentInstructionsSaved, storeName }) {
   const [orders, setOrders] = useState([]);
   const [loadError, setLoadError] = useState("");
   const [confirmingId, setConfirmingId] = useState("");
@@ -96,7 +96,8 @@ export default function Orders({ ownerId, onAddProduct, paymentInstructions, onP
 
   function sendDeliveryOnWhatsApp(order) {
     const phone = digitsOnly(order.buyerPhone);
-    const message = `طلبك في مُونَة جاهز! اضغط الرابط عشان تستلم منتجك:\n${deliveryLink(order)}`;
+    const from = storeName ? ` من ${storeName}` : "";
+    const message = `طلبك "${order.productName || "منتجك"}"${from} في مُونَة جاهز! اضغط الرابط عشان تستلمه:\n${deliveryLink(order)}`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   }
 
