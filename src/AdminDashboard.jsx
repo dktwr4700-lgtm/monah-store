@@ -34,6 +34,12 @@ const styles = `
   .badge-active{ background:#EAF0EB; color:#4B6152; }
   .badge-disabled{ background:#F6E5E1; color:#B24C3A; }
   .badge-plan{ background:#F3EBDD; color:#B9832F; }
+  .badge-expired{ background:#F6E5E1; color:#B24C3A; }
+  .expiry-row{ display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .expiry-row label{ font-size:11.5px; color:#625F55; font-weight:800; white-space:nowrap; }
+  .expiry-row input{ border:1px solid #E4E0D3; border-radius:8px; padding:7px 9px; font:12.5px 'Cairo',sans-serif; background:#FBFAF7; color:#16233F; }
+  .expiry-row button{ border:0; border-radius:8px; padding:7px 12px; font-size:11.5px; font-weight:700; background:#16233F; color:#fff; cursor:pointer; white-space:nowrap; }
+  .expiry-row button:disabled{ opacity:.6; }
   .seller-actions{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .seller-btn{ padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; border:1px solid #E4E0D3; background:#fff; color:#16233F; }
   .seller-btn.warn{ border-color:#E7C9C1; color:#B24C3A; }
@@ -97,6 +103,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState(null);
+
+  const [expiryDrafts, setExpiryDrafts] = useState({});
+  const [savingExpiryId, setSavingExpiryId] = useState(null);
 
   const [expandedId, setExpandedId] = useState(null);
   const [sellerProducts, setSellerProducts] = useState({});
@@ -217,6 +226,28 @@ export default function AdminDashboard() {
     if (status === "revoked") return "موقوفة";
     if (status === "expired") return "منتهية";
     return "بانتظار التفعيل";
+  }
+
+  function expiryDraftFor(seller) {
+    return expiryDrafts[seller.id] ?? seller.subscriptionExpiresAt ?? "";
+  }
+
+  function isSubscriptionExpired(seller) {
+    return Boolean(seller.subscriptionExpiresAt) && new Date(seller.subscriptionExpiresAt) < new Date();
+  }
+
+  async function saveSubscriptionExpiry(seller) {
+    const value = expiryDraftFor(seller);
+    setSavingExpiryId(seller.id);
+    try {
+      await updateDoc(doc(db, "sellers", seller.id), { subscriptionExpiresAt: value || null });
+      setSellers((prev) =>
+        prev.map((s) => (s.id === seller.id ? { ...s, subscriptionExpiresAt: value || null } : s))
+      );
+    } catch (e) {
+      console.error(e);
+    }
+    setSavingExpiryId(null);
   }
 
   async function toggleDisabled(seller) {
@@ -454,6 +485,28 @@ export default function AdminDashboard() {
                 <span className="seller-meta-item">
                   تاريخ التسجيل: <b>{s.createdAt ? new Date(s.createdAt).toLocaleDateString("ar") : "—"}</b>
                 </span>
+                {isSubscriptionExpired(s) && (
+                  <span className="seller-badge badge-expired">منتهي الاشتراك</span>
+                )}
+              </div>
+
+              <div className="expiry-row">
+                <label htmlFor={`expiry-${s.id}`}>الاشتراك ساري لين:</label>
+                <input
+                  id={`expiry-${s.id}`}
+                  type="date"
+                  value={expiryDraftFor(s)}
+                  onChange={(e) =>
+                    setExpiryDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))
+                  }
+                />
+                <button
+                  type="button"
+                  disabled={savingExpiryId === s.id}
+                  onClick={() => saveSubscriptionExpiry(s)}
+                >
+                  {savingExpiryId === s.id ? "جاري الحفظ..." : "حفظ التاريخ"}
+                </button>
               </div>
 
               <div className="seller-expand-hint" onClick={() => toggleExpand(s.id)}>
