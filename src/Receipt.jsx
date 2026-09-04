@@ -31,7 +31,7 @@ function dateFor(iso) {
   return new Date(iso).toLocaleDateString("ar-OM", { day: "numeric", month: "long", year: "numeric" });
 }
 
-export default function Receipt({ orderId }) {
+export default function Receipt({ orderId, token }) {
   const [state, setState] = useState("loading");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -44,7 +44,7 @@ export default function Receipt({ orderId }) {
         const response = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({ action: "receipt", orderId }),
+          body: JSON.stringify({ action: "receipt", orderId, token }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || "تعذر تحميل الفاتورة الآن.");
@@ -55,7 +55,7 @@ export default function Receipt({ orderId }) {
         setState("error");
       }
     })();
-  }, [orderId]);
+  }, [orderId, token]);
 
   return (
     <div className="rcpt-page" dir="rtl" lang="ar">
@@ -79,7 +79,7 @@ export default function Receipt({ orderId }) {
 
             <div className="rcpt-row"><span>{data.items ? "الحزمة" : "المنتج"}</span><span>{data.productName}</span></div>
             {data.items && <div className="rcpt-label" style={{ marginBottom: 6 }}>تشمل: {data.items.join("، ")}</div>}
-            <div className="rcpt-row"><span>البريد الإلكتروني</span><span>{data.buyerEmail}</span></div>
+            <div className="rcpt-row"><span>رقم واتساب العميل</span><span dir="ltr">{data.buyerPhone}</span></div>
             <div className="rcpt-row"><span>تاريخ التأكيد</span><span>{dateFor(data.confirmedAt)}</span></div>
             {data.couponCode && <div className="rcpt-row"><span>كوبون الخصم</span><span>{data.couponCode}</span></div>}
             {data.originalPrice != null && <div className="rcpt-row"><span>السعر قبل الخصم</span><span>{data.originalPrice.toFixed(2)} ر.ع</span></div>}

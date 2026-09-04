@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
@@ -6,6 +7,7 @@ import { hasActiveBuyerOrder, isAllowedProof, canSellerConfirmOrder } from "./or
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const DELIVERY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const MAX_FILE_DOWNLOADS = 5;
 
 if (!getApps().length) {
@@ -28,12 +30,13 @@ function cleanText(value, maxLength) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
-function cleanEmail(value) {
-  return cleanText(value, 160).toLowerCase();
+function cleanPhone(value) {
+  return String(value || "").replace(/[^\d+]/g, "").slice(0, 20);
 }
 
-function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+function validPhone(value) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
 }
 
 function isValidId(value) {
@@ -132,9 +135,9 @@ async function resolveCoupon(rawCode, productId, ownerId) {
 
 async function createBundleOrder(req, res, account) {
   const bundleId = cleanText(req.body?.bundleId, 160);
-  const buyerEmail = cleanEmail(req.body?.buyerEmail || account.email);
+  const buyerPhone = cleanPhone(req.body?.buyerPhone);
   if (!isValidId(bundleId)) throw new OrderError(400, "رابط الحزمة غير واضح.");
-  if (!validEmail(buyerEmail)) throw new OrderError(400, "اكتب بريدك الإلكتروني بشكل صحيح.");
+  if (!validPhone(buyerPhone)) throw new OrderError(400, "اكتب رقم واتسابك بشكل صحيح.");
 
   const bundleSnap = await db.collection("bundles").doc(bundleId).get();
   if (!bundleSnap.exists) throw new OrderError(404, "الحزمة غير موجودة.");
@@ -169,7 +172,7 @@ async function createBundleOrder(req, res, account) {
     transaction.set(orderRef, {
       ownerId: bundle.ownerId,
       buyerUid: account.uid,
-      buyerEmail,
+      buyerPhone,
       bundleId,
       productId: `bundle_${bundleId}`,
       productIds,
@@ -188,9 +191,9 @@ async function createBundleOrder(req, res, account) {
 async function createOrder(req, res, account) {
   if (req.body?.bundleId) return createBundleOrder(req, res, account);
   const productId = cleanText(req.body?.productId, 160);
-  const buyerEmail = cleanEmail(req.body?.buyerEmail || account.email);
+  const buyerPhone = cleanPhone(req.body?.buyerPhone);
   if (!isValidId(productId)) throw new OrderError(400, "رابط المنتج غير واضح.");
-  if (!validEmail(buyerEmail)) throw new OrderError(400, "اكتب بريدك الإلكتروني بشكل صحيح.");
+  if (!validPhone(buyerPhone)) throw new OrderError(400, "اكتب رقم واتسابك بشكل صحيح.");
 
   const productSnap = await db.collection("products").doc(productId).get();
   if (!productSnap.exists) throw new OrderError(404, "المنتج غير موجود.");
@@ -229,7 +232,7 @@ async function createOrder(req, res, account) {
     transaction.set(orderRef, {
       ownerId: product.ownerId,
       buyerUid: account.uid,
-      buyerEmail,
+      buyerPhone,
       productId,
       productName: cleanText(product.name, 160) || "منتج رقمي",
       price: finalPrice,
@@ -281,7 +284,7 @@ async function submitProof(req, res, account) {
   return res.status(200).json({ ok: true, status: "awaiting_seller_confirmation" });
 }
 
-async function unlockOneProduct(transaction, { productId, buyerUid, buyerEmail, orderId, ownerId }) {
+async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, orderId, ownerId }) {
   const productRef = db.collection("products").doc(productId);
   const productSnap = await transaction.get(productRef);
   if (!productSnap.exists || productSnap.data().ownerId !== ownerId || productSnap.data().suspended) {
@@ -313,7 +316,7 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerEmail, 
     if (codeDoc) {
       transaction.update(codeDoc.ref, {
         used: true,
-        usedBy: buyerEmail,
+        usedBy: buyerPhone,
         usedByUid: buyerUid,
         usedAt: FieldValue.serverTimestamp(),
       });
@@ -351,17 +354,20 @@ async function confirmPayment(req, res, account) {
       applyUnlocks.push(await unlockOneProduct(transaction, {
         productId,
         buyerUid: order.buyerUid,
-        buyerEmail: order.buyerEmail,
+        buyerPhone: order.buyerPhone,
         orderId,
         ownerId: account.uid,
       }));
     }
     applyUnlocks.forEach((apply) => apply());
 
+    const deliveryToken = randomBytes(24).toString("hex");
     transaction.update(orderRef, {
       status: "confirmed",
       confirmedAt: FieldValue.serverTimestamp(),
       confirmedBy: account.uid,
+      deliveryToken,
+      deliveryTokenExpiresAt: Timestamp.fromDate(new Date(Date.now() + DELIVERY_TOKEN_TTL_MS)),
     });
     return { alreadyConfirmed: false, type: order.type };
   });
@@ -389,13 +395,43 @@ async function listBuyerOrders(req, res, account) {
   return res.status(200).json({ orders: rows });
 }
 
+function deliveryTokenValid(order, token) {
+  if (!token || !order.deliveryToken || token !== order.deliveryToken) return false;
+  const expiresAt = order.deliveryTokenExpiresAt?.toDate?.();
+  return Boolean(expiresAt) && expiresAt > new Date();
+}
+
+async function deliverOrder(req, res) {
+  const orderId = cleanText(req.body?.orderId, 160);
+  const token = cleanText(req.body?.token, 80);
+  if (!isValidId(orderId) || !token) throw new OrderError(400, "رابط التسليم غير صالح.");
+  const orderSnap = await db.collection("orders").doc(orderId).get();
+  if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
+  const order = orderSnap.data();
+  if (!deliveryTokenValid(order, token)) throw new OrderError(403, "رابط التسليم غير صالح أو منتهي.");
+  if (order.status !== "confirmed") throw new OrderError(409, "هذا الطلب ليس جاهزًا للتسليم بعد.");
+
+  if (order.type === "bundle") {
+    const productIds = Array.isArray(order.productIds) ? order.productIds : [];
+    const unlockSnaps = await Promise.all(
+      productIds.map((productId) => db.collection("unlocks").doc(`${order.buyerUid}_${productId}`).get())
+    );
+    const unlocksByProductId = {};
+    productIds.forEach((productId, index) => { unlocksByProductId[productId] = unlockSnaps[index].data(); });
+    return res.status(200).json({ order: publicOrder(order, orderId, unlocksByProductId) });
+  }
+  const unlock = (await db.collection("unlocks").doc(`${order.buyerUid}_${order.productId}`).get()).data();
+  return res.status(200).json({ order: publicOrder(order, orderId, unlock) });
+}
+
 async function receipt(req, res, account) {
   const orderId = cleanText(req.body?.orderId, 160);
+  const token = cleanText(req.body?.token, 80);
   if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
   const orderSnap = await db.collection("orders").doc(orderId).get();
   if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
   const order = orderSnap.data();
-  const canRead = order.buyerUid === account.uid || order.ownerId === account.uid;
+  const canRead = deliveryTokenValid(order, token) || order.buyerUid === account.uid || order.ownerId === account.uid;
   if (!canRead) throw new OrderError(403, "لا تملك صلاحية رؤية هذه الفاتورة.");
   if (order.status !== "confirmed") throw new OrderError(409, "الفاتورة تظهر فقط بعد تأكيد التاجر استلام المبلغ.");
 
@@ -415,7 +451,7 @@ async function receipt(req, res, account) {
       price: Number(order.price || 0),
       originalPrice: order.couponCode ? Number(order.originalPrice || order.price || 0) : null,
       couponCode: order.couponCode || "",
-      buyerEmail: order.buyerEmail,
+      buyerPhone: order.buyerPhone,
       confirmedAt: order.confirmedAt?.toDate?.().toISOString?.() || null,
     },
   });
@@ -464,6 +500,7 @@ export default async function handler(req, res) {
     if (action === "list_buyer") return await listBuyerOrders(req, res, account);
     if (action === "proof_url") return await proofUrl(req, res, account);
     if (action === "receipt") return await receipt(req, res, account);
+    if (action === "deliver") return await deliverOrder(req, res);
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {

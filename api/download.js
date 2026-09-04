@@ -25,21 +25,36 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { productId } = req.body || {};
+  const { productId, orderId, deliveryToken } = req.body || {};
   if (!productId) {
     return res.status(400).json({ error: 'productId مطلوب.' });
   }
 
-  const authHeader = req.headers.authorization || '';
-  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!idToken) {
-    return res.status(401).json({ error: 'غير مصرّح — سجّل دخولك وحاول مرة ثانية.' });
-  }
-
   let uid;
   try {
-    const decoded = await auth.verifyIdToken(idToken);
-    uid = decoded.uid;
+    if (orderId && deliveryToken) {
+      // مسار رابط التسليم العام (بدون تسجيل دخول) — يستخدمه التاجر لما يشارك رابط التسليم يدويًا مع العميل
+      const orderSnap = await db.collection('orders').doc(orderId).get();
+      if (!orderSnap.exists) return res.status(404).json({ error: 'رابط التسليم غير صالح.' });
+      const order = orderSnap.data();
+      const expiresAt = order.deliveryTokenExpiresAt && order.deliveryTokenExpiresAt.toDate
+        ? order.deliveryTokenExpiresAt.toDate()
+        : null;
+      const tokenValid = order.deliveryToken && order.deliveryToken === deliveryToken && expiresAt && expiresAt > new Date();
+      if (!tokenValid) return res.status(403).json({ error: 'رابط التسليم غير صالح أو منتهي.' });
+      const productBelongsToOrder = order.type === 'bundle'
+        ? Array.isArray(order.productIds) && order.productIds.includes(productId)
+        : order.productId === productId;
+      if (order.status !== 'confirmed' || !productBelongsToOrder) {
+        return res.status(403).json({ error: 'هذا الطلب غير جاهز لهذا الملف.' });
+      }
+      uid = order.buyerUid;
+    } else {
+      const authHeader = req.headers.authorization || '';
+      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (!idToken) return res.status(401).json({ error: 'غير مصرّح — سجّل دخولك وحاول مرة ثانية.' });
+      uid = (await auth.verifyIdToken(idToken)).uid;
+    }
   } catch (err) {
     return res.status(401).json({ error: 'جلستك غير صالحة، حاول مرة ثانية.' });
   }
