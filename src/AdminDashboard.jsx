@@ -121,7 +121,6 @@ export default function AdminDashboard() {
   const [invites, setInvites] = useState([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
   const [inviteStoreName, setInviteStoreName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStoreType, setInviteStoreType] = useState("files");
   const [inviteCreating, setInviteCreating] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -197,12 +196,11 @@ export default function AdminDashboard() {
     setLatestInviteUrl("");
     setInviteCreating(true);
     try {
-      const data = await inviteRequest("create", { storeName: inviteStoreName, email: inviteEmail, storeType: inviteStoreType });
+      const data = await inviteRequest("create", { storeName: inviteStoreName, storeType: inviteStoreType });
       const link = `${window.location.origin}${window.location.pathname}#invite/${data.token}`;
       setLatestInviteUrl(link);
       setInviteSuccess("تم إنشاء الرابط. انسخه الآن وأرسله للتاجر؛ ينتهي بعد 3 أيام.");
       setInviteStoreName("");
-      setInviteEmail("");
       setInviteStoreType("files");
       loadInvites();
     } catch (error) {
@@ -640,12 +638,11 @@ export default function AdminDashboard() {
           <>
             <form className="invite-panel" onSubmit={createInvite}>
               <div className="invite-title">دعوة تاجر جديد</div>
-              <div className="invite-sub">اختر نوع متجره ثم أرسل له الرابط. التاجر يحدد كلمة مروره بنفسه، والرابط يستخدم مرة واحدة.</div>
+              <div className="invite-sub">اختر نوع متجره ثم أرسل له الرابط. التاجر يسجّل ببريده وكلمة مروره بنفسه ويؤكد بريده بنفسه، والرابط يستخدم مرة واحدة.</div>
               {inviteError && <div className="invite-message error">{inviteError}</div>}
               {inviteSuccess && <div className="invite-message success">{inviteSuccess}</div>}
               {latestInviteUrl && <div className="invite-link"><code>{latestInviteUrl}</code><button className="invite-copy" type="button" onClick={copyInviteLink}>نسخ الرابط</button></div>}
               <div className="invite-field"><label>اسم المتجر</label><input value={inviteStoreName} onChange={(event) => setInviteStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
-              <div className="invite-field"><label>بريد التاجر</label><input type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@example.com" required /></div>
               <div className="invite-field"><label>ماذا يبيع؟</label><select value={inviteStoreType} onChange={(event) => setInviteStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
               <button className="invite-create" type="submit" disabled={inviteCreating}>{inviteCreating ? "جاري إنشاء الرابط..." : "إنشاء رابط دعوة"}</button>
             </form>
@@ -653,7 +650,7 @@ export default function AdminDashboard() {
             {invitesLoading && <div className="loading">جاري تحميل الدعوات...</div>}
             {!invitesLoading && invites.length === 0 && <div className="empty">ما فيه دعوات حتى الآن.</div>}
             {!invitesLoading && invites.map((invite) => <div className="invite-row" key={invite.id}>
-              <div className="invite-row-top"><div><div className="invite-name">{invite.storeName}</div><div className="invite-email">{invite.email}</div></div><span className={`seller-badge badge-${invite.status}`}>{inviteStatusLabel(invite.status)}</span></div>
+              <div className="invite-row-top"><div><div className="invite-name">{invite.storeName}</div><div className="invite-email">{invite.acceptedEmail || "لم يسجّل بعد"}</div></div><span className={`seller-badge badge-${invite.status}`}>{inviteStatusLabel(invite.status)}</span></div>
               <div className="invite-meta">{STORE_TYPES[invite.storeType] || "منتجات رقمية"} · تنتهي {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString("ar") : "—"}</div>
               <div className="seller-actions">
                 {invite.status === "pending" && <button className="seller-btn warn" type="button" onClick={() => revokeInvite(invite)} disabled={revokingInviteId === invite.id}>{revokingInviteId === invite.id ? "جاري الإيقاف..." : "إيقاف الدعوة"}</button>}

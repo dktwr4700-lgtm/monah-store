@@ -484,7 +484,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(inviteApi).toContain('if (snapshot.data().status !== "pending")');
     expect(inviteApi).toContain('status: "revoked"');
     expect(inviteApi).toContain("requireOwner");
-    expect(inviteApi).toContain('where("email", "==", email).limit(1).get()');
+    expect(inviteApi).toContain('where("email", "==", account.email).limit(1).get()');
     expect(inviteApi).toContain("هذا البريد لديه متجر مفعّل بالفعل.");
     expect(rules).toContain("match /merchantInvites/{inviteId}");
     expect(rules).toContain("allow create: if false;");
