@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth, db, storage } from "./firebase.js";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
 import {
   collection, addDoc, query, where, onSnapshot,
   serverTimestamp, doc, setDoc, getDoc, getDocs, writeBatch,
@@ -55,6 +55,9 @@ const styles = `
   .dh-brand span{ color:#8A8677; font-weight:600; font-size:11.5px; margin-right:6px; }
   .dh-logout{ border:1px solid #EDEAE0; padding:7px 13px; border-radius:100px; font-size:11px; color:#3D4A66; background:none; font-family:'Cairo',sans-serif; cursor:pointer; }
   .dh-admin-btn{ border:1px solid #B9832F; padding:7px 13px; border-radius:100px; font-size:11px; color:#B9832F; background:none; font-family:'Cairo',sans-serif; cursor:pointer; font-weight:700; margin-left:8px; }
+  .dh-verify-banner{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:#FFF8E9; border-bottom:1px solid #EFD9AB; padding:11px 16px; font-size:12px; color:#7A5A17; line-height:1.7; }
+  .dh-verify-banner button{ border:0; border-radius:100px; padding:7px 13px; font-size:11px; font-weight:800; background:#0B0B0C; color:#fff; font-family:'Cairo',sans-serif; cursor:pointer; white-space:nowrap; }
+  .dh-verify-banner button:disabled{ opacity:.6; cursor:not-allowed; }
 
   .dh-tabs{ display:flex; gap:6px; padding:12px 16px 0; overflow-x:auto; background:#FFFFFF; }
   .dh-tab{ white-space:nowrap; padding:8px 14px; border-radius:100px; font-size:11.5px; font-weight:700; border:1px solid #EDEAE0; background:#FFFFFF; color:#3D4A66; cursor:pointer; }
@@ -289,6 +292,8 @@ const styles = `
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
   const [sellerAccess, setSellerAccess] = useState("checking");
   const [sellerStoreType, setSellerStoreType] = useState("files");
   function getTabFromHash() {
@@ -1101,6 +1106,18 @@ export default function Dashboard() {
     });
   }
 
+  async function resendVerificationEmail() {
+    if (!auth.currentUser) return;
+    setSendingVerification(true);
+    try {
+      await sendEmailVerification(auth.currentUser);
+      setVerificationSent(true);
+    } catch {
+      setVerificationSent(false);
+    }
+    setSendingVerification(false);
+  }
+
   function copyLink(id, kind) {
     const url = `${window.location.origin}${window.location.pathname}#${kind}/${id}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -1336,6 +1353,13 @@ export default function Dashboard() {
           <button className="dh-logout" onClick={handleLogout}>تسجيل خروج</button>
         </div>
       </div>
+
+      {!user.emailVerified && (
+        <div className="dh-verify-banner">
+          <span>{verificationSent ? "أرسلنا رابط تأكيد جديد لبريدك. افتح بريدك واضغط الرابط." : "بريدك الإلكتروني غير مؤكد بعد. تأكيد بريدك يضمن وصولك لحسابك لو نسيت كلمة المرور."}</span>
+          <button type="button" onClick={resendVerificationEmail} disabled={sendingVerification}>{sendingVerification ? "جاري الإرسال..." : verificationSent ? "إعادة الإرسال" : "إرسال رابط التأكيد"}</button>
+        </div>
+      )}
 
       <div className="dh-tabs">
         <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
