@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "./firebase.js";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 const STORE_TYPE_LABELS = {
   books: "كتب رقمية",
@@ -58,11 +58,16 @@ export default function InviteActivation({ token }) {
     setSaving(true);
     try {
       let credential;
+      let isNewAccount = false;
       try {
         credential = await createUserWithEmailAndPassword(auth, invite.email, password);
+        isNewAccount = true;
       } catch (createError) {
         if (createError.code !== "auth/email-already-in-use") throw createError;
         credential = await signInWithEmailAndPassword(auth, invite.email, password);
+      }
+      if (isNewAccount) {
+        await sendEmailVerification(credential.user).catch(() => {});
       }
       const idToken = await credential.user.getIdToken(true);
       await inviteRequest("activate", { token }, idToken);
