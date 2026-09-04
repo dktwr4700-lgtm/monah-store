@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_PROOF_BYTES, canSellerConfirmOrder, hasActiveBuyerOrder, isAllowedProof } from "../api/order-policy.js";
+import { MAX_PROOF_BYTES, canSellerConfirmOrder, isAllowedProof } from "../api/order-policy.js";
 
 describe("سياسة طلب التحويل", () => {
   it("تقبل إثباتًا مصورًا أو PDF فقط وبحجم أقل من الحد", () => {
@@ -7,12 +7,6 @@ describe("سياسة طلب التحويل", () => {
     expect(isAllowedProof({ size: 1024, contentType: "application/pdf" })).toBe(true);
     expect(isAllowedProof({ size: MAX_PROOF_BYTES, contentType: "image/jpeg" })).toBe(false);
     expect(isAllowedProof({ size: 500, contentType: "application/zip" })).toBe(false);
-  });
-
-  it("لا يسمح بطلب ثانٍ للمنتج نفسه للعميل نفسه قبل انتهاء الطلب الأول", () => {
-    expect(hasActiveBuyerOrder([{ productId: "product-1", status: "draft" }], "product-1")).toBe(true);
-    expect(hasActiveBuyerOrder([{ productId: "product-1", status: "cancelled" }], "product-1")).toBe(false);
-    expect(hasActiveBuyerOrder([{ productId: "product-2", status: "confirmed" }], "product-1")).toBe(false);
   });
 
   it("يقصر فتح التنزيل على صاحب الطلب بعد وصول إثبات التحويل", () => {

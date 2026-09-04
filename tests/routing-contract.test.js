@@ -140,8 +140,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(orderApi).toContain('db.collection("sellers").doc(product.ownerId)');
     expect(orderApi).not.toContain('db.collection("stores").doc(product.ownerId).get()');
     expect(orderApi).toContain("if (order.ownerId !== account.uid)");
-    expect(orderApi).toContain("لديك طلب سابق لهذا المنتج على هذا الجهاز");
-    expect(orderApi).toContain('doc(`${account.uid}_${productId}`)');
+    expect(orderApi).toContain('.where("status", "==", "draft")');
+    expect(orderApi).toContain('db.collection("unlocks").doc(`${account.uid}_${productId}`)');
     expect(orderApi).toContain("db.runTransaction");
     expect(orderApi).toContain("isAllowedProof({ size, contentType })");
     expect(orderApi).toContain('db.collection("unlocks").doc(`${buyerUid}_${productId}`)');
