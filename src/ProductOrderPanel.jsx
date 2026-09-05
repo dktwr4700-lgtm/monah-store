@@ -112,6 +112,12 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
     setBusy(false);
   }
 
+  const soldOut = !isBundle && item?.type === "code" && Number(item?.codesCount || 0) < 1;
+
+  if (soldOut) {
+    return <><style>{styles}</style><button type="button" className="ppo-start" disabled>نفذت الكمية حاليًا</button></>;
+  }
+
   if (!open) {
     return <><style>{styles}</style><button type="button" className="ppo-start" onClick={() => setOpen(true)}>{isBundle ? "اطلب الحزمة داخل مُونَة" : "اطلب المنتج داخل مُونَة"}</button></>;
   }
