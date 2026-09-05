@@ -27,8 +27,11 @@ async function orderRequest(action, payload) {
   return data;
 }
 
+const STALE_DRAFT_MS = 30 * 60 * 1000;
+
 export default function Orders({ ownerId, onAddProduct, paymentInstructions, onPaymentInstructionsSaved, storeName }) {
   const [orders, setOrders] = useState([]);
+  const [staleDrafts, setStaleDrafts] = useState([]);
   const [loadError, setLoadError] = useState("");
   const [confirmingId, setConfirmingId] = useState("");
   const [confirmError, setConfirmError] = useState({});
@@ -43,9 +46,18 @@ export default function Orders({ ownerId, onAddProduct, paymentInstructions, onP
     if (!ownerId) return;
     const q = query(collection(db, "orders"), where("ownerId", "==", ownerId));
     return onSnapshot(q, (snap) => {
-      const list = snap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.status !== "draft");
+      const all = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      const list = all.filter((item) => item.status !== "draft");
       list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setOrders(list);
+      const now = Date.now();
+      const drafts = all.filter((item) => {
+        if (item.status !== "draft" || !item.buyerPhone) return false;
+        const createdMs = item.createdAt?.toMillis?.();
+        return createdMs && now - createdMs > STALE_DRAFT_MS;
+      });
+      drafts.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setStaleDrafts(drafts);
       setLoadError("");
     }, () => setLoadError("تعذر تحميل الطلبات الآن."));
   }, [ownerId]);
@@ -101,6 +113,13 @@ export default function Orders({ ownerId, onAddProduct, paymentInstructions, onP
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   }
 
+  function nudgeAbandonedOrder(order) {
+    const phone = digitsOnly(order.buyerPhone);
+    const from = storeName ? ` من ${storeName}` : "";
+    const message = `مرحبًا! لاحظت انك بديت تطلب "${order.productName || "منتج"}"${from} ولسا ما اكتملت العملية. إذا واجهتك أي مشكلة أو عندك سؤال، تواصل معي وأساعدك تكمل طلبك.`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  }
+
   const pendingCount = orders.filter((order) => order.status === "awaiting_seller_confirmation").length;
 
   return (
@@ -123,6 +142,24 @@ export default function Orders({ ownerId, onAddProduct, paymentInstructions, onP
       </section>
 
       {loadError && <div className="ord-error">{loadError}</div>}
+      {staleDrafts.length > 0 && (
+        <section className="ord-settings">
+          <b>طلبات متوقفة ({staleDrafts.length})</b>
+          <p>عملاء بدأوا الطلب وما أكملوا الدفع أو رفع الإثبات. تواصل معهم يمكن يحتاجون مساعدة.</p>
+          {staleDrafts.map((order) => (
+            <div key={order.id} className="ord-card" style={{ padding: 12, marginBottom: 8 }}>
+              <div className="ord-product">{order.productName}</div>
+              <div className="ord-meta">
+                <span>{order.buyerPhone}</span>
+                <span className="ord-date">· {formatDate(order.createdAt)}</span>
+              </div>
+              <button className="ord-proof-btn" type="button" onClick={() => nudgeAbandonedOrder(order)} style={{ marginTop: 8 }}>
+                تواصل مع العميل عبر واتساب
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
       {pendingCount > 0 && (
         <div className="ord-error" style={{ background: "#FCE9C6", color: "#7A5A17" }}>
           عندك {pendingCount} طلب بانتظار مراجعة التحويل. افتح الإيصال، راجع وصول المبلغ بنفسك، ثم أكّد.
