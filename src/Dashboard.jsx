@@ -4,7 +4,7 @@ import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/aut
 import {
   collection, addDoc, query, where, onSnapshot,
   serverTimestamp, doc, setDoc, getDoc, getDocs, writeBatch,
-  deleteDoc, updateDoc
+  deleteDoc, updateDoc, increment
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
@@ -333,6 +333,10 @@ export default function Dashboard() {
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [restockingId, setRestockingId] = useState(null);
+  const [restockText, setRestockText] = useState("");
+  const [restockSaving, setRestockSaving] = useState(false);
+  const [restockError, setRestockError] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -745,6 +749,42 @@ export default function Dashboard() {
       setError("تعذر حفظ التعديل، حاول مرة ثانية.");
     }
     setEditSaving(false);
+  }
+
+  function startRestock(productId) {
+    setRestockingId(productId);
+    setRestockText("");
+    setRestockError("");
+  }
+
+  function cancelRestock() {
+    setRestockingId(null);
+    setRestockText("");
+    setRestockError("");
+  }
+
+  async function saveRestock(productId) {
+    const codesList = restockText.split("\n").map((c) => c.trim()).filter(Boolean);
+    if (codesList.length === 0) {
+      setRestockError("الصقي كود واحد على الأقل.");
+      return;
+    }
+    setRestockError("");
+    setRestockSaving(true);
+    try {
+      const batch = writeBatch(db);
+      codesList.forEach((code) => {
+        const codeRef = doc(collection(db, "products", productId, "codes"));
+        batch.set(codeRef, { code, used: false, usedBy: null, usedAt: null });
+      });
+      batch.update(doc(db, "products", productId), { codesCount: increment(codesList.length) });
+      await batch.commit();
+      setRestockingId(null);
+      setRestockText("");
+    } catch (err) {
+      setRestockError("تعذر إضافة الأكواد، حاول مرة ثانية.");
+    }
+    setRestockSaving(false);
   }
 
   async function confirmDelete(productId) {
@@ -1665,7 +1705,22 @@ export default function Dashboard() {
                         <span className="dh-item-price">{p.price} ر.ع</span>
                       </div>
                       {p.type === "code" && (
-                        <div className="dh-item-stock">مخزون: {p.codesCount || 0} كود</div>
+                        <div className="dh-item-stock">
+                          مخزون: {p.codesCount || 0} كود{Number(p.codesCount || 0) === 0 && " — نفذ المخزون"}
+                        </div>
+                      )}
+                      {p.type === "code" && restockingId === p.id && (
+                        <div className="dh-field" style={{ marginTop: 8 }}>
+                          <label>الصقي الأكواد الجديدة (كود بكل سطر)</label>
+                          <textarea rows="4" value={restockText} onChange={(e) => setRestockText(e.target.value)} placeholder={"CODE-004\nCODE-005"} style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }} />
+                          {restockError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{restockError}</div>}
+                          <div className="dh-edit-actions" style={{ marginTop: 8 }}>
+                            <button className="dh-item-action" onClick={cancelRestock} type="button">إلغاء</button>
+                            <button className="dh-item-action primary" onClick={() => saveRestock(p.id)} disabled={restockSaving} type="button">
+                              {restockSaving ? "جاري الإضافة..." : "إضافة الأكواد"}
+                            </button>
+                          </div>
+                        </div>
                       )}
                       <div className="dh-item-link">
                         <span className="dh-item-link-text"><span className="dh-item-link-label">رابط المنتج</span><span className="dh-item-link-code">{`#product/${p.id}`}</span></span>
@@ -1680,6 +1735,9 @@ export default function Dashboard() {
                       {adCopyProductId === p.id && adCopy && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لن تُنشر من مُونَة</div><p>{adCopy}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" onClick={copyAdDraft} type="button">{copied === "ad-copy" ? "تم النسخ" : "نسخ النص"}</button><button className="dh-ai-btn" onClick={() => { setAdCopy(""); setAdCopyProductId(""); }} type="button">إغلاق</button></div></div>}
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
+                        {p.type === "code" && restockingId !== p.id && (
+                          <button className="dh-item-action" onClick={() => startRestock(p.id)} type="button">إضافة أكواد</button>
+                        )}
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
                           {togglingHiddenId === p.id ? "..." : (p.hidden ? "إظهار" : "إخفاء")}
                         </button>
