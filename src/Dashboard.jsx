@@ -404,6 +404,10 @@ export default function Dashboard() {
   const [couponSaving, setCouponSaving] = useState(false);
   const [couponError, setCouponError] = useState("");
   const [deletingCouponId, setDeletingCouponId] = useState(null);
+  const [repeatCouponEnabled, setRepeatCouponEnabled] = useState(false);
+  const [repeatCouponPercent, setRepeatCouponPercent] = useState(10);
+  const [repeatCouponSaving, setRepeatCouponSaving] = useState(false);
+  const [repeatCouponMessage, setRepeatCouponMessage] = useState("");
 
   // overview: sales
   const [sellerOrders, setSellerOrders] = useState([]);
@@ -443,6 +447,8 @@ export default function Dashboard() {
         setSellerPlan(snap.data().plan || "basic");
         setSellerStoreType(snap.data().storeType || "files");
         setPaymentInstructions(snap.data().paymentInstructions || "");
+        setRepeatCouponEnabled(Boolean(snap.data().repeatCouponEnabled));
+        setRepeatCouponPercent(Number(snap.data().repeatCouponPercent) || 10);
         setSellerAccess("active");
       } catch (err) {
         console.error(err);
@@ -1122,6 +1128,31 @@ export default function Dashboard() {
       setCouponError("صار خطأ، حاول مرة ثانية.");
     }
     setCouponSaving(false);
+  }
+
+  async function saveRepeatCouponSettings() {
+    setRepeatCouponSaving(true);
+    setRepeatCouponMessage("");
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          action: "save_repeat_coupon_settings",
+          enabled: repeatCouponEnabled,
+          discountPercent: Number(repeatCouponPercent) || 10,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "تعذر حفظ الإعداد الآن.");
+      setRepeatCouponEnabled(data.enabled);
+      setRepeatCouponPercent(data.discountPercent);
+      setRepeatCouponMessage("تم الحفظ.");
+    } catch (err) {
+      setRepeatCouponMessage(err.message || "تعذر حفظ الإعداد الآن.");
+    }
+    setRepeatCouponSaving(false);
   }
 
   async function deleteCoupon(couponId) {
@@ -1857,6 +1888,25 @@ export default function Dashboard() {
 
         {tab === "coupons" && (
           <>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 10 }}>كوبون ترحيبي تلقائي للعملاء</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>لو فعّلته، كل عميل يكمل أول طلب منه ياخذ كود خصم شخصي تلقائي لطلبه الجاي من متجرك، بدون أي جهد منك. تقدر توقفه أي وقت.</p>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, cursor: "pointer" }}>
+                <input type="checkbox" checked={repeatCouponEnabled} onChange={(e) => setRepeatCouponEnabled(e.target.checked)} />
+                <span>فعّل كوبون الترحيب التلقائي</span>
+              </label>
+              {repeatCouponEnabled && (
+                <div className="dh-field">
+                  <label>نسبة الخصم (%)</label>
+                  <input type="number" min="1" max="90" value={repeatCouponPercent} onChange={(e) => setRepeatCouponPercent(e.target.value)} />
+                </div>
+              )}
+              <button className="dh-btn" type="button" disabled={repeatCouponSaving} onClick={saveRepeatCouponSettings}>
+                {repeatCouponSaving ? "جاري الحفظ..." : "حفظ الإعداد"}
+              </button>
+              {repeatCouponMessage && <div className={repeatCouponMessage === "تم الحفظ." ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{repeatCouponMessage}</div>}
+            </div>
+
             <div className="dh-card">
               <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>
               {couponError && <div className="dh-error">{couponError}</div>}
