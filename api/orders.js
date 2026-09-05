@@ -3,8 +3,8 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { isAllowedProof, canSellerConfirmOrder } from "./order-policy.js";
-import { tapRequest as tapRequestRaw, splitPhoneForTap } from "./tap-client.js";
+import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
+import { tapRequest as tapRequestRaw, splitPhoneForTap } from "../lib/tap-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;

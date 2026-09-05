@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { tapRequest } from "./tap-client.js";
+import { tapRequest } from "../lib/tap-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 

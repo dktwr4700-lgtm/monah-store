@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_PROOF_BYTES, canSellerConfirmOrder, isAllowedProof } from "../api/order-policy.js";
+import { MAX_PROOF_BYTES, canSellerConfirmOrder, isAllowedProof } from "../lib/order-policy.js";
 
 describe("سياسة طلب التحويل", () => {
   it("تقبل إثباتًا مصورًا أو PDF فقط وبحجم أقل من الحد", () => {

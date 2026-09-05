@@ -497,7 +497,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const startStore = await source("src/StartStore.jsx");
     const storePayResult = await source("src/StorePayResult.jsx");
     const signupApi = await source("api/merchant-signup.js");
-    const tapClient = await source("api/tap-client.js");
+    const tapClient = await source("lib/tap-client.js");
     const orderApi = await source("api/orders.js");
 
     expect(main).toContain('lazy(() => import("./StartStore.jsx"))');
@@ -519,6 +519,6 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(signupApi).not.toContain("requireOwner");
 
     expect(tapClient).toContain("export async function tapRequest");
-    expect(orderApi).toContain('import { tapRequest as tapRequestRaw, splitPhoneForTap } from "./tap-client.js"');
+    expect(orderApi).toContain('import { tapRequest as tapRequestRaw, splitPhoneForTap } from "../lib/tap-client.js"');
   });
 });
