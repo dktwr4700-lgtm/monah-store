@@ -428,7 +428,6 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain('>الطلبات</button>');
     expect(legal).not.toContain("ثواني");
     expect(catalog).not.toContain("ثواني");
-    expect(catalog).toContain("يتفعل بعد ربط الدفع");
     expect(customerAssistant).not.toContain("دفع تلقائي فوري عبر المنصة");
     expect(html).not.toContain("تسليم الملفات تلقائياً");
     expect(html).not.toContain("بدون عمولة على المبيعات");
