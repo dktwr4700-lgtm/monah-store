@@ -122,6 +122,17 @@ const styles = `
   .dh-stat b{ display:block; font-family:'JetBrains Mono',monospace; font-weight:700; color:#fff; font-size:18px; }
   .dh-stat span{ display:block; color:#B9C9BC; font-size:9.5px; margin-top:4px; }
 
+  .dh-figures{ display:flex; align-items:flex-end; justify-content:space-between; padding-bottom:16px; margin-bottom:16px; border-bottom:1px solid #EDEAE0; }
+  .dh-figure-main b{ display:block; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:24px; color:#0B0B0C; line-height:1; }
+  .dh-figure-main span{ display:block; font-size:10.5px; color:#8A8677; margin-top:6px; }
+  .dh-figure-side{ display:flex; gap:16px; text-align:left; }
+  .dh-figure-side div b{ display:block; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; color:#0B0B0C; }
+  .dh-figure-side div span{ display:block; font-size:9.5px; color:#B0AC9C; margin-top:3px; }
+
+  .dh-quicklinks{ font-size:11.5px; color:#163F2E; margin-bottom:16px; line-height:2.3; }
+  .dh-quicklinks button{ background:none; border:0; padding:0; color:#163F2E; font-weight:700; font-family:'Cairo',sans-serif; font-size:11.5px; cursor:pointer; }
+  .dh-quicklinks span{ color:#D7D2C4; margin:0 8px; }
+
   .dh-store-link{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:14px; padding:14px 16px; margin-bottom:14px; }
   .dh-store-label{ color:#8A8677; font-size:10.5px; margin-bottom:7px; font-weight:600; }
   .dh-store-row{ display:flex; align-items:center; gap:8px; }
@@ -1521,20 +1532,25 @@ export default function Dashboard() {
               </div>
             )}
 
-            <div className="dh-stats">
-              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع مؤكدة</span></div>
-              <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status !== "draft").length}</b><span>طلب مُرسل</span></div>
-              <div className="dh-stat"><b className="mono">{products.length}</b><span>منتج نشط</span></div>
+            <div className="dh-figures">
+              <div className="dh-figure-main"><b className="mono">{sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع مبيعات مؤكدة</span></div>
+              <div className="dh-figure-side">
+                <div><b className="mono">{sellerOrders.filter((o) => o.status !== "draft").length}</b><span>طلب مُرسل</span></div>
+                <div><b className="mono">{products.length}</b><span>منتج نشط</span></div>
+              </div>
             </div>
 
-            <div className="dh-quick">
-              <button className="dh-quick-btn" onClick={() => setTab("products")}>+ أضف منتج</button>
-              <button className="dh-quick-btn" onClick={() => setTab("design")}>تصميم المتجر</button>
-              <button className="dh-quick-btn" onClick={() => copyLink(slug || user.uid, "store")}>
-                {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط ✓" : "نسخ رابط المتجر"}
+            <div className="dh-quicklinks">
+              <button type="button" onClick={() => setTab("products")}>+ أضف منتج</button>
+              <span>·</span>
+              <button type="button" onClick={() => setTab("design")}>تصميم المتجر</button>
+              <span>·</span>
+              <button type="button" onClick={() => copyLink(slug || user.uid, "store")}>
+                {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط" : "نسخ رابط المتجر"}
               </button>
-              <button className="dh-quick-btn" onClick={shareStore}>
-                {copied === "share-store" ? "تم نسخ الرابط ✓" : "مشاركة المتجر"}
+              <span>·</span>
+              <button type="button" onClick={shareStore}>
+                {copied === "share-store" ? "تم نسخ الرابط" : "مشاركة المتجر"}
               </button>
             </div>
 
