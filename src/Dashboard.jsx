@@ -1996,7 +1996,7 @@ export default function Dashboard() {
               <div className="dh-title-row">
                 <div>
                   <div className="dh-title">اشتراك متجرك</div>
-                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي 5 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.</div>
                 </div>
                 <span className="dh-subscription-ready" style={{ background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>التفعيل لاحقًا</span>
               </div>
