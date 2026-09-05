@@ -129,6 +129,7 @@ export default function AdminDashboard() {
   const [revokingInviteId, setRevokingInviteId] = useState("");
   const [deletingInviteId, setDeletingInviteId] = useState("");
 
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);

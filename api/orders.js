@@ -3,12 +3,12 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { isAllowedProof, canSellerConfirmOrder } from "./order-policy.js";
+import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
+import { tapRequest as tapRequestRaw, splitPhoneForTap } from "../lib/tap-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DELIVERY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const TAP_API_BASE = "https://api.tap.company/v2";
 export const MAX_FILE_DOWNLOADS = 5;
 
 if (!getApps().length) {
@@ -414,27 +414,12 @@ async function confirmPayment(req, res, account) {
   return res.status(200).json({ ok: true, alreadyConfirmed: result.alreadyConfirmed, type: result.type });
 }
 
-// افتراض عملي: أرقام واتساب المشترين مكتوبة بدون كود الدولة (نفس افتراض بقية الموقع، مُونَة مخصصة لعُمان حاليًا).
-function splitPhoneForTap(rawPhone) {
-  const digits = String(rawPhone || "").replace(/\D/g, "");
-  const local = digits.startsWith("968") && digits.length > 8 ? digits.slice(3) : digits;
-  return { country_code: 968, number: Number(local) || 0 };
-}
-
 async function tapRequest(method, path, body) {
-  const secretKey = process.env.TAP_SECRET_KEY;
-  if (!secretKey) throw new OrderError(409, "الدفع بالبطاقة غير مفعّل حاليًا. استخدم التحويل اليدوي.");
-  const response = await fetch(`${TAP_API_BASE}${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error("Tap API error:", data?.errors || data);
-    throw new OrderError(502, "تعذر الاتصال ببوابة الدفع الآن. جرب التحويل اليدوي.");
+  try {
+    return await tapRequestRaw(method, path, body);
+  } catch (error) {
+    throw new OrderError(error.code || 502, error.message);
   }
-  return data;
 }
 
 async function createCardCharge(req, res, account) {
