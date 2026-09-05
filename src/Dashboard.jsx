@@ -485,7 +485,7 @@ export default function Dashboard() {
     if (!user || sellerAccess !== "active") return;
     const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
-      setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c) => !c.buyerUid));
     });
     return () => unsub();
   }, [user, sellerAccess]);

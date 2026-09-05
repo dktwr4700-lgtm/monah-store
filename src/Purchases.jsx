@@ -58,6 +58,7 @@ export default function Purchases() {
   const [error, setError] = useState("");
   const [downloadingId, setDownloadingId] = useState("");
   const [copiedId, setCopiedId] = useState("");
+  const [copiedCouponId, setCopiedCouponId] = useState("");
 
   async function loadOrders() {
     setState("loading");
@@ -98,6 +99,16 @@ export default function Purchases() {
     }
   }
 
+  async function copyCoupon(orderId, code) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCouponId(orderId);
+      window.setTimeout(() => setCopiedCouponId(""), 1600);
+    } catch {
+      setError("تعذر نسخ الكود. انسخه يدويًا.");
+    }
+  }
+
   return (
     <div className="buy-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -132,6 +143,15 @@ export default function Purchases() {
               <DeliveryItem item={{ ...order, productId: order.productId }} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
             )}
 
+            {order.repeatCoupon && (
+              <div className="buy-note" style={{ marginTop: 12, marginBottom: 0 }}>
+                🎁 عندك كوبون خصم {order.repeatCoupon.discountPercent}٪ لطلبك الجاي من هذا المتجر:
+                <div className="buy-code" style={{ marginTop: 6 }}>{order.repeatCoupon.code}</div>
+                <button className="buy-copy" type="button" onClick={() => copyCoupon(order.id, order.repeatCoupon.code)}>
+                  {copiedCouponId === order.id ? "تم نسخ الكود" : "نسخ الكود"}
+                </button>
+              </div>
+            )}
             {order.status === "confirmed" && (
               <a className="buy-copy" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href={`#receipt/${order.id}`}>عرض الفاتورة</a>
             )}

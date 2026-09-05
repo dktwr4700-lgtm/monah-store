@@ -89,7 +89,7 @@ function unlockView(unlock, confirmed) {
   };
 }
 
-function publicOrder(order, id, unlockData) {
+function publicOrder(order, id, unlockData, repeatCoupon) {
   const confirmed = order.status === "confirmed";
   const base = {
     id,
@@ -103,6 +103,7 @@ function publicOrder(order, id, unlockData) {
     confirmedAt: order.confirmedAt?.toDate?.().toISOString?.() || null,
     paymentInstructions: order.paymentInstructions || "",
     proofSubmitted: Boolean(order.proofPath),
+    repeatCoupon: confirmed && repeatCoupon ? repeatCoupon : null,
   };
 
   if (order.type === "bundle") {
@@ -124,7 +125,7 @@ function publicOrder(order, id, unlockData) {
   return { ...base, type: order.type === "code" ? "code" : "file", ...unlockView(unlockData, confirmed) };
 }
 
-async function resolveCoupon(rawCode, productId, ownerId) {
+async function resolveCoupon(rawCode, productId, ownerId, buyerUid) {
   const code = cleanText(rawCode, 40).toUpperCase();
   if (!code) return { discountPercent: 0, couponCode: "" };
   const couponSnap = await db.collection("coupons")
@@ -134,14 +135,41 @@ async function resolveCoupon(rawCode, productId, ownerId) {
     .limit(5)
     .get();
   const match = couponSnap.docs.find((item) => {
-    const scope = item.data().productId;
-    return scope === null || scope === undefined || scope === productId;
+    const data = item.data();
+    const scope = data.productId;
+    const inScope = scope === null || scope === undefined || scope === productId;
+    const ownedByBuyer = data.buyerUid === null || data.buyerUid === undefined || data.buyerUid === buyerUid;
+    return inScope && ownedByBuyer;
   });
   if (!match) {
     throw new OrderError(400, "كود الخصم غير صالح أو غير متاح لهذا المنتج.");
   }
   const discountPercent = Number(match.data().discountPercent || 0);
   return { discountPercent, couponCode: code };
+}
+
+// يُمنح تلقائيًا لأول مرة يكمل فيها المشتري طلبًا من هذا المتجر، عشان يشجعه يرجع يشتري مرة ثانية.
+async function grantRepeatCoupon(ownerId, buyerUid) {
+  try {
+    const existing = await db.collection("coupons")
+      .where("ownerId", "==", ownerId)
+      .where("buyerUid", "==", buyerUid)
+      .limit(1)
+      .get();
+    if (!existing.empty) return;
+    const code = `WELCOME${randomBytes(3).toString("hex").toUpperCase()}`;
+    await db.collection("coupons").add({
+      ownerId,
+      buyerUid,
+      code,
+      discountPercent: 10,
+      productId: null,
+      active: true,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("grantRepeatCoupon error:", error?.message || "unknown");
+  }
 }
 
 async function createBundleOrder(req, res, account) {
@@ -236,7 +264,7 @@ async function createOrder(req, res, account) {
   }
 
   const originalPrice = Number(product.price);
-  const { discountPercent, couponCode } = await resolveCoupon(req.body?.couponCode, productId, product.ownerId);
+  const { discountPercent, couponCode } = await resolveCoupon(req.body?.couponCode, productId, product.ownerId, account.uid);
   const finalPrice = couponCode
     ? Math.max(0.01, Math.round(originalPrice * (1 - discountPercent / 100) * 100) / 100)
     : originalPrice;
@@ -411,6 +439,7 @@ async function confirmPayment(req, res, account) {
   }
 
   const result = await markOrderConfirmed(orderRef, orderId, account.uid);
+  if (!result.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
   return res.status(200).json({ ok: true, alreadyConfirmed: result.alreadyConfirmed, type: result.type });
 }
 
@@ -480,14 +509,24 @@ async function verifyCardCharge(req, res, account) {
     return res.status(200).json({ paid: false, status: charge.status || "unknown" });
   }
   const result = await markOrderConfirmed(orderRef, orderId, "tap");
+  if (!result.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
   return res.status(200).json({ paid: true, type: result.type });
 }
 
 async function listBuyerOrders(req, res, account) {
-  const snap = await db.collection("orders").where("buyerUid", "==", account.uid).limit(100).get();
+  const [snap, couponsSnap] = await Promise.all([
+    db.collection("orders").where("buyerUid", "==", account.uid).limit(100).get(),
+    db.collection("coupons").where("buyerUid", "==", account.uid).where("active", "==", true).get(),
+  ]);
+  const couponByOwner = {};
+  couponsSnap.docs.forEach((item) => {
+    const data = item.data();
+    couponByOwner[data.ownerId] = { code: data.code, discountPercent: Number(data.discountPercent || 0) };
+  });
   const rows = await Promise.all(snap.docs.map(async (document) => {
     const order = document.data();
-    if (order.status !== "confirmed") return publicOrder(order, document.id, null);
+    const repeatCoupon = couponByOwner[order.ownerId] || null;
+    if (order.status !== "confirmed") return publicOrder(order, document.id, null, repeatCoupon);
     if (order.type === "bundle") {
       const productIds = Array.isArray(order.productIds) ? order.productIds : [];
       const unlockSnaps = await Promise.all(
@@ -495,10 +534,10 @@ async function listBuyerOrders(req, res, account) {
       );
       const unlocksByProductId = {};
       productIds.forEach((productId, index) => { unlocksByProductId[productId] = unlockSnaps[index].data(); });
-      return publicOrder(order, document.id, unlocksByProductId);
+      return publicOrder(order, document.id, unlocksByProductId, repeatCoupon);
     }
     const unlock = (await db.collection("unlocks").doc(`${account.uid}_${order.productId}`).get()).data();
-    return publicOrder(order, document.id, unlock);
+    return publicOrder(order, document.id, unlock, repeatCoupon);
   }));
   rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
   return res.status(200).json({ orders: rows });
