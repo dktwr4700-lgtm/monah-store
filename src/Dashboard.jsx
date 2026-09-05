@@ -60,7 +60,7 @@ const styles = `
   .dh-verify-banner button:disabled{ opacity:.6; cursor:not-allowed; }
 
   .dh-tabs{ display:flex; gap:18px; padding:0 16px; overflow-x:auto; background:#FFFFFF; border-bottom:1px solid #EDEAE0; }
-  .dh-tab{ white-space:nowrap; padding:0 0 11px; margin-bottom:-1px; font-size:12.5px; font-weight:700; border:0; border-bottom:2px solid transparent; background:none; color:#B0AC9C; cursor:pointer; }
+  .dh-tab{ white-space:nowrap; padding:0 0 11px; margin-bottom:-1px; font-size:12.5px; font-weight:700; border:0; border-bottom:2px solid transparent; background:none; color:#0B0B0C; cursor:pointer; }
   .dh-tab.active{ color:#0B0B0C; border-color:#163F2E; }
   .dh-settings-row{ display:flex; align-items:center; justify-content:space-between; padding:15px 0; border-bottom:1px solid #EDEAE0; cursor:pointer; background:none; border-left:0; border-right:0; border-top:0; width:100%; text-align:right; font-family:'Cairo',sans-serif; }
   .dh-settings-row:first-child{ padding-top:0; }
