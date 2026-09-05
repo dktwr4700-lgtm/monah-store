@@ -302,10 +302,10 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
-    expect(dashboard).toContain("متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
+    expect(dashboard).toContain("متجر أساسي 5 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
     expect(dashboard).toContain("BASE_MONTHLY_PRICE.toFixed(2)");
     expect(dashboard).not.toContain("PACKAGES.map");
-    expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 3");
+    expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 5");
   });
 
   it("يعرض فقط الإضافات والأسعار المعتمدة ولا يعيد المزايا المؤجلة", async () => {
@@ -331,7 +331,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
   it("يوحد اشتراك لوحة التاجر مع الأسعار المعتمدة دون ادعاء تحصيل قائم", async () => {
     const dashboard = await source("src/Dashboard.jsx");
 
-    expect(dashboard).toContain("متجر أساسي 3 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
+    expect(dashboard).toContain("متجر أساسي 5 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
     expect(dashboard).toContain("الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.");
     expect(dashboard).toContain("التفعيل لاحقًا");
     expect(dashboard).toContain("هذه الأسعار تشرح خطتك فقط. لا يوجد تحصيل أو تجديد تلقائي الآن.");

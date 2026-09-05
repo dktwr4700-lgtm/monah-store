@@ -1,4 +1,4 @@
-export const BASE_MONTHLY_PRICE = 3;
+export const BASE_MONTHLY_PRICE = 5;
 
 export const ADD_ON_CATALOG = [
   { key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2, desc: "عميلك يدفع ببطاقته أو محفظته ويستلم ملفه فورًا خلال ثوانٍ، بدون ما تراجع أو تؤكد شي بنفسك.", status: "يتفعل بعد ربط الدفع", ready: false },
