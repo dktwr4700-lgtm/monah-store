@@ -460,8 +460,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
     expect(main).toContain('lazy(() => import("./InviteActivation.jsx"))');
     expect(main).toContain('hash.startsWith("invite/")');
-    expect(landing).toContain("INVITE_REQUEST_URL");
-    expect(landing).toContain("اطلب دعوة لمتجرك");
+    expect(landing).toContain("START_STORE_URL");
+    expect(landing).toContain("افتح متجرك الحين");
     expect(landing).not.toContain('href="#register"');
     expect(register).toContain("التسجيل بدعوة خاصة");
     expect(register).not.toContain("createUserWithEmailAndPassword");
@@ -489,5 +489,46 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("match /merchantInvites/{inviteId}");
     expect(rules).toContain("allow create: if false;");
     expect(rules).toContain("allow read, write: if false;");
+  });
+
+  it("يسمح للتاجر يسجّل متجره بنفسه ويفعّل اشتراكه ببطاقة أو تحويل يدوي", async () => {
+    const main = await source("src/main.jsx");
+    const landing = await source("src/App.jsx");
+    const startStore = await source("src/StartStore.jsx");
+    const storePayResult = await source("src/StorePayResult.jsx");
+    const signupApi = await source("api/merchant-signup.js");
+    const tapClient = await source("api/tap-client.js");
+    const orderApi = await source("api/orders.js");
+    const admin = await source("src/AdminDashboard.jsx");
+    const storageRules = await source("storage.rules");
+
+    expect(main).toContain('lazy(() => import("./StartStore.jsx"))');
+    expect(main).toContain('hash === "start-store"');
+    expect(main).toContain('hash.startsWith("store-pay-result/")');
+    expect(landing).toContain('href={START_STORE_URL}');
+
+    expect(startStore).toContain('signupRequest("register"');
+    expect(startStore).toContain('signupRequest("create_card_charge"');
+    expect(startStore).toContain('signupRequest("submit_manual_proof"');
+    expect(startStore).toContain("merchant-subscription-proofs/${auth.currentUser.uid}/");
+    expect(storePayResult).toContain('action: "verify_card_charge"');
+
+    expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = 5");
+    expect(signupApi).toContain('if (sellerSnap.exists) return res.status(409)');
+    expect(signupApi).toContain("charge.status !== \"CAPTURED\"");
+    expect(signupApi).toContain("async function activateSeller(uid, request)");
+    expect(signupApi).toContain("subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
+    expect(signupApi).toContain("requireOwner");
+
+    expect(tapClient).toContain("export async function tapRequest");
+    expect(orderApi).toContain('import { tapRequest as tapRequestRaw, splitPhoneForTap } from "./tap-client.js"');
+
+    expect(admin).toContain("طلبات اشتراك جديدة");
+    expect(admin).toContain('signupRequest("admin_approve"');
+    expect(admin).toContain('signupRequest("admin_reject"');
+    expect(admin).toContain('signupRequest("admin_save_instructions"');
+
+    expect(storageRules).toContain("match /merchant-subscription-proofs/{uid}/{fileName}");
+    expect(storageRules).toContain("uid == request.auth.uid");
   });
 });

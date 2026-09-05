@@ -75,7 +75,7 @@ const styles = `
   .ap-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
   .invite-panel{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:16px; padding:18px; margin-bottom:14px; }
   .invite-title{ font-family:'Almarai',sans-serif; font-weight:800; font-size:15px; margin-bottom:5px; }.invite-sub{ color:#625F55; font-size:11.5px; line-height:1.75; margin-bottom:15px; }
-  .invite-field{ margin-bottom:11px; }.invite-field label{ display:block; color:#625F55; font-size:11.5px; font-weight:800; margin-bottom:5px; }.invite-field input,.invite-field select{ width:100%; box-sizing:border-box; padding:11px 12px; border:1px solid #E4E0D3; border-radius:10px; background:#FBFAF7; color:#16233F; font:13px 'Cairo',sans-serif; }
+  .invite-field{ margin-bottom:11px; }.invite-field label{ display:block; color:#625F55; font-size:11.5px; font-weight:800; margin-bottom:5px; }.invite-field input,.invite-field select,.invite-field textarea{ width:100%; box-sizing:border-box; padding:11px 12px; border:1px solid #E4E0D3; border-radius:10px; background:#FBFAF7; color:#16233F; font:13px 'Cairo',sans-serif; }.invite-field textarea{ min-height:80px; resize:vertical; }
   .invite-create{ width:100%; min-height:42px; border:0; border-radius:100px; background:#16233F; color:#fff; font:700 12.5px 'Cairo',sans-serif; cursor:pointer; }.invite-create:disabled{ opacity:.6; }.invite-message{ margin:0 0 12px; padding:9px 11px; border-radius:10px; font-size:11.5px; line-height:1.7; }.invite-message.error{ background:#F6E9E5; color:#A34839; }.invite-message.success{ background:#EAF0EB; color:#37724B; }
   .invite-link{ display:flex; align-items:center; gap:8px; border:1px solid #D8E5D8; background:#F5F9F4; border-radius:11px; padding:8px 9px; direction:ltr; }.invite-link code{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#22372C; font:10px 'JetBrains Mono',monospace; }.invite-copy{ flex-shrink:0; border:0; border-radius:8px; background:#16233F; color:#fff; padding:7px 10px; font:700 10.5px 'Cairo',sans-serif; cursor:pointer; }
   .invite-row{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:14px 16px; margin-bottom:10px; }.invite-row-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }.invite-name{ font-weight:800; font-size:14px; }.invite-email{ color:#625F55; font-size:11.5px; margin-top:3px; }.invite-meta{ color:#625F55; font-size:10.5px; margin-top:8px; }.badge-pending{ background:#F3EBDD; color:#8A5B18; }.badge-accepted{ background:#EAF0EB; color:#37724B; }.badge-revoked,.badge-expired{ background:#F6E9E5; color:#A34839; }
@@ -129,6 +129,16 @@ export default function AdminDashboard() {
   const [revokingInviteId, setRevokingInviteId] = useState("");
   const [deletingInviteId, setDeletingInviteId] = useState("");
 
+  const [pendingSignups, setPendingSignups] = useState([]);
+  const [signupsLoading, setSignupsLoading] = useState(false);
+  const [signupError, setSignupError] = useState("");
+  const [approvingUid, setApprovingUid] = useState("");
+  const [rejectingUid, setRejectingUid] = useState("");
+  const [viewingProofUid, setViewingProofUid] = useState("");
+  const [subscriptionInstructions, setSubscriptionInstructions] = useState("");
+  const [savingSubscriptionInstructions, setSavingSubscriptionInstructions] = useState(false);
+  const [subscriptionMessage, setSubscriptionMessage] = useState("");
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -176,6 +186,89 @@ export default function AdminDashboard() {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "تعذر تنفيذ الدعوة الآن.");
     return data;
+  }
+
+  async function signupRequest(action, payload = {}) {
+    const token = await currentUser.getIdToken();
+    const response = await fetch("/api/merchant-signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "تعذر تنفيذ العملية الآن.");
+    return data;
+  }
+
+  async function loadPendingSignups() {
+    setSignupsLoading(true);
+    setSignupError("");
+    try {
+      const data = await signupRequest("admin_list_pending");
+      setPendingSignups(data.requests || []);
+    } catch (error) {
+      setSignupError(error.message);
+    }
+    setSignupsLoading(false);
+  }
+
+  async function viewProof(uid) {
+    setViewingProofUid(uid);
+    setSignupError("");
+    try {
+      const data = await signupRequest("admin_proof_url", { uid });
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setSignupError(error.message);
+    }
+    setViewingProofUid("");
+  }
+
+  async function approveSignup(uid) {
+    setApprovingUid(uid);
+    setSignupError("");
+    try {
+      await signupRequest("admin_approve", { uid });
+      setPendingSignups((items) => items.filter((item) => item.uid !== uid));
+    } catch (error) {
+      setSignupError(error.message);
+    }
+    setApprovingUid("");
+  }
+
+  async function rejectSignup(uid) {
+    if (!window.confirm("تبي ترفض هذا الطلب؟")) return;
+    setRejectingUid(uid);
+    setSignupError("");
+    try {
+      await signupRequest("admin_reject", { uid });
+      setPendingSignups((items) => items.filter((item) => item.uid !== uid));
+    } catch (error) {
+      setSignupError(error.message);
+    }
+    setRejectingUid("");
+  }
+
+  async function loadSubscriptionInstructions() {
+    try {
+      const data = await signupRequest("payment_instructions");
+      setSubscriptionInstructions(data.paymentInstructions || "");
+    } catch (error) {
+      setSignupError(error.message);
+    }
+  }
+
+  async function saveSubscriptionInstructions() {
+    setSavingSubscriptionInstructions(true);
+    setSubscriptionMessage("");
+    setSignupError("");
+    try {
+      await signupRequest("admin_save_instructions", { paymentInstructions: subscriptionInstructions });
+      setSubscriptionMessage("تم حفظ تعليمات التحويل.");
+    } catch (error) {
+      setSignupError(error.message);
+    }
+    setSavingSubscriptionInstructions(false);
   }
 
   async function loadInvites() {
@@ -470,6 +563,9 @@ export default function AdminDashboard() {
           <button className={"admin-tab" + (view === "invites" ? " active" : "")} onClick={() => { setView("invites"); loadInvites(); }}>
             دعوات التجار
           </button>
+          <button className={"admin-tab" + (view === "subscriptions" ? " active" : "")} onClick={() => { setView("subscriptions"); loadPendingSignups(); loadSubscriptionInstructions(); }}>
+            طلبات اشتراك جديدة{pendingSignups.length > 0 ? ` (${pendingSignups.length})` : ""}
+          </button>
         </div>
 
         {view === "sellers" && (
@@ -655,6 +751,34 @@ export default function AdminDashboard() {
               <div className="seller-actions">
                 {invite.status === "pending" && <button className="seller-btn warn" type="button" onClick={() => revokeInvite(invite)} disabled={revokingInviteId === invite.id}>{revokingInviteId === invite.id ? "جاري الإيقاف..." : "إيقاف الدعوة"}</button>}
                 <button className="seller-btn danger" type="button" onClick={() => deleteInvite(invite)} disabled={deletingInviteId === invite.id}>{deletingInviteId === invite.id ? "جاري الحذف..." : "حذف الدعوة نهائيًا"}</button>
+              </div>
+            </div>)}
+          </>
+        )}
+
+        {view === "subscriptions" && (
+          <>
+            <div className="invite-panel">
+              <div className="invite-title">تعليمات التحويل اليدوي لاشتراك التاجر</div>
+              <div className="invite-sub">تظهر هذي التعليمات للتاجر الجديد لو اختار يحوّل يدويًا بدل الدفع بالبطاقة (اشتراك 5 ر.ع شهريًا).</div>
+              {subscriptionMessage && <div className="invite-message success">{subscriptionMessage}</div>}
+              <div className="invite-field">
+                <label>تعليمات التحويل</label>
+                <textarea value={subscriptionInstructions} onChange={(event) => setSubscriptionInstructions(event.target.value)} placeholder="مثال: حوّل 5 ر.ع على حساب بنك مسقط رقم ..." />
+              </div>
+              <button className="invite-create" type="button" onClick={saveSubscriptionInstructions} disabled={savingSubscriptionInstructions}>{savingSubscriptionInstructions ? "جاري الحفظ..." : "حفظ التعليمات"}</button>
+            </div>
+
+            {signupError && <div className="invite-message error">{signupError}</div>}
+            {signupsLoading && <div className="loading">جاري تحميل الطلبات...</div>}
+            {!signupsLoading && pendingSignups.length === 0 && <div className="empty">ما فيه طلبات اشتراك بانتظار المراجعة حاليًا.</div>}
+            {!signupsLoading && pendingSignups.map((request) => <div className="invite-row" key={request.uid}>
+              <div className="invite-row-top"><div><div className="invite-name">{request.storeName}</div><div className="invite-email">{request.email}</div></div><span className="seller-badge badge-pending">بانتظار المراجعة</span></div>
+              <div className="invite-meta">{STORE_TYPES[request.storeType] || "منتجات رقمية"}</div>
+              <div className="seller-actions">
+                {request.hasProof && <button className="seller-btn" type="button" onClick={() => viewProof(request.uid)} disabled={viewingProofUid === request.uid}>{viewingProofUid === request.uid ? "جاري الفتح..." : "عرض إثبات التحويل"}</button>}
+                <button className="seller-btn" type="button" onClick={() => approveSignup(request.uid)} disabled={approvingUid === request.uid}>{approvingUid === request.uid ? "جاري التفعيل..." : "قبول وتفعيل المتجر"}</button>
+                <button className="seller-btn danger" type="button" onClick={() => rejectSignup(request.uid)} disabled={rejectingUid === request.uid}>{rejectingUid === request.uid ? "جاري الرفض..." : "رفض الطلب"}</button>
               </div>
             </div>)}
           </>
