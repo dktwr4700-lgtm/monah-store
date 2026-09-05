@@ -59,9 +59,20 @@ const styles = `
   .dh-verify-banner button{ border:0; border-radius:100px; padding:7px 13px; font-size:11px; font-weight:800; background:#0B0B0C; color:#fff; font-family:'Cairo',sans-serif; cursor:pointer; white-space:nowrap; }
   .dh-verify-banner button:disabled{ opacity:.6; cursor:not-allowed; }
 
-  .dh-tabs{ display:flex; gap:6px; padding:12px 16px 0; overflow-x:auto; background:#FFFFFF; }
-  .dh-tab{ white-space:nowrap; padding:8px 14px; border-radius:100px; font-size:11.5px; font-weight:700; border:1px solid #EDEAE0; background:#FFFFFF; color:#3D4A66; cursor:pointer; }
-  .dh-tab.active{ background:#0B0B0C; color:#fff; border-color:#0B0B0C; }
+  .dh-tabs{ display:flex; gap:18px; padding:0 16px; overflow-x:auto; background:#FFFFFF; border-bottom:1px solid #EDEAE0; }
+  .dh-tab{ white-space:nowrap; padding:0 0 11px; margin-bottom:-1px; font-size:12.5px; font-weight:700; border:0; border-bottom:2px solid transparent; background:none; color:#B0AC9C; cursor:pointer; }
+  .dh-tab.active{ color:#0B0B0C; border-color:#163F2E; }
+  .dh-settings-row{ display:flex; align-items:center; justify-content:space-between; padding:15px 0; border-bottom:1px solid #EDEAE0; cursor:pointer; background:none; border-left:0; border-right:0; border-top:0; width:100%; text-align:right; font-family:'Cairo',sans-serif; }
+  .dh-settings-row:first-child{ padding-top:0; }
+  .dh-settings-row:last-child{ border-bottom:0; }
+  .dh-settings-row b{ display:block; font-size:12.5px; font-weight:700; color:#0B0B0C; margin-bottom:3px; }
+  .dh-settings-row span{ font-size:10.5px; color:#8A8677; }
+  .dh-settings-chev{ color:#B0AC9C; font-size:14px; }
+  .dh-back{ display:inline-flex; align-items:center; gap:5px; border:0; background:none; color:#3D4A66; font-family:'Cairo',sans-serif; font-size:11.5px; font-weight:700; cursor:pointer; padding:0; margin-bottom:16px; }
+  .dh-flag{ position:relative; padding:12px 0 12px 4px; padding-right:14px; margin-bottom:16px; border-right:3px solid #9C6D1F; }
+  .dh-flag b{ display:block; font-size:12.5px; font-weight:700; margin-bottom:3px; }
+  .dh-flag span{ font-size:11px; color:#8A8677; line-height:1.7; }
+  .dh-flag a{ display:inline-block; margin-top:6px; font-size:11px; font-weight:800; color:#9C6D1F; text-decoration:underline; cursor:pointer; background:none; border:0; padding:0; font-family:'Cairo',sans-serif; }
 
   .dh-wrap{ padding:18px; max-width:560px; margin:0 auto; }
 
@@ -299,7 +310,7 @@ export default function Dashboard() {
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
     const t = parts[1];
-    return ["overview", "products", "coupons", "orders", "design", "subscription"].includes(t) ? t : "overview";
+    return ["overview", "products", "coupons", "orders", "settings", "payment", "loyalty", "design", "subscription"].includes(t) ? t : "overview";
   }
   const [tab, setTabState] = useState(getTabFromHash);
 
@@ -408,6 +419,8 @@ export default function Dashboard() {
   const [repeatCouponPercent, setRepeatCouponPercent] = useState(10);
   const [repeatCouponSaving, setRepeatCouponSaving] = useState(false);
   const [repeatCouponMessage, setRepeatCouponMessage] = useState("");
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   // overview: sales
   const [sellerOrders, setSellerOrders] = useState([]);
@@ -1155,6 +1168,30 @@ export default function Dashboard() {
     setRepeatCouponSaving(false);
   }
 
+  async function savePaymentInstructions() {
+    if (paymentInstructions.trim().length < 6) {
+      setPaymentMessage("اكتب تعليمات التحويل بوضوح قبل الحفظ.");
+      return;
+    }
+    setSavingPayment(true);
+    setPaymentMessage("");
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action: "save_payment_instructions", paymentInstructions }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "تعذر حفظ التعليمات الآن.");
+      setPaymentInstructions(data.paymentInstructions);
+      setPaymentMessage("تم حفظ تعليمات التحويل. تظهر للمشتري بعد بدء الطلب فقط.");
+    } catch (err) {
+      setPaymentMessage(err.message || "تعذر حفظ التعليمات الآن.");
+    }
+    setSavingPayment(false);
+  }
+
   async function deleteCoupon(couponId) {
     setDeletingCouponId(couponId);
     try {
@@ -1386,6 +1423,12 @@ export default function Dashboard() {
   }
 
   const nextStep = getNextStep();
+  const isSettingsGroup = ["settings", "design", "subscription", "payment", "loyalty"].includes(tab);
+  const stalledOrders = sellerOrders.filter((o) => {
+    if (o.status !== "draft" || !o.buyerPhone) return false;
+    const createdMs = o.createdAt?.toMillis?.();
+    return createdMs && Date.now() - createdMs > 30 * 60 * 1000;
+  });
 
   // يطبّق اقتراح المساعد الذكي بعد ما التاجر يضغط زر "تطبيق" — الكتابة الفعلية بقاعدة البيانات تصير هنا فقط
   async function handleApplySuggestion(suggestion) {
@@ -1433,11 +1476,11 @@ export default function Dashboard() {
       )}
 
       <div className="dh-tabs">
-        <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>لوحة التحكم</button>
+        <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>الرئيسية</button>
         <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
-        <button className={"dh-tab" + (tab === "design" ? " active" : "")} onClick={() => setTab("design")}>تصميم المتجر</button>
         <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
-        <button className={"dh-tab" + (tab === "subscription" ? " active" : "")} onClick={() => setTab("subscription")}>الاشتراك</button>
+        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>الكوبونات</button>
+        <button className={"dh-tab" + (isSettingsGroup ? " active" : "")} onClick={() => setTab("settings")}>الإعدادات</button>
       </div>
 
       <div className="dh-wrap">
@@ -1469,6 +1512,14 @@ export default function Dashboard() {
               <div className="dh-next-step">{nextStep.progress} من 5 خطوات مكتملة</div>
               <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
             </div>
+
+            {stalledOrders.length > 0 && (
+              <div className="dh-flag">
+                <b>{stalledOrders.length === 1 ? "طلب متوقف منذ أكثر من 30 دقيقة" : `${stalledOrders.length} طلبات متوقفة منذ أكثر من 30 دقيقة`}</b>
+                <span>عملاء بدأوا الطلب وما أكملوا الدفع أو رفع الإثبات.</span>
+                <button type="button" onClick={() => setTab("orders")}>افتحهم من تبويب الطلبات</button>
+              </div>
+            )}
 
             <div className="dh-stats">
               <div className="dh-stat"><b className="mono">{sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع مؤكدة</span></div>
@@ -1888,25 +1939,9 @@ export default function Dashboard() {
 
         {tab === "coupons" && (
           <>
-            <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 10 }}>كوبون ترحيبي تلقائي للعملاء</div>
-              <p className="dh-hint" style={{ marginBottom: 12 }}>لو فعّلته، كل عميل يكمل أول طلب منه ياخذ كود خصم شخصي تلقائي لطلبه الجاي من متجرك، بدون أي جهد منك. تقدر توقفه أي وقت.</p>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, cursor: "pointer" }}>
-                <input type="checkbox" checked={repeatCouponEnabled} onChange={(e) => setRepeatCouponEnabled(e.target.checked)} />
-                <span>فعّل كوبون الترحيب التلقائي</span>
-              </label>
-              {repeatCouponEnabled && (
-                <div className="dh-field">
-                  <label>نسبة الخصم (%)</label>
-                  <input type="number" min="1" max="90" value={repeatCouponPercent} onChange={(e) => setRepeatCouponPercent(e.target.value)} />
-                </div>
-              )}
-              <button className="dh-btn" type="button" disabled={repeatCouponSaving} onClick={saveRepeatCouponSettings}>
-                {repeatCouponSaving ? "جاري الحفظ..." : "حفظ الإعداد"}
-              </button>
-              {repeatCouponMessage && <div className={repeatCouponMessage === "تم الحفظ." ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{repeatCouponMessage}</div>}
-            </div>
-
+            <p className="dh-hint" style={{ marginBottom: 16, lineHeight: 1.9 }}>
+              كوبون الترحيب التلقائي للعملاء الجدد يتفعّل ويتغيّر من <button type="button" onClick={() => setTab("loyalty")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>الإعدادات</button>.
+            </p>
             <div className="dh-card">
               <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>
               {couponError && <div className="dh-error">{couponError}</div>}
@@ -1969,10 +2004,71 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} paymentInstructions={paymentInstructions} onPaymentInstructionsSaved={setPaymentInstructions} storeName={storeName} />}
+        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} storeName={storeName} />}
+
+        {tab === "settings" && (
+          <>
+            <button className="dh-settings-row" type="button" onClick={() => setTab("payment")}>
+              <div><b>تعليمات التحويل</b><span>تظهر للعميل وقت الطلب</span></div>
+              <span className="dh-settings-chev">‹</span>
+            </button>
+            <button className="dh-settings-row" type="button" onClick={() => setTab("loyalty")}>
+              <div><b>كوبون الترحيب التلقائي</b><span>{repeatCouponEnabled ? `مفعّل · خصم ${repeatCouponPercent}٪` : "متوقف حاليًا"}</span></div>
+              <span className="dh-settings-chev">‹</span>
+            </button>
+            <button className="dh-settings-row" type="button" onClick={() => setTab("design")}>
+              <div><b>هوية المتجر</b><span>الاسم، الشعار، اللون، الأسئلة الشائعة</span></div>
+              <span className="dh-settings-chev">‹</span>
+            </button>
+            <button className="dh-settings-row" type="button" onClick={() => setTab("subscription")}>
+              <div><b>الاشتراك والباقة</b><span>باقة أساسية · {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا</span></div>
+              <span className="dh-settings-chev">‹</span>
+            </button>
+          </>
+        )}
+
+        {tab === "payment" && (
+          <>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 10 }}>تعليمات التحويل لعملائك</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>اكتب بيانات التحويل التي تريد أن تظهر للمشتري داخل الطلب. لا تضع كلمة مرور أو رمز تحقق.</p>
+              <div className="dh-field">
+                <textarea rows="5" value={paymentInstructions} onChange={(e) => setPaymentInstructions(e.target.value)} placeholder="مثال: حوّل المبلغ إلى الحساب ... ثم ارفع إثبات التحويل هنا." maxLength={800} />
+              </div>
+              <button className="dh-btn" type="button" disabled={savingPayment} onClick={savePaymentInstructions}>{savingPayment ? "جاري الحفظ..." : "حفظ تعليمات التحويل"}</button>
+              {paymentMessage && <div className={paymentMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{paymentMessage}</div>}
+            </div>
+          </>
+        )}
+
+        {tab === "loyalty" && (
+          <>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 10 }}>كوبون ترحيبي تلقائي للعملاء</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>لو فعّلته، كل عميل يكمل أول طلب منه ياخذ كود خصم شخصي تلقائي لطلبه الجاي من متجرك، بدون أي جهد منك. تقدر توقفه أي وقت.</p>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, cursor: "pointer" }}>
+                <input type="checkbox" checked={repeatCouponEnabled} onChange={(e) => setRepeatCouponEnabled(e.target.checked)} />
+                <span>فعّل كوبون الترحيب التلقائي</span>
+              </label>
+              {repeatCouponEnabled && (
+                <div className="dh-field">
+                  <label>نسبة الخصم (%)</label>
+                  <input type="number" min="1" max="90" value={repeatCouponPercent} onChange={(e) => setRepeatCouponPercent(e.target.value)} />
+                </div>
+              )}
+              <button className="dh-btn" type="button" disabled={repeatCouponSaving} onClick={saveRepeatCouponSettings}>
+                {repeatCouponSaving ? "جاري الحفظ..." : "حفظ الإعداد"}
+              </button>
+              {repeatCouponMessage && <div className={repeatCouponMessage === "تم الحفظ." ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{repeatCouponMessage}</div>}
+            </div>
+          </>
+        )}
 
         {tab === "design" && (
           <>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
             <div className="ds-preview">
               <div className="ds-preview-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>{`monah-app.com/#store/${slug || user.uid.slice(0, 8) + "..."}`}</span>
@@ -2083,7 +2179,7 @@ export default function Dashboard() {
 
               <div className="dh-field">
                 <label>الدفع</label>
-                <div className="dh-hint">ربط الدفع ما زال قيد التجهيز. لا نحفظ أي معلومات تحويل أو حسابات في صفحة المتجر العامة لحمايتها.</div>
+                <div className="dh-hint">عميلك يقدر يدفع ببطاقته مباشرة، أو يحوّل يدويًا ويرفع إثبات التحويل. تعليمات التحويل تُدار من الإعدادات، ولا تظهر في صفحة متجرك العامة لحمايتها.</div>
               </div>
             </div>
 
@@ -2100,13 +2196,14 @@ export default function Dashboard() {
 
         {tab === "subscription" && (
           <>
-            <div className="dh-card" style={{ borderTop: "3px solid #B9832F" }}>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <div className="dh-card" style={{ borderTop: "3px solid #163F2E" }}>
               <div className="dh-title-row">
                 <div>
                   <div className="dh-title">اشتراك متجرك</div>
-                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي 5 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي 5 ر.ع شهريًا، ثم إضافات قليلة تختارها لاحقًا.</div>
                 </div>
-                <span className="dh-subscription-ready" style={{ background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>التفعيل لاحقًا</span>
+                <span className="dh-subscription-ready" style={{ background: "#EAF0EB", color: "#37724B", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>مفعّل</span>
               </div>
               <div className="dh-subscription-base" style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
@@ -2135,7 +2232,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ))}
-            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>هذه الأسعار تشرح خطتك فقط. لا يوجد تحصيل أو تجديد تلقائي الآن. عند التفعيل يظهر المجموع الشهري قبل التأكيد، وأي ميزة تضيفها لاحقًا تدخل ضمن التجديد القادم.</div>
+            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>اشتراكك الأساسي مفعّل ويتجدد شهريًا. الإضافات المذكورة هنا معلومات فقط حاليًا، ولا تُحتسب على اشتراكك إلا لما تصير متاحة فعليًا وتختارها بنفسك.</div>
           </>
         )}
 
