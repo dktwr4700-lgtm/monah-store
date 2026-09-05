@@ -149,20 +149,26 @@ async function resolveCoupon(rawCode, productId, ownerId, buyerUid) {
 }
 
 // يُمنح تلقائيًا لأول مرة يكمل فيها المشتري طلبًا من هذا المتجر، عشان يشجعه يرجع يشتري مرة ثانية.
+// اختياري بالكامل: ما يُمنح إلا إذا فعّله التاجر بنفسه من إعدادات الكوبونات.
 async function grantRepeatCoupon(ownerId, buyerUid) {
   try {
+    const sellerSnap = await db.collection("sellers").doc(ownerId).get();
+    const seller = sellerSnap.data();
+    if (!seller?.repeatCouponEnabled) return;
     const existing = await db.collection("coupons")
       .where("ownerId", "==", ownerId)
       .where("buyerUid", "==", buyerUid)
       .limit(1)
       .get();
     if (!existing.empty) return;
+    const configuredPercent = Number(seller.repeatCouponPercent);
+    const discountPercent = configuredPercent > 0 && configuredPercent <= 90 ? configuredPercent : 10;
     const code = `WELCOME${randomBytes(3).toString("hex").toUpperCase()}`;
     await db.collection("coupons").add({
       ownerId,
       buyerUid,
       code,
-      discountPercent: 10,
+      discountPercent,
       productId: null,
       active: true,
       createdAt: FieldValue.serverTimestamp(),
@@ -633,6 +639,18 @@ async function savePaymentInstructions(req, res, account) {
   return res.status(200).json({ ok: true, paymentInstructions });
 }
 
+async function saveRepeatCouponSettings(req, res, account) {
+  await requireSeller(account.uid);
+  const enabled = Boolean(req.body?.enabled);
+  const rawPercent = Number(req.body?.discountPercent);
+  const discountPercent = rawPercent > 0 && rawPercent <= 90 ? rawPercent : 10;
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new OrderError(409, "لم نجد متجرًا مفعّلًا لهذا الحساب.");
+  await sellerRef.set({ repeatCouponEnabled: enabled, repeatCouponPercent: discountPercent }, { merge: true });
+  return res.status(200).json({ ok: true, enabled, discountPercent });
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
@@ -652,6 +670,7 @@ export default async function handler(req, res) {
     if (action === "receipt") return await receipt(req, res, account);
     if (action === "deliver") return await deliverOrder(req, res);
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
+    if (action === "save_repeat_coupon_settings") return await saveRepeatCouponSettings(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {
     if (error instanceof OrderError) return res.status(error.code).json({ error: error.message });
