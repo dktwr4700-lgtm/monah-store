@@ -1,11 +1,8 @@
 import React, { useState } from "react";
-import { auth, storage } from "./firebase.js";
+import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { ref, uploadBytes } from "firebase/storage";
 
 const STORE_TYPES = { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" };
-const MAX_PROOF_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 const styles = `
   .invite-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F6F3EC;padding:20px;font-family:'Cairo',sans-serif;color:#16233F}
@@ -13,10 +10,7 @@ const styles = `
   .invite-brand{font-family:'Almarai',sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:8px}.invite-title{font-family:'Almarai',sans-serif;font-size:17px;font-weight:800;text-align:center;margin-bottom:8px}.invite-text{font-size:12.5px;line-height:1.85;color:#625F55;text-align:center;margin:0 0 18px}
   .invite-field{margin-bottom:14px}.invite-field label{display:block;font-size:12px;font-weight:800;color:#625F55;margin-bottom:6px}.invite-field input,.invite-field select{box-sizing:border-box;width:100%;padding:12px 13px;border:1px solid #E4E0D3;border-radius:10px;background:#FBFAF7;font:13px 'Cairo',sans-serif}
   .invite-btn{width:100%;border:0;border-radius:100px;padding:13px;background:#16233F;color:#fff;font:700 13.5px 'Cairo',sans-serif;cursor:pointer}.invite-btn:disabled{opacity:.6}
-  .invite-btn.outline{background:#fff;border:1px solid #16233F;color:#16233F}
-  .invite-message{border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px}.invite-message.error{background:#F6E9E5;color:#A34839}.invite-message.success{background:#EAF0EB;color:#37724B}
-  .invite-divider{text-align:center;color:#89857A;font-size:11px;margin:16px 0}
-  .invite-instructions{white-space:pre-line;background:#F7F7F2;border:1px dashed #E4E0D3;border-radius:10px;padding:11px;font-size:12px;line-height:1.85;color:#383630;margin-bottom:12px}
+  .invite-message{border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px}.invite-message.error{background:#F6E9E5;color:#A34839}
   .invite-back{display:block;text-align:center;margin-top:16px;font-size:12px;font-weight:800;color:#16233F;text-decoration:none}
   .invite-page button{transition:transform 100ms ease-out}.invite-page button:active{transform:scale(.96)}
 `;
@@ -32,10 +26,6 @@ async function signupRequest(action, payload, idToken = "") {
   return data;
 }
 
-function safeName(name) {
-  return String(name || "receipt").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "receipt";
-}
-
 export default function StartStore() {
   const [step, setStep] = useState("form");
   const [storeName, setStoreName] = useState("");
@@ -44,8 +34,6 @@ export default function StartStore() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [instructions, setInstructions] = useState("");
-  const [proofFile, setProofFile] = useState(null);
 
   async function submitForm(event) {
     event.preventDefault();
@@ -87,49 +75,6 @@ export default function StartStore() {
     }
   }
 
-  async function loadInstructions() {
-    setError("");
-    setBusy(true);
-    try {
-      const data = await signupRequest("payment_instructions", {});
-      setInstructions(data.paymentInstructions || "لم يضع صاحب مُونَة تعليمات تحويل بعد. تواصل معه مباشرة.");
-      setStep("manual");
-    } catch (requestError) {
-      setError(requestError.message || "تعذر تحميل تعليمات التحويل الآن.");
-    }
-    setBusy(false);
-  }
-
-  function chooseProof(event) {
-    const nextFile = event.target.files?.[0] || null;
-    setError("");
-    if (!nextFile) return setProofFile(null);
-    if (!ACCEPTED_TYPES.includes(nextFile.type) || nextFile.size < 1 || nextFile.size >= MAX_PROOF_BYTES) {
-      setProofFile(null);
-      setError("اختر JPG أو PNG أو WEBP أو PDF بحجم أقل من 5 م.ب.");
-      event.target.value = "";
-      return;
-    }
-    setProofFile(nextFile);
-  }
-
-  async function submitProof() {
-    if (!proofFile || !auth.currentUser) return setError("اختر إثبات التحويل أولًا.");
-    setBusy(true);
-    setError("");
-    try {
-      const filename = safeName(proofFile.name);
-      const proofPath = `merchant-subscription-proofs/${auth.currentUser.uid}/${Date.now()}_${filename}`;
-      await uploadBytes(ref(storage, proofPath), proofFile, { contentType: proofFile.type });
-      const idToken = await auth.currentUser.getIdToken();
-      await signupRequest("submit_manual_proof", { proofPath, proofName: filename }, idToken);
-      setStep("pending");
-    } catch (requestError) {
-      setError(requestError.message || "تعذر رفع الإثبات الآن.");
-    }
-    setBusy(false);
-  }
-
   return (
     <div className="invite-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -138,7 +83,7 @@ export default function StartStore() {
 
         {step === "form" && <>
           <div className="invite-title">افتح متجرك الرقمي الآن</div>
-          <p className="invite-text">اكتب بيانات متجرك وبريدك، وأنت تختار كلمة المرور بنفسك. الاشتراك 5 ر.ع شهريًا فقط.</p>
+          <p className="invite-text">اكتب بيانات متجرك وبريدك، وأنت تختار كلمة المرور بنفسك. الاشتراك 5 ر.ع شهريًا بالبطاقة.</p>
           {error && <div className="invite-message error">{error}</div>}
           <form onSubmit={submitForm}>
             <div className="invite-field"><label>اسم المتجر</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
@@ -152,25 +97,9 @@ export default function StartStore() {
 
         {step === "payment" && <>
           <div className="invite-title">فعّل اشتراكك</div>
-          <p className="invite-text">اشتراك متجرك 5 ر.ع شهريًا. اختر طريقة الدفع.</p>
+          <p className="invite-text">اشتراك متجرك 5 ر.ع شهريًا. ادفع بالبطاقة الآن ليتفعّل متجرك فورًا.</p>
           {error && <div className="invite-message error">{error}</div>}
           <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : "ادفع الآن بالبطاقة"}</button>
-          <div className="invite-divider">— أو —</div>
-          <button className="invite-btn outline" type="button" onClick={loadInstructions} disabled={busy}>حوّل يدويًا</button>
-        </>}
-
-        {step === "manual" && <>
-          <div className="invite-title">التحويل اليدوي</div>
-          {error && <div className="invite-message error">{error}</div>}
-          <div className="invite-instructions">{instructions}</div>
-          <div className="invite-field"><label>إثبات التحويل</label><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={chooseProof} /></div>
-          {proofFile && <div className="invite-message success">تم اختيار: {proofFile.name}</div>}
-          <button className="invite-btn" type="button" onClick={submitProof} disabled={busy || !proofFile}>{busy ? "جاري الإرسال..." : "إرسال الإثبات"}</button>
-        </>}
-
-        {step === "pending" && <>
-          <div className="invite-title">طلبك قيد المراجعة</div>
-          <p className="invite-text">استلمنا إثبات التحويل. بنراجعه ونفعّل متجرك خلال وقت قصير. سجّل دخولك لاحقًا من نفس البريد لمتابعة الحالة.</p>
         </>}
       </main>
     </div>

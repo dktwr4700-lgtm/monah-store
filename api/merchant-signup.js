@@ -1,6 +1,5 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
 import { tapRequest } from "./tap-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
@@ -11,8 +10,6 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
-const bucket = getStorage().bucket();
-const ADMIN_EMAIL = "k1997551@gmail.com";
 const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const MONTHLY_PLAN_PRICE = 5;
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
@@ -54,12 +51,6 @@ async function authenticatedAccount(req) {
   const idToken = header.startsWith("Bearer ") ? header.slice(7) : "";
   const account = await verifiedAccount(idToken);
   if (!account) throw new SignupError(401, "سجّل دخولك أولًا ثم حاول مرة ثانية.");
-  return account;
-}
-
-async function requireOwner(req) {
-  const account = await authenticatedAccount(req);
-  if (account.email !== ADMIN_EMAIL) throw new SignupError(403, "هذه العملية خاصة بمالك مُونَة.");
   return account;
 }
 
@@ -145,7 +136,7 @@ async function createCardCharge(req, res) {
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
 
   if (!charge.id || !charge.transaction?.url) {
-    throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. جرب التحويل اليدوي.");
+    throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
   await requestRef.update({ tapChargeId: charge.id });
   return res.status(200).json({ url: charge.transaction.url });
@@ -169,86 +160,6 @@ async function verifyCardCharge(req, res) {
   return res.status(200).json({ paid: true });
 }
 
-async function submitManualProof(req, res) {
-  const account = await authenticatedAccount(req);
-  const proofPath = cleanText(req.body?.proofPath, 360);
-  const proofName = cleanText(req.body?.proofName, 160);
-  const prefix = `merchant-subscription-proofs/${account.uid}/`;
-  if (!proofPath.startsWith(prefix) || proofPath.includes("..")) {
-    throw new SignupError(400, "مسار الإثبات غير صالح.");
-  }
-  const requestRef = db.collection("merchantSignups").doc(account.uid);
-  const requestSnap = await requestRef.get();
-  if (!requestSnap.exists) throw new SignupError(404, "ما فيه طلب تسجيل لهذا الحساب.");
-  await requestRef.update({
-    status: "pending_review",
-    proofPath,
-    proofName,
-    proofSubmittedAt: FieldValue.serverTimestamp(),
-  });
-  return res.status(200).json({ ok: true });
-}
-
-async function paymentInstructions(req, res) {
-  const settingsSnap = await db.collection("settings").doc("merchantSubscription").get();
-  const text = settingsSnap.exists ? cleanText(settingsSnap.data().paymentInstructions, 800) : "";
-  return res.status(200).json({ paymentInstructions: text, price: MONTHLY_PLAN_PRICE });
-}
-
-async function adminSaveInstructions(req, res) {
-  await requireOwner(req);
-  const text = cleanText(req.body?.paymentInstructions, 800);
-  if (text.length < 6) return res.status(400).json({ error: "اكتب تعليمات التحويل بوضوح." });
-  await db.collection("settings").doc("merchantSubscription").set({
-    paymentInstructions: text,
-    updatedAt: FieldValue.serverTimestamp(),
-  }, { merge: true });
-  return res.status(200).json({ ok: true, paymentInstructions: text });
-}
-
-async function adminListPending(req, res) {
-  await requireOwner(req);
-  const snapshot = await db.collection("merchantSignups").where("status", "==", "pending_review").limit(50).get();
-  const rows = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
-  return res.status(200).json({
-    requests: rows.map((row) => ({
-      uid: row.uid,
-      email: row.email,
-      storeName: row.storeName,
-      storeType: row.storeType,
-      hasProof: Boolean(row.proofPath),
-    })),
-  });
-}
-
-async function adminProofUrl(req, res) {
-  await requireOwner(req);
-  const uid = cleanText(req.body?.uid, 160);
-  const requestSnap = await db.collection("merchantSignups").doc(uid).get();
-  if (!requestSnap.exists || !requestSnap.data().proofPath) throw new SignupError(404, "ما فيه إثبات لهذا الطلب.");
-  const [url] = await bucket.file(requestSnap.data().proofPath).getSignedUrl({ action: "read", expires: Date.now() + 5 * 60 * 1000 });
-  return res.status(200).json({ url });
-}
-
-async function adminApprove(req, res) {
-  await requireOwner(req);
-  const uid = cleanText(req.body?.uid, 160);
-  const requestSnap = await db.collection("merchantSignups").doc(uid).get();
-  if (!requestSnap.exists) throw new SignupError(404, "ما فيه طلب بهذا المعرف.");
-  await activateSeller(uid, requestSnap.data());
-  return res.status(200).json({ ok: true });
-}
-
-async function adminReject(req, res) {
-  const owner = await requireOwner(req);
-  const uid = cleanText(req.body?.uid, 160);
-  const requestRef = db.collection("merchantSignups").doc(uid);
-  const requestSnap = await requestRef.get();
-  if (!requestSnap.exists) throw new SignupError(404, "ما فيه طلب بهذا المعرف.");
-  await requestRef.update({ status: "rejected", rejectedBy: owner.uid, rejectedAt: FieldValue.serverTimestamp() });
-  return res.status(200).json({ ok: true });
-}
-
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
@@ -261,13 +172,6 @@ export default async function handler(req, res) {
     if (action === "status") return await status(req, res);
     if (action === "create_card_charge") return await createCardCharge(req, res);
     if (action === "verify_card_charge") return await verifyCardCharge(req, res);
-    if (action === "submit_manual_proof") return await submitManualProof(req, res);
-    if (action === "payment_instructions") return await paymentInstructions(req, res);
-    if (action === "admin_save_instructions") return await adminSaveInstructions(req, res);
-    if (action === "admin_list_pending") return await adminListPending(req, res);
-    if (action === "admin_proof_url") return await adminProofUrl(req, res);
-    if (action === "admin_approve") return await adminApprove(req, res);
-    if (action === "admin_reject") return await adminReject(req, res);
     return res.status(400).json({ error: "طلب غير واضح." });
   } catch (error) {
     if (error instanceof SignupError) return res.status(error.code).json({ error: error.message });
