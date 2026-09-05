@@ -221,7 +221,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("dh-subscription-base");
     expect(dashboard).toContain("رابط التتبع");
     expect(dashboard).toContain("نسخ الرابط");
-    expect(dashboard).toContain("لا يوجد تحصيل أو تجديد تلقائي الآن");
+    expect(dashboard).toContain("اشتراكك الأساسي مفعّل ويتجدد شهريًا.");
     expect(orders).toContain(".ord-confirm-btn,.ord-proof-btn,.ord-deliver-btn{width:100%;margin-left:0;min-height:42px}");
   });
 
@@ -302,7 +302,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
-    expect(dashboard).toContain("متجر أساسي 5 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
+    expect(dashboard).toContain("متجر أساسي 5 ر.ع شهريًا، ثم إضافات قليلة تختارها لاحقًا.");
     expect(dashboard).toContain("BASE_MONTHLY_PRICE.toFixed(2)");
     expect(dashboard).not.toContain("PACKAGES.map");
     expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 5");
@@ -331,10 +331,10 @@ describe("عقود المسارات العامة في مُونَة", () => {
   it("يوحد اشتراك لوحة التاجر مع الأسعار المعتمدة دون ادعاء تحصيل قائم", async () => {
     const dashboard = await source("src/Dashboard.jsx");
 
-    expect(dashboard).toContain("متجر أساسي 5 ر.ع، ثم إضافات قليلة تختارها عند تفعيل الاشتراك.");
+    expect(dashboard).toContain("متجر أساسي 5 ر.ع شهريًا، ثم إضافات قليلة تختارها لاحقًا.");
     expect(dashboard).toContain("الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.");
-    expect(dashboard).toContain("التفعيل لاحقًا");
-    expect(dashboard).toContain("هذه الأسعار تشرح خطتك فقط. لا يوجد تحصيل أو تجديد تلقائي الآن.");
+    expect(dashboard).toContain("مفعّل");
+    expect(dashboard).toContain("اشتراكك الأساسي مفعّل ويتجدد شهريًا.");
   });
 
   it("يعرض أدوات التاجر المهمة مباشرة داخل لوحة التحكم", async () => {
@@ -439,7 +439,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(legal).toContain("استخدام المنصة");
     expect(legal).toContain("لا تطلب مُونَة بيانات بطاقات أو حسابات دفع");
     expect(legal).toContain("يظهر للعميل داخل المنصة ما إذا كانت خيارات الشراء");
-    expect(legal).toContain("يبدأ الاشتراك المرن بمتجر أساسي بسعر 3 ر.ع");
+    expect(legal).toContain("يبدأ الاشتراك المرن بمتجر أساسي بسعر 5 ر.ع");
     expect(legal).toContain("لا تظهر الحزمة للزوار");
     expect(legal).not.toContain("اشتراك شهري أو سنوي");
     expect(legal).not.toContain("يُجدد تلقائيًا");
