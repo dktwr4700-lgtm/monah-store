@@ -129,6 +129,7 @@ async function createCardCharge(req, res) {
     },
     source: { id: "src_all" },
     threeDSecure: true,
+    statement_descriptor: "MONAH",
     description: `اشتراك شهري - متجر ${request.storeName}`,
     reference: { order: account.uid },
     metadata: { uid: account.uid },

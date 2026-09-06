@@ -481,6 +481,7 @@ async function createCardCharge(req, res, account) {
     },
     source: { id: "src_all" },
     threeDSecure: true,
+    statement_descriptor: "MONAH",
     description: cleanText(order.productName, 160) || "طلب من مُونَة",
     reference: { order: orderId },
     metadata: { orderId },
