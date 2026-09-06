@@ -27,10 +27,10 @@ numBins = input.int(
 
 grpQuality = "Quality Filter (the strict part)"
 minSuccessPct = input.float(
-     85, "Minimum Historical Success %",
+     72, "Minimum Historical Success %",
      minval = 60, maxval = 99, group = grpQuality)
 minSampleSize = input.int(
-     25, "Minimum Historical Touches",
+     15, "Minimum Historical Touches",
      minval = 5, group = grpQuality)
 
 grpSignal = "Trade Signals"
