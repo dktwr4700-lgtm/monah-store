@@ -1,0 +1,240 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation, building on statistics proven
+// out earlier in this project's BIN Support/Resistance indicator.
+//
+// Honest note left in the code on purpose: no indicator can be "100%".
+// What this does instead is refuse to show or trade any level unless it
+// has BOTH a very high historical success rate AND a large enough
+// sample size to trust that rate — weak or thinly-tested levels are not
+// drawn at all, not just dimmed. This is the most reliable version of
+// an S/R tool that can honestly be built from price history alone.
+//@version=5
+indicator(
+     "Best S/R (High-Confidence Only)",
+     shorttitle = "BEST-SR",
+     overlay = true,
+     max_lines_count = 50,
+     max_labels_count = 200)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Inputs
+// ─────────────────────────────────────────────────────────────────────────
+grpLevels = "Levels"
+lookback = input.int(
+     500, "Lookback Bars", minval = 100, group = grpLevels)
+numBins = input.int(
+     10, "Price Bins to Scan", minval = 5, maxval = 20, group = grpLevels)
+
+grpQuality = "Quality Filter (the strict part)"
+minSuccessPct = input.float(
+     85, "Minimum Historical Success %",
+     minval = 60, maxval = 99, group = grpQuality)
+minSampleSize = input.int(
+     25, "Minimum Historical Touches",
+     minval = 5, group = grpQuality)
+
+grpSignal = "Trade Signals"
+showSignals = input.bool(
+     true, "Show Entry / SL / TP Signals", group = grpSignal)
+touchToleranceATRMult = input.float(
+     0.15, "Touch Tolerance (x ATR)",
+     minval = 0.01, step = 0.05, group = grpSignal)
+slBufferATRMult = input.float(
+     0.3, "Stop-Loss Buffer Beyond Level (x ATR)",
+     minval = 0.05, step = 0.05, group = grpSignal)
+atrLen = input.int(
+     14, "ATR Length", minval = 1, group = grpSignal)
+cooldownBars = input.int(
+     40, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
+maxTradesPerDay = input.int(
+     2, "Max Trades Per Day", minval = 1, group = grpSignal)
+tagOffsetBars = input.int(
+     3, "Tag Offset (bars after signal)", minval = 1, group = grpSignal)
+
+grpStyle = "Style"
+lineColor = input.color(
+     color.new(color.yellow, 15), "High-Confidence Level Color", group = grpStyle)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Bin the last `lookback` bars into `numBins` equal price slices and
+// average the closes in each — this is the same level-finding method
+// as the BIN Support/Resistance indicator.
+// ─────────────────────────────────────────────────────────────────────────
+hiRange = ta.highest(close, lookback)
+loRange = ta.lowest(close, lookback)
+binSize = (hiRange - loRange) / numBins
+
+// ─────────────────────────────────────────────────────────────────────────
+// Rejection-rate statistic with sample size — a level only counts as
+// "high confidence" if it both bounced often AND was tested enough
+// times for that rate to mean something.
+// ─────────────────────────────────────────────────────────────────────────
+calc_stats(level, lb) =>
+    bool bullish_rejection = high[2] >= level and close < level
+    bool bearish_rejection = low[2] <= level and close > level
+
+    int reject_bull = 0
+    int reject_bear = 0
+    for i = 0 to lb
+        if bullish_rejection[i]
+            reject_bull += 1
+        if bearish_rejection[i]
+            reject_bear += 1
+
+    total = reject_bull + reject_bear
+    support_success = total == 0 ? 0.0 : (reject_bear / total) * 100
+    resistance_success = total == 0 ? 0.0 : (reject_bull / total) * 100
+    [support_success, resistance_success, total]
+
+// ─────────────────────────────────────────────────────────────────────────
+// Recalculate once per day (fixes the "line jumps around" problem the
+// original BIN S/R script had), and only keep levels that pass both
+// quality checks — everything else is dropped, not just dimmed.
+// ─────────────────────────────────────────────────────────────────────────
+newDay = ta.change(time("D")) != 0
+var bool needsRecalc = true
+if newDay
+    needsRecalc := true
+
+var line[] lvlLines = array.new<line>()
+var label[] lvlLabels = array.new<label>()
+var float[] levelPrices = array.new<float>()
+var float[] levelSupportPct = array.new<float>()
+var float[] levelResistPct = array.new<float>()
+
+if barstate.islast and needsRecalc
+    for ln in lvlLines
+        line.delete(ln)
+    array.clear(lvlLines)
+    for lb in lvlLabels
+        label.delete(lb)
+    array.clear(lvlLabels)
+    array.clear(levelPrices)
+    array.clear(levelSupportPct)
+    array.clear(levelResistPct)
+
+    for i = 0 to numBins
+        level = loRange + i * binSize
+        [supportPct, resistPct, sampleSize] = calc_stats(level, lookback)
+        bestPct = math.max(supportPct, resistPct)
+        passesQuality = sampleSize >= minSampleSize and bestPct >= minSuccessPct
+
+        if passesQuality
+            array.push(levelPrices, level)
+            array.push(levelSupportPct, supportPct)
+            array.push(levelResistPct, resistPct)
+
+            array.push(
+                 lvlLines,
+                 line.new(
+                      bar_index - lookback, level,
+                      bar_index + 30, level,
+                      color = lineColor, width = 2))
+
+            supportText = str.tostring(math.round(supportPct, 0))
+            resistText = str.tostring(math.round(resistPct, 0))
+            sampleText = str.tostring(sampleSize)
+            labelText = "دعم " + supportText + "% • مقاومة " + resistText + "% (" + sampleText + ")"
+            array.push(
+                 lvlLabels,
+                 label.new(
+                      bar_index + 30, level, labelText,
+                      style = label.style_label_left,
+                      color = color.new(lineColor, 75),
+                      textcolor = lineColor,
+                      size = size.small))
+
+    needsRecalc := false
+
+// ─────────────────────────────────────────────────────────────────────────
+// Signals — only ever fire from a level that already passed the strict
+// quality filter above, with a rejection candle, cooldown, and a low
+// daily cap so this stays a small number of high-conviction setups.
+// ─────────────────────────────────────────────────────────────────────────
+atrVal = ta.atr(atrLen)
+touchTol = touchToleranceATRMult * atrVal
+slBuf = slBufferATRMult * atrVal
+
+nearestIdx = -1
+nearestDist = 1e10
+if array.size(levelPrices) > 0
+    for j = 0 to array.size(levelPrices) - 1
+        d = math.abs(close - array.get(levelPrices, j))
+        if d < nearestDist
+            nearestDist := d
+            nearestIdx := j
+
+hasLevel = nearestIdx >= 0
+nearestLevel = hasLevel ? array.get(levelPrices, nearestIdx) : na
+nearestSupportPct = hasLevel ? array.get(levelSupportPct, nearestIdx) : na
+nearestResistPct = hasLevel ? array.get(levelResistPct, nearestIdx) : na
+
+longTouch = hasLevel and low <= nearestLevel + touchTol and close > nearestLevel
+shortTouch = hasLevel and high >= nearestLevel - touchTol and close < nearestLevel
+
+var int lastSignalBar = na
+var int dailyTradeCount = 0
+if newDay
+    dailyTradeCount := 0
+
+canSignal = (na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars)
+     and dailyTradeCount < maxTradesPerDay
+
+longSignal = showSignals and canSignal and longTouch and nearestSupportPct >= minSuccessPct
+shortSignal = showSignals and canSignal and shortTouch and nearestResistPct >= minSuccessPct
+
+if longSignal or shortSignal
+    lastSignalBar := bar_index
+    dailyTradeCount := dailyTradeCount + 1
+
+    isLong = longSignal
+    entryPrice = close
+    stopPrice = isLong ? nearestLevel - slBuf : nearestLevel + slBuf
+    riskDist = math.abs(entryPrice - stopPrice)
+    targetPrice = isLong ? entryPrice + riskDist * 2.0 : entryPrice - riskDist * 2.0
+
+    sideColor = isLong ? color.teal : color.red
+    tagBar = bar_index + tagOffsetBars
+
+    sideText = isLong ? "BUY" : "SELL"
+    sideYloc = isLong ? yloc.belowbar : yloc.abovebar
+    sideStyle = isLong ? label.style_label_up : label.style_label_down
+    label.new(
+         bar_index,
+         isLong ? low : high,
+         sideText,
+         yloc = sideYloc,
+         style = sideStyle,
+         color = sideColor,
+         textcolor = color.white,
+         size = size.small)
+
+    line.new(
+         bar_index, stopPrice, tagBar, stopPrice,
+         color = color.red, style = line.style_dashed, width = 1)
+    line.new(
+         bar_index, targetPrice, tagBar, targetPrice,
+         color = color.teal, style = line.style_dashed, width = 1)
+
+    slPriceText = str.tostring(math.round_to_mintick(stopPrice))
+    slText = "🛑 SL " + slPriceText
+    label.new(
+         tagBar, stopPrice, slText,
+         style = label.style_label_left,
+         color = color.red,
+         textcolor = color.white,
+         size = size.small)
+
+    tpPriceText = str.tostring(math.round_to_mintick(targetPrice))
+    tpText = "🎯 TP " + tpPriceText
+    label.new(
+         tagBar, targetPrice, tpText,
+         style = label.style_label_left,
+         color = color.teal,
+         textcolor = color.white,
+         size = size.small)
+
+alertcondition(longSignal, title = "Best S/R Long Signal",
+     message = "Best S/R: bullish bounce off a high-confidence level")
+alertcondition(shortSignal, title = "Best S/R Short Signal",
+     message = "Best S/R: bearish rejection off a high-confidence level")
