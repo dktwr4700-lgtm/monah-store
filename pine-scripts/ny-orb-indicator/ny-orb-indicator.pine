@@ -1,0 +1,283 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation.
+//
+// New York Opening Range Breakout, built specifically for US30 / US500.
+// Unlike BBB (which measures the quiet Asian session and trades the
+// breakout hours later), this measures the opening minutes of the New
+// York cash session itself — the most active window for US indices —
+// and only allows breakouts during that same high-volume morning block.
+// A VWAP filter keeps trades aligned with the day's actual order flow.
+//@version=5
+indicator(
+     "NY Opening Range Breakout (US30/US500)",
+     shorttitle = "NY-ORB",
+     overlay = true,
+     max_boxes_count = 50,
+     max_lines_count = 500,
+     max_labels_count = 500)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Inputs
+// ─────────────────────────────────────────────────────────────────────────
+grpSession = "Opening Range"
+orSessionString = input.session(
+     "0930-0945", "Opening Range Window (NY time)",
+     group = grpSession, display = display.data_window)
+tradeWindowString = input.session(
+     "0930-1130", "Allowed Breakout Window (NY time)",
+     group = grpSession, display = display.data_window)
+sessionTZ = input.string(
+     "America/New_York", "Timezone",
+     group = grpSession, display = display.data_window)
+
+grpBreak = "Breakout"
+breakoutSource = input.string(
+     "Close", "Breakout Confirmed By",
+     options = ["Close", "Wick"],
+     group = grpBreak, display = display.data_window)
+oneSignalPerDay = input.bool(
+     true, "Only First Breakout Per Day",
+     group = grpBreak, display = display.data_window)
+
+grpFilter = "Signal Filters"
+useVWAPFilter = input.bool(
+     true, "Only Trade With Session VWAP",
+     group = grpFilter, display = display.data_window)
+useRangeFilter = input.bool(
+     true, "Require a Wide-Enough Opening Range",
+     group = grpFilter, display = display.data_window)
+minRangeATRMult = input.float(
+     0.2, "Min Opening Range (x ATR)",
+     minval = 0.05, step = 0.05,
+     group = grpFilter, display = display.data_window)
+
+grpRisk = "Risk / Target Calculation"
+riskMethod = input.string(
+     "Range", "Stop-Loss Method",
+     options = ["Range", "ATR", "Percentage", "Fixed Points"],
+     group = grpRisk, display = display.data_window)
+atrLen = input.int(
+     14, "ATR Length", minval = 1,
+     group = grpRisk, display = display.data_window)
+atrMult = input.float(
+     1.0, "ATR Multiplier", minval = 0.1, step = 0.1,
+     group = grpRisk, display = display.data_window)
+pctValue = input.float(
+     0.5, "Stop-Loss Percentage (%)",
+     minval = 0.01, step = 0.05,
+     group = grpRisk, display = display.data_window)
+fixedPts = input.float(
+     50, "Stop-Loss Fixed Points", minval = 0,
+     group = grpRisk, display = display.data_window)
+
+targetMethod = input.string(
+     "R:R Ratio", "Take-Profit Method",
+     options = ["Fixed Points", "R:R Ratio"],
+     group = grpRisk, display = display.data_window)
+tpFixedPoints = input.float(
+     150, "Take-Profit Fixed Points", minval = 0,
+     group = grpRisk, display = display.data_window)
+rrRatio = input.float(
+     2.0, "Risk Reward Ratio",
+     minval = 0.1, step = 0.1,
+     group = grpRisk, display = display.data_window)
+
+grpSymbol = "Symbol Restriction"
+restrictToSymbol = input.bool(
+     true, "Only Give Signals on These Symbols",
+     group = grpSymbol, display = display.data_window)
+allowedSymbols = input.string(
+     "US30,US500", "Allowed Symbols (comma-separated)",
+     group = grpSymbol, display = display.data_window)
+
+grpStyle = "Style"
+colRange = input.color(
+     color.new(color.orange, 85), "Opening Range Box",
+     group = grpStyle, display = display.data_window)
+colUp = input.color(
+     color.new(color.teal, 0), "Bullish Setup",
+     group = grpStyle, display = display.data_window)
+colDown = input.color(
+     color.new(color.red, 0), "Bearish Setup",
+     group = grpStyle, display = display.data_window)
+showTags = input.bool(
+     true, "Show SL / TP Tags on Chart",
+     group = grpStyle, display = display.data_window)
+tagOffsetBars = input.int(
+     3, "Tag Offset (bars after signal)", minval = 1,
+     group = grpStyle, display = display.data_window)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Symbol restriction check
+// ─────────────────────────────────────────────────────────────────────────
+allowedList = str.split(allowedSymbols, ",")
+matched = false
+for i = 0 to array.size(allowedList) - 1
+    part = str.trim(array.get(allowedList, i))
+    if str.contains(syminfo.ticker, part)
+        matched := true
+symbolOK = not restrictToSymbol or matched
+
+// ─────────────────────────────────────────────────────────────────────────
+// Opening range tracking
+// ─────────────────────────────────────────────────────────────────────────
+inOR = not na(time(timeframe.period, orSessionString, sessionTZ))
+newOR = inOR and not inOR[1]
+orEnded = not inOR and inOR[1]
+
+var float orHigh = na
+var float orLow = na
+var int orStartBar = na
+var box orBox = na
+var bool orReady = false
+var bool signalTakenToday = false
+
+if newOR
+    orHigh := high
+    orLow := low
+    orStartBar := bar_index
+    orReady := false
+    signalTakenToday := false
+
+if inOR
+    orHigh := math.max(orHigh, high)
+    orLow := math.min(orLow, low)
+
+if orEnded
+    orReady := true
+    if not na(orBox)
+        box.delete(orBox)
+    orBox := box.new(
+         orStartBar, orHigh, bar_index, orLow,
+         border_color = color.new(color.orange, 40),
+         bgcolor = colRange, extend = extend.right)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Filters: session VWAP direction + minimum opening-range volatility
+// ─────────────────────────────────────────────────────────────────────────
+vwapVal = ta.vwap(hlc3)
+atrVal = ta.atr(atrLen)
+rangeWidth = orHigh - orLow
+
+trendUpOK = not useVWAPFilter or close > vwapVal
+trendDownOK = not useVWAPFilter or close < vwapVal
+volOK = not useRangeFilter or rangeWidth >= atrVal * minRangeATRMult
+
+inTradeWindow = not na(time(timeframe.period, tradeWindowString, sessionTZ))
+
+// ─────────────────────────────────────────────────────────────────────────
+// Breakout logic — the opening range itself is the level; a break of it
+// only counts while we're still inside the allowed morning window, so a
+// slow drift in the afternoon can't trigger a late, low-quality signal.
+// ─────────────────────────────────────────────────────────────────────────
+bullBreakSrc = breakoutSource == "Close" ? close : high
+bearBreakSrc = breakoutSource == "Close" ? close : low
+
+canSignal = orReady and inTradeWindow and symbolOK
+     and (not oneSignalPerDay or not signalTakenToday)
+
+bullBreak = canSignal and bullBreakSrc > orHigh
+     and bullBreakSrc[1] <= orHigh and trendUpOK and volOK
+bearBreak = canSignal and bearBreakSrc < orLow
+     and bearBreakSrc[1] >= orLow and trendDownOK and volOK
+
+calcStop(isLong, entryPrice) =>
+    float stop = na
+    if riskMethod == "Range"
+        stop := isLong ? orLow : orHigh
+    else if riskMethod == "ATR"
+        stop := isLong ? entryPrice - atrVal * atrMult : entryPrice + atrVal * atrMult
+    else if riskMethod == "Percentage"
+        stop := isLong ? entryPrice * (1 - pctValue / 100) : entryPrice * (1 + pctValue / 100)
+    else
+        stop := isLong ? entryPrice - fixedPts : entryPrice + fixedPts
+    stop
+
+if bullBreak or bearBreak
+    signalTakenToday := true
+
+    isLong = bullBreak
+    entryPrice = close
+    stopPrice = calcStop(isLong, entryPrice)
+    riskDist = math.abs(entryPrice - stopPrice)
+    targetPrice = targetMethod == "Fixed Points" ?
+         (isLong ? entryPrice + tpFixedPoints : entryPrice - tpFixedPoints) :
+         (isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio)
+
+    sideColor = isLong ? colUp : colDown
+    tagBar = bar_index + tagOffsetBars
+
+    sideText = isLong ? "BUY" : "SELL"
+    sideYloc = isLong ? yloc.belowbar : yloc.abovebar
+    sideStyle = isLong ? label.style_label_up : label.style_label_down
+    label.new(
+         bar_index,
+         isLong ? low : high,
+         sideText,
+         yloc = sideYloc,
+         style = sideStyle,
+         color = sideColor,
+         textcolor = color.white,
+         size = size.small)
+
+    if showTags
+        line.new(
+             bar_index,
+             stopPrice,
+             tagBar,
+             stopPrice,
+             color = colDown,
+             style = line.style_dashed,
+             width = 1)
+        line.new(
+             bar_index,
+             targetPrice,
+             tagBar,
+             targetPrice,
+             color = colUp,
+             style = line.style_dashed,
+             width = 1)
+
+        slPriceText = str.tostring(math.round_to_mintick(stopPrice))
+        slText = "🛑 SL " + slPriceText
+        label.new(
+             tagBar,
+             stopPrice,
+             slText,
+             style = label.style_label_left,
+             color = colDown,
+             textcolor = color.white,
+             size = size.small)
+
+        tpPriceText = str.tostring(math.round_to_mintick(targetPrice))
+        tpText = "🎯 TP " + tpPriceText
+        label.new(
+             tagBar,
+             targetPrice,
+             tpText,
+             style = label.style_label_left,
+             color = colUp,
+             textcolor = color.white,
+             size = size.small)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Background & alerts
+// ─────────────────────────────────────────────────────────────────────────
+plot(useVWAPFilter ? vwapVal : na, title = "Session VWAP",
+     color = color.new(color.gray, 40), linewidth = 1)
+bgcolor(inOR ? colRange : na, title = "Opening Range Highlight")
+
+if barstate.islast and not symbolOK
+    label.new(
+         bar_index,
+         high,
+         "⚠ NY-ORB signals are off — set for " + allowedSymbols,
+         style = label.style_label_down,
+         color = color.new(color.orange, 20),
+         textcolor = color.white,
+         size = size.small)
+
+alertcondition(bullBreak, title = "NY-ORB Bullish Signal",
+     message = "NY-ORB: Bullish breakout of the NY opening range")
+alertcondition(bearBreak, title = "NY-ORB Bearish Signal",
+     message = "NY-ORB: Bearish breakout of the NY opening range")
