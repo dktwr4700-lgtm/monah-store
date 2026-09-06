@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "./firebase.js";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const STORE_TYPES = { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" };
 
@@ -12,6 +12,10 @@ const styles = `
   .invite-btn{width:100%;border:0;border-radius:100px;padding:13px;background:#16233F;color:#fff;font:700 13.5px 'Cairo',sans-serif;cursor:pointer}.invite-btn:disabled{opacity:.6}
   .invite-message{border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px}.invite-message.error{background:#F6E9E5;color:#A34839}
   .invite-back{display:block;text-align:center;margin-top:16px;font-size:12px;font-weight:800;color:#16233F;text-decoration:none}
+  .invite-google{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;background:#fff;color:#16233F;font:700 13px 'Cairo',sans-serif;padding:12px;border:1px solid #E4E0D3;border-radius:100px;cursor:pointer;margin-bottom:16px}
+  .invite-google:disabled{opacity:.6}
+  .invite-divider{display:flex;align-items:center;gap:10px;color:#B0AC9C;font-size:11px;margin-bottom:16px}
+  .invite-divider::before,.invite-divider::after{content:"";flex:1;height:1px;background:#E4E0D3}
   .invite-page button{transition:transform 100ms ease-out}.invite-page button:active{transform:scale(.96)}
 `;
 
@@ -62,6 +66,24 @@ export default function StartStore() {
     setBusy(false);
   }
 
+  async function submitWithGoogle() {
+    setError("");
+    if (storeName.trim().length < 2) return setError("اكتب اسم متجرك أولًا.");
+    setBusy(true);
+    try {
+      const credential = await signInWithPopup(auth, new GoogleAuthProvider());
+      const idToken = await credential.user.getIdToken(true);
+      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken);
+      setStep("payment");
+    } catch (submitError) {
+      if (submitError.code !== "auth/popup-closed-by-user" && submitError.code !== "auth/cancelled-popup-request") {
+        await signOut(auth).catch(() => {});
+        setError(submitError.message || "تعذر إنشاء الحساب الآن.");
+      }
+    }
+    setBusy(false);
+  }
+
   async function payByCard() {
     setError("");
     setBusy(true);
@@ -85,9 +107,16 @@ export default function StartStore() {
           <div className="invite-title">افتح متجرك الرقمي الآن</div>
           <p className="invite-text">اكتب بيانات متجرك وبريدك، وأنت تختار كلمة المرور بنفسك. الاشتراك 5 ر.ع شهريًا بالبطاقة.</p>
           {error && <div className="invite-message error">{error}</div>}
+          <div className="invite-field"><label>اسم المتجر</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
+          <div className="invite-field"><label>ماذا تبيع؟</label><select value={storeType} onChange={(event) => setStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+
+          <button type="button" className="invite-google" onClick={submitWithGoogle} disabled={busy}>
+            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.9A8.75 8.75 0 0017.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.55-1.84.87-3.06.87-2.36 0-4.36-1.6-5.07-3.75H.9v2.35A9 9 0 009 18z"/><path fill="#FBBC05" d="M3.93 10.68A5.4 5.4 0 013.64 9c0-.58.1-1.15.29-1.68V4.97H.9A9 9 0 000 9c0 1.45.35 2.83.9 4.03l3.03-2.35z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 009 0 9 9 0 00.9 4.97l3.03 2.35C4.64 5.18 6.64 3.58 9 3.58z"/></svg>
+            {busy ? "جاري الإنشاء..." : "متابعة بحساب جوجل"}
+          </button>
+          <div className="invite-divider">أو بالبريد وكلمة المرور</div>
+
           <form onSubmit={submitForm}>
-            <div className="invite-field"><label>اسم المتجر</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
-            <div className="invite-field"><label>ماذا تبيع؟</label><select value={storeType} onChange={(event) => setStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
             <div className="invite-field"><label>بريدك الإلكتروني</label><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" required /></div>
             <div className="invite-field"><label>اختر كلمة المرور</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></div>
             <button className="invite-btn" type="submit" disabled={busy}>{busy ? "جاري الإنشاء..." : "متابعة"}</button>

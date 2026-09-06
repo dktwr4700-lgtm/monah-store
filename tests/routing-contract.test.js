@@ -464,7 +464,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).not.toContain('href="#register"');
     expect(register).toContain("التسجيل بدعوة خاصة");
     expect(register).not.toContain("createUserWithEmailAndPassword");
-    expect(login).toContain("اطلب رابط دعوة خاص من صاحب مُونة.");
+    expect(login).toContain('href="#start-store"');
     expect(login).not.toContain("أنشئ حساب بائع");
     expect(admin).toContain("سجّل دخولك أولًا");
     expect(admin).toContain("دخلت بحساب غير حساب المالك");
