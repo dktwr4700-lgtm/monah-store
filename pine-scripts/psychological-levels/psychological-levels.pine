@@ -23,7 +23,7 @@ roundStep = input.float(
      100, "Round Number Step (e.g. 100 for US30, 25 for US500)",
      minval = 0.01, group = grpLevels)
 numLevelsEachSide = input.int(
-     5, "How Many Levels Above / Below Price",
+     3, "How Many Levels Above / Below Price",
      minval = 1, maxval = 15, group = grpLevels)
 offset = input.int(
      50, "Extend Lines Right (bars)", minval = 1, group = grpLevels)
@@ -44,8 +44,11 @@ grpSignal = "Trade Signals"
 showSignals = input.bool(
      true, "Show Entry / SL / TP Signals", group = grpSignal)
 minSuccessPct = input.float(
-     65, "Minimum Historical Success % to Trade",
+     72, "Minimum Historical Success % to Trade",
      minval = 50, maxval = 99, group = grpSignal)
+minSampleSize = input.int(
+     15, "Minimum Historical Touches to Trust a Level",
+     minval = 1, group = grpSignal)
 touchToleranceATRMult = input.float(
      0.15, "Touch Tolerance (x ATR)",
      minval = 0.01, step = 0.05, group = grpSignal)
@@ -55,7 +58,7 @@ slBufferATRMult = input.float(
 atrLenSignal = input.int(
      14, "ATR Length", minval = 1, group = grpSignal)
 cooldownBars = input.int(
-     20, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
+     40, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
 maxTradesPerDay = input.int(
      3, "Max Trades Per Day", minval = 1, group = grpSignal)
 tagOffsetBars = input.int(
@@ -64,6 +67,10 @@ tagOffsetBars = input.int(
 // ─────────────────────────────────────────────────────────────────────────
 // Same rejection-counting statistic the BIN S/R indicator uses: how many
 // times price approached a level and got pushed back the other way.
+// Also returns the raw sample count (total) — a level with only 2 or 3
+// historical touches can show a "100% success rate" that means nothing;
+// the signal logic below refuses to trust a level until it has enough
+// touches to be a real statistic, not noise.
 // ─────────────────────────────────────────────────────────────────────────
 calc_stats(level, lb) =>
     bool bullish_rejection = high[2] >= level and close < level
@@ -80,7 +87,7 @@ calc_stats(level, lb) =>
     total = reject_bull + reject_bear
     support_success = total == 0 ? 0.0 : (reject_bear / total) * 100
     resistance_success = total == 0 ? 0.0 : (reject_bull / total) * 100
-    [support_success, resistance_success]
+    [support_success, resistance_success, total]
 
 // ─────────────────────────────────────────────────────────────────────────
 // Recalculation gate — same fix as the BIN S/R indicator: only rebuild
@@ -103,6 +110,7 @@ var label[] lvlLabels = array.new<label>()
 var float[] levelPrices = array.new<float>()
 var float[] levelSupportPct = array.new<float>()
 var float[] levelResistPct = array.new<float>()
+var int[] levelSampleSize = array.new<int>()
 
 if barstate.islast and shouldRecalc
     for ln in lvlLines
@@ -114,16 +122,18 @@ if barstate.islast and shouldRecalc
     array.clear(levelPrices)
     array.clear(levelSupportPct)
     array.clear(levelResistPct)
+    array.clear(levelSampleSize)
 
     baseLevel = math.round(close / roundStep) * roundStep
 
     for i = -numLevelsEachSide to numLevelsEachSide
         level = baseLevel + i * roundStep
-        [supportPct, resistPct] = calc_stats(level, lookback)
+        [supportPct, resistPct, sampleSize] = calc_stats(level, lookback)
 
         array.push(levelPrices, level)
         array.push(levelSupportPct, supportPct)
         array.push(levelResistPct, resistPct)
+        array.push(levelSampleSize, sampleSize)
 
         array.push(
              lvlLines,
@@ -137,7 +147,8 @@ if barstate.islast and shouldRecalc
 
         supportText = str.tostring(math.round(supportPct, 0))
         resistText = str.tostring(math.round(resistPct, 0))
-        labelText = "دعم " + supportText + "% • مقاومة " + resistText + "%"
+        sampleText = str.tostring(sampleSize)
+        labelText = "دعم " + supportText + "% • مقاومة " + resistText + "% (" + sampleText + ")"
         array.push(
              lvlLabels,
              label.new(
@@ -173,6 +184,8 @@ hasLevel = nearestIdx >= 0
 nearestLevel = hasLevel ? array.get(levelPrices, nearestIdx) : na
 nearestSupportPct = hasLevel ? array.get(levelSupportPct, nearestIdx) : na
 nearestResistPct = hasLevel ? array.get(levelResistPct, nearestIdx) : na
+nearestSampleSize = hasLevel ? array.get(levelSampleSize, nearestIdx) : 0
+sampleOK = nearestSampleSize >= minSampleSize
 
 longTouch = hasLevel and low <= nearestLevel + touchTol and close > nearestLevel
 shortTouch = hasLevel and high >= nearestLevel - touchTol and close < nearestLevel
@@ -185,8 +198,8 @@ if newDay
 canSignal = (na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars)
      and dailyTradeCount < maxTradesPerDay
 
-longSignal = showSignals and canSignal and longTouch and nearestSupportPct >= minSuccessPct
-shortSignal = showSignals and canSignal and shortTouch and nearestResistPct >= minSuccessPct
+longSignal = showSignals and canSignal and longTouch and sampleOK and nearestSupportPct >= minSuccessPct
+shortSignal = showSignals and canSignal and shortTouch and sampleOK and nearestResistPct >= minSuccessPct
 
 if longSignal or shortSignal
     lastSignalBar := bar_index
