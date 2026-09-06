@@ -1,0 +1,359 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation.
+//
+// Confluence Signals — instead of trusting one indicator alone (which
+// this project's earlier single-factor indicators showed can be wrong
+// often), this requires a qualifying round-number level PLUS agreement
+// from at least N of 3 independent, unrelated signals before it ever
+// draws a BUY/SELL: a recent RSI divergence in the same direction, a
+// volume-based buy/sell pressure reading in the same direction, and
+// being inside a historically active trading session. All four checks
+// look at different data (price levels, momentum, volume, time-of-day),
+// so agreement between them is a much stronger filter than any one
+// check alone — but it is still unverified logic until backtested.
+//@version=5
+indicator(
+     "Confluence Signals (Multi-Factor)",
+     shorttitle = "CONFLUENCE",
+     overlay = true,
+     max_lines_count = 100,
+     max_labels_count = 200)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 1 inputs — round-number levels with a proven historical rejection
+// rate (same statistic as the Psychological Levels indicator).
+// ─────────────────────────────────────────────────────────────────────────
+grpLevels = "Factor 1: Price Levels"
+roundStep = input.float(
+     100, "Round Number Step", minval = 0.01, group = grpLevels)
+numLevelsEachSide = input.int(
+     3, "Levels Above / Below Price",
+     minval = 1, maxval = 15, group = grpLevels)
+lookback = input.int(
+     500, "Lookback Bars for Success %", minval = 50, group = grpLevels)
+minSuccessPct = input.float(
+     72, "Minimum Historical Success %",
+     minval = 50, maxval = 99, group = grpLevels)
+minSampleSize = input.int(
+     15, "Minimum Historical Touches",
+     minval = 1, group = grpLevels)
+recalcMode = input.string(
+     "Once Per Day", "Recalculate",
+     options = ["Once Per Day", "Every Bar (can jitter)"],
+     group = grpLevels)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 2 inputs — RSI divergence, same pivot logic as the Reversal
+// Detector indicator.
+// ─────────────────────────────────────────────────────────────────────────
+grpDiv = "Factor 2: RSI Divergence"
+pivotLeftBars = input.int(
+     5, "Pivot Left Bars", minval = 1, group = grpDiv)
+pivotRightBars = input.int(
+     5, "Pivot Right Bars", minval = 1, group = grpDiv)
+rsiLen = input.int(
+     14, "RSI Length", minval = 1, group = grpDiv)
+divergenceRecencyBars = input.int(
+     30, "Divergence Counts if Within This Many Bars",
+     minval = 1, group = grpDiv)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 3 inputs — volume-based buying/selling pressure, same idea as
+// the standalone Pressure indicator.
+// ─────────────────────────────────────────────────────────────────────────
+grpPressure = "Factor 3: Volume Pressure"
+pressureLookback = input.int(
+     20, "Pressure Lookback Bars", minval = 1, group = grpPressure)
+pressureThreshold = input.float(
+     55, "Pressure Must Be Above This % to Count",
+     minval = 50, maxval = 90, group = grpPressure)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 4 inputs — a simple "is this a historically active time" filter.
+// ─────────────────────────────────────────────────────────────────────────
+grpSession = "Factor 4: Session Timing"
+useSessionFilter = input.bool(
+     true, "Require Being Inside This Session", group = grpSession)
+sessionString = input.session(
+     "0930-1130", "Active Session Window", group = grpSession)
+sessionTZ = input.string(
+     "America/New_York", "Timezone", group = grpSession)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Confluence + risk inputs
+// ─────────────────────────────────────────────────────────────────────────
+grpConfluence = "Confluence Rule"
+minConfluencePoints = input.int(
+     2, "Minimum Agreeing Factors (out of 3: divergence, pressure, session)",
+     minval = 0, maxval = 3, group = grpConfluence)
+
+grpRisk = "Risk / Signal Timing"
+touchToleranceATRMult = input.float(
+     0.15, "Touch Tolerance (x ATR)",
+     minval = 0.01, step = 0.05, group = grpRisk)
+slBufferATRMult = input.float(
+     0.3, "Stop-Loss Buffer Beyond Level (x ATR)",
+     minval = 0.05, step = 0.05, group = grpRisk)
+atrLenSignal = input.int(
+     14, "ATR Length", minval = 1, group = grpRisk)
+cooldownBars = input.int(
+     40, "Cooldown Between Signals (bars)", minval = 1, group = grpRisk)
+maxTradesPerDay = input.int(
+     3, "Max Trades Per Day", minval = 1, group = grpRisk)
+tagOffsetBars = input.int(
+     3, "Tag Offset (bars after signal)", minval = 1, group = grpRisk)
+
+grpStyle = "Style"
+lineColor = input.color(
+     color.new(color.yellow, 20), "Level Color", group = grpStyle)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 1 — round-number level grid + historical rejection stats.
+// ─────────────────────────────────────────────────────────────────────────
+calc_stats(level, lb) =>
+    bool bullish_rejection = high[2] >= level and close < level
+    bool bearish_rejection = low[2] <= level and close > level
+
+    int reject_bull = 0
+    int reject_bear = 0
+    for i = 0 to lb
+        if bullish_rejection[i]
+            reject_bull += 1
+        if bearish_rejection[i]
+            reject_bear += 1
+
+    total = reject_bull + reject_bear
+    support_success = total == 0 ? 0.0 : (reject_bear / total) * 100
+    resistance_success = total == 0 ? 0.0 : (reject_bull / total) * 100
+    [support_success, resistance_success, total]
+
+newDay = ta.change(time("D")) != 0
+var bool needsRecalc = true
+if newDay
+    needsRecalc := true
+shouldRecalc = recalcMode == "Every Bar (can jitter)" or needsRecalc
+
+var line[] lvlLines = array.new<line>()
+var label[] lvlLabels = array.new<label>()
+var float[] levelPrices = array.new<float>()
+var float[] levelSupportPct = array.new<float>()
+var float[] levelResistPct = array.new<float>()
+var int[] levelSampleSize = array.new<int>()
+
+if barstate.islast and shouldRecalc
+    for ln in lvlLines
+        line.delete(ln)
+    array.clear(lvlLines)
+    for lb in lvlLabels
+        label.delete(lb)
+    array.clear(lvlLabels)
+    array.clear(levelPrices)
+    array.clear(levelSupportPct)
+    array.clear(levelResistPct)
+    array.clear(levelSampleSize)
+
+    baseLevel = math.round(close / roundStep) * roundStep
+
+    for i = -numLevelsEachSide to numLevelsEachSide
+        level = baseLevel + i * roundStep
+        [supportPct, resistPct, sampleSize] = calc_stats(level, lookback)
+
+        array.push(levelPrices, level)
+        array.push(levelSupportPct, supportPct)
+        array.push(levelResistPct, resistPct)
+        array.push(levelSampleSize, sampleSize)
+
+        array.push(
+             lvlLines,
+             line.new(
+                  bar_index - lookback, level,
+                  bar_index + 30, level,
+                  color = lineColor, width = 1))
+
+        supportText = str.tostring(math.round(supportPct, 0))
+        resistText = str.tostring(math.round(resistPct, 0))
+        sampleText = str.tostring(sampleSize)
+        labelText = "دعم " + supportText + "% • مقاومة " + resistText + "% (" + sampleText + ")"
+        array.push(
+             lvlLabels,
+             label.new(
+                  bar_index + 30, level, labelText,
+                  style = label.style_label_left,
+                  color = color.new(lineColor, 80),
+                  textcolor = lineColor,
+                  size = size.tiny))
+
+    needsRecalc := false
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 2 — RSI divergence detection (pivot-based, same as Reversal
+// Detector), tracked as "did one happen recently" rather than requiring
+// it on the exact same bar as the level touch.
+// ─────────────────────────────────────────────────────────────────────────
+rsiVal = ta.rsi(close, rsiLen)
+pl = ta.pivotlow(low, pivotLeftBars, pivotRightBars)
+ph = ta.pivothigh(high, pivotLeftBars, pivotRightBars)
+
+var float lastPLPrice = na
+var float lastPLRSI = na
+var float prevPLPrice = na
+var float prevPLRSI = na
+var float lastPHPrice = na
+var float lastPHRSI = na
+var float prevPHPrice = na
+var float prevPHRSI = na
+
+if not na(pl)
+    prevPLPrice := lastPLPrice
+    prevPLRSI := lastPLRSI
+    lastPLPrice := pl
+    lastPLRSI := rsiVal[pivotRightBars]
+
+if not na(ph)
+    prevPHPrice := lastPHPrice
+    prevPHRSI := lastPHRSI
+    lastPHPrice := ph
+    lastPHRSI := rsiVal[pivotRightBars]
+
+bullishDiv = not na(pl) and not na(prevPLPrice)
+     and pl < prevPLPrice and lastPLRSI > prevPLRSI
+bearishDiv = not na(ph) and not na(prevPHPrice)
+     and ph > prevPHPrice and lastPHRSI < prevPHRSI
+
+var int lastBullDivBar = na
+var int lastBearDivBar = na
+if bullishDiv
+    lastBullDivBar := bar_index
+if bearishDiv
+    lastBearDivBar := bar_index
+
+recentBullDiv = not na(lastBullDivBar) and (bar_index - lastBullDivBar) <= divergenceRecencyBars
+recentBearDiv = not na(lastBearDivBar) and (bar_index - lastBearDivBar) <= divergenceRecencyBars
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 3 — volume-weighted buy/sell pressure (Chaikin-style CLV).
+// ─────────────────────────────────────────────────────────────────────────
+barRange = high - low
+clv = barRange == 0 ? 0.0 : ((close - low) - (high - close)) / barRange
+moneyFlowVol = clv * volume
+buyFlow = moneyFlowVol > 0 ? moneyFlowVol : 0.0
+sellFlow = moneyFlowVol < 0 ? -moneyFlowVol : 0.0
+sumBuy = math.sum(buyFlow, pressureLookback)
+sumSell = math.sum(sellFlow, pressureLookback)
+totalFlow = sumBuy + sumSell
+buyPct = totalFlow == 0 ? 50.0 : (sumBuy / totalFlow) * 100
+sellPct = 100 - buyPct
+
+pressureBullOK = buyPct >= pressureThreshold
+pressureBearOK = sellPct >= pressureThreshold
+
+// ─────────────────────────────────────────────────────────────────────────
+// Factor 4 — session timing.
+// ─────────────────────────────────────────────────────────────────────────
+inSession = not na(time(timeframe.period, sessionString, sessionTZ))
+sessionOK = not useSessionFilter or inSession
+
+// ─────────────────────────────────────────────────────────────────────────
+// Combine: find the nearest qualifying level, require a rejection candle,
+// then count how many of the 3 optional factors agree.
+// ─────────────────────────────────────────────────────────────────────────
+atrValSig = ta.atr(atrLenSignal)
+touchTol = touchToleranceATRMult * atrValSig
+slBuf = slBufferATRMult * atrValSig
+
+nearestIdx = -1
+nearestDist = 1e10
+if array.size(levelPrices) > 0
+    for j = 0 to array.size(levelPrices) - 1
+        d = math.abs(close - array.get(levelPrices, j))
+        if d < nearestDist
+            nearestDist := d
+            nearestIdx := j
+
+hasLevel = nearestIdx >= 0
+nearestLevel = hasLevel ? array.get(levelPrices, nearestIdx) : na
+nearestSupportPct = hasLevel ? array.get(levelSupportPct, nearestIdx) : na
+nearestResistPct = hasLevel ? array.get(levelResistPct, nearestIdx) : na
+nearestSampleSize = hasLevel ? array.get(levelSampleSize, nearestIdx) : 0
+sampleOK = nearestSampleSize >= minSampleSize
+
+longTouch = hasLevel and low <= nearestLevel + touchTol and close > nearestLevel
+shortTouch = hasLevel and high >= nearestLevel - touchTol and close < nearestLevel
+
+baseLongOK = longTouch and sampleOK and nearestSupportPct >= minSuccessPct
+baseShortOK = shortTouch and sampleOK and nearestResistPct >= minSuccessPct
+
+longPoints = (recentBullDiv ? 1 : 0) + (pressureBullOK ? 1 : 0) + (sessionOK ? 1 : 0)
+shortPoints = (recentBearDiv ? 1 : 0) + (pressureBearOK ? 1 : 0) + (sessionOK ? 1 : 0)
+
+var int lastSignalBar = na
+var int dailyTradeCount = 0
+if newDay
+    dailyTradeCount := 0
+
+canSignal = (na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars)
+     and dailyTradeCount < maxTradesPerDay
+
+longSignal = canSignal and baseLongOK and longPoints >= minConfluencePoints
+shortSignal = canSignal and baseShortOK and shortPoints >= minConfluencePoints
+
+if longSignal or shortSignal
+    lastSignalBar := bar_index
+    dailyTradeCount := dailyTradeCount + 1
+
+    isLong = longSignal
+    points = isLong ? longPoints : shortPoints
+    entryPrice = close
+    stopPrice = isLong ? nearestLevel - slBuf : nearestLevel + slBuf
+    riskDist = math.abs(entryPrice - stopPrice)
+
+    targetIdx = isLong ? nearestIdx + 1 : nearestIdx - 1
+    hasTarget = targetIdx >= 0 and targetIdx < array.size(levelPrices)
+    targetPrice = hasTarget ? array.get(levelPrices, targetIdx) :
+         (isLong ? entryPrice + riskDist * 1.5 : entryPrice - riskDist * 1.5)
+
+    sideColor = isLong ? color.teal : color.red
+    tagBar = bar_index + tagOffsetBars
+
+    sideText = (isLong ? "BUY " : "SELL ") + str.tostring(points) + "/3"
+    sideYloc = isLong ? yloc.belowbar : yloc.abovebar
+    sideStyle = isLong ? label.style_label_up : label.style_label_down
+    label.new(
+         bar_index,
+         isLong ? low : high,
+         sideText,
+         yloc = sideYloc,
+         style = sideStyle,
+         color = sideColor,
+         textcolor = color.white,
+         size = size.small)
+
+    line.new(
+         bar_index, stopPrice, tagBar, stopPrice,
+         color = color.red, style = line.style_dashed, width = 1)
+    line.new(
+         bar_index, targetPrice, tagBar, targetPrice,
+         color = color.teal, style = line.style_dashed, width = 1)
+
+    slPriceText = str.tostring(math.round_to_mintick(stopPrice))
+    slText = "🛑 SL " + slPriceText
+    label.new(
+         tagBar, stopPrice, slText,
+         style = label.style_label_left,
+         color = color.red,
+         textcolor = color.white,
+         size = size.small)
+
+    tpPriceText = str.tostring(math.round_to_mintick(targetPrice))
+    tpText = "🎯 TP " + tpPriceText
+    label.new(
+         tagBar, targetPrice, tpText,
+         style = label.style_label_left,
+         color = color.teal,
+         textcolor = color.white,
+         size = size.small)
+
+alertcondition(longSignal, title = "Confluence Long Signal",
+     message = "Confluence: bullish setup with multi-factor agreement")
+alertcondition(shortSignal, title = "Confluence Short Signal",
+     message = "Confluence: bearish setup with multi-factor agreement")
