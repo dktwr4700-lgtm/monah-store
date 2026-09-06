@@ -84,7 +84,7 @@ sessionTZ = input.string(
 // ─────────────────────────────────────────────────────────────────────────
 grpConfluence = "Confluence Rule"
 minConfluencePoints = input.int(
-     2, "Minimum Agreeing Factors (out of 3: divergence, pressure, session)",
+     1, "Minimum Agreeing Factors (out of 3: divergence, pressure, session)",
      minval = 0, maxval = 3, group = grpConfluence)
 
 grpRisk = "Risk / Signal Timing"
