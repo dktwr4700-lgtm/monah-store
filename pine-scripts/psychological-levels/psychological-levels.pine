@@ -12,8 +12,8 @@ indicator(
      "Psychological Levels (Round Numbers)",
      shorttitle = "PSY-LVL",
      overlay = true,
-     max_lines_count = 50,
-     max_labels_count = 50)
+     max_lines_count = 100,
+     max_labels_count = 200)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Inputs
@@ -39,6 +39,27 @@ recalcMode = input.string(
 grpStyle = "Style"
 lineColor = input.color(
      color.new(color.yellow, 20), "Level Color", group = grpStyle)
+
+grpSignal = "Trade Signals"
+showSignals = input.bool(
+     true, "Show Entry / SL / TP Signals", group = grpSignal)
+minSuccessPct = input.float(
+     65, "Minimum Historical Success % to Trade",
+     minval = 50, maxval = 99, group = grpSignal)
+touchToleranceATRMult = input.float(
+     0.15, "Touch Tolerance (x ATR)",
+     minval = 0.01, step = 0.05, group = grpSignal)
+slBufferATRMult = input.float(
+     0.3, "Stop-Loss Buffer Beyond Level (x ATR)",
+     minval = 0.05, step = 0.05, group = grpSignal)
+atrLenSignal = input.int(
+     14, "ATR Length", minval = 1, group = grpSignal)
+cooldownBars = input.int(
+     20, "Cooldown Between Signals (bars)", minval = 1, group = grpSignal)
+maxTradesPerDay = input.int(
+     3, "Max Trades Per Day", minval = 1, group = grpSignal)
+tagOffsetBars = input.int(
+     3, "Tag Offset (bars after signal)", minval = 1, group = grpSignal)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Same rejection-counting statistic the BIN S/R indicator uses: how many
@@ -76,6 +97,13 @@ shouldRecalc = recalcMode == "Every Bar (can jitter)" or needsRecalc
 var line[] lvlLines = array.new<line>()
 var label[] lvlLabels = array.new<label>()
 
+// Kept for the signal logic below — the level grid only changes once per
+// day, so these are populated at recalc time and reused every bar until
+// the next recalc, rather than recomputed on every single bar.
+var float[] levelPrices = array.new<float>()
+var float[] levelSupportPct = array.new<float>()
+var float[] levelResistPct = array.new<float>()
+
 if barstate.islast and shouldRecalc
     for ln in lvlLines
         line.delete(ln)
@@ -83,12 +111,19 @@ if barstate.islast and shouldRecalc
     for lb in lvlLabels
         label.delete(lb)
     array.clear(lvlLabels)
+    array.clear(levelPrices)
+    array.clear(levelSupportPct)
+    array.clear(levelResistPct)
 
     baseLevel = math.round(close / roundStep) * roundStep
 
     for i = -numLevelsEachSide to numLevelsEachSide
         level = baseLevel + i * roundStep
         [supportPct, resistPct] = calc_stats(level, lookback)
+
+        array.push(levelPrices, level)
+        array.push(levelSupportPct, supportPct)
+        array.push(levelResistPct, resistPct)
 
         array.push(
              lvlLines,
@@ -115,3 +150,114 @@ if barstate.islast and shouldRecalc
                   size = size.tiny))
 
     needsRecalc := false
+
+// ─────────────────────────────────────────────────────────────────────────
+// Entry / exit signals — find the level nearest to price among the grid
+// built above, require a rejection candle, filter by that level's own
+// historical success %, cap trades per day, cool down between signals.
+// ─────────────────────────────────────────────────────────────────────────
+atrValSig = ta.atr(atrLenSignal)
+touchTol = touchToleranceATRMult * atrValSig
+slBuf = slBufferATRMult * atrValSig
+
+nearestIdx = -1
+nearestDist = 1e10
+if array.size(levelPrices) > 0
+    for j = 0 to array.size(levelPrices) - 1
+        d = math.abs(close - array.get(levelPrices, j))
+        if d < nearestDist
+            nearestDist := d
+            nearestIdx := j
+
+hasLevel = nearestIdx >= 0
+nearestLevel = hasLevel ? array.get(levelPrices, nearestIdx) : na
+nearestSupportPct = hasLevel ? array.get(levelSupportPct, nearestIdx) : na
+nearestResistPct = hasLevel ? array.get(levelResistPct, nearestIdx) : na
+
+longTouch = hasLevel and low <= nearestLevel + touchTol and close > nearestLevel
+shortTouch = hasLevel and high >= nearestLevel - touchTol and close < nearestLevel
+
+var int lastSignalBar = na
+var int dailyTradeCount = 0
+if newDay
+    dailyTradeCount := 0
+
+canSignal = (na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars)
+     and dailyTradeCount < maxTradesPerDay
+
+longSignal = showSignals and canSignal and longTouch and nearestSupportPct >= minSuccessPct
+shortSignal = showSignals and canSignal and shortTouch and nearestResistPct >= minSuccessPct
+
+if longSignal or shortSignal
+    lastSignalBar := bar_index
+    dailyTradeCount := dailyTradeCount + 1
+
+    isLong = longSignal
+    entryPrice = close
+    stopPrice = isLong ? nearestLevel - slBuf : nearestLevel + slBuf
+    riskDist = math.abs(entryPrice - stopPrice)
+
+    targetIdx = isLong ? nearestIdx + 1 : nearestIdx - 1
+    hasTarget = targetIdx >= 0 and targetIdx < array.size(levelPrices)
+    targetPrice = hasTarget ? array.get(levelPrices, targetIdx) :
+         (isLong ? entryPrice + riskDist * 1.5 : entryPrice - riskDist * 1.5)
+
+    sideColor = isLong ? color.teal : color.red
+    tagBar = bar_index + tagOffsetBars
+
+    sideText = isLong ? "BUY" : "SELL"
+    sideYloc = isLong ? yloc.belowbar : yloc.abovebar
+    sideStyle = isLong ? label.style_label_up : label.style_label_down
+    label.new(
+         bar_index,
+         isLong ? low : high,
+         sideText,
+         yloc = sideYloc,
+         style = sideStyle,
+         color = sideColor,
+         textcolor = color.white,
+         size = size.small)
+
+    line.new(
+         bar_index,
+         stopPrice,
+         tagBar,
+         stopPrice,
+         color = color.red,
+         style = line.style_dashed,
+         width = 1)
+    line.new(
+         bar_index,
+         targetPrice,
+         tagBar,
+         targetPrice,
+         color = color.teal,
+         style = line.style_dashed,
+         width = 1)
+
+    slPriceText = str.tostring(math.round_to_mintick(stopPrice))
+    slText = "🛑 SL " + slPriceText
+    label.new(
+         tagBar,
+         stopPrice,
+         slText,
+         style = label.style_label_left,
+         color = color.red,
+         textcolor = color.white,
+         size = size.small)
+
+    tpPriceText = str.tostring(math.round_to_mintick(targetPrice))
+    tpText = "🎯 TP " + tpPriceText
+    label.new(
+         tagBar,
+         targetPrice,
+         tpText,
+         style = label.style_label_left,
+         color = color.teal,
+         textcolor = color.white,
+         size = size.small)
+
+alertcondition(longSignal, title = "PSY-LVL Long Signal",
+     message = "Psychological Levels: bullish bounce off a high-success round level")
+alertcondition(shortSignal, title = "PSY-LVL Short Signal",
+     message = "Psychological Levels: bearish rejection off a high-success round level")
