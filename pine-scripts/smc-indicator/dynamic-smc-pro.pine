@@ -266,3 +266,68 @@ if show_panel and barstate.islast
 
     table.cell(info_table, 0, 3, "Supply/Demand", text_color=color.white, text_size=size.small, bgcolor=#1f2937)
     table.cell(info_table, 1, 3, str.tostring(array.size(supply_boxes)) + " Sup / " + str.tostring(array.size(demand_boxes)) + " Dem", text_color=color.white, text_size=size.small, bgcolor=#1f2937)
+
+// ─────────────────────────────────────────────────────────────────────────
+// 9. TRADE SIGNAL ALERTS
+// Added by monah-store: encodes the manual reading rule for this
+// indicator into an automatic signal — SELL only fires when the
+// structure trend is bearish, price is in the Premium zone (above the
+// 0.50 EQ line), and price is actually touching a Supply zone; BUY is
+// the mirror image with Demand + Discount + a bullish trend. This is
+// the same three-part confluence check used to read the dashboard by
+// hand, just automated so TradingView can push an alert for it.
+// ─────────────────────────────────────────────────────────────────────────
+grpAlert = "===== TRADE SIGNAL ALERTS ====="
+show_trade_signals = input.bool(
+     true, "Show BUY/SELL Signal Labels", group=grpAlert)
+signal_cooldown = input.int(
+     20, "Cooldown Between Signals (bars)", minval=1, group=grpAlert)
+
+touchingSupply = false
+if show_zones and array.size(supply_boxes) > 0
+    for i = 0 to array.size(supply_boxes) - 1
+        b = array.get(supply_boxes, i)
+        boxTop = box.get_top(b)
+        boxBottom = box.get_bottom(b)
+        if high >= boxBottom and low <= boxTop
+            touchingSupply := true
+
+touchingDemand = false
+if show_zones and array.size(demand_boxes) > 0
+    for i = 0 to array.size(demand_boxes) - 1
+        b = array.get(demand_boxes, i)
+        boxTop = box.get_top(b)
+        boxBottom = box.get_bottom(b)
+        if high >= boxBottom and low <= boxTop
+            touchingDemand := true
+
+sellSetup = trend_direction == -1 and close > frozenEQ and touchingSupply
+buySetup  = trend_direction == 1 and close < frozenEQ and touchingDemand
+
+var int lastTradeSignalBar = na
+canFireSignal = na(lastTradeSignalBar) or (bar_index - lastTradeSignalBar) >= signal_cooldown
+
+sellSignal = show_trade_signals and sellSetup and canFireSignal
+buySignal  = show_trade_signals and buySetup and canFireSignal
+
+if sellSignal or buySignal
+    lastTradeSignalBar := bar_index
+
+    sigText = sellSignal ? "SELL" : "BUY"
+    sigYloc = sellSignal ? yloc.abovebar : yloc.belowbar
+    sigStyle = sellSignal ? label.style_label_down : label.style_label_up
+    sigColor = sellSignal ? color.new(#ff1744, 0) : color.new(#00e676, 0)
+    label.new(
+         bar_index,
+         sellSignal ? high : low,
+         sigText,
+         yloc = sigYloc,
+         style = sigStyle,
+         color = sigColor,
+         textcolor = color.white,
+         size = size.small)
+
+alertcondition(sellSignal, title = "SMC Sell Signal",
+     message = "Dynamic SMC: bearish trend + premium + supply zone touch")
+alertcondition(buySignal, title = "SMC Buy Signal",
+     message = "Dynamic SMC: bullish trend + discount + demand zone touch")
