@@ -1,0 +1,117 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation.
+//
+// Psychological (round-number) level indicator. Round numbers are not
+// drawn just because they "look important" — each level is measured
+// the same way the BIN Support/Resistance indicator measures its
+// levels: how many times price actually got rejected there historically,
+// shown as a support % and a resistance % right on the line. That is
+// the "something to depend on" — evidence per level, not just a grid.
+//@version=5
+indicator(
+     "Psychological Levels (Round Numbers)",
+     shorttitle = "PSY-LVL",
+     overlay = true,
+     max_lines_count = 50,
+     max_labels_count = 50)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Inputs
+// ─────────────────────────────────────────────────────────────────────────
+grpLevels = "Round Levels"
+roundStep = input.float(
+     100, "Round Number Step (e.g. 100 for US30, 25 for US500)",
+     minval = 0.01, group = grpLevels)
+numLevelsEachSide = input.int(
+     5, "How Many Levels Above / Below Price",
+     minval = 1, maxval = 15, group = grpLevels)
+offset = input.int(
+     50, "Extend Lines Right (bars)", minval = 1, group = grpLevels)
+
+grpStats = "Historical Success Stats"
+lookback = input.int(
+     500, "Lookback Bars for Success %", minval = 50, group = grpStats)
+recalcMode = input.string(
+     "Once Per Day", "Recalculate",
+     options = ["Once Per Day", "Every Bar (can jitter)"],
+     group = grpStats)
+
+grpStyle = "Style"
+lineColor = input.color(
+     color.new(color.yellow, 20), "Level Color", group = grpStyle)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Same rejection-counting statistic the BIN S/R indicator uses: how many
+// times price approached a level and got pushed back the other way.
+// ─────────────────────────────────────────────────────────────────────────
+calc_stats(level, lb) =>
+    bool bullish_rejection = high[2] >= level and close < level
+    bool bearish_rejection = low[2] <= level and close > level
+
+    int reject_bull = 0
+    int reject_bear = 0
+    for i = 0 to lb
+        if bullish_rejection[i]
+            reject_bull += 1
+        if bearish_rejection[i]
+            reject_bear += 1
+
+    total = reject_bull + reject_bear
+    support_success = total == 0 ? 0.0 : (reject_bear / total) * 100
+    resistance_success = total == 0 ? 0.0 : (reject_bull / total) * 100
+    [support_success, resistance_success]
+
+// ─────────────────────────────────────────────────────────────────────────
+// Recalculation gate — same fix as the BIN S/R indicator: only rebuild
+// the round-number grid and its stats once per day, so the lines stay
+// fixed instead of jittering as price moves the "nearest round number".
+// ─────────────────────────────────────────────────────────────────────────
+newDay = ta.change(time("D")) != 0
+var bool needsRecalc = true
+if newDay
+    needsRecalc := true
+
+shouldRecalc = recalcMode == "Every Bar (can jitter)" or needsRecalc
+
+var line[] lvlLines = array.new<line>()
+var label[] lvlLabels = array.new<label>()
+
+if barstate.islast and shouldRecalc
+    for ln in lvlLines
+        line.delete(ln)
+    array.clear(lvlLines)
+    for lb in lvlLabels
+        label.delete(lb)
+    array.clear(lvlLabels)
+
+    baseLevel = math.round(close / roundStep) * roundStep
+
+    for i = -numLevelsEachSide to numLevelsEachSide
+        level = baseLevel + i * roundStep
+        [supportPct, resistPct] = calc_stats(level, lookback)
+
+        array.push(
+             lvlLines,
+             line.new(
+                  bar_index - lookback,
+                  level,
+                  bar_index + offset,
+                  level,
+                  color = lineColor,
+                  width = 1))
+
+        supportText = str.tostring(math.round(supportPct, 0))
+        resistText = str.tostring(math.round(resistPct, 0))
+        labelText = "دعم " + supportText + "% • مقاومة " + resistText + "%"
+        array.push(
+             lvlLabels,
+             label.new(
+                  bar_index + offset,
+                  level,
+                  labelText,
+                  style = label.style_label_left,
+                  color = color.new(lineColor, 80),
+                  textcolor = lineColor,
+                  size = size.tiny))
+
+    needsRecalc := false
