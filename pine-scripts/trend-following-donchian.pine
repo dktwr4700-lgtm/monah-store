@@ -1,0 +1,87 @@
+//@version=5
+indicator("Trend Following - Donchian Breakout + EMA Filter", shorttitle="TF Donchian", overlay=true)
+
+// ============================== Inputs ==============================
+entryLen  = input.int(20, "Donchian Entry Length", minval=1, group="Entry / Exit", tooltip="Breakout channel used to trigger new entries (Turtle System 1 default: 20)")
+exitLen   = input.int(10, "Donchian Exit Length", minval=1, group="Entry / Exit", tooltip="Tighter channel used to close an open position")
+trendLen  = input.int(200, "EMA Trend Filter Length", minval=1, group="Trend Filter", tooltip="Only take longs above this EMA and shorts below it")
+atrLen    = input.int(20, "ATR Length", minval=1, group="Risk")
+atrMult   = input.float(2.0, "ATR Stop Multiplier", minval=0.1, step=0.1, group="Risk", tooltip="Initial and trailing stop distance = ATR x multiplier")
+showTable = input.bool(true, "Show Status Table", group="Display")
+
+// ============================== Calculations ==============================
+entryHigh = ta.highest(high, entryLen)[1]
+entryLow  = ta.lowest(low, entryLen)[1]
+exitHigh  = ta.highest(high, exitLen)[1]
+exitLow   = ta.lowest(low, exitLen)[1]
+
+emaTrend = ta.ema(close, trendLen)
+atrVal   = ta.atr(atrLen)
+
+uptrend   = close > emaTrend
+downtrend = close < emaTrend
+
+entryLongBreak  = close > entryHigh
+entryShortBreak = close < entryLow
+
+// ============================== Position state machine ==============================
+// An indicator can't hold a broker position, so we track our own signal state
+// to avoid re-firing the same signal every bar the breakout condition stays true.
+var int   posState  = 0    // 1 = long, -1 = short, 0 = flat
+var float stopLevel = na
+var float entryPrice = na
+
+longEntrySignal  = posState <= 0 and entryLongBreak  and uptrend
+shortEntrySignal = posState >= 0 and entryShortBreak and downtrend
+
+longExitSignal  = posState == 1  and (close < exitLow or close < stopLevel)
+shortExitSignal = posState == -1 and (close > exitHigh or close > stopLevel)
+
+if longEntrySignal
+    posState := 1
+    entryPrice := close
+    stopLevel := close - atrVal * atrMult
+else if shortEntrySignal
+    posState := -1
+    entryPrice := close
+    stopLevel := close + atrVal * atrMult
+else if longExitSignal or shortExitSignal
+    posState := 0
+    stopLevel := na
+    entryPrice := na
+else if posState == 1
+    // trail the stop up, never down
+    stopLevel := math.max(stopLevel, close - atrVal * atrMult)
+else if posState == -1
+    // trail the stop down, never up
+    stopLevel := math.min(stopLevel, close + atrVal * atrMult)
+
+// ============================== Plots ==============================
+plot(entryHigh, "Entry Channel High", color=color.new(color.teal, 40))
+plot(entryLow, "Entry Channel Low", color=color.new(color.maroon, 40))
+plot(emaTrend, "EMA Trend Filter", color=uptrend ? color.new(color.green, 0) : color.new(color.red, 0), linewidth=2)
+plot(posState != 0 ? stopLevel : na, "Trailing Stop", color=color.new(color.orange, 0), style=plot.style_circles, linewidth=2)
+
+bgcolor(uptrend ? color.new(color.green, 92) : color.new(color.red, 92))
+
+plotshape(longEntrySignal, title="Long Entry", style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, text="BUY")
+plotshape(shortEntrySignal, title="Short Entry", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, text="SELL")
+plotshape(longExitSignal, title="Long Exit", style=shape.xcross, location=location.abovebar, color=color.orange, size=size.tiny)
+plotshape(shortExitSignal, title="Short Exit", style=shape.xcross, location=location.belowbar, color=color.orange, size=size.tiny)
+
+// ============================== Alerts ==============================
+alertcondition(longEntrySignal, title="Long Entry", message="Trend Following: Long breakout above {{plot('Entry Channel High')}}")
+alertcondition(shortEntrySignal, title="Short Entry", message="Trend Following: Short breakout below {{plot('Entry Channel Low')}}")
+alertcondition(longExitSignal or shortExitSignal, title="Exit Signal", message="Trend Following: Exit signal - close or stop hit")
+
+// ============================== Status table ==============================
+if showTable
+    var table statusTable = table.new(position.top_right, 2, 4, border_width=1)
+    table.cell(statusTable, 0, 0, "Trend", bgcolor=color.gray, text_color=color.white)
+    table.cell(statusTable, 1, 0, uptrend ? "UP" : "DOWN", bgcolor=uptrend ? color.green : color.red, text_color=color.white)
+    table.cell(statusTable, 0, 1, "Position", bgcolor=color.gray, text_color=color.white)
+    table.cell(statusTable, 1, 1, posState == 1 ? "LONG" : posState == -1 ? "SHORT" : "FLAT", text_color=color.black)
+    table.cell(statusTable, 0, 2, "ATR", bgcolor=color.gray, text_color=color.white)
+    table.cell(statusTable, 1, 2, str.tostring(atrVal, format.mintick), text_color=color.black)
+    table.cell(statusTable, 0, 3, "Stop Level", bgcolor=color.gray, text_color=color.white)
+    table.cell(statusTable, 1, 3, na(stopLevel) ? "-" : str.tostring(stopLevel, format.mintick), text_color=color.black)
