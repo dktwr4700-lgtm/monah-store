@@ -18,7 +18,8 @@ const styles = `
   .admin-denied p{ color:#8A8677; font-size:14px; margin-top:8px; }
 
   .admin-stats{ display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
-  .admin-stat{ flex:1; min-width:140px; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:16px 18px; }
+  .admin-stat{ flex:1; min-width:140px; background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:16px 18px; text-align:right; cursor:pointer; font-family:'Cairo',sans-serif; }
+  .admin-stat:hover{ border-color:#16233F; }
   .admin-stat b{ display:block; font-family:'Almarai', sans-serif; font-weight:800; font-size:22px; }
   .admin-stat span{ color:#8A8677; font-size:12.5px; }
 
@@ -154,6 +155,7 @@ export default function AdminDashboard() {
   const [planDrafts, setPlanDrafts] = useState({});
   const [savingPlanId, setSavingPlanId] = useState(null);
   const [deletingOrderId, setDeletingOrderId] = useState(null);
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
 
   useEffect(() => {
@@ -571,41 +573,41 @@ export default function AdminDashboard() {
         </div>
 
         <div className="admin-stats">
-          <div className="admin-stat">
+          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("all"); }}>
             <b>{sellers.length}</b>
             <span>إجمالي التجار</span>
-          </div>
-          <div className="admin-stat">
+          </button>
+          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}>
             <b>{activeCount}</b>
             <span>حسابات نشطة</span>
-          </div>
-          <div className="admin-stat">
+          </button>
+          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("disabled"); }}>
             <b>{disabledCount}</b>
             <span>حسابات موقوفة</span>
-          </div>
-          <div className="admin-stat">
+          </button>
+          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("expiring"); }}>
             <b>{expiringSoonCount}</b>
             <span>اشتراكات تنتهي خلال أسبوع</span>
-          </div>
+          </button>
         </div>
 
         <div className="admin-stats">
-          <div className="admin-stat">
+          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}>
             <b>{monthlyRevenue.toFixed(2)} ر.ع</b>
             <span>الإيراد الشهري التقريبي</span>
-          </div>
-          <div className="admin-stat">
+          </button>
+          <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("all"); }}>
             <b>{ordersLoading ? "…" : orders.length}</b>
             <span>إجمالي الطلبات</span>
-          </div>
-          <div className="admin-stat">
+          </button>
+          <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("awaiting_seller_confirmation"); }}>
             <b>{ordersLoading ? "…" : pendingOrders.length}</b>
             <span>بانتظار تأكيد التاجر</span>
-          </div>
-          <div className="admin-stat">
+          </button>
+          <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("confirmed"); }}>
             <b>{ordersLoading ? "…" : totalSalesVolume.toFixed(2)} ر.ع</b>
             <span>إجمالي المبيعات المؤكدة</span>
-          </div>
+          </button>
         </div>
 
         <div className="admin-tabs">
@@ -876,12 +878,21 @@ export default function AdminDashboard() {
 
         {view === "orders" && (
           <>
+            <div className="admin-filters">
+              <select value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)}>
+                <option value="all">كل الحالات</option>
+                <option value="confirmed">مؤكد</option>
+                <option value="awaiting_seller_confirmation">بانتظار تأكيد التاجر</option>
+                <option value="draft">بانتظار التحويل</option>
+              </select>
+            </div>
             {ordersLoading && <div className="loading">جاري تحميل الطلبات...</div>}
-            {!ordersLoading && orders.length === 0 && (
-              <div className="empty">ما فيه طلبات بالمنصة لسا</div>
+            {!ordersLoading && orders.filter((o) => orderStatusFilter === "all" || o.status === orderStatusFilter).length === 0 && (
+              <div className="empty">ما فيه طلبات مطابقة</div>
             )}
             {!ordersLoading &&
-              [...orders]
+              orders
+                .filter((o) => orderStatusFilter === "all" || o.status === orderStatusFilter)
                 .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
                 .map((o) => {
                   const owner = sellers.find((s) => s.id === o.ownerId);
