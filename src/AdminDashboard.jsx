@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
+import { BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
 
@@ -22,6 +23,21 @@ const styles = `
   .admin-stat span{ color:#8A8677; font-size:12.5px; }
 
   .admin-search{ width:100%; padding:12px 14px; border:1px solid #E4E0D3; border-radius:10px; font-size:13.5px; font-family:'Cairo',sans-serif; margin-bottom:16px; background:#fff; color:#16233F; }
+  .admin-filters{ display:flex; gap:9px; margin-bottom:16px; flex-wrap:wrap; }
+  .admin-filters select{ flex:1; min-width:140px; padding:10px 12px; border:1px solid #E4E0D3; border-radius:10px; font-size:12.5px; font-family:'Cairo',sans-serif; background:#fff; color:#16233F; }
+  .plan-row{ display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .plan-row label{ font-size:11.5px; color:#625F55; font-weight:800; white-space:nowrap; }
+  .plan-row select{ border:1px solid #E4E0D3; border-radius:8px; padding:7px 9px; font:12.5px 'Cairo',sans-serif; background:#FBFAF7; color:#16233F; }
+  .plan-row button{ border:0; border-radius:8px; padding:7px 12px; font-size:11.5px; font-weight:700; background:#16233F; color:#fff; cursor:pointer; white-space:nowrap; }
+  .plan-row button:disabled{ opacity:.6; }
+  .detail-section{ margin-top:14px; padding-top:14px; border-top:1px dashed #E4E0D3; }
+  .detail-heading{ font-size:12px; font-weight:800; color:#16233F; margin-bottom:8px; }
+  .detail-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px dashed #EFEBDE; font-size:12px; }
+  .detail-row:first-child{ border-top:none; }
+  .detail-empty{ color:#8A8677; font-size:12px; padding:6px 0; }
+  .gateway-badge{ display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:100px; margin-inline-start:8px; }
+  .gateway-on{ background:#EAF0EB; color:#4B6152; }
+  .gateway-off{ background:#F3EBDD; color:#8A5B18; }
 
   .seller-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:16px 18px; margin-bottom:10px; }
   .seller-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; cursor:pointer; }
@@ -129,6 +145,15 @@ export default function AdminDashboard() {
   const [revokingInviteId, setRevokingInviteId] = useState("");
   const [deletingInviteId, setDeletingInviteId] = useState("");
 
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [sellerCoupons, setSellerCoupons] = useState({});
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [planFilter, setPlanFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [planDrafts, setPlanDrafts] = useState({});
+  const [savingPlanId, setSavingPlanId] = useState(null);
+
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -143,7 +168,19 @@ export default function AdminDashboard() {
     loadSellers();
     loadInvites();
     loadSellerStatus();
+    loadOrders();
   }, [authChecked, currentUser]);
+
+  async function loadOrders() {
+    setOrdersLoading(true);
+    try {
+      const snap = await getDocs(collection(db, "orders"));
+      setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error(e);
+    }
+    setOrdersLoading(false);
+  }
 
   async function loadSellers() {
     setLoading(true);
@@ -293,12 +330,21 @@ export default function AdminDashboard() {
     if (!ok) return;
     setBusyId(seller.id);
     try {
-      const productsSnap = await getDocs(query(collection(db, "products"), where("ownerId", "==", seller.id)));
-      await Promise.all(productsSnap.docs.map((p) => deleteDoc(p.ref)));
+      const [productsSnap, couponsSnap, bundlesSnap] = await Promise.all([
+        getDocs(query(collection(db, "products"), where("ownerId", "==", seller.id))),
+        getDocs(query(collection(db, "coupons"), where("ownerId", "==", seller.id))),
+        getDocs(query(collection(db, "bundles"), where("ownerId", "==", seller.id))),
+      ]);
+      await Promise.all([
+        ...productsSnap.docs.map((p) => deleteDoc(p.ref)),
+        ...couponsSnap.docs.map((c) => deleteDoc(c.ref)),
+        ...bundlesSnap.docs.map((b) => deleteDoc(b.ref)),
+      ]);
       await deleteDoc(doc(db, "sellers", seller.id));
       setSellers((prev) => prev.filter((s) => s.id !== seller.id));
       setAllProducts((prev) => prev.filter((p) => p.ownerId !== seller.id));
       setSellerProducts((prev) => { const next = { ...prev }; delete next[seller.id]; return next; });
+      setSellerCoupons((prev) => { const next = { ...prev }; delete next[seller.id]; return next; });
     } catch (e) {
       console.error(e);
     }
@@ -311,18 +357,48 @@ export default function AdminDashboard() {
       return;
     }
     setExpandedId(sellerId);
-    if (sellerProducts[sellerId]) return;
-    setProductsLoading(true);
+    if (!sellerProducts[sellerId]) {
+      setProductsLoading(true);
+      try {
+        const q = query(collection(db, "products"), where("ownerId", "==", sellerId));
+        const snap = await getDocs(q);
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setSellerProducts((prev) => ({ ...prev, [sellerId]: list }));
+      } catch (e) {
+        console.error(e);
+        setSellerProducts((prev) => ({ ...prev, [sellerId]: [] }));
+      }
+      setProductsLoading(false);
+    }
+    if (!sellerCoupons[sellerId]) {
+      setCouponsLoading(true);
+      try {
+        const q = query(collection(db, "coupons"), where("ownerId", "==", sellerId));
+        const snap = await getDocs(q);
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setSellerCoupons((prev) => ({ ...prev, [sellerId]: list }));
+      } catch (e) {
+        console.error(e);
+        setSellerCoupons((prev) => ({ ...prev, [sellerId]: [] }));
+      }
+      setCouponsLoading(false);
+    }
+  }
+
+  function planDraftFor(seller) {
+    return planDrafts[seller.id] ?? seller.plan ?? "basic";
+  }
+
+  async function savePlan(seller) {
+    const value = planDraftFor(seller);
+    setSavingPlanId(seller.id);
     try {
-      const q = query(collection(db, "products"), where("ownerId", "==", sellerId));
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setSellerProducts((prev) => ({ ...prev, [sellerId]: list }));
+      await updateDoc(doc(db, "sellers", seller.id), { plan: value });
+      setSellers((prev) => prev.map((s) => (s.id === seller.id ? { ...s, plan: value } : s)));
     } catch (e) {
       console.error(e);
-      setSellerProducts((prev) => ({ ...prev, [sellerId]: [] }));
     }
-    setProductsLoading(false);
+    setSavingPlanId(null);
   }
 
   async function deleteProduct(sellerId, product) {
@@ -427,17 +503,39 @@ export default function AdminDashboard() {
     );
   }
 
+  function isExpiringSoon(seller) {
+    if (!seller.subscriptionExpiresAt) return false;
+    const days = (new Date(seller.subscriptionExpiresAt) - new Date()) / (24 * 60 * 60 * 1000);
+    return days >= 0 && days <= 7;
+  }
+
   const filtered = sellers.filter((s) => {
     const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (s.storeName || "").toLowerCase().includes(q) ||
-      (s.email || "").toLowerCase().includes(q)
-    );
+    const matchesSearch = !q || (s.storeName || "").toLowerCase().includes(q) || (s.email || "").toLowerCase().includes(q);
+    const matchesPlan = planFilter === "all" || (s.plan || "basic") === planFilter;
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && !s.disabled) ||
+      (statusFilter === "disabled" && s.disabled) ||
+      (statusFilter === "expiring" && isExpiringSoon(s));
+    return matchesSearch && matchesPlan && matchesStatus;
   });
 
   const activeCount = sellers.filter((s) => !s.disabled).length;
   const disabledCount = sellers.filter((s) => s.disabled).length;
+  const activeSubscribers = sellers.filter((s) => !s.disabled && !isSubscriptionExpired(s)).length;
+  const monthlyRevenue = activeSubscribers * BASE_MONTHLY_PRICE;
+  const expiringSoonCount = sellers.filter(isExpiringSoon).length;
+
+  const confirmedOrders = orders.filter((o) => o.status === "confirmed");
+  const pendingOrders = orders.filter((o) => o.status === "awaiting_seller_confirmation");
+  const totalSalesVolume = confirmedOrders.reduce((sum, o) => sum + Number(o.price || 0), 0);
+
+  const orderStatusLabel = {
+    confirmed: "مؤكد",
+    awaiting_seller_confirmation: "بانتظار تأكيد التاجر",
+    draft: "بانتظار التحويل",
+  };
 
   return (
     <div className="admin-page" dir="rtl" lang="ar">
@@ -463,6 +561,29 @@ export default function AdminDashboard() {
             <b>{disabledCount}</b>
             <span>حسابات موقوفة</span>
           </div>
+          <div className="admin-stat">
+            <b>{expiringSoonCount}</b>
+            <span>اشتراكات تنتهي خلال أسبوع</span>
+          </div>
+        </div>
+
+        <div className="admin-stats">
+          <div className="admin-stat">
+            <b>{monthlyRevenue.toFixed(2)} ر.ع</b>
+            <span>الإيراد الشهري التقريبي</span>
+          </div>
+          <div className="admin-stat">
+            <b>{ordersLoading ? "…" : orders.length}</b>
+            <span>إجمالي الطلبات</span>
+          </div>
+          <div className="admin-stat">
+            <b>{ordersLoading ? "…" : pendingOrders.length}</b>
+            <span>بانتظار تأكيد التاجر</span>
+          </div>
+          <div className="admin-stat">
+            <b>{ordersLoading ? "…" : totalSalesVolume.toFixed(2)} ر.ع</b>
+            <span>إجمالي المبيعات المؤكدة</span>
+          </div>
         </div>
 
         <div className="admin-tabs">
@@ -484,6 +605,23 @@ export default function AdminDashboard() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        )}
+
+        {view === "sellers" && (
+        <div className="admin-filters">
+          <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}>
+            <option value="all">كل الباقات</option>
+            <option value="basic">أساسية</option>
+            <option value="pro">احترافية</option>
+            <option value="full">متجر متكامل</option>
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">كل الحالات</option>
+            <option value="active">نشط</option>
+            <option value="disabled">موقوف</option>
+            <option value="expiring">اشتراك قارب ينتهي</option>
+          </select>
+        </div>
         )}
 
         {view === "sellers" && loading && <div className="loading">جاري تحميل التجار...</div>}
@@ -521,6 +659,9 @@ export default function AdminDashboard() {
                 {emailVerifiedMap[s.id] === true && (
                   <span className="seller-badge badge-active">البريد مؤكد</span>
                 )}
+                <span className={"gateway-badge " + (s.paymentGateway?.provider ? "gateway-on" : "gateway-off")}>
+                  {s.paymentGateway?.provider ? "بوابة دفع مربوطة" : "تحويل يدوي"}
+                </span>
               </div>
 
               <div className="expiry-row">
@@ -542,37 +683,96 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              <div className="plan-row">
+                <label htmlFor={`plan-${s.id}`}>الباقة:</label>
+                <select
+                  id={`plan-${s.id}`}
+                  value={planDraftFor(s)}
+                  onChange={(e) => setPlanDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                >
+                  <option value="basic">أساسية</option>
+                  <option value="pro">احترافية</option>
+                  <option value="full">متجر متكامل</option>
+                </select>
+                <button type="button" disabled={savingPlanId === s.id} onClick={() => savePlan(s)}>
+                  {savingPlanId === s.id ? "جاري الحفظ..." : "حفظ الباقة"}
+                </button>
+              </div>
+
               <div className="seller-expand-hint" onClick={() => toggleExpand(s.id)}>
-                {expandedId === s.id ? "إخفاء المنتجات ▲" : "عرض المنتجات ▼"}
+                {expandedId === s.id ? "إخفاء التفاصيل الكاملة ▲" : "عرض التفاصيل الكاملة ▼"}
               </div>
 
               {expandedId === s.id && (
-                <div className="products-box">
-                  {productsLoading && !sellerProducts[s.id] && (
-                    <div className="products-loading">جاري تحميل المنتجات...</div>
-                  )}
-                  {sellerProducts[s.id] && sellerProducts[s.id].length === 0 && (
-                    <div className="products-empty">ما عنده أي منتج مضاف.</div>
-                  )}
-                  {sellerProducts[s.id] &&
-                    sellerProducts[s.id].map((p) => (
-                      <div className="product-row" key={p.id}>
-                        <div className="product-info">
-                          <div className="product-name">{p.name}</div>
-                          <div className="product-sub">
-                            {p.price} ر.ع · {p.category || "عام"} · {p.type === "code" ? "كود/ترخيص" : "ملف"}
+                <>
+                  <div className="products-box">
+                    <div className="detail-heading">المنتجات</div>
+                    {productsLoading && !sellerProducts[s.id] && (
+                      <div className="products-loading">جاري تحميل المنتجات...</div>
+                    )}
+                    {sellerProducts[s.id] && sellerProducts[s.id].length === 0 && (
+                      <div className="products-empty">ما عنده أي منتج مضاف.</div>
+                    )}
+                    {sellerProducts[s.id] &&
+                      sellerProducts[s.id].map((p) => (
+                        <div className="product-row" key={p.id}>
+                          <div className="product-info">
+                            <div className="product-name">{p.name}</div>
+                            <div className="product-sub">
+                              {p.price} ر.ع · {p.category || "عام"} · {p.type === "code" ? "كود/ترخيص" : "ملف"}
+                            </div>
                           </div>
+                          <button
+                            className="product-del"
+                            disabled={deletingProductId === p.id}
+                            onClick={() => deleteProduct(s.id, p)}
+                          >
+                            {deletingProductId === p.id ? "جاري الحذف..." : "حذف"}
+                          </button>
                         </div>
-                        <button
-                          className="product-del"
-                          disabled={deletingProductId === p.id}
-                          onClick={() => deleteProduct(s.id, p)}
-                        >
-                          {deletingProductId === p.id ? "جاري الحذف..." : "حذف"}
-                        </button>
-                      </div>
-                    ))}
-                </div>
+                      ))}
+                  </div>
+
+                  <div className="detail-section">
+                    <div className="detail-heading">آخر الطلبات</div>
+                    {orders.filter((o) => o.ownerId === s.id).length === 0 && (
+                      <div className="detail-empty">ما فيه طلبات لهذا المتجر بعد.</div>
+                    )}
+                    {orders
+                      .filter((o) => o.ownerId === s.id)
+                      .slice(0, 15)
+                      .map((o) => (
+                        <div className="detail-row" key={o.id}>
+                          <span>{o.productName || "طلب"}</span>
+                          <span>{Number(o.price || 0).toFixed(2)} ر.ع · {orderStatusLabel[o.status] || o.status}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  <div className="detail-section">
+                    <div className="detail-heading">الكوبونات</div>
+                    {couponsLoading && !sellerCoupons[s.id] && (
+                      <div className="detail-empty">جاري تحميل الكوبونات...</div>
+                    )}
+                    {sellerCoupons[s.id] && sellerCoupons[s.id].length === 0 && (
+                      <div className="detail-empty">ما عنده أي كوبون.</div>
+                    )}
+                    {sellerCoupons[s.id] &&
+                      sellerCoupons[s.id].map((c) => (
+                        <div className="detail-row" key={c.id}>
+                          <span>{c.code}</span>
+                          <span>خصم {c.discountPercent}٪ · {c.active ? "فعّال" : "متوقف"}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  <div className="detail-section">
+                    <div className="detail-heading">تعليمات التحويل اليدوي</div>
+                    <div className="detail-empty" style={{ whiteSpace: "pre-line" }}>
+                      {s.paymentInstructions || "لم يضف التاجر تعليمات تحويل بعد."}
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="seller-actions">
