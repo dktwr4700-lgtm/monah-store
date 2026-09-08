@@ -14,6 +14,10 @@ const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const MONTHLY_PLAN_PRICE = 5;
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
+const CUSTOM_DOMAIN_PRICE = 4;
+const CUSTOM_DOMAIN_PERIOD_MS = 365 * 24 * 60 * 60 * 1000;
+const DOMAIN_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
+const RESERVED_DOMAIN_SLUGS = new Set(["www", "api", "admin", "app", "store", "mail", "monah", "dashboard", "assets", "static"]);
 
 class SignupError extends Error {
   constructor(code, message) {
@@ -28,6 +32,16 @@ function cleanText(value, maxLength) {
 
 function cleanEmail(value) {
   return cleanText(value, 160).toLowerCase();
+}
+
+function cleanDomainSlug(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30);
+}
+
+async function domainSlugAvailable(slug, excludeUid) {
+  if (!DOMAIN_SLUG_PATTERN.test(slug) || RESERVED_DOMAIN_SLUGS.has(slug)) return false;
+  const existing = await db.collection("sellers").where("customDomainSlug", "==", slug).limit(1).get();
+  return existing.empty || existing.docs[0].id === excludeUid;
 }
 
 function isoDate(date) {
@@ -161,6 +175,82 @@ async function verifyCardCharge(req, res) {
   return res.status(200).json({ paid: true });
 }
 
+async function checkDomainSlug(req, res) {
+  const account = await authenticatedAccount(req);
+  const slug = cleanDomainSlug(req.body?.slug);
+  if (slug.length < 3) return res.status(200).json({ available: false, slug, reason: "اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل." });
+  const available = await domainSlugAvailable(slug, account.uid);
+  return res.status(200).json({ available, slug, reason: available ? "" : "هذا الاسم محجوز، جرّب اسمًا آخر." });
+}
+
+async function createDomainCharge(req, res) {
+  const account = await authenticatedAccount(req);
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
+  const seller = sellerSnap.data();
+
+  const slug = cleanDomainSlug(req.body?.slug);
+  if (slug.length < 3) throw new SignupError(400, "اكتب اسم دومين من 3 أحرف إنجليزية أو أرقام على الأقل.");
+  const available = await domainSlugAvailable(slug, account.uid);
+  if (!available) throw new SignupError(409, "هذا الاسم محجوز، جرّب اسمًا آخر.");
+
+  const origin = `https://${req.headers.host || "monah-app.com"}`;
+  const charge = await tapRequest("POST", "/charges/", {
+    amount: CUSTOM_DOMAIN_PRICE,
+    currency: "OMR",
+    customer: {
+      first_name: seller.storeName || "تاجر مُونَة",
+      email: account.email,
+    },
+    source: { id: "src_all" },
+    threeDSecure: true,
+    statement_descriptor: "MONAH",
+    description: `دومين فرعي خاص - ${slug}.monah-app.com - سنة واحدة`,
+    reference: { order: `domain-${account.uid}` },
+    metadata: { uid: account.uid, domainSlug: slug },
+    redirect: { url: `${origin}/#store-pay-result/domain-${account.uid}` },
+  }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
+
+  if (!charge.id || !charge.transaction?.url) {
+    throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
+  }
+  await sellerRef.update({ pendingDomainSlug: slug, pendingDomainChargeId: charge.id });
+  return res.status(200).json({ url: charge.transaction.url });
+}
+
+async function verifyDomainCharge(req, res) {
+  const account = await authenticatedAccount(req);
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
+  const seller = sellerSnap.data();
+  if (!seller.pendingDomainChargeId || !seller.pendingDomainSlug) {
+    if (seller.customDomainSlug) return res.status(200).json({ paid: true, slug: seller.customDomainSlug });
+    throw new SignupError(409, "لا توجد عملية شراء دومين لهذا الحساب.");
+  }
+
+  const charge = await tapRequest("GET", `/charges/${seller.pendingDomainChargeId}`)
+    .catch((error) => { throw new SignupError(error.code || 502, error.message); });
+  if (charge.status !== "CAPTURED") {
+    return res.status(200).json({ paid: false, status: charge.status || "unknown" });
+  }
+
+  const slug = seller.pendingDomainSlug;
+  const available = await domainSlugAvailable(slug, account.uid);
+  if (!available) {
+    await sellerRef.update({ pendingDomainSlug: FieldValue.delete(), pendingDomainChargeId: FieldValue.delete() });
+    throw new SignupError(409, "للأسف صار هذا الاسم محجوزًا قبل ما نأكد دفعتك. تواصل معنا لاسترجاع المبلغ.");
+  }
+  await sellerRef.update({
+    customDomainSlug: slug,
+    customDomainExpiresAt: isoDate(new Date(Date.now() + CUSTOM_DOMAIN_PERIOD_MS)),
+    pendingDomainSlug: FieldValue.delete(),
+    pendingDomainChargeId: FieldValue.delete(),
+  });
+  return res.status(200).json({ paid: true, slug });
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
@@ -173,6 +263,9 @@ export default async function handler(req, res) {
     if (action === "status") return await status(req, res);
     if (action === "create_card_charge") return await createCardCharge(req, res);
     if (action === "verify_card_charge") return await verifyCardCharge(req, res);
+    if (action === "check_domain_slug") return await checkDomainSlug(req, res);
+    if (action === "create_domain_charge") return await createDomainCharge(req, res);
+    if (action === "verify_domain_charge") return await verifyDomainCharge(req, res);
     return res.status(400).json({ error: "طلب غير واضح." });
   } catch (error) {
     if (error instanceof SignupError) return res.status(error.code).json({ error: error.message });

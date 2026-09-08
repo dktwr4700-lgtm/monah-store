@@ -10,7 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import GrowthAssistant from "./GrowthAssistant.jsx";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_ANNUAL_PRICE } from "./subscriptionCatalog.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -321,7 +321,7 @@ export default function Dashboard() {
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
     const t = parts[1];
-    return ["overview", "products", "coupons", "orders", "settings", "payment", "gateway", "loyalty", "design", "subscription"].includes(t) ? t : "overview";
+    return ["overview", "products", "coupons", "orders", "settings", "payment", "gateway", "loyalty", "design", "subscription", "domain"].includes(t) ? t : "overview";
   }
   const [tab, setTabState] = useState(getTabFromHash);
 
@@ -436,6 +436,13 @@ export default function Dashboard() {
   const [tapSecretKey, setTapSecretKey] = useState("");
   const [savingGateway, setSavingGateway] = useState(false);
   const [gatewayMessage, setGatewayMessage] = useState("");
+  const [customDomainSlug, setCustomDomainSlug] = useState("");
+  const [customDomainExpiresAt, setCustomDomainExpiresAt] = useState("");
+  const [domainSlugInput, setDomainSlugInput] = useState("");
+  const [domainChecking, setDomainChecking] = useState(false);
+  const [domainAvailable, setDomainAvailable] = useState(null);
+  const [domainBuying, setDomainBuying] = useState(false);
+  const [domainMessage, setDomainMessage] = useState("");
 
   // overview: sales
   const [sellerOrders, setSellerOrders] = useState([]);
@@ -476,6 +483,8 @@ export default function Dashboard() {
         setSellerStoreType(snap.data().storeType || "files");
         setPaymentInstructions(snap.data().paymentInstructions || "");
         setGatewayConnected(Boolean(snap.data().paymentGateway?.provider));
+        setCustomDomainSlug(snap.data().customDomainSlug || "");
+        setCustomDomainExpiresAt(snap.data().customDomainExpiresAt || "");
         setRepeatCouponEnabled(Boolean(snap.data().repeatCouponEnabled));
         setRepeatCouponPercent(Number(snap.data().repeatCouponPercent) || 10);
         setSellerAccess("active");
@@ -1251,6 +1260,55 @@ export default function Dashboard() {
       setGatewayMessage(err.message || "تعذر إلغاء الربط الآن.");
     }
     setSavingGateway(false);
+  }
+
+  async function domainSignupRequest(action, extra) {
+    const idToken = await user.getIdToken();
+    const response = await fetch("/api/merchant-signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "تعذر تنفيذ العملية الآن.");
+    return data;
+  }
+
+  async function checkDomainSlug() {
+    const cleanSlug = domainSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (cleanSlug.length < 3) {
+      setDomainAvailable(false);
+      setDomainMessage("اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+      return;
+    }
+    setDomainChecking(true);
+    setDomainMessage("");
+    try {
+      const data = await domainSignupRequest("check_domain_slug", { slug: cleanSlug });
+      setDomainAvailable(data.available);
+      setDomainMessage(data.available ? "متاح! تقدر تكمل الشراء." : (data.reason || "هذا الاسم محجوز."));
+    } catch (err) {
+      setDomainAvailable(null);
+      setDomainMessage(err.message || "تعذر التحقق الآن.");
+    }
+    setDomainChecking(false);
+  }
+
+  async function buyDomain() {
+    const cleanSlug = domainSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (cleanSlug.length < 3) {
+      setDomainMessage("اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+      return;
+    }
+    setDomainBuying(true);
+    setDomainMessage("");
+    try {
+      const data = await domainSignupRequest("create_domain_charge", { slug: cleanSlug });
+      window.location.assign(data.url);
+    } catch (err) {
+      setDomainMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
+      setDomainBuying(false);
+    }
   }
 
   async function deleteCoupon(couponId) {
@@ -2090,6 +2148,10 @@ export default function Dashboard() {
               <div><b>هوية المتجر</b><span>الاسم، الشعار، اللون، الأسئلة الشائعة</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
+            <button className="dh-settings-row" type="button" onClick={() => setTab("domain")}>
+              <div><b>رابط متجرك ودومينك الخاص</b><span>{customDomainSlug ? `${customDomainSlug}.monah-app.com` : "الرابط المجاني مفعّل · دومين خاص اختياري"}</span></div>
+              <span className="dh-settings-chev">‹</span>
+            </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("subscription")}>
               <div><b>الاشتراك والباقة</b><span>باقة أساسية · {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا</span></div>
               <span className="dh-settings-chev">‹</span>
@@ -2135,6 +2197,69 @@ export default function Dashboard() {
                 </>
               )}
               {gatewayMessage && <div className={gatewayMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{gatewayMessage}</div>}
+            </div>
+          </>
+        )}
+
+        {tab === "domain" && (
+          <>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 10 }}>الخيار المجاني — رابط متجرك</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>هذا الرابط شغال دائمًا ومجانًا، وتقدر تغيّر جزءه الأخير من تبويب "هوية المتجر".</p>
+              <div className="dh-store-label">رابط متجرك العام</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span className="dh-store-url">{storeUrl}</span>
+              </div>
+              <button className="dh-btn" type="button" style={{ marginTop: 12 }} onClick={() => copyLink(slug || user.uid, "store")}>
+                {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط" : "نسخ الرابط"}
+              </button>
+            </div>
+
+            <div className="dh-card" style={{ borderTop: "3px solid #163F2E" }}>
+              <div className="dh-title-row">
+                <div>
+                  <div className="dh-title">الخيار المدفوع — دومين فرعي خاص باسم متجرك</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>عنوان أقصر وأسهل يتذكره عملاؤك، منفصل تمامًا عن اشتراكك الشهري.</div>
+                </div>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{CUSTOM_DOMAIN_ANNUAL_PRICE.toFixed(2)} ر.ع / سنة</b>
+              </div>
+
+              {customDomainSlug ? (
+                <>
+                  <div className="dh-store-label" style={{ marginTop: 12 }}>دومينك الحالي</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span className="dh-store-url" style={{ direction: "ltr" }}>{`https://${customDomainSlug}.monah-app.com`}</span>
+                  </div>
+                  {customDomainExpiresAt && <div className="dh-hint" style={{ marginTop: 8 }}>ساري حتى {customDomainExpiresAt}. تواصل معنا قبل انتهاء التاريخ لتجديده.</div>}
+                </>
+              ) : (
+                <>
+                  <div className="dh-field" style={{ marginTop: 12 }}>
+                    <label>اختر اسم دومينك</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="text"
+                        value={domainSlugInput}
+                        onChange={(e) => { setDomainSlugInput(e.target.value); setDomainAvailable(null); setDomainMessage(""); }}
+                        placeholder="hind"
+                        style={{ direction: "ltr", textAlign: "right" }}
+                      />
+                      <span className="dh-hint" style={{ whiteSpace: "nowrap" }}>.monah-app.com</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button className="dh-btn" type="button" disabled={domainChecking} onClick={checkDomainSlug}>
+                      {domainChecking ? "جاري التحقق..." : "تحقق من التوفر"}
+                    </button>
+                    <button className="dh-btn" type="button" disabled={domainAvailable !== true || domainBuying} onClick={buyDomain}>
+                      {domainBuying ? "جاري تجهيز الدفع..." : `ادفع ${CUSTOM_DOMAIN_ANNUAL_PRICE.toFixed(2)} ر.ع واشترِ الدومين`}
+                    </button>
+                  </div>
+                  {domainMessage && <div className={domainAvailable ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{domainMessage}</div>}
+                </>
+              )}
             </div>
           </>
         )}
