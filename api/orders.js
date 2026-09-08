@@ -4,7 +4,6 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
-import { tapRequest as tapRequestRaw, splitPhoneForTap } from "../lib/tap-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -449,77 +448,6 @@ async function confirmPayment(req, res, account) {
   return res.status(200).json({ ok: true, alreadyConfirmed: result.alreadyConfirmed, type: result.type });
 }
 
-async function tapRequest(method, path, body) {
-  try {
-    return await tapRequestRaw(method, path, body);
-  } catch (error) {
-    throw new OrderError(error.code || 502, error.message);
-  }
-}
-
-async function createCardCharge(req, res, account) {
-  const orderId = cleanText(req.body?.orderId, 160);
-  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
-  const orderRef = db.collection("orders").doc(orderId);
-  const orderSnap = await orderRef.get();
-  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
-    throw new OrderError(403, "لا تملك هذا الطلب.");
-  }
-  const order = orderSnap.data();
-  if (order.status !== "draft") {
-    throw new OrderError(409, "هذا الطلب لا يقبل الدفع الآن.");
-  }
-
-  const origin = `https://${req.headers.host || "monah-app.com"}`;
-  const charge = await tapRequest("POST", "/charges/", {
-    amount: Number(Number(order.price).toFixed(3)),
-    currency: "OMR",
-    customer: {
-      first_name: "عميل مُونَة",
-      email: `buyer-${account.uid}@monah-app.com`,
-      phone: splitPhoneForTap(order.buyerPhone),
-    },
-    source: { id: "src_all" },
-    threeDSecure: true,
-    statement_descriptor: "MONAH",
-    description: cleanText(order.productName, 160) || "طلب من مُونَة",
-    reference: { order: orderId },
-    metadata: { orderId },
-    redirect: { url: `${origin}/#pay-result/${orderId}` },
-  });
-
-  if (!charge.id || !charge.transaction?.url) {
-    throw new OrderError(502, "تعذر تجهيز صفحة الدفع الآن. جرب التحويل اليدوي.");
-  }
-  await orderRef.update({ tapChargeId: charge.id });
-  return res.status(200).json({ url: charge.transaction.url });
-}
-
-async function verifyCardCharge(req, res, account) {
-  const orderId = cleanText(req.body?.orderId, 160);
-  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
-  const orderRef = db.collection("orders").doc(orderId);
-  const orderSnap = await orderRef.get();
-  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
-    throw new OrderError(403, "لا تملك هذا الطلب.");
-  }
-  const order = orderSnap.data();
-  if (order.status === "confirmed") {
-    return res.status(200).json({ paid: true, type: order.type });
-  }
-  if (!order.tapChargeId) {
-    throw new OrderError(409, "لا توجد عملية دفع بالبطاقة لهذا الطلب.");
-  }
-
-  const charge = await tapRequest("GET", `/charges/${order.tapChargeId}`);
-  if (charge.status !== "CAPTURED") {
-    return res.status(200).json({ paid: false, status: charge.status || "unknown" });
-  }
-  const result = await markOrderConfirmed(orderRef, orderId, "tap");
-  if (!result.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
-  return res.status(200).json({ paid: true, type: result.type });
-}
-
 async function listBuyerOrders(req, res, account) {
   const [snap, couponsSnap] = await Promise.all([
     db.collection("orders").where("buyerUid", "==", account.uid).limit(100).get(),
@@ -664,8 +592,6 @@ export default async function handler(req, res) {
     if (action === "create") return await createOrder(req, res, account);
     if (action === "submit_proof") return await submitProof(req, res, account);
     if (action === "confirm") return await confirmPayment(req, res, account);
-    if (action === "create_card_charge") return await createCardCharge(req, res, account);
-    if (action === "verify_card_charge") return await verifyCardCharge(req, res, account);
     if (action === "list_buyer") return await listBuyerOrders(req, res, account);
     if (action === "proof_url") return await proofUrl(req, res, account);
     if (action === "receipt") return await receipt(req, res, account);

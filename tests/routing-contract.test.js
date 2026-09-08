@@ -497,7 +497,6 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const storePayResult = await source("src/StorePayResult.jsx");
     const signupApi = await source("api/merchant-signup.js");
     const tapClient = await source("lib/tap-client.js");
-    const orderApi = await source("api/orders.js");
 
     expect(main).toContain('lazy(() => import("./StartStore.jsx"))');
     expect(main).toContain('hash === "start-store"');
@@ -518,6 +517,20 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(signupApi).not.toContain("requireOwner");
 
     expect(tapClient).toContain("export async function tapRequest");
-    expect(orderApi).toContain('import { tapRequest as tapRequestRaw, splitPhoneForTap } from "../lib/tap-client.js"');
+  });
+
+  it("يفصل حساب الدفع الخاص بمُونة عن حسابات التجار: مشتريات العملاء تحويل يدوي مباشر للتاجر فقط", async () => {
+    const orderApi = await source("api/orders.js");
+    const orderPanel = await source("src/ProductOrderPanel.jsx");
+    const main = await source("src/main.jsx");
+
+    expect(orderApi).not.toContain("tap-client.js");
+    expect(orderApi).not.toContain("create_card_charge");
+    expect(orderApi).not.toContain("verify_card_charge");
+    expect(orderPanel).not.toContain("create_card_charge");
+    expect(orderPanel).not.toContain("ادفع الآن بالبطاقة");
+    expect(orderPanel).toContain("حوّل المبلغ للتاجر مباشرة");
+    expect(main).not.toContain('import("./PayResult.jsx")');
+    expect(main).not.toContain('hash.startsWith("pay-result/")');
   });
 });
