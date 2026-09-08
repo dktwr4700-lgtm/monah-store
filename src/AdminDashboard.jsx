@@ -288,13 +288,17 @@ export default function AdminDashboard() {
 
   async function deleteSeller(seller) {
     const ok = window.confirm(
-      `متأكد تبي تحذف حساب "${seller.storeName || seller.email}" نهائيًا؟ هذا الإجراء ما يترجع.`
+      `متأكد تبي تحذف حساب "${seller.storeName || seller.email}" ومنتجاته كلها نهائيًا؟ هذا الإجراء ما يترجع.`
     );
     if (!ok) return;
     setBusyId(seller.id);
     try {
+      const productsSnap = await getDocs(query(collection(db, "products"), where("ownerId", "==", seller.id)));
+      await Promise.all(productsSnap.docs.map((p) => deleteDoc(p.ref)));
       await deleteDoc(doc(db, "sellers", seller.id));
       setSellers((prev) => prev.filter((s) => s.id !== seller.id));
+      setAllProducts((prev) => prev.filter((p) => p.ownerId !== seller.id));
+      setSellerProducts((prev) => { const next = { ...prev }; delete next[seller.id]; return next; });
     } catch (e) {
       console.error(e);
     }
