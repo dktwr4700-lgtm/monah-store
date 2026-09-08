@@ -107,7 +107,7 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
   }
 
   if (!open) {
-    return <><style>{styles}</style><button type="button" className="ppo-start" onClick={() => setOpen(true)}>{isBundle ? "اطلب الحزمة داخل مُونَة" : "اطلب المنتج داخل مُونَة"}</button></>;
+    return <><style>{styles}</style><button type="button" className="ppo-start" onClick={() => setOpen(true)}>أطلب الآن</button></>;
   }
 
   return (
