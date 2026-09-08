@@ -615,6 +615,9 @@ export default function AdminDashboard() {
           <button className={"admin-tab" + (view === "products" ? " active" : "")} onClick={openProductsView}>
             كل المنتجات
           </button>
+          <button className={"admin-tab" + (view === "orders" ? " active" : "")} onClick={() => setView("orders")}>
+            كل الطلبات
+          </button>
           <button className={"admin-tab" + (view === "invites" ? " active" : "")} onClick={() => { setView("invites"); loadInvites(); }}>
             دعوات التجار
           </button>
@@ -868,6 +871,45 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
+          </>
+        )}
+
+        {view === "orders" && (
+          <>
+            {ordersLoading && <div className="loading">جاري تحميل الطلبات...</div>}
+            {!ordersLoading && orders.length === 0 && (
+              <div className="empty">ما فيه طلبات بالمنصة لسا</div>
+            )}
+            {!ordersLoading &&
+              [...orders]
+                .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+                .map((o) => {
+                  const owner = sellers.find((s) => s.id === o.ownerId);
+                  return (
+                    <div className="ap-row" key={o.id}>
+                      <div className="ap-top">
+                        <div>
+                          <div className="ap-name">{o.productName || "طلب"}</div>
+                          <div className="ap-sub">
+                            {Number(o.price || 0).toFixed(2)} ر.ع · {orderStatusLabel[o.status] || o.status}
+                          </div>
+                          <div className="ap-owner">
+                            التاجر: <b>{owner ? (owner.storeName || owner.email) : (o.ownerId || "غير معروف (محذوف)")}</b>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="ap-actions">
+                        <button
+                          className="seller-btn danger"
+                          disabled={deletingOrderId === o.id}
+                          onClick={() => deleteOrder(o)}
+                        >
+                          {deletingOrderId === o.id ? "جاري الحذف..." : "حذف نهائي"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
           </>
         )}
 
