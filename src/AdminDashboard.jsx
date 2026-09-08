@@ -153,6 +153,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [planDrafts, setPlanDrafts] = useState({});
   const [savingPlanId, setSavingPlanId] = useState(null);
+  const [deletingOrderId, setDeletingOrderId] = useState(null);
 
 
   useEffect(() => {
@@ -399,6 +400,27 @@ export default function AdminDashboard() {
       console.error(e);
     }
     setSavingPlanId(null);
+  }
+
+  async function deleteOrder(order) {
+    const ok = window.confirm(`متأكد تبي تحذف طلب "${order.productName || "طلب"}" نهائيًا؟ (استخدمها للطلبات التجريبية بس)`);
+    if (!ok) return;
+    setDeletingOrderId(order.id);
+    try {
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action: "admin_delete_order", orderId: order.id }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "تعذر حذف الطلب الآن.");
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    } catch (e) {
+      console.error(e);
+      window.alert(e.message || "تعذر حذف الطلب الآن.");
+    }
+    setDeletingOrderId(null);
   }
 
   async function deleteProduct(sellerId, product) {
@@ -744,7 +766,17 @@ export default function AdminDashboard() {
                       .map((o) => (
                         <div className="detail-row" key={o.id}>
                           <span>{o.productName || "طلب"}</span>
-                          <span>{Number(o.price || 0).toFixed(2)} ر.ع · {orderStatusLabel[o.status] || o.status}</span>
+                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {Number(o.price || 0).toFixed(2)} ر.ع · {orderStatusLabel[o.status] || o.status}
+                            <button
+                              type="button"
+                              className="product-del"
+                              disabled={deletingOrderId === o.id}
+                              onClick={() => deleteOrder(o)}
+                            >
+                              {deletingOrderId === o.id ? "جاري الحذف..." : "حذف"}
+                            </button>
+                          </span>
                         </div>
                       ))}
                   </div>
