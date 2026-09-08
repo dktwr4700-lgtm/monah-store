@@ -519,18 +519,28 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(tapClient).toContain("export async function tapRequest");
   });
 
-  it("يفصل حساب الدفع الخاص بمُونة عن حسابات التجار: مشتريات العملاء تحويل يدوي مباشر للتاجر فقط", async () => {
+  it("يفصل حساب الدفع الخاص بمُونة عن حسابات التجار: كل تحصيل مبيعات يمر ببوابة دفع التاجر نفسه أو تحويل يدوي، أبدًا بحساب مُونة", async () => {
     const orderApi = await source("api/orders.js");
     const orderPanel = await source("src/ProductOrderPanel.jsx");
+    const tapClient = await source("lib/tap-client.js");
     const main = await source("src/main.jsx");
 
-    expect(orderApi).not.toContain("tap-client.js");
-    expect(orderApi).not.toContain("create_card_charge");
-    expect(orderApi).not.toContain("verify_card_charge");
-    expect(orderPanel).not.toContain("create_card_charge");
-    expect(orderPanel).not.toContain("ادفع الآن بالبطاقة");
+    // شحن الطلبات لازم يمر بمفتاح بوابة الدفع الخاص بالتاجر (paymentGateway.tapSecretKey)،
+    // ما يستخدم process.env.TAP_SECRET_KEY (مفتاح مُونة) مباشرة أبدًا.
+    expect(tapClient).toContain("secretKeyOverride");
+    expect(orderApi).toContain("async function sellerTapSecretKey(ownerId)");
+    expect(orderApi).toContain("gateway.tapSecretKey");
+    expect(orderApi).not.toContain("process.env.TAP_SECRET_KEY");
+    expect(orderApi).toContain('tapRequest("POST", "/charges/"');
+    expect(orderApi).toContain("}, secretKey);");
+    expect(orderApi).toContain('action === "save_payment_gateway"');
+    expect(orderApi).toContain("async function saveSellerPaymentGateway(req, res, account)");
+    expect(orderApi).toContain('if (provider !== "tap")');
+
+    expect(orderPanel).toContain('orderRequest("create_card_charge"');
+    expect(orderPanel).toContain("order.cardPaymentAvailable &&");
     expect(orderPanel).toContain("حوّل المبلغ للتاجر مباشرة");
-    expect(main).not.toContain('import("./PayResult.jsx")');
-    expect(main).not.toContain('hash.startsWith("pay-result/")');
+    expect(main).toContain('import("./PayResult.jsx")');
+    expect(main).toContain('hash.startsWith("pay-result/")');
   });
 });
