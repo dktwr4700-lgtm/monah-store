@@ -7,6 +7,7 @@ import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
 import { tapRequest as tapRequestRaw } from "../lib/tap-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
+const ADMIN_EMAIL = "k1997551@gmail.com";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DELIVERY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const MAX_FILE_DOWNLOADS = 5;
@@ -74,6 +75,10 @@ async function authenticatedAccount(req) {
 async function requireSeller(uid) {
   const sellerSnap = await db.collection("sellers").doc(uid).get();
   if (!sellerSnap.exists) throw new OrderError(403, "هذه العملية خاصة بصاحب المتجر.");
+}
+
+function requireAdmin(account) {
+  if (account.email !== ADMIN_EMAIL) throw new OrderError(403, "هذه العملية خاصة بمالك مُونة.");
 }
 
 function unlockView(unlock, confirmed) {
@@ -452,6 +457,19 @@ async function confirmPayment(req, res, account) {
   return res.status(200).json({ ok: true, alreadyConfirmed: result.alreadyConfirmed, type: result.type });
 }
 
+async function deleteOrderAsAdmin(req, res, account) {
+  requireAdmin(account);
+  const orderId = cleanText(req.body?.orderId, 160);
+  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
+  const orderRef = db.collection("orders").doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists) return res.status(200).json({ ok: true });
+  const order = orderSnap.data();
+  if (order.proofPath) await bucket.file(order.proofPath).delete().catch(() => {});
+  await orderRef.delete();
+  return res.status(200).json({ ok: true });
+}
+
 async function tapRequest(method, path, body, secretKeyOverride) {
   try {
     return await tapRequestRaw(method, path, body, secretKeyOverride);
@@ -700,6 +718,7 @@ export default async function handler(req, res) {
     if (action === "create") return await createOrder(req, res, account);
     if (action === "submit_proof") return await submitProof(req, res, account);
     if (action === "confirm") return await confirmPayment(req, res, account);
+    if (action === "admin_delete_order") return await deleteOrderAsAdmin(req, res, account);
     if (action === "create_card_charge") return await createCardCharge(req, res, account);
     if (action === "verify_card_charge") return await verifyCardCharge(req, res, account);
     if (action === "list_buyer") return await listBuyerOrders(req, res, account);
