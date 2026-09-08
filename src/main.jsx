@@ -46,7 +46,7 @@ function Root() {
   else if (hash.startsWith("deliver/")) page = <Deliver orderId={hash.split("/")[1]} token={hash.split("/")[2]} />;
   else if (hash.startsWith("pay-result/")) page = <PayResult orderId={hash.split("/")[1]} />;
   else if (hash === "start-store") page = <StartStore />;
-  else if (hash.startsWith("store-pay-result/")) page = <StorePayResult />;
+  else if (hash.startsWith("store-pay-result/")) page = <StorePayResult param={hash.split("/")[1]} />;
   else if (hash.startsWith("store/")) page = <StorePage sellerId={hash.split("/")[1]} />;
   return <Suspense fallback={<PageLoading />}>{page}</Suspense>;
 }

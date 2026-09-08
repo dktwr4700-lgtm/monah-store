@@ -1,4 +1,5 @@
 export const BASE_MONTHLY_PRICE = 5;
+export const CUSTOM_DOMAIN_ANNUAL_PRICE = 4;
 
 export const ADD_ON_CATALOG = [
   { key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2, desc: "عميلك يدفع ببطاقته أو محفظته ويستلم ملفه فورًا خلال ثوانٍ، بدون ما تراجع أو تؤكد شي بنفسك.", status: "متاح الآن", ready: true },
@@ -6,5 +7,4 @@ export const ADD_ON_CATALOG = [
   { key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", price: 1, desc: "فاتورة رسمية بشعار متجرك تظهر تلقائيًا لك ولعميلك بعد كل عملية بيع، تعطيك مظهر احترافي بدون أي جهد إضافي.", status: "متاح الآن", ready: true },
   { key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5, desc: "امنع تسريب ملفك بعد البيع: كل عميل يقدر ينزّل الملف حتى 5 مرات فقط، ثم يتوقف الرابط تلقائيًا.", status: "متاح الآن", ready: true },
   { key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1, desc: "وصف منتج جذاب ونص إعلان جاهز خلال ثوانٍ يكتبه لك الذكاء الاصطناعي — تراجعه وتنشره بنفسك.", status: "متاح الآن", ready: true },
-  { key: "customDomain", group: "هوية المتجر", title: "دومين خاص", price: 1, desc: "متجرك بعنوان يخصك أنت بدل رابط عام، يعزز ثقة عميلك من أول نظرة على الرابط.", status: "ينتظر اختبار دومين حقيقي", ready: false },
 ];

@@ -9,21 +9,23 @@ const styles = `
   .pr-btn{display:inline-block;margin-top:18px;border:0;border-radius:100px;padding:12px 20px;background:#16233F;color:#fff;font:700 13px 'Cairo',sans-serif;text-decoration:none;cursor:pointer}
 `;
 
-async function verifyRequest() {
+async function verifyRequest(isDomain) {
   const idToken = await auth.currentUser.getIdToken();
   const response = await fetch("/api/merchant-signup", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ action: "verify_card_charge" }),
+    body: JSON.stringify({ action: isDomain ? "verify_domain_charge" : "verify_card_charge" }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "تعذر التحقق من الدفع الآن.");
   return data;
 }
 
-export default function StorePayResult() {
+export default function StorePayResult({ param }) {
+  const isDomain = String(param || "").startsWith("domain-");
   const [state, setState] = useState("checking");
   const [error, setError] = useState("");
+  const [slug, setSlug] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -32,12 +34,16 @@ export default function StorePayResult() {
         if (!cancelled) { setState("error"); setError("سجّل دخولك أولًا ثم افتح هذا الرابط."); }
         return;
       }
-      verifyRequest()
-        .then((data) => { if (!cancelled) setState(data.paid ? "paid" : "pending"); })
+      verifyRequest(isDomain)
+        .then((data) => {
+          if (cancelled) return;
+          if (data.slug) setSlug(data.slug);
+          setState(data.paid ? "paid" : "pending");
+        })
         .catch((requestError) => { if (!cancelled) { setError(requestError.message); setState("error"); } });
     });
     return () => { cancelled = true; unsub(); };
-  }, []);
+  }, [isDomain]);
 
   return (
     <div className="pr-page" dir="rtl" lang="ar">
@@ -47,12 +53,22 @@ export default function StorePayResult() {
           <div className="pr-title">جاري التحقق من عملية الدفع...</div>
           <div className="pr-copy">لحظات ونؤكد لك حالة الدفع.</div>
         </>}
-        {state === "paid" && <>
+        {state === "paid" && isDomain && <>
+          <div className="pr-title">تم تفعيل دومينك الفرعي 🎉</div>
+          <div className="pr-copy">{slug ? `متجرك الآن على ${slug}.monah-app.com` : "دومينك الجديد"} شغال لمدة سنة كاملة.</div>
+          <a className="pr-btn" href="#dashboard/domain">فتح لوحة التاجر</a>
+        </>}
+        {state === "paid" && !isDomain && <>
           <div className="pr-title">تم تفعيل متجرك 🎉</div>
           <div className="pr-copy">اشتراكك فعّال الآن لمدة 30 يوم. تقدر تبدأ تضيف منتجاتك من لوحة التاجر.</div>
           <a className="pr-btn" href="#dashboard">فتح لوحة التاجر</a>
         </>}
-        {state === "pending" && <>
+        {state === "pending" && isDomain && <>
+          <div className="pr-title">لم تكتمل عملية الدفع</div>
+          <div className="pr-copy">يبدو إن دفع الدومين ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول من لوحة التاجر.</div>
+          <a className="pr-btn" href="#dashboard/domain">الرجوع للوحة التاجر</a>
+        </>}
+        {state === "pending" && !isDomain && <>
           <div className="pr-title">لم تكتمل عملية الدفع</div>
           <div className="pr-copy">يبدو إن الدفع ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول الدفع بالبطاقة مرة ثانية، أو تستخدم التحويل اليدوي.</div>
           <a className="pr-btn" href="#start-store">الرجوع لصفحة التسجيل</a>

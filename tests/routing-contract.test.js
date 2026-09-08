@@ -312,13 +312,14 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const landing = await source("src/App.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
 
-    expect([...catalog.matchAll(/key: "/g)]).toHaveLength(6);
+    expect([...catalog.matchAll(/key: "/g)]).toHaveLength(5);
     expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2');
     expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", price: 1');
     expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", price: 1');
     expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5');
     expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1');
-    expect(catalog).toContain('key: "customDomain", group: "هوية المتجر", title: "دومين خاص", price: 1');
+    expect(catalog).not.toContain('key: "customDomain"');
+    expect(catalog).toContain("export const CUSTOM_DOMAIN_ANNUAL_PRICE = 4");
     expect(catalog).not.toContain('key: "affiliate"');
     expect(catalog).not.toContain('key: "giftCards"');
     expect(catalog).not.toContain('key: "upsell"');
@@ -506,7 +507,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(startStore).toContain('signupRequest("register"');
     expect(startStore).toContain('signupRequest("create_card_charge"');
     expect(startStore).not.toContain("submit_manual_proof");
-    expect(storePayResult).toContain('action: "verify_card_charge"');
+    expect(storePayResult).toContain('"verify_card_charge"');
 
     expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = 5");
     expect(signupApi).toContain('if (sellerSnap.exists) return res.status(409)');
@@ -542,5 +543,36 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(orderPanel).toContain("حوّل المبلغ للتاجر مباشرة");
     expect(main).toContain('import("./PayResult.jsx")');
     expect(main).toContain('hash.startsWith("pay-result/")');
+  });
+
+  it("يوفر دومين فرعي مدفوع لكل تاجر كخيار معزول تمامًا عن الاشتراك الشهري، مع إبقاء الرابط المجاني ظاهرًا دائمًا", async () => {
+    const signupApi = await source("api/merchant-signup.js");
+    const dashboard = await source("src/Dashboard.jsx");
+    const catalog = await source("src/subscriptionCatalog.js");
+    const storePayResult = await source("src/StorePayResult.jsx");
+    const main = await source("src/main.jsx");
+
+    // السعر معزول تمامًا عن الاشتراك الشهري (ليس ضمن ADD_ON_CATALOG المحسوب شهريًا)
+    expect(catalog).toContain("export const CUSTOM_DOMAIN_ANNUAL_PRICE = 4");
+    expect(catalog).not.toContain('key: "customDomain"');
+
+    // الشحن السنوي يمر بحساب مُونة نفسه (إيراد منصة) وليس بمفتاح أي تاجر
+    expect(signupApi).toContain("const CUSTOM_DOMAIN_PRICE = 4");
+    expect(signupApi).toContain("async function createDomainCharge(req, res)");
+    expect(signupApi).toContain("async function verifyDomainCharge(req, res)");
+    expect(signupApi).toContain('action === "create_domain_charge"');
+    expect(signupApi).toContain('action === "verify_domain_charge"');
+    expect(signupApi).toContain("async function domainSlugAvailable(slug, excludeUid)");
+
+    // لوحة التاجر تعرض الخيارين معًا: الرابط المجاني الحالي + الدومين المدفوع الاختياري
+    expect(dashboard).toContain("الخيار المجاني — رابط متجرك");
+    expect(dashboard).toContain("الخيار المدفوع — دومين فرعي خاص باسم متجرك");
+    expect(dashboard).toContain("CUSTOM_DOMAIN_ANNUAL_PRICE");
+    expect(dashboard).toContain('domainSignupRequest("create_domain_charge"');
+    expect(dashboard).toContain('domainSignupRequest("check_domain_slug"');
+
+    // صفحة تأكيد الدفع تفرّق بين تفعيل المتجر وشراء الدومين
+    expect(storePayResult).toContain("verify_domain_charge");
+    expect(main).toContain('param={hash.split("/")[1]}');
   });
 });
