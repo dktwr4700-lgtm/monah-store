@@ -566,6 +566,15 @@ describe("عقود المسارات العامة في مُونَة", () => {
     // ما يستخدم process.env.OMPAY_API_KEY/SECRET (مفاتيح مُونة) مباشرة أبدًا.
     expect(ompayClient).toContain("credentialsOverride");
     expect(orderApi).toContain("async function sellerOmpayCredentials(ownerId)");
+
+    // ربط البوابة وحده ما يكفي: لازم التاجر يكون دافع اشتراك إضافة "البيع الرقمي" بعد،
+    // وإلا يتفاجأ عميله بعد الدفع إن البطاقة ما تشتغل.
+    const catalog = await source("src/subscriptionCatalog.js");
+    expect(orderApi).toContain("function sellerCardPaymentAvailable(seller)");
+    expect(orderApi).toContain('seller.activeAddOns.includes("digitalSelling")');
+    expect(orderApi).toContain("sellerCardPaymentAvailable(seller)");
+    expect(dashboard).toContain('!activeAddOns.includes("digitalSelling")');
+    expect(catalog).toContain("تربط بوابة الدفع الخاصة بك من الإعدادات");
     expect(orderApi).toContain("gateway.ompayApiKey");
     expect(orderApi).toContain("gateway.ompayApiSecret");
     expect(orderApi).toContain('action === "save_payment_gateway"');

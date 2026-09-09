@@ -52,6 +52,13 @@ function sellerPaymentDetails(seller) {
   };
 }
 
+// الدفع بالبطاقة يحتاج الاثنين معًا: التاجر دافع اشتراك إضافة "البيع الرقمي"،
+// وربط بوابة دفعه الخاصة. أي واحد بدون الثاني ما يكفي.
+function sellerCardPaymentAvailable(seller) {
+  const addOnActive = Array.isArray(seller.activeAddOns) && seller.activeAddOns.includes("digitalSelling");
+  return addOnActive && Boolean(seller.paymentGateway?.provider);
+}
+
 function cleanPhone(value) {
   return String(value || "").replace(/[^\d+]/g, "").slice(0, 20);
 }
@@ -227,7 +234,7 @@ async function createBundleOrder(req, res, account) {
   if (paymentDetails.paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذه الحزمة بعد.");
   }
-  const cardPaymentAvailable = Boolean(seller.paymentGateway?.provider);
+  const cardPaymentAvailable = sellerCardPaymentAvailable(seller);
 
   const draftSnap = await db.collection("orders")
     .where("buyerUid", "==", account.uid)
@@ -299,7 +306,7 @@ async function createOrder(req, res, account) {
   if (paymentDetails.paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذا المنتج بعد.");
   }
-  const cardPaymentAvailable = Boolean(seller.paymentGateway?.provider);
+  const cardPaymentAvailable = sellerCardPaymentAvailable(seller);
 
   const originalPrice = Number(product.price);
   const { discountPercent, couponCode } = await resolveCoupon(req.body?.couponCode, productId, product.ownerId, account.uid);
@@ -503,9 +510,13 @@ function chargeRedirectUrl(charge) {
 // أبدًا بمفاتيح مُونة — مُونة ما تلمس فلوس مبيعات أي تاجر.
 async function sellerOmpayCredentials(ownerId) {
   const sellerSnap = await db.collection("sellers").doc(ownerId).get();
-  const gateway = sellerSnap.exists ? sellerSnap.data().paymentGateway : null;
+  const seller = sellerSnap.exists ? sellerSnap.data() : {};
+  const gateway = seller.paymentGateway;
   if (!gateway || gateway.provider !== "ompay" || !gateway.ompayApiKey || !gateway.ompayApiSecret) {
     throw new OrderError(409, "صاحب المتجر لم يربط بوابة دفع بعد. استخدم التحويل اليدوي.");
+  }
+  if (!sellerCardPaymentAvailable(seller)) {
+    throw new OrderError(409, "صاحب المتجر لم يفعّل إضافة البيع الرقمي بعد. استخدم التحويل اليدوي.");
   }
   return { apiKey: gateway.ompayApiKey, apiSecret: gateway.ompayApiSecret };
 }

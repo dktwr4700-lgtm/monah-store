@@ -2267,6 +2267,11 @@ export default function Dashboard() {
               <p className="dh-hint" style={{ marginBottom: 12 }}>
                 اربط حساب OmPay الخاص فيك (لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.
               </p>
+              {!activeAddOns.includes("digitalSelling") && (
+                <div className="dh-hint" style={{ marginBottom: 12, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
+                  مهم: ربط البوابة وحده ما يكفي — لازم تفعّل إضافة "البيع الرقمي" (٢ ر.ع شهريًا) من تبويب <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>اشتراك متجرك</button> حتى تشتغل الميزة فعليًا لعملائك.
+                </div>
+              )}
               {gatewayConnected ? (
                 <>
                   <div className="dh-hint" style={{ marginBottom: 12 }}>بوابتك مربوطة الآن وشغالة.</div>
