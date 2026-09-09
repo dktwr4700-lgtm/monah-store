@@ -545,30 +545,38 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(ompayClient).toContain("https://api.truepay.ompay.om");
   });
 
-  it("لا يعيد تكامل تاب أبدًا: OmPay يحصّل فقط لحساب مُونة نفسه (اشتراك ودومين)، ولا بوابة دفع خاصة بالتاجر ولا تحصيل بطاقة للمشتري", async () => {
+  it("لا يعيد تكامل تاب أبدًا، ويفصل حساب الدفع الخاص بمُونة عن حسابات التجار: كل تحصيل مبيعات يمر ببوابة دفع التاجر نفسه عبر OmPay أو تحويل يدوي، أبدًا بحساب مُونة", async () => {
     const orderApi = await source("api/orders.js");
     const orderPanel = await source("src/ProductOrderPanel.jsx");
     const signupApi = await source("api/merchant-signup.js");
     const dashboard = await source("src/Dashboard.jsx");
     const adminDashboard = await source("src/AdminDashboard.jsx");
+    const ompayClient = await source("lib/ompay-client.js");
     const main = await source("src/main.jsx");
 
-    // ما فيه أي إشارة لتاب أو بوابة دفع تجار في أي مكان بالمنصة
+    // ما فيه أي إشارة لتاب في أي مكان بالمنصة
     expect(orderApi).not.toContain("tap");
     expect(orderApi).not.toContain("Tap");
-    expect(orderApi).not.toContain("paymentGateway");
-    expect(orderApi).not.toContain("cardPaymentAvailable");
     expect(signupApi).not.toMatch(/[tT]ap[A-Z]/);
     expect(signupApi).not.toContain("tap-client");
     expect(dashboard).not.toContain("tapSecretKey");
-    expect(dashboard).not.toContain("paymentGateway");
     expect(adminDashboard).not.toContain("paymentGateway");
-    expect(orderPanel).not.toContain("cardPaymentAvailable");
-    expect(orderPanel).not.toContain("create_card_charge");
 
-    // صفحات شحن البطاقة الخاصة بالتاجر (buyer-facing) ما رجعت — التحويل اليدوي هو الوحيد للمشتري
-    expect(main).not.toContain("PayResult\"");
+    // شحن مشتريات العملاء لازم يمر بمفاتيح بوابة الدفع الخاصة بالتاجر (paymentGateway.ompayApiKey/ompayApiSecret)،
+    // ما يستخدم process.env.OMPAY_API_KEY/SECRET (مفاتيح مُونة) مباشرة أبدًا.
+    expect(ompayClient).toContain("credentialsOverride");
+    expect(orderApi).toContain("async function sellerOmpayCredentials(ownerId)");
+    expect(orderApi).toContain("gateway.ompayApiKey");
+    expect(orderApi).toContain("gateway.ompayApiSecret");
+    expect(orderApi).toContain('action === "save_payment_gateway"');
+    expect(orderApi).toContain("async function saveSellerPaymentGateway(req, res, account)");
+    expect(orderApi).toContain('if (provider !== "ompay")');
+
+    expect(orderPanel).toContain('orderRequest("create_card_charge"');
+    expect(orderPanel).toContain("order.cardPaymentAvailable &&");
     expect(orderPanel).toContain("حوّل المبلغ للتاجر مباشرة");
+    expect(main).toContain('import("./PayResult.jsx")');
+    expect(main).toContain('hash.startsWith("pay-result/")');
   });
 
   it("يوفر رابطًا فرعيًا مدفوعًا لكل تاجر كإضافة شهرية على اشتراكه عبر OmPay، مع إبقاء الرابط المجاني ظاهرًا دائمًا", async () => {

@@ -321,7 +321,7 @@ export default function Dashboard() {
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
     const t = parts[1];
-    return ["overview", "products", "coupons", "orders", "settings", "payment", "loyalty", "design", "subscription", "domain"].includes(t) ? t : "overview";
+    return ["overview", "products", "coupons", "orders", "settings", "payment", "gateway", "loyalty", "design", "subscription", "domain"].includes(t) ? t : "overview";
   }
   const [tab, setTabState] = useState(getTabFromHash);
 
@@ -436,6 +436,11 @@ export default function Dashboard() {
   const [repeatCouponMessage, setRepeatCouponMessage] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [gatewayConnected, setGatewayConnected] = useState(false);
+  const [ompayApiKeyInput, setOmpayApiKeyInput] = useState("");
+  const [ompayApiSecretInput, setOmpayApiSecretInput] = useState("");
+  const [savingGateway, setSavingGateway] = useState(false);
+  const [gatewayMessage, setGatewayMessage] = useState("");
   const [customDomainSlug, setCustomDomainSlug] = useState("");
   const [customDomainExpiresAt, setCustomDomainExpiresAt] = useState("");
   const [domainSlugInput, setDomainSlugInput] = useState("");
@@ -489,6 +494,7 @@ export default function Dashboard() {
         setSellerPlan(snap.data().plan || "basic");
         setSellerStoreType(snap.data().storeType || "files");
         setPaymentInstructions(snap.data().paymentInstructions || "");
+        setGatewayConnected(snap.data().paymentGateway?.provider === "ompay");
         setPaymentBankName(snap.data().paymentBankName || "");
         setPaymentAccountHolder(snap.data().paymentAccountHolder || "");
         setPaymentAccountNumber(snap.data().paymentAccountNumber || "");
@@ -1238,6 +1244,52 @@ export default function Dashboard() {
       setPaymentMessage(err.message || "تعذر حفظ التعليمات الآن.");
     }
     setSavingPayment(false);
+  }
+
+  async function saveGateway() {
+    if (ompayApiKeyInput.trim().length < 10 || ompayApiSecretInput.trim().length < 10) {
+      setGatewayMessage("اكتب مفتاح API وسر API صحيحين من حسابك في OmPay قبل الحفظ.");
+      return;
+    }
+    setSavingGateway(true);
+    setGatewayMessage("");
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action: "save_payment_gateway", provider: "ompay", ompayApiKey: ompayApiKeyInput.trim(), ompayApiSecret: ompayApiSecretInput.trim() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "تعذر ربط بوابة الدفع الآن.");
+      setGatewayConnected(true);
+      setOmpayApiKeyInput("");
+      setOmpayApiSecretInput("");
+      setGatewayMessage("تم الربط. عملاؤك الآن يقدرون يدفعون بالبطاقة مباشرة لحسابك.");
+    } catch (err) {
+      setGatewayMessage(err.message || "تعذر ربط بوابة الدفع الآن.");
+    }
+    setSavingGateway(false);
+  }
+
+  async function disconnectGateway() {
+    setSavingGateway(true);
+    setGatewayMessage("");
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action: "save_payment_gateway", disconnect: true }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "تعذر إلغاء الربط الآن.");
+      setGatewayConnected(false);
+      setGatewayMessage("تم إلغاء الربط. العملاء الآن يحوّلون يدويًا فقط.");
+    } catch (err) {
+      setGatewayMessage(err.message || "تعذر إلغاء الربط الآن.");
+    }
+    setSavingGateway(false);
   }
 
   async function domainSignupRequest(action, extra) {
@@ -2151,6 +2203,10 @@ export default function Dashboard() {
               <div><b>تعليمات التحويل</b><span>تظهر للعميل وقت الطلب</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
+            <button className="dh-settings-row" type="button" onClick={() => setTab("gateway")}>
+              <div><b>بوابة الدفع الخاصة بك</b><span>{gatewayConnected ? "مربوطة · العملاء يدفعون مباشرة لحسابك" : "غير مربوطة · حاليًا تحويل يدوي فقط"}</span></div>
+              <span className="dh-settings-chev">‹</span>
+            </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("loyalty")}>
               <div><b>كوبون الترحيب التلقائي</b><span>{repeatCouponEnabled ? `مفعّل · خصم ${repeatCouponPercent}٪` : "متوقف حاليًا"}</span></div>
               <span className="dh-settings-chev">‹</span>
@@ -2203,6 +2259,36 @@ export default function Dashboard() {
           </>
         )}
 
+        {tab === "gateway" && (
+          <>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 10 }}>بوابة الدفع الخاصة بك</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>
+                اربط حساب OmPay الخاص فيك (لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.
+              </p>
+              {gatewayConnected ? (
+                <>
+                  <div className="dh-hint" style={{ marginBottom: 12 }}>بوابتك مربوطة الآن وشغالة.</div>
+                  <button className="dh-btn" type="button" disabled={savingGateway} onClick={disconnectGateway}>{savingGateway ? "جاري الإلغاء..." : "إلغاء الربط"}</button>
+                </>
+              ) : (
+                <>
+                  <div className="dh-field">
+                    <label>مفتاح API (OMPAY-API-Key)</label>
+                    <input type="password" value={ompayApiKeyInput} onChange={(e) => setOmpayApiKeyInput(e.target.value)} placeholder="من حسابك في OmPay" autoComplete="off" />
+                  </div>
+                  <div className="dh-field">
+                    <label>سر API (OMPAY-API-Secret)</label>
+                    <input type="password" value={ompayApiSecretInput} onChange={(e) => setOmpayApiSecretInput(e.target.value)} placeholder="من حسابك في OmPay" autoComplete="off" />
+                  </div>
+                  <button className="dh-btn" type="button" disabled={savingGateway} onClick={saveGateway}>{savingGateway ? "جاري الربط..." : "اربط بوابة الدفع"}</button>
+                </>
+              )}
+              {gatewayMessage && <div className={gatewayMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{gatewayMessage}</div>}
+            </div>
+          </>
+        )}
 
         {tab === "domain" && (
           <>
