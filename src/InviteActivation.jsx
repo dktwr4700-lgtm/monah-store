@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import useRunawayButton from "./useRunawayButton.js";
+
+const CTA_WIDTH = 190;
 
 const STORE_TYPE_LABELS = {
   books: "كتب رقمية",
@@ -13,6 +16,14 @@ const styles = `
   .invite-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F6F3EC;padding:20px;font-family:'Cairo',sans-serif;color:#16233F}
   .invite-card{width:100%;max-width:400px;background:#fff;border:1px solid #E4E0D3;border-radius:20px;padding:28px 24px;box-shadow:0 16px 34px rgba(22,35,63,.07)}
   .invite-brand{font-family:'Almarai',sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:8px}.invite-title{font-family:'Almarai',sans-serif;font-size:17px;font-weight:800;text-align:center;margin-bottom:8px}.invite-text{font-size:12.5px;line-height:1.85;color:#625F55;text-align:center;margin:0 0 18px}.invite-summary{background:#F7F7F2;border:1px solid #EDEAE0;border-radius:13px;padding:13px;margin-bottom:16px}.invite-summary b{display:block;font-size:14px}.invite-summary span{display:block;color:#625F55;font-size:11.5px;margin-top:4px}.invite-field{margin-bottom:14px}.invite-field label{display:block;font-size:12px;font-weight:800;color:#625F55;margin-bottom:6px}.invite-field input{box-sizing:border-box;width:100%;padding:12px 13px;border:1px solid #E4E0D3;border-radius:10px;background:#FBFAF7;font:13px 'Cairo',sans-serif}.invite-btn{width:100%;border:0;border-radius:100px;padding:13px;background:#16233F;color:#fff;font:700 13.5px 'Cairo',sans-serif;cursor:pointer}.invite-btn:disabled{opacity:.6}.invite-message{border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px}.invite-message.error{background:#F6E9E5;color:#A34839}.invite-message.loading{background:#F3EBDD;color:#8A5B18}.invite-back{display:block;text-align:center;margin-top:16px;font-size:12px;font-weight:800;color:#16233F;text-decoration:none}.invite-page button{transition:transform 100ms ease-out}.invite-page button:active{transform:scale(.96)}
+  .invite-cta-track{display:flex;justify-content:center;padding:2px 0}
+  .invite-cta-track .invite-btn{width:${CTA_WIDTH}px;transform:translateX(var(--cta-offset,0px));transition:transform 320ms cubic-bezier(.22,1,.36,1)}
+  .invite-cta-track .invite-btn:active{transform:translateX(var(--cta-offset,0px)) scale(.96)}
+  .invite-cta-track .invite-btn.fleeing{transition:transform 190ms cubic-bezier(.3,1.4,.6,1)}
+  .invite-cta-track .invite-btn.ready{background:#163F2E;box-shadow:0 0 0 3px rgba(55,114,75,.18)}
+  .invite-cta-hint{text-align:center;font-size:11px;color:#8A8677;margin-top:9px}
+  .invite-cta-hint.ready{color:#37724B;font-weight:700}
+  @media (prefers-reduced-motion: reduce){.invite-cta-track .invite-btn,.invite-cta-track .invite-btn.fleeing{transform:none!important;transition:background 200ms ease}}
 `;
 
 async function inviteRequest(action, payload, idToken = "") {
@@ -37,6 +48,9 @@ export default function InviteActivation({ token }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const ctaFieldsReady = validEmail(email) && password.length >= 6;
+  const { trackRef: ctaTrackRef, btnRef: ctaBtnRef, offsetX: ctaOffsetX, fleeing: ctaFleeing } = useRunawayButton(ctaFieldsReady);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,7 +116,20 @@ export default function InviteActivation({ token }) {
           <form onSubmit={activate}>
             <div className="invite-field"><label>بريدك الإلكتروني</label><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" required /></div>
             <div className="invite-field"><label>اختر كلمة المرور</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></div>
-            <button className="invite-btn" type="submit" disabled={saving}>{saving ? "جاري تفعيل المتجر..." : "تفعيل متجري"}</button>
+            <div className="invite-cta-track" ref={ctaTrackRef}>
+              <button
+                ref={ctaBtnRef}
+                className={"invite-btn" + (ctaFleeing ? " fleeing" : "") + (ctaFieldsReady ? " ready" : "")}
+                type="submit"
+                disabled={saving}
+                style={{ "--cta-offset": `${ctaOffsetX}px` }}
+              >
+                {saving ? "جاري تفعيل المتجر..." : "تفعيل متجري"}
+              </button>
+            </div>
+            <div className={"invite-cta-hint" + (ctaFieldsReady ? " ready" : "")}>
+              {ctaFieldsReady ? "جاهز، اضغط للتفعيل." : "عبّي البريد وكلمة المرور أولًا."}
+            </div>
           </form>
         </>}
       </main>

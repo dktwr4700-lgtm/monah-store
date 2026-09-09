@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { auth } from "./firebase.js";
 import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import useRunawayButton from "./useRunawayButton.js";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
+const CTA_WIDTH = 190;
 
 const styles = `
   .auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:#FFFFFF; padding:20px; font-family:'Cairo', sans-serif; }
@@ -27,6 +29,14 @@ const styles = `
 
   .auth-page button{ transition:transform 100ms ease-out; }
   .auth-page button:active{ transform:scale(0.96); }
+  .auth-cta-track{display:flex;justify-content:center;padding:2px 0}
+  .auth-cta-track .auth-btn{width:${CTA_WIDTH}px;transform:translateX(var(--cta-offset,0px));transition:transform 320ms cubic-bezier(.22,1,.36,1)}
+  .auth-cta-track .auth-btn:active{transform:translateX(var(--cta-offset,0px)) scale(.96)}
+  .auth-cta-track .auth-btn.fleeing{transition:transform 190ms cubic-bezier(.3,1.4,.6,1)}
+  .auth-cta-track .auth-btn.ready{background:#163F2E;box-shadow:0 0 0 3px rgba(55,114,75,.18)}
+  .auth-cta-hint{text-align:center;font-size:11px;color:#8A8677;margin-top:9px}
+  .auth-cta-hint.ready{color:#37724B;font-weight:700}
+  @media (prefers-reduced-motion: reduce){.auth-cta-track .auth-btn,.auth-cta-track .auth-btn.fleeing{transform:none!important;transition:background 200ms ease}}
 `;
 
 export default function Login() {
@@ -37,6 +47,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  const ctaFieldsReady = email.trim().length > 0 && password.length > 0;
+  const { trackRef: ctaTrackRef, btnRef: ctaBtnRef, offsetX: ctaOffsetX, fleeing: ctaFleeing } = useRunawayButton(ctaFieldsReady);
 
   function afterLogin(user) {
     if (user.email === ADMIN_EMAIL) {
@@ -130,9 +143,20 @@ export default function Login() {
               {resetLoading ? "جاري الإرسال..." : "نسيت كلمة المرور؟"}
             </button>
           </div>
-          <button className="auth-btn" type="submit" disabled={loading}>
-            {loading ? "جاري الدخول..." : "تسجيل الدخول"}
-          </button>
+          <div className="auth-cta-track" ref={ctaTrackRef}>
+            <button
+              ref={ctaBtnRef}
+              className={"auth-btn" + (ctaFleeing ? " fleeing" : "") + (ctaFieldsReady ? " ready" : "")}
+              type="submit"
+              disabled={loading}
+              style={{ "--cta-offset": `${ctaOffsetX}px` }}
+            >
+              {loading ? "جاري الدخول..." : "تسجيل الدخول"}
+            </button>
+          </div>
+          <div className={"auth-cta-hint" + (ctaFieldsReady ? " ready" : "")}>
+            {ctaFieldsReady ? "جاهز، اضغط للدخول." : "عبّي البريد وكلمة المرور أولًا."}
+          </div>
         </form>
 
         <div className="auth-switch">
