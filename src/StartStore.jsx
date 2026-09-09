@@ -105,7 +105,7 @@ export default function StartStore() {
 
         {step === "form" && <>
           <div className="invite-title">افتح متجرك الرقمي الآن</div>
-          <p className="invite-text">اكتب بيانات متجرك وبريدك، وأنت تختار كلمة المرور بنفسك. الاشتراك 5 ر.ع شهريًا بالبطاقة.</p>
+          <p className="invite-text">اكتب بيانات متجرك وبريدك. الاشتراك 5 ر.ع شهريًا بالبطاقة.</p>
           {error && <div className="invite-message error">{error}</div>}
           <div className="invite-field"><label>اسم المتجر</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
           <div className="invite-field"><label>ماذا تبيع؟</label><select value={storeType} onChange={(event) => setStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
