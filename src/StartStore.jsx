@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 const CTA_WIDTH = 168;
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
@@ -50,6 +51,7 @@ export default function StartStore() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selectedAddOns, setSelectedAddOns] = useState([]);
 
   const emailReady = EMAIL_PATTERN.test(email.trim());
   const passwordReady = password.length >= 6;
@@ -101,12 +103,19 @@ export default function StartStore() {
     setBusy(false);
   }
 
+  function toggleAddOn(key) {
+    setSelectedAddOns((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
+  }
+
+  const addOnsTotal = selectedAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
+  const paymentTotal = BASE_MONTHLY_PRICE + addOnsTotal;
+
   async function payByCard() {
     setError("");
     setBusy(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const data = await signupRequest("create_card_charge", {}, idToken);
+      const data = await signupRequest("create_card_charge", { addOns: selectedAddOns }, idToken);
       window.location.assign(data.url);
     } catch (requestError) {
       setError(requestError.message || "تعذر بدء الدفع الآن.");
@@ -160,9 +169,22 @@ export default function StartStore() {
 
         {step === "payment" && <>
           <div className="invite-title">فعّل اشتراكك</div>
-          <p className="invite-text">اشتراك متجرك 5 ر.ع شهريًا. ادفع بالبطاقة الآن ليتفعّل متجرك فورًا.</p>
+          <p className="invite-text">اشتراك متجرك الأساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.</p>
           {error && <div className="invite-message error">{error}</div>}
-          <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : "ادفع الآن بالبطاقة"}</button>
+          <div className="invite-field">
+            <label>إضافات اختيارية (تقدر تتخطاها الآن)</label>
+            {ADD_ON_CATALOG.map((item) => (
+              <label key={item.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
+                <input type="checkbox" checked={selectedAddOns.includes(item.key)} onChange={() => toggleAddOn(item.key)} style={{ marginTop: 3 }} />
+                <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>
+                  <b>{item.title}</b> — <span style={{ color: "#625F55" }}>+{item.price.toFixed(2)} ر.ع/شهريًا</span>
+                  <br /><span style={{ color: "#8A8677" }}>{item.desc}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="invite-message" style={{ background: "#F7F7F2", color: "#16233F", fontWeight: 700, textAlign: "center" }}>المجموع الشهري: {paymentTotal.toFixed(2)} ر.ع</div>
+          <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : `ادفع ${paymentTotal.toFixed(2)} ر.ع بالبطاقة`}</button>
         </>}
       </main>
     </div>

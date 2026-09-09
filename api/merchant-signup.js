@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ompayRequest } from "../lib/ompay-client.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 
@@ -12,9 +13,9 @@ if (!getApps().length) {
 const db = getFirestore();
 const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
-const MONTHLY_PLAN_PRICE = 5;
+const MONTHLY_PLAN_PRICE = BASE_MONTHLY_PRICE;
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
-const CUSTOM_DOMAIN_PRICE = 2;
+const CUSTOM_DOMAIN_PRICE = CUSTOM_DOMAIN_MONTHLY_PRICE;
 const DOMAIN_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
 const RESERVED_DOMAIN_SLUGS = new Set(["www", "api", "admin", "app", "store", "mail", "monah", "dashboard", "assets", "static"]);
 
@@ -45,6 +46,16 @@ async function domainSlugAvailable(slug, excludeUid) {
   if (!DOMAIN_SLUG_PATTERN.test(slug) || RESERVED_DOMAIN_SLUGS.has(slug)) return false;
   const existing = await db.collection("sellers").where("customDomainSlug", "==", slug).limit(1).get();
   return existing.empty || existing.docs[0].id === excludeUid;
+}
+
+function cleanAddOnKeys(value) {
+  const requested = Array.isArray(value) ? value : [];
+  const valid = new Set(ADD_ON_CATALOG.map((item) => item.key));
+  return Array.from(new Set(requested.filter((key) => valid.has(key))));
+}
+
+function addOnsTotal(keys) {
+  return keys.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
 }
 
 async function verifiedAccount(idToken) {
@@ -88,6 +99,7 @@ async function activateSeller(uid, request) {
       createdAt: FieldValue.serverTimestamp(),
       plan: "basic",
       subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
+      activeAddOns: cleanAddOnKeys(request.selectedAddOns),
     });
     transaction.update(requestRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
   });
@@ -132,10 +144,12 @@ async function createCardCharge(req, res) {
   const request = requestSnap.data();
   if (request.status === "activated") return res.status(200).json({ activated: true });
 
+  const selectedAddOns = cleanAddOnKeys(req.body?.addOns);
+  const amount = MONTHLY_PLAN_PRICE + addOnsTotal(selectedAddOns);
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `SUB-${account.uid}-${Date.now()}`;
   const charge = await ompayRequest("POST", "/api/v1/transactions/bank-hosted", {
-    amount: MONTHLY_PLAN_PRICE,
+    amount,
     currency: "OMR",
     return_url: `${origin}/#store-pay-result/${account.uid}`,
     reference_number: referenceNumber,
@@ -144,7 +158,7 @@ async function createCardCharge(req, res) {
   if (!charge.redirect_url) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
-  await requestRef.update({ ompayReferenceNumber: referenceNumber });
+  await requestRef.update({ ompayReferenceNumber: referenceNumber, selectedAddOns });
   return res.status(200).json({ url: charge.redirect_url });
 }
 
@@ -235,6 +249,105 @@ async function verifyDomainCharge(req, res) {
   return res.status(200).json({ paid: true, slug });
 }
 
+async function createAddOnCharge(req, res) {
+  const account = await authenticatedAccount(req);
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
+  const seller = sellerSnap.data();
+
+  const active = new Set(seller.activeAddOns || []);
+  const requested = cleanAddOnKeys(req.body?.addOns);
+  const newAddOns = requested.filter((key) => !active.has(key));
+  if (newAddOns.length === 0) throw new SignupError(400, "اختر إضافة واحدة على الأقل غير مفعّلة عندك.");
+  const amount = addOnsTotal(newAddOns);
+
+  const origin = `https://${req.headers.host || "monah-app.com"}`;
+  const referenceNumber = `ADDON-${account.uid}-${Date.now()}`;
+  const charge = await ompayRequest("POST", "/api/v1/transactions/bank-hosted", {
+    amount,
+    currency: "OMR",
+    return_url: `${origin}/#store-pay-result/addon-${account.uid}`,
+    reference_number: referenceNumber,
+  }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
+
+  if (!charge.redirect_url) {
+    throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
+  }
+  await sellerRef.update({ pendingAddOns: newAddOns, pendingAddOnReferenceNumber: referenceNumber });
+  return res.status(200).json({ url: charge.redirect_url });
+}
+
+async function verifyAddOnCharge(req, res) {
+  const account = await authenticatedAccount(req);
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
+  const seller = sellerSnap.data();
+  if (!seller.pendingAddOnReferenceNumber || !Array.isArray(seller.pendingAddOns) || !seller.pendingAddOns.length) {
+    throw new SignupError(409, "لا توجد عملية شراء إضافات لهذا الحساب.");
+  }
+
+  const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
+    reference_number: seller.pendingAddOnReferenceNumber,
+  }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
+  if (result.status !== "SUCCESSFUL") {
+    return res.status(200).json({ paid: false, status: result.status || "unknown" });
+  }
+
+  const activeAddOns = Array.from(new Set([...(seller.activeAddOns || []), ...seller.pendingAddOns]));
+  await sellerRef.update({
+    activeAddOns,
+    pendingAddOns: FieldValue.delete(),
+    pendingAddOnReferenceNumber: FieldValue.delete(),
+  });
+  return res.status(200).json({ paid: true, activeAddOns });
+}
+
+async function createRenewalCharge(req, res) {
+  const account = await authenticatedAccount(req);
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
+  const seller = sellerSnap.data();
+  const amount = MONTHLY_PLAN_PRICE + addOnsTotal(seller.activeAddOns || []);
+
+  const origin = `https://${req.headers.host || "monah-app.com"}`;
+  const referenceNumber = `RENEW-${account.uid}-${Date.now()}`;
+  const charge = await ompayRequest("POST", "/api/v1/transactions/bank-hosted", {
+    amount,
+    currency: "OMR",
+    return_url: `${origin}/#store-pay-result/renew-${account.uid}`,
+    reference_number: referenceNumber,
+  }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
+
+  if (!charge.redirect_url) {
+    throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
+  }
+  await sellerRef.update({ pendingRenewalReferenceNumber: referenceNumber });
+  return res.status(200).json({ url: charge.redirect_url });
+}
+
+async function verifyRenewalCharge(req, res) {
+  const account = await authenticatedAccount(req);
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
+  const seller = sellerSnap.data();
+  if (!seller.pendingRenewalReferenceNumber) throw new SignupError(409, "لا توجد عملية تجديد لهذا الحساب.");
+
+  const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
+    reference_number: seller.pendingRenewalReferenceNumber,
+  }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
+  if (result.status !== "SUCCESSFUL") {
+    return res.status(200).json({ paid: false, status: result.status || "unknown" });
+  }
+
+  const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
+  await sellerRef.update({ subscriptionExpiresAt, pendingRenewalReferenceNumber: FieldValue.delete() });
+  return res.status(200).json({ paid: true, subscriptionExpiresAt });
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
@@ -250,6 +363,10 @@ export default async function handler(req, res) {
     if (action === "check_domain_slug") return await checkDomainSlug(req, res);
     if (action === "create_domain_charge") return await createDomainCharge(req, res);
     if (action === "verify_domain_charge") return await verifyDomainCharge(req, res);
+    if (action === "create_addon_charge") return await createAddOnCharge(req, res);
+    if (action === "verify_addon_charge") return await verifyAddOnCharge(req, res);
+    if (action === "create_renewal_charge") return await createRenewalCharge(req, res);
+    if (action === "verify_renewal_charge") return await verifyRenewalCharge(req, res);
     return res.status(400).json({ error: "طلب غير واضح." });
   } catch (error) {
     if (error instanceof SignupError) return res.status(error.code).json({ error: error.message });

@@ -443,6 +443,13 @@ export default function Dashboard() {
   const [domainAvailable, setDomainAvailable] = useState(null);
   const [domainBuying, setDomainBuying] = useState(false);
   const [domainMessage, setDomainMessage] = useState("");
+  const [activeAddOns, setActiveAddOns] = useState([]);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState("");
+  const [addOnSelection, setAddOnSelection] = useState([]);
+  const [addOnBuying, setAddOnBuying] = useState(false);
+  const [addOnMessage, setAddOnMessage] = useState("");
+  const [renewalBuying, setRenewalBuying] = useState(false);
+  const [renewalMessage, setRenewalMessage] = useState("");
 
   // overview: sales
   const [sellerOrders, setSellerOrders] = useState([]);
@@ -488,6 +495,8 @@ export default function Dashboard() {
         setPaymentPhoneNumber(snap.data().paymentPhoneNumber || "");
         setCustomDomainSlug(snap.data().customDomainSlug || "");
         setCustomDomainExpiresAt(snap.data().customDomainExpiresAt || "");
+        setActiveAddOns(snap.data().activeAddOns || []);
+        setSubscriptionExpiresAt(snap.data().subscriptionExpiresAt || "");
         setRepeatCouponEnabled(Boolean(snap.data().repeatCouponEnabled));
         setRepeatCouponPercent(Number(snap.data().repeatCouponPercent) || 10);
         setSellerAccess("active");
@@ -1277,6 +1286,35 @@ export default function Dashboard() {
     } catch (err) {
       setDomainMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
       setDomainBuying(false);
+    }
+  }
+
+  function toggleAddOnSelection(key) {
+    setAddOnSelection((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
+  }
+
+  async function buyAddOns() {
+    if (addOnSelection.length === 0) return;
+    setAddOnBuying(true);
+    setAddOnMessage("");
+    try {
+      const data = await domainSignupRequest("create_addon_charge", { addOns: addOnSelection });
+      window.location.assign(data.url);
+    } catch (err) {
+      setAddOnMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
+      setAddOnBuying(false);
+    }
+  }
+
+  async function renewSubscription() {
+    setRenewalBuying(true);
+    setRenewalMessage("");
+    try {
+      const data = await domainSignupRequest("create_renewal_charge", {});
+      window.location.assign(data.url);
+    } catch (err) {
+      setRenewalMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
+      setRenewalBuying(false);
     }
   }
 
@@ -2376,14 +2414,19 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "subscription" && (
+        {tab === "subscription" && (() => {
+          const addOnsMonthlyTotal = activeAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
+          const monthlyTotal = BASE_MONTHLY_PRICE + addOnsMonthlyTotal;
+          const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
+          const daysLeft = subscriptionExpiresAt ? Math.ceil((new Date(subscriptionExpiresAt) - new Date()) / (24 * 60 * 60 * 1000)) : null;
+          return (
           <>
             <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
             <div className="dh-card" style={{ borderTop: "3px solid #163F2E" }}>
               <div className="dh-title-row">
                 <div>
                   <div className="dh-title">اشتراك متجرك</div>
-                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي 5 ر.ع شهريًا، ثم إضافات قليلة تختارها لاحقًا.</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا، ثم إضافات تختارها وتُحتسب معه.</div>
                 </div>
                 <span className="dh-subscription-ready" style={{ background: "#EAF0EB", color: "#37724B", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>مفعّل</span>
               </div>
@@ -2394,29 +2437,73 @@ export default function Dashboard() {
                 </div>
                 <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b>
               </div>
-              <p className="dh-hint" style={{ margin: "13px 0 0", lineHeight: 1.9 }}>تختار الإضافات التي تحتاجها، ويظهر لك المجموع الشهري كاملًا قبل التأكيد عند تفعيل الاشتراك.</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
+                <span className="dh-hint">
+                  {subscriptionExpiresAt ? `الاشتراك ساري حتى ${subscriptionExpiresAt}${daysLeft !== null ? (daysLeft >= 0 ? ` (${daysLeft} يوم متبقي)` : " — منتهي") : ""}.` : "تاريخ التجديد غير متوفر."}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10, background: "#F7F7F2", borderRadius: 12, padding: "10px 12px" }}>
+                <div>
+                  <b style={{ display: "block", fontSize: 12.5 }}>مبلغ التجديد القادم</b>
+                  <span className="dh-hint">الأساسي + إضافاتك المفعّلة ({activeAddOns.length})</span>
+                </div>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{monthlyTotal.toFixed(2)} ر.ع</b>
+              </div>
+              <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={renewalBuying} onClick={renewSubscription}>
+                {renewalBuying ? "جاري تجهيز الدفع..." : `ادفع ${monthlyTotal.toFixed(2)} ر.ع وجدّد الاشتراك`}
+              </button>
+              {renewalMessage && <div className="dh-error" style={{ marginTop: 8 }}>{renewalMessage}</div>}
             </div>
 
             {Array.from(new Set(ADD_ON_CATALOG.map((item) => item.group))).map((group) => (
               <div className="dh-card" key={group}>
                 <div className="dh-title" style={{ marginBottom: 8 }}>{group}</div>
-                {ADD_ON_CATALOG.filter((item) => item.group === group).map((item) => (
-                  <div className="dh-item" key={item.key}>
-                    <div className="dh-item-top" style={{ alignItems: "flex-start", gap: 12 }}>
-                      <div>
-                        <div className="dh-item-name">{item.title}</div>
-                        <div className="dh-hint" style={{ marginTop: 3 }}>{item.desc}</div>
+                {ADD_ON_CATALOG.filter((item) => item.group === group).map((item) => {
+                  const isActive = activeAddOns.includes(item.key);
+                  return (
+                    <label className="dh-item" key={item.key} style={{ display: "block", cursor: isActive ? "default" : "pointer" }}>
+                      <div className="dh-item-top" style={{ alignItems: "flex-start", gap: 12 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                          {!isActive && (
+                            <input
+                              type="checkbox"
+                              checked={addOnSelection.includes(item.key)}
+                              onChange={() => toggleAddOnSelection(item.key)}
+                              style={{ marginTop: 3 }}
+                            />
+                          )}
+                          <div>
+                            <div className="dh-item-name">{item.title}</div>
+                            <div className="dh-hint" style={{ marginTop: 3 }}>{item.desc}</div>
+                          </div>
+                        </div>
+                        <b className="dh-item-price">+{item.price.toFixed(2)} ر.ع</b>
                       </div>
-                      <b className="dh-item-price">+{item.price.toFixed(2)} ر.ع</b>
-                    </div>
-                    <span style={{ display: "inline-block", background: item.ready ? "#EAF0EB" : "#F3EBDD", color: item.ready ? "#37724B" : "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>{item.status}</span>
-                  </div>
-                ))}
+                      <span style={{ display: "inline-block", marginTop: 6, background: isActive ? "#EAF0EB" : "#F3EBDD", color: isActive ? "#37724B" : "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>
+                        {isActive ? "مفعّل" : "غير مفعّل"}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             ))}
-            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>اشتراكك الأساسي مفعّل ويتجدد شهريًا. الإضافات المذكورة هنا معلومات فقط حاليًا، ولا تُحتسب على اشتراكك إلا لما تصير متاحة فعليًا وتختارها بنفسك.</div>
+
+            {addOnSelection.length > 0 && (
+              <div className="dh-card" style={{ position: "sticky", bottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <span className="dh-hint">{addOnSelection.length} إضافة مختارة</span>
+                  <b className="mono" style={{ color: "#163F2E" }}>{selectionTotal.toFixed(2)} ر.ع</b>
+                </div>
+                <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={addOnBuying} onClick={buyAddOns}>
+                  {addOnBuying ? "جاري تجهيز الدفع..." : `ادفع ${selectionTotal.toFixed(2)} ر.ع وفعّل الإضافات`}
+                </button>
+                {addOnMessage && <div className="dh-error" style={{ marginTop: 8 }}>{addOnMessage}</div>}
+              </div>
+            )}
+            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.</div>
           </>
-        )}
+          );
+        })()}
 
       </div>
 

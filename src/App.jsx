@@ -511,7 +511,7 @@ export default function App() {
                 <div>✓ منتج مجاني وروابط تتبع الزيارات</div>
               </div>
               <div className="price-soon">
-                <div className="price-soon-label">إضافات تكبّر مبيعاتك عند التفعيل:</div>
+                <div className="price-soon-label">إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:</div>
                 {ADD_ON_CATALOG.map((item) => (
                   <div key={item.key} style={{ marginBottom: 10 }}>
                     <div>○ <b>{item.title}</b> — {item.price} ر.ع</div>
@@ -522,7 +522,7 @@ export default function App() {
               <a className="price-btn" href={START_STORE_URL}>افتح متجرك الحين</a>
             </div>
           </div>
-          <div className="pricing-note">الاشتراك الأساسي ٥ ر.ع شهريًا يُفعّل فور الدفع بالبطاقة. الإضافات المذكورة هنا معلومات فقط حاليًا، ولا تُحتسب على اشتراكك إلا لما تصير متاحة فعليًا وتختارها بنفسك.</div>
+          <div className="pricing-note">الاشتراك الأساسي ٥ ر.ع شهريًا يُفعّل فور الدفع بالبطاقة. أي إضافة تختارها تُضاف لمبلغ اشتراكك الشهري تلقائيًا.</div>
         </div>
       </section>
 
