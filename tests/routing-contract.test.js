@@ -610,4 +610,29 @@ describe("عقود المسارات العامة في مُونَة", () => {
     // الأدمن يقدر يشوف نفس البيانات في تفاصيل التاجر
     expect(adminDashboard).toContain("s.paymentAccountNumber");
   });
+
+  it("يطبّق زر المتابعة الهارب من الماوس على كل نماذج الدخول والتسجيل، عبر خطاف واحد مشترك لا نسخ متكررة", async () => {
+    const hook = await source("src/useRunawayButton.js");
+    const startStore = await source("src/StartStore.jsx");
+    const login = await source("src/Login.jsx");
+    const inviteActivation = await source("src/InviteActivation.jsx");
+
+    // منطق التتبع والهروب موجود مرة واحدة بس، في خطاف مشترك
+    expect(hook).toContain("export default function useRunawayButton(ready)");
+    expect(hook).toContain('document.addEventListener("pointermove", handlePointerMove)');
+    expect(hook).toContain('window.matchMedia?.("(pointer: fine)")');
+    expect(hook).toContain('window.matchMedia?.("(prefers-reduced-motion: reduce)")');
+
+    // كل صفحة فيها نموذج بريد وكلمة مرور تستخدم نفس الخطاف، ولا تكرر منطق pointermove بنفسها
+    for (const page of [startStore, login, inviteActivation]) {
+      expect(page).toContain('import useRunawayButton from "./useRunawayButton.js"');
+      expect(page).toContain("useRunawayButton(");
+      expect(page).not.toContain("addEventListener(\"pointermove\"");
+    }
+
+    // الزر يبقى فعليًا زر submit عادي دائمًا — التفادي زخرفة بصرية فقط، ما يعطل لوحة المفاتيح أو اللمس
+    expect(startStore).not.toContain('disabled={!ctaFieldsReady}');
+    expect(login).not.toContain('disabled={!ctaFieldsReady}');
+    expect(inviteActivation).not.toContain('disabled={!ctaFieldsReady}');
+  });
 });
