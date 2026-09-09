@@ -101,19 +101,6 @@ export default function StartStore() {
     setBusy(false);
   }
 
-  async function payByCard() {
-    setError("");
-    setBusy(true);
-    try {
-      const idToken = await auth.currentUser.getIdToken();
-      const data = await signupRequest("create_card_charge", {}, idToken);
-      window.location.assign(data.url);
-    } catch (requestError) {
-      setError(requestError.message || "تعذر بدء الدفع الآن.");
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="invite-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -159,10 +146,9 @@ export default function StartStore() {
         </>}
 
         {step === "payment" && <>
-          <div className="invite-title">فعّل اشتراكك</div>
-          <p className="invite-text">اشتراك متجرك 5 ر.ع شهريًا. ادفع بالبطاقة الآن ليتفعّل متجرك فورًا.</p>
-          {error && <div className="invite-message error">{error}</div>}
-          <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : "ادفع الآن بالبطاقة"}</button>
+          <div className="invite-title">تم حفظ طلبك</div>
+          <p className="invite-text">الدفع بالبطاقة متوقف مؤقتًا لحين ربط بوابة دفع جديدة. تواصل معنا الآن على واتساب ونفعّل متجرك يدويًا خلال وقت قصير.</p>
+          <a className="invite-btn" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href="https://wa.me/96876630905" target="_blank" rel="noopener noreferrer">تواصل معنا على واتساب</a>
         </>}
       </main>
     </div>
