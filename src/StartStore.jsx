@@ -1,6 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+
+const CTA_WIDTH = 168;
+const FLEE_RADIUS = 100;
+const MAX_PUSH = 68;
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 const STORE_TYPES = { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" };
 
@@ -17,6 +22,14 @@ const styles = `
   .invite-divider{display:flex;align-items:center;gap:10px;color:#B0AC9C;font-size:11px;margin-bottom:16px}
   .invite-divider::before,.invite-divider::after{content:"";flex:1;height:1px;background:#E4E0D3}
   .invite-page button{transition:transform 100ms ease-out}.invite-page button:active{transform:scale(.96)}
+  .invite-cta-track{display:flex;justify-content:center;padding:2px 0}
+  .invite-cta-track .invite-btn{width:${CTA_WIDTH}px;transform:translateX(var(--cta-offset,0px));transition:transform 320ms cubic-bezier(.22,1,.36,1)}
+  .invite-cta-track .invite-btn:active{transform:translateX(var(--cta-offset,0px)) scale(.96)}
+  .invite-cta-track .invite-btn.fleeing{transition:transform 190ms cubic-bezier(.3,1.4,.6,1)}
+  .invite-cta-track .invite-btn.ready{background:#163F2E;box-shadow:0 0 0 3px rgba(55,114,75,.18)}
+  .invite-cta-hint{text-align:center;font-size:11px;color:#8A8677;margin-top:9px}
+  .invite-cta-hint.ready{color:#37724B;font-weight:700}
+  @media (prefers-reduced-motion: reduce){.invite-cta-track .invite-btn,.invite-cta-track .invite-btn.fleeing{transform:none!important;transition:background 200ms ease}}
 `;
 
 async function signupRequest(action, payload, idToken = "") {
@@ -38,6 +51,51 @@ export default function StartStore() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ctaOffsetX, setCtaOffsetX] = useState(0);
+  const [ctaFleeing, setCtaFleeing] = useState(false);
+  const ctaTrackRef = useRef(null);
+  const ctaBtnRef = useRef(null);
+
+  const emailReady = EMAIL_PATTERN.test(email.trim());
+  const passwordReady = password.length >= 6;
+  const ctaFieldsReady = emailReady && passwordReady;
+
+  useEffect(() => {
+    if (step !== "form" || ctaFieldsReady) {
+      setCtaOffsetX(0);
+      setCtaFleeing(false);
+      return;
+    }
+    const finePointer = window.matchMedia?.("(pointer: fine)").matches;
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!finePointer || reducedMotion) return;
+
+    function handlePointerMove(event) {
+      const track = ctaTrackRef.current;
+      const btn = ctaBtnRef.current;
+      if (!track || !btn) return;
+      const trackRect = track.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      const btnCenterX = btnRect.left + btnRect.width / 2;
+      const btnCenterY = btnRect.top + btnRect.height / 2;
+      const dx = event.clientX - btnCenterX;
+      const dy = event.clientY - btnCenterY;
+      const dist = Math.hypot(dx, dy);
+      if (dist >= FLEE_RADIUS || dist === 0) {
+        setCtaOffsetX(0);
+        setCtaFleeing(false);
+        return;
+      }
+      const strength = (FLEE_RADIUS - dist) / FLEE_RADIUS;
+      const maxOffset = Math.max(0, (trackRect.width - btnRect.width) / 2 - 6);
+      const pushX = Math.max(-maxOffset, Math.min(maxOffset, -(dx / dist) * strength * MAX_PUSH));
+      setCtaOffsetX(pushX);
+      setCtaFleeing(true);
+    }
+
+    document.addEventListener("pointermove", handlePointerMove);
+    return () => document.removeEventListener("pointermove", handlePointerMove);
+  }, [step, ctaFieldsReady]);
 
   async function submitForm(event) {
     event.preventDefault();
@@ -119,7 +177,24 @@ export default function StartStore() {
           <form onSubmit={submitForm}>
             <div className="invite-field"><label>بريدك الإلكتروني</label><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" required /></div>
             <div className="invite-field"><label>اختر كلمة المرور</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></div>
-            <button className="invite-btn" type="submit" disabled={busy}>{busy ? "جاري الإنشاء..." : "متابعة"}</button>
+            <div className="invite-cta-track" ref={ctaTrackRef}>
+              <button
+                ref={ctaBtnRef}
+                className={"invite-btn" + (ctaFleeing ? " fleeing" : "") + (ctaFieldsReady ? " ready" : "")}
+                type="submit"
+                disabled={busy}
+                style={{ "--cta-offset": `${ctaOffsetX}px` }}
+              >
+                {busy ? "جاري الإنشاء..." : "متابعة"}
+              </button>
+            </div>
+            <div className={"invite-cta-hint" + (ctaFieldsReady ? " ready" : "")}>
+              {ctaFieldsReady
+                ? "جاهز، اضغط للمتابعة."
+                : emailReady || passwordReady
+                  ? "بقي حقل وحد."
+                  : "عبّي البريد وكلمة المرور أولًا."}
+            </div>
           </form>
           <a className="invite-back" href="#login">عندك متجر بالفعل؟ سجّل الدخول</a>
         </>}
