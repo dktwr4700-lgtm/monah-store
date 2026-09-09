@@ -39,7 +39,7 @@ const STORE_STYLES = [
 ];
 const COLORS = STORE_STYLES.map((style) => style.color);
 const ADMIN_EMAIL = "k1997551@gmail.com";
-const MAX_PRODUCT_FILE_MB = 1024;
+const MAX_PRODUCT_FILE_MB = 5120;
 const STORE_TYPE_LABELS = {
   books: "كتب رقمية",
   videos: "فيديوهات ودورات",
