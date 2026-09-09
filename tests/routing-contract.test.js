@@ -553,6 +553,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const adminDashboard = await source("src/AdminDashboard.jsx");
     const ompayClient = await source("lib/ompay-client.js");
     const main = await source("src/main.jsx");
+    const startStore = await source("src/StartStore.jsx");
 
     // ما فيه أي إشارة لتاب في أي مكان بالمنصة
     expect(orderApi).not.toContain("tap");
@@ -574,7 +575,11 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(orderApi).toContain('seller.activeAddOns.includes("digitalSelling")');
     expect(orderApi).toContain("sellerCardPaymentAvailable(seller)");
     expect(dashboard).toContain('!activeAddOns.includes("digitalSelling")');
-    expect(catalog).toContain("تربط بوابة الدفع الخاصة بك من الإعدادات");
+    expect(catalog).toContain("اربط بوابة الدفع الخاصة بك من الإعدادات");
+    expect(catalog).toContain("أولًا، ثم فعّل هذه الإضافة");
+    expect(signupApi).toContain('.filter((key) => key !== "digitalSelling")');
+    expect(signupApi).toContain('newAddOns.includes("digitalSelling")');
+    expect(startStore).toContain('ADD_ON_CATALOG.filter((item) => item.key !== "digitalSelling")');
     expect(orderApi).toContain("gateway.ompayApiKey");
     expect(orderApi).toContain("gateway.ompayApiSecret");
     expect(orderApi).toContain('action === "save_payment_gateway"');

@@ -150,7 +150,9 @@ async function createCardCharge(req, res) {
   const request = requestSnap.data();
   if (request.status === "activated") return res.status(200).json({ activated: true });
 
-  const selectedAddOns = cleanAddOnKeys(req.body?.addOns);
+  // "البيع الرقمي" يحتاج بوابة دفع خاصة بالتاجر مربوطة، وما فيه متجر بعد وقت التسجيل
+  // حتى يقدر يربطها — تُستثنى هنا وتُشترى لاحقًا من لوحة التاجر بعد ربط البوابة.
+  const selectedAddOns = cleanAddOnKeys(req.body?.addOns).filter((key) => key !== "digitalSelling");
   const amount = MONTHLY_PLAN_PRICE + addOnsTotal(selectedAddOns);
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `SUB-${account.uid}-${Date.now()}`;
@@ -268,6 +270,11 @@ async function createAddOnCharge(req, res) {
   const requested = cleanAddOnKeys(req.body?.addOns);
   const newAddOns = requested.filter((key) => !active.has(key));
   if (newAddOns.length === 0) throw new SignupError(400, "اختر إضافة واحدة على الأقل غير مفعّلة عندك.");
+  // "البيع الرقمي" ما ينفع تشتريه قبل ما تربط بوابة دفعك الخاصة — وإلا تدفع قيمته
+  // وما تقدر تستخدمه لين تربطها لاحقًا.
+  if (newAddOns.includes("digitalSelling") && seller.paymentGateway?.provider !== "ompay") {
+    throw new SignupError(409, "اربط بوابة الدفع الخاصة بك أولًا من الإعدادات قبل تفعيل إضافة البيع الرقمي.");
+  }
   const amount = addOnsTotal(newAddOns);
 
   const origin = `https://${req.headers.host || "monah-app.com"}`;
