@@ -58,6 +58,12 @@ function addOnsTotal(keys) {
   return keys.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
 }
 
+function chargeRedirectUrl(charge) {
+  const url = charge?.redirect_url || charge?.redirectUrl || charge?.data?.redirect_url || charge?.data?.redirectUrl;
+  if (!url) console.error("OmPay bank-hosted charge missing redirect_url. Raw response:", JSON.stringify(charge));
+  return url;
+}
+
 async function verifiedAccount(idToken) {
   if (!idToken) return null;
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`, {
@@ -155,11 +161,12 @@ async function createCardCharge(req, res) {
     reference_number: referenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
 
-  if (!charge.redirect_url) {
+  const redirectUrl = chargeRedirectUrl(charge);
+  if (!redirectUrl) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
   await requestRef.update({ ompayReferenceNumber: referenceNumber, selectedAddOns });
-  return res.status(200).json({ url: charge.redirect_url });
+  return res.status(200).json({ url: redirectUrl });
 }
 
 async function verifyCardCharge(req, res) {
@@ -209,11 +216,12 @@ async function createDomainCharge(req, res) {
     reference_number: referenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
 
-  if (!charge.redirect_url) {
+  const redirectUrl = chargeRedirectUrl(charge);
+  if (!redirectUrl) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
   await sellerRef.update({ pendingDomainSlug: slug, pendingDomainReferenceNumber: referenceNumber });
-  return res.status(200).json({ url: charge.redirect_url });
+  return res.status(200).json({ url: redirectUrl });
 }
 
 async function verifyDomainCharge(req, res) {
@@ -271,11 +279,12 @@ async function createAddOnCharge(req, res) {
     reference_number: referenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
 
-  if (!charge.redirect_url) {
+  const redirectUrl = chargeRedirectUrl(charge);
+  if (!redirectUrl) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
   await sellerRef.update({ pendingAddOns: newAddOns, pendingAddOnReferenceNumber: referenceNumber });
-  return res.status(200).json({ url: charge.redirect_url });
+  return res.status(200).json({ url: redirectUrl });
 }
 
 async function verifyAddOnCharge(req, res) {
@@ -321,11 +330,12 @@ async function createRenewalCharge(req, res) {
     reference_number: referenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
 
-  if (!charge.redirect_url) {
+  const redirectUrl = chargeRedirectUrl(charge);
+  if (!redirectUrl) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
   await sellerRef.update({ pendingRenewalReferenceNumber: referenceNumber });
-  return res.status(200).json({ url: charge.redirect_url });
+  return res.status(200).json({ url: redirectUrl });
 }
 
 async function verifyRenewalCharge(req, res) {
