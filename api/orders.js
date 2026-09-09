@@ -4,7 +4,6 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
-import { tapRequest as tapRequestRaw } from "../lib/tap-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -227,7 +226,6 @@ async function createBundleOrder(req, res, account) {
   if (paymentDetails.paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذه الحزمة بعد.");
   }
-  const cardPaymentAvailable = Boolean(seller.paymentGateway?.provider);
 
   const draftSnap = await db.collection("orders")
     .where("buyerUid", "==", account.uid)
@@ -246,7 +244,6 @@ async function createBundleOrder(req, res, account) {
         paymentAccountNumber: existing.paymentAccountNumber || "",
         paymentPhoneNumber: existing.paymentPhoneNumber || "",
         price: Number(existing.price),
-        cardPaymentAvailable,
       },
     });
   }
@@ -267,7 +264,7 @@ async function createBundleOrder(req, res, account) {
     ...paymentDetails,
     createdAt: FieldValue.serverTimestamp(),
   });
-  return res.status(201).json({ order: { id: orderRef.id, ...paymentDetails, price: Number(bundle.price), cardPaymentAvailable } });
+  return res.status(201).json({ order: { id: orderRef.id, ...paymentDetails, price: Number(bundle.price) } });
 }
 
 async function createOrder(req, res, account) {
@@ -299,7 +296,6 @@ async function createOrder(req, res, account) {
   if (paymentDetails.paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذا المنتج بعد.");
   }
-  const cardPaymentAvailable = Boolean(seller.paymentGateway?.provider);
 
   const originalPrice = Number(product.price);
   const { discountPercent, couponCode } = await resolveCoupon(req.body?.couponCode, productId, product.ownerId, account.uid);
@@ -326,7 +322,6 @@ async function createOrder(req, res, account) {
         price: Number(existing.price),
         originalPrice: Number(existing.originalPrice),
         couponCode: existing.couponCode || "",
-        cardPaymentAvailable,
       },
     });
   }
@@ -346,7 +341,7 @@ async function createOrder(req, res, account) {
     ...paymentDetails,
     createdAt: FieldValue.serverTimestamp(),
   });
-  return res.status(201).json({ order: { id: orderRef.id, ...paymentDetails, price: finalPrice, originalPrice, couponCode, cardPaymentAvailable } });
+  return res.status(201).json({ order: { id: orderRef.id, ...paymentDetails, price: finalPrice, originalPrice, couponCode } });
 }
 
 async function submitProof(req, res, account) {
@@ -429,7 +424,6 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
   };
 }
 
-// يشترك فيها تأكيد التاجر اليدوي وتأكيد الدفع التلقائي ببطاقة عبر Tap.
 // كل قراءات المنتجات والأكواد لازم تنتهي قبل أي كتابة داخل نفس المعاملة،
 // فنجهّز دوال الكتابة أولًا (unlockOneProduct) ثم ننفذها كلها بعدين.
 async function markOrderConfirmed(orderRef, orderId, confirmedBy) {
@@ -497,88 +491,6 @@ async function deleteOrderAsAdmin(req, res, account) {
   if (order.proofPath) await bucket.file(order.proofPath).delete().catch(() => {});
   await orderRef.delete();
   return res.status(200).json({ ok: true });
-}
-
-async function tapRequest(method, path, body, secretKeyOverride) {
-  try {
-    return await tapRequestRaw(method, path, body, secretKeyOverride);
-  } catch (error) {
-    throw new OrderError(error.code || 502, error.message);
-  }
-}
-
-// الشحن يصير دايمًا بمفتاح بوابة الدفع الخاص بالتاجر نفسه (مالك المنتج)،
-// أبدًا بمفتاح مُونة — مُونة ما تلمس فلوس مبيعات أي تاجر.
-async function sellerTapSecretKey(ownerId) {
-  const sellerSnap = await db.collection("sellers").doc(ownerId).get();
-  const gateway = sellerSnap.exists ? sellerSnap.data().paymentGateway : null;
-  if (!gateway || gateway.provider !== "tap" || !gateway.tapSecretKey) {
-    throw new OrderError(409, "صاحب المتجر لم يربط بوابة دفع بعد. استخدم التحويل اليدوي.");
-  }
-  return gateway.tapSecretKey;
-}
-
-async function createCardCharge(req, res, account) {
-  const orderId = cleanText(req.body?.orderId, 160);
-  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
-  const orderRef = db.collection("orders").doc(orderId);
-  const orderSnap = await orderRef.get();
-  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
-    throw new OrderError(403, "لا تملك هذا الطلب.");
-  }
-  const order = orderSnap.data();
-  if (order.status !== "draft") {
-    throw new OrderError(409, "هذا الطلب لا يقبل الدفع الآن.");
-  }
-  const secretKey = await sellerTapSecretKey(order.ownerId);
-
-  const origin = `https://${req.headers.host || "monah-app.com"}`;
-  const charge = await tapRequest("POST", "/charges/", {
-    amount: Number(Number(order.price).toFixed(3)),
-    currency: "OMR",
-    customer: {
-      first_name: "عميل مُونَة",
-      email: `buyer-${account.uid}@monah-app.com`,
-    },
-    source: { id: "src_all" },
-    threeDSecure: true,
-    description: cleanText(order.productName, 160) || "طلب من مُونَة",
-    reference: { order: orderId },
-    metadata: { orderId },
-    redirect: { url: `${origin}/#pay-result/${orderId}` },
-  }, secretKey);
-
-  if (!charge.id || !charge.transaction?.url) {
-    throw new OrderError(502, "تعذر تجهيز صفحة الدفع الآن. جرب التحويل اليدوي.");
-  }
-  await orderRef.update({ tapChargeId: charge.id });
-  return res.status(200).json({ url: charge.transaction.url });
-}
-
-async function verifyCardCharge(req, res, account) {
-  const orderId = cleanText(req.body?.orderId, 160);
-  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
-  const orderRef = db.collection("orders").doc(orderId);
-  const orderSnap = await orderRef.get();
-  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
-    throw new OrderError(403, "لا تملك هذا الطلب.");
-  }
-  const order = orderSnap.data();
-  if (order.status === "confirmed") {
-    return res.status(200).json({ paid: true, type: order.type });
-  }
-  if (!order.tapChargeId) {
-    throw new OrderError(409, "لا توجد عملية دفع بالبطاقة لهذا الطلب.");
-  }
-  const secretKey = await sellerTapSecretKey(order.ownerId);
-
-  const charge = await tapRequest("GET", `/charges/${order.tapChargeId}`, undefined, secretKey);
-  if (charge.status !== "CAPTURED") {
-    return res.status(200).json({ paid: false, status: charge.status || "unknown" });
-  }
-  const result = await markOrderConfirmed(orderRef, orderId, "tap");
-  if (!result.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
-  return res.status(200).json({ paid: true, type: result.type });
 }
 
 async function listBuyerOrders(req, res, account) {
@@ -712,28 +624,6 @@ async function savePaymentInstructions(req, res, account) {
   return res.status(200).json({ ok: true, paymentInstructions, paymentBankName, paymentAccountHolder, paymentAccountNumber, paymentPhoneNumber });
 }
 
-async function saveSellerPaymentGateway(req, res, account) {
-  await requireSeller(account.uid);
-  const sellerRef = db.collection("sellers").doc(account.uid);
-  const sellerSnap = await sellerRef.get();
-  if (!sellerSnap.exists) throw new OrderError(409, "لم نجد متجرًا مفعّلًا لهذا الحساب.");
-
-  if (req.body?.disconnect) {
-    await sellerRef.set({ paymentGateway: FieldValue.delete() }, { merge: true });
-    return res.status(200).json({ ok: true, connected: false });
-  }
-
-  const provider = cleanText(req.body?.provider, 20);
-  const tapSecretKey = cleanText(req.body?.tapSecretKey, 200);
-  if (provider !== "tap") throw new OrderError(400, "بوابة الدفع غير مدعومة حاليًا.");
-  if (tapSecretKey.length < 10) throw new OrderError(400, "اكتب مفتاح API صحيح من حسابك في تاب.");
-
-  await sellerRef.set({
-    paymentGateway: { provider, tapSecretKey, connectedAt: FieldValue.serverTimestamp() },
-  }, { merge: true });
-  return res.status(200).json({ ok: true, connected: true, provider });
-}
-
 async function saveRepeatCouponSettings(req, res, account) {
   await requireSeller(account.uid);
   const enabled = Boolean(req.body?.enabled);
@@ -759,14 +649,11 @@ export default async function handler(req, res) {
     if (action === "submit_proof") return await submitProof(req, res, account);
     if (action === "confirm") return await confirmPayment(req, res, account);
     if (action === "admin_delete_order") return await deleteOrderAsAdmin(req, res, account);
-    if (action === "create_card_charge") return await createCardCharge(req, res, account);
-    if (action === "verify_card_charge") return await verifyCardCharge(req, res, account);
     if (action === "list_buyer") return await listBuyerOrders(req, res, account);
     if (action === "proof_url") return await proofUrl(req, res, account);
     if (action === "receipt") return await receipt(req, res, account);
     if (action === "deliver") return await deliverOrder(req, res);
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
-    if (action === "save_payment_gateway") return await saveSellerPaymentGateway(req, res, account);
     if (action === "save_repeat_coupon_settings") return await saveRepeatCouponSettings(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {

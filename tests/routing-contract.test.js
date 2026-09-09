@@ -491,94 +491,72 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("allow read, write: if false;");
   });
 
-  it("يسمح للتاجر يسجّل متجره بنفسه ويفعّل اشتراكه فورًا بالبطاقة فقط", async () => {
+  it("يسمح للتاجر يسجّل متجره بنفسه، ويعرض له إشعار توقف الدفع بالبطاقة مؤقتًا بدل الدفع الفوري", async () => {
     const main = await source("src/main.jsx");
     const landing = await source("src/App.jsx");
     const startStore = await source("src/StartStore.jsx");
-    const storePayResult = await source("src/StorePayResult.jsx");
     const signupApi = await source("api/merchant-signup.js");
-    const tapClient = await source("lib/tap-client.js");
 
     expect(main).toContain('lazy(() => import("./StartStore.jsx"))');
     expect(main).toContain('hash === "start-store"');
-    expect(main).toContain('hash.startsWith("store-pay-result/")');
     expect(landing).toContain('href={START_STORE_URL}');
 
     expect(startStore).toContain('signupRequest("register"');
-    expect(startStore).toContain('signupRequest("create_card_charge"');
     expect(startStore).not.toContain("submit_manual_proof");
-    expect(storePayResult).toContain('"verify_card_charge"');
+    expect(startStore).toContain("الدفع بالبطاقة متوقف مؤقتًا");
+    expect(startStore).toContain("https://wa.me/96876630905");
 
-    expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = 5");
     expect(signupApi).toContain('if (sellerSnap.exists) return res.status(409)');
-    expect(signupApi).toContain("charge.status !== \"CAPTURED\"");
-    expect(signupApi).toContain("async function activateSeller(uid, request)");
-    expect(signupApi).toContain("subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
     expect(signupApi).not.toContain("submit_manual_proof");
     expect(signupApi).not.toContain("requireOwner");
-
-    expect(tapClient).toContain("export async function tapRequest");
   });
 
-  it("يفصل حساب الدفع الخاص بمُونة عن حسابات التجار: كل تحصيل مبيعات يمر ببوابة دفع التاجر نفسه أو تحويل يدوي، أبدًا بحساب مُونة", async () => {
+  it("يحذف تكامل تاب بالكامل من المنصة: لا بوابة دفع خاصة بالتاجر، ولا تحصيل بطاقة لحساب مُونة، حتى تُربط بوابة دفع جديدة", async () => {
     const orderApi = await source("api/orders.js");
     const orderPanel = await source("src/ProductOrderPanel.jsx");
-    const tapClient = await source("lib/tap-client.js");
+    const signupApi = await source("api/merchant-signup.js");
+    const dashboard = await source("src/Dashboard.jsx");
+    const adminDashboard = await source("src/AdminDashboard.jsx");
     const main = await source("src/main.jsx");
 
-    // شحن الطلبات لازم يمر بمفتاح بوابة الدفع الخاص بالتاجر (paymentGateway.tapSecretKey)،
-    // ما يستخدم process.env.TAP_SECRET_KEY (مفتاح مُونة) مباشرة أبدًا.
-    expect(tapClient).toContain("secretKeyOverride");
-    expect(orderApi).toContain("async function sellerTapSecretKey(ownerId)");
-    expect(orderApi).toContain("gateway.tapSecretKey");
-    expect(orderApi).not.toContain("process.env.TAP_SECRET_KEY");
-    expect(orderApi).toContain('tapRequest("POST", "/charges/"');
-    expect(orderApi).toContain("}, secretKey);");
-    expect(orderApi).toContain('action === "save_payment_gateway"');
-    expect(orderApi).toContain("async function saveSellerPaymentGateway(req, res, account)");
-    expect(orderApi).toContain('if (provider !== "tap")');
+    // ما فيه أي إشارة لتاب أو بوابة دفع تجار في أي مكان بالمنصة
+    expect(orderApi).not.toContain("tapRequest");
+    expect(orderApi).not.toContain("sellerTapSecretKey");
+    expect(orderApi).not.toContain("tap-client");
+    expect(orderApi).not.toContain("paymentGateway");
+    expect(orderApi).not.toContain("cardPaymentAvailable");
+    expect(signupApi).not.toContain("tapRequest");
+    expect(signupApi).not.toContain("tap-client");
+    expect(dashboard).not.toContain("tapSecretKey");
+    expect(dashboard).not.toContain("paymentGateway");
+    expect(adminDashboard).not.toContain("paymentGateway");
+    expect(orderPanel).not.toContain("cardPaymentAvailable");
+    expect(orderPanel).not.toContain("create_card_charge");
 
-    expect(orderPanel).toContain('orderRequest("create_card_charge"');
-    expect(orderPanel).toContain("order.cardPaymentAvailable &&");
+    // ملف عميل تاب والصفحات المرتبطة بشحن البطاقة انحذفت كليًا
+    expect(main).not.toContain("PayResult");
+    expect(main).not.toContain("StorePayResult");
+    expect(main).not.toContain("pay-result");
+    expect(main).not.toContain("store-pay-result");
+
+    // التحويل اليدوي هو الطريقة الوحيدة المتاحة الآن لدفع العميل للتاجر
     expect(orderPanel).toContain("حوّل المبلغ للتاجر مباشرة");
-    expect(main).toContain('import("./PayResult.jsx")');
-    expect(main).toContain('hash.startsWith("pay-result/")');
   });
 
-  it("يوفر رابطًا فرعيًا مدفوعًا لكل تاجر كإضافة شهرية على اشتراكه (وليست دفعة سنوية معزولة)، مع إبقاء الرابط المجاني ظاهرًا دائمًا وتوضيح إنه رابط تابع للمنصة", async () => {
+  it("يوقف شراء الرابط الفرعي المدفوع مؤقتًا مع إبقاء الرابط المجاني ودومين أي تاجر فعّله سابقًا ظاهرين", async () => {
     const signupApi = await source("api/merchant-signup.js");
     const dashboard = await source("src/Dashboard.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
-    const storePayResult = await source("src/StorePayResult.jsx");
-    const main = await source("src/main.jsx");
 
-    // السعر إضافة شهرية (٢ ر.ع) تتجدد بنفس دورة الاشتراك الأساسي، لا شحنة سنوية منفصلة
     expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
-    expect(catalog).not.toContain("CUSTOM_DOMAIN_ANNUAL_PRICE");
-    expect(catalog).not.toContain('key: "customDomain"');
+    expect(signupApi).not.toContain("createDomainCharge");
+    expect(signupApi).not.toContain("verifyDomainCharge");
+    expect(signupApi).not.toContain('action === "create_domain_charge"');
 
-    // الشحن يمر بحساب مُونة نفسه (إيراد منصة) وليس بمفتاح أي تاجر، وبنفس دورة الاشتراك الشهري (30 يوم) لا سنة كاملة
-    expect(signupApi).toContain("const CUSTOM_DOMAIN_PRICE = 2");
-    expect(signupApi).not.toContain("CUSTOM_DOMAIN_PERIOD_MS");
-    expect(signupApi).toContain("customDomainExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
-    expect(signupApi).toContain("async function createDomainCharge(req, res)");
-    expect(signupApi).toContain("async function verifyDomainCharge(req, res)");
-    expect(signupApi).toContain('action === "create_domain_charge"');
-    expect(signupApi).toContain('action === "verify_domain_charge"');
-    expect(signupApi).toContain("async function domainSlugAvailable(slug, excludeUid)");
-
-    // لوحة التاجر تعرض الخيارين معًا: الرابط المجاني الحالي + الرابط الفرعي المدفوع الاختياري، وتوضّح إنه رابط تابع للمنصة وليس دومينًا مستقلًا
     expect(dashboard).toContain("الخيار المجاني — رابط متجرك");
     expect(dashboard).toContain("الخيار المدفوع — رابط فرعي مخصص باسم متجرك");
-    expect(dashboard).toContain("CUSTOM_DOMAIN_MONTHLY_PRICE");
-    expect(dashboard).not.toContain("CUSTOM_DOMAIN_ANNUAL_PRICE");
-    expect(dashboard).toContain("وليس دومينًا مستقلًا بالكامل");
-    expect(dashboard).toContain('domainSignupRequest("create_domain_charge"');
-    expect(dashboard).toContain('domainSignupRequest("check_domain_slug"');
-
-    // صفحة تأكيد الدفع تفرّق بين تفعيل المتجر وشراء الرابط الفرعي
-    expect(storePayResult).toContain("verify_domain_charge");
-    expect(main).toContain('param={hash.split("/")[1]}');
+    expect(dashboard).toContain("الشراء بالبطاقة متوقف مؤقتًا");
+    expect(dashboard).toContain("customDomainSlug");
   });
 
   it("يعرض بيانات التحويل البنكي كحقول منظمة قابلة للنسخ للمشتري، بالإضافة إلى الملاحظة العامة", async () => {
