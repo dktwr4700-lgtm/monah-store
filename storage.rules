@@ -31,7 +31,7 @@ service firebase.storage {
 
     match /secure/{productId}/{fileName} {
       allow read: if ownsProduct(productId) || hasValidUnlock(productId);
-      allow create: if ownsProduct(productId) && request.resource.size < 50 * 1024 * 1024;
+      allow create: if ownsProduct(productId) && request.resource.size < 1024 * 1024 * 1024;
       allow update, delete: if false;
     }
 
