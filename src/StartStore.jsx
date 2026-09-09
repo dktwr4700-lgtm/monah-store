@@ -175,8 +175,8 @@ export default function StartStore() {
             <label>إضافات اختيارية (تقدر تتخطاها الآن)</label>
             {ADD_ON_CATALOG.map((item) => (
               <label key={item.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
-                <input type="checkbox" checked={selectedAddOns.includes(item.key)} onChange={() => toggleAddOn(item.key)} style={{ marginTop: 3 }} />
-                <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>
+                <input type="checkbox" checked={selectedAddOns.includes(item.key)} onChange={() => toggleAddOn(item.key)} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
+                <span style={{ fontSize: 12.5, lineHeight: 1.7, flex: 1, minWidth: 0 }}>
                   <b>{item.title}</b> — <span style={{ color: "#625F55" }}>+{item.price.toFixed(2)} ر.ع/شهريًا</span>
                   <br /><span style={{ color: "#8A8677" }}>{item.desc}</span>
                 </span>
