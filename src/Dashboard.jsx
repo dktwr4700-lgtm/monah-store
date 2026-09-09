@@ -516,25 +516,25 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || sellerAccess !== "active") return;
+    if (!user) return;
     const q = query(collection(db, "products"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsub();
-  }, [user, sellerAccess]);
+  }, [user]);
 
   useEffect(() => {
-    if (!user || sellerAccess !== "active") return;
+    if (!user) return;
     const q = query(collection(db, "bundles"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setBundles(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
     }, () => setBundleError("تعذر عرض الحزم المحفوظة الآن."));
     return () => unsub();
-  }, [user, sellerAccess]);
+  }, [user]);
 
   useEffect(() => {
-    if (!user || sellerAccess !== "active") return;
+    if (!user) return;
     const campaignQuery = query(collection(db, "campaignLinks"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(campaignQuery, (snap) => {
       const links = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -542,18 +542,18 @@ export default function Dashboard() {
       setCampaignLinks(links);
     }, () => setCampaignError("تعذر عرض روابط التتبع الآن."));
     return () => unsub();
-  }, [user, sellerAccess]);
+  }, [user]);
   useEffect(() => {
-    if (!user || sellerAccess !== "active") return;
+    if (!user) return;
     const q = query(collection(db, "coupons"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c) => !c.buyerUid));
     });
     return () => unsub();
-  }, [user, sellerAccess]);
+  }, [user]);
 
   useEffect(() => {
-    if (!user || sellerAccess !== "active") return;
+    if (!user) return;
     const q = query(collection(db, "orders"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(
       q,
@@ -569,10 +569,10 @@ export default function Dashboard() {
       () => setSellerOrders([])
     );
     return () => unsub();
-  }, [user, sellerAccess]);
+  }, [user]);
 
   useEffect(() => {
-    if (!user || sellerAccess !== "active") return;
+    if (!user) return;
     async function loadStore() {
       const snap = await getDoc(doc(db, "stores", user.uid));
       if (snap.exists()) {
@@ -592,7 +592,7 @@ export default function Dashboard() {
       }
     }
     loadStore();
-  }, [user, sellerAccess]);
+  }, [user]);
 
   function handleFilePick(e) {
     const file = e.target.files[0];
