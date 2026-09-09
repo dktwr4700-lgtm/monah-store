@@ -221,7 +221,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("dh-subscription-base");
     expect(dashboard).toContain("رابط التتبع");
     expect(dashboard).toContain("نسخ الرابط");
-    expect(dashboard).toContain("اشتراكك الأساسي مفعّل ويتجدد شهريًا.");
+    expect(dashboard).toContain("لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.");
     expect(orders).toContain(".ord-confirm-btn,.ord-proof-btn,.ord-deliver-btn{width:100%;margin-left:0;min-height:42px}");
   });
 
@@ -302,7 +302,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
-    expect(dashboard).toContain("متجر أساسي 5 ر.ع شهريًا، ثم إضافات قليلة تختارها لاحقًا.");
+    expect(dashboard).toContain("متجر أساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا، ثم إضافات تختارها وتُحتسب معه.");
     expect(dashboard).toContain("BASE_MONTHLY_PRICE.toFixed(2)");
     expect(dashboard).not.toContain("PACKAGES.map");
     expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 5");
@@ -329,13 +329,33 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).not.toContain("البيع الرقمي — 2 ر.ع");
   });
 
-  it("يوحد اشتراك لوحة التاجر مع الأسعار المعتمدة دون ادعاء تحصيل قائم", async () => {
+  it("يفعّل تحصيل الإضافات فعليًا ويدمجها ضمن مبلغ التجديد الشهري", async () => {
     const dashboard = await source("src/Dashboard.jsx");
+    const signupApi = await source("api/merchant-signup.js");
+    const storePayResult = await source("src/StorePayResult.jsx");
 
-    expect(dashboard).toContain("متجر أساسي 5 ر.ع شهريًا، ثم إضافات قليلة تختارها لاحقًا.");
     expect(dashboard).toContain("الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.");
     expect(dashboard).toContain("مفعّل");
-    expect(dashboard).toContain("اشتراكك الأساسي مفعّل ويتجدد شهريًا.");
+    expect(dashboard).toContain("activeAddOns.includes(item.key)");
+    expect(dashboard).toContain("toggleAddOnSelection");
+    expect(dashboard).toContain('domainSignupRequest("create_addon_charge"');
+    expect(dashboard).toContain('domainSignupRequest("create_renewal_charge"');
+    expect(dashboard).toContain("مبلغ التجديد القادم");
+
+    expect(signupApi).toContain("async function createAddOnCharge(req, res)");
+    expect(signupApi).toContain("async function verifyAddOnCharge(req, res)");
+    expect(signupApi).toContain("async function createRenewalCharge(req, res)");
+    expect(signupApi).toContain("async function verifyRenewalCharge(req, res)");
+    expect(signupApi).toContain('action === "create_addon_charge"');
+    expect(signupApi).toContain('action === "verify_addon_charge"');
+    expect(signupApi).toContain('action === "create_renewal_charge"');
+    expect(signupApi).toContain('action === "verify_renewal_charge"');
+    expect(signupApi).toContain("function cleanAddOnKeys(value)");
+    expect(signupApi).toContain("function addOnsTotal(keys)");
+    expect(signupApi).toContain("activeAddOns: cleanAddOnKeys(request.selectedAddOns)");
+
+    expect(storePayResult).toContain('addon: "verify_addon_charge"');
+    expect(storePayResult).toContain('renew: "verify_renewal_charge"');
   });
 
   it("يعرض أدوات التاجر المهمة مباشرة داخل لوحة التحكم", async () => {
@@ -413,7 +433,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("يرفع إثبات التحويل");
     expect(landing).toContain("بعد تأكيد التاجر استلام المبلغ");
     expect(landing).toContain("متجرك الأساسي");
-    expect(landing).toContain("إضافات تكبّر مبيعاتك عند التفعيل");
+    expect(landing).toContain("إضافات اختيارية تكبّر مبيعاتك");
     expect(landing).not.toContain("PACKAGES.map");
     expect(landing).not.toContain("وفّر شهرين");
     expect(landing).not.toContain("وصل الملف للعميل تلقائيًا الآن");
@@ -509,7 +529,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(startStore).not.toContain("submit_manual_proof");
     expect(storePayResult).toContain('"verify_card_charge"');
 
-    expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = 5");
+    expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = BASE_MONTHLY_PRICE");
+    expect(signupApi).toContain('import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js"');
     expect(signupApi).toContain('if (sellerSnap.exists) return res.status(409)');
     expect(signupApi).toContain('result.status !== "SUCCESSFUL"');
     expect(signupApi).toContain("async function activateSeller(uid, request)");
@@ -554,7 +575,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const storePayResult = await source("src/StorePayResult.jsx");
 
     expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
-    expect(signupApi).toContain("const CUSTOM_DOMAIN_PRICE = 2");
+    expect(signupApi).toContain("const CUSTOM_DOMAIN_PRICE = CUSTOM_DOMAIN_MONTHLY_PRICE");
     expect(signupApi).toContain("async function createDomainCharge(req, res)");
     expect(signupApi).toContain("async function verifyDomainCharge(req, res)");
     expect(signupApi).toContain('action === "create_domain_charge"');

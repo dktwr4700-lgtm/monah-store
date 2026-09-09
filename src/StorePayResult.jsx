@@ -9,12 +9,27 @@ const styles = `
   .pr-btn{display:inline-block;margin-top:18px;border:0;border-radius:100px;padding:12px 20px;background:#16233F;color:#fff;font:700 13px 'Cairo',sans-serif;text-decoration:none;cursor:pointer}
 `;
 
-async function verifyRequest(isDomain) {
+const VERIFY_ACTIONS = {
+  domain: "verify_domain_charge",
+  addon: "verify_addon_charge",
+  renew: "verify_renewal_charge",
+  signup: "verify_card_charge",
+};
+
+function resultKind(param) {
+  const value = String(param || "");
+  if (value.startsWith("domain-")) return "domain";
+  if (value.startsWith("addon-")) return "addon";
+  if (value.startsWith("renew-")) return "renew";
+  return "signup";
+}
+
+async function verifyRequest(kind) {
   const idToken = await auth.currentUser.getIdToken();
   const response = await fetch("/api/merchant-signup", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ action: isDomain ? "verify_domain_charge" : "verify_card_charge" }),
+    body: JSON.stringify({ action: VERIFY_ACTIONS[kind] }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "تعذر التحقق من الدفع الآن.");
@@ -22,7 +37,7 @@ async function verifyRequest(isDomain) {
 }
 
 export default function StorePayResult({ param }) {
-  const isDomain = String(param || "").startsWith("domain-");
+  const kind = resultKind(param);
   const [state, setState] = useState("checking");
   const [error, setError] = useState("");
   const [slug, setSlug] = useState("");
@@ -34,7 +49,7 @@ export default function StorePayResult({ param }) {
         if (!cancelled) { setState("error"); setError("سجّل دخولك أولًا ثم افتح هذا الرابط."); }
         return;
       }
-      verifyRequest(isDomain)
+      verifyRequest(kind)
         .then((data) => {
           if (cancelled) return;
           if (data.slug) setSlug(data.slug);
@@ -43,7 +58,7 @@ export default function StorePayResult({ param }) {
         .catch((requestError) => { if (!cancelled) { setError(requestError.message); setState("error"); } });
     });
     return () => { cancelled = true; unsub(); };
-  }, [isDomain]);
+  }, [kind]);
 
   return (
     <div className="pr-page" dir="rtl" lang="ar">
@@ -53,22 +68,37 @@ export default function StorePayResult({ param }) {
           <div className="pr-title">جاري التحقق من عملية الدفع...</div>
           <div className="pr-copy">لحظات ونؤكد لك حالة الدفع.</div>
         </>}
-        {state === "paid" && isDomain && <>
+        {state === "paid" && kind === "domain" && <>
           <div className="pr-title">تم تفعيل دومينك الفرعي 🎉</div>
           <div className="pr-copy">{slug ? `متجرك الآن على ${slug}.monah-app.com` : "دومينك الجديد"} شغال، ويتجدد تلقائيًا مع اشتراكك الشهري.</div>
           <a className="pr-btn" href="#dashboard/domain">فتح لوحة التاجر</a>
         </>}
-        {state === "paid" && !isDomain && <>
+        {state === "paid" && kind === "addon" && <>
+          <div className="pr-title">تم تفعيل الإضافات 🎉</div>
+          <div className="pr-copy">الإضافات اللي اخترتها شغالة الآن، ودخلت ضمن مبلغ تجديدك الشهري القادم.</div>
+          <a className="pr-btn" href="#dashboard/subscription">فتح لوحة التاجر</a>
+        </>}
+        {state === "paid" && kind === "renew" && <>
+          <div className="pr-title">تم تجديد اشتراكك 🎉</div>
+          <div className="pr-copy">اشتراكك فعّال الآن لمدة 30 يوم إضافية.</div>
+          <a className="pr-btn" href="#dashboard/subscription">فتح لوحة التاجر</a>
+        </>}
+        {state === "paid" && kind === "signup" && <>
           <div className="pr-title">تم تفعيل متجرك 🎉</div>
           <div className="pr-copy">اشتراكك فعّال الآن لمدة 30 يوم. تقدر تبدأ تضيف منتجاتك من لوحة التاجر.</div>
           <a className="pr-btn" href="#dashboard">فتح لوحة التاجر</a>
         </>}
-        {state === "pending" && isDomain && <>
+        {state === "pending" && kind === "domain" && <>
           <div className="pr-title">لم تكتمل عملية الدفع</div>
           <div className="pr-copy">يبدو إن دفع الدومين ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول من لوحة التاجر.</div>
           <a className="pr-btn" href="#dashboard/domain">الرجوع للوحة التاجر</a>
         </>}
-        {state === "pending" && !isDomain && <>
+        {state === "pending" && (kind === "addon" || kind === "renew") && <>
+          <div className="pr-title">لم تكتمل عملية الدفع</div>
+          <div className="pr-copy">يبدو إن الدفع ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول من لوحة التاجر.</div>
+          <a className="pr-btn" href="#dashboard/subscription">الرجوع للوحة التاجر</a>
+        </>}
+        {state === "pending" && kind === "signup" && <>
           <div className="pr-title">لم تكتمل عملية الدفع</div>
           <div className="pr-copy">يبدو إن الدفع ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول الدفع بالبطاقة مرة ثانية.</div>
           <a className="pr-btn" href="#start-store">الرجوع لصفحة التسجيل</a>
