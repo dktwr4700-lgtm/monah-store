@@ -36,9 +36,6 @@ const styles = `
   .detail-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px dashed #EFEBDE; font-size:12px; }
   .detail-row:first-child{ border-top:none; }
   .detail-empty{ color:#8A8677; font-size:12px; padding:6px 0; }
-  .gateway-badge{ display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:100px; margin-inline-start:8px; }
-  .gateway-on{ background:#EAF0EB; color:#4B6152; }
-  .gateway-off{ background:#F3EBDD; color:#8A5B18; }
 
   .seller-card{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:16px 18px; margin-bottom:10px; }
   .seller-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; cursor:pointer; }
@@ -686,9 +683,6 @@ export default function AdminDashboard() {
                 {emailVerifiedMap[s.id] === true && (
                   <span className="seller-badge badge-active">البريد مؤكد</span>
                 )}
-                <span className={"gateway-badge " + (s.paymentGateway?.provider ? "gateway-on" : "gateway-off")}>
-                  {s.paymentGateway?.provider ? "بوابة دفع مربوطة" : "تحويل يدوي"}
-                </span>
               </div>
 
               <div className="expiry-row">
