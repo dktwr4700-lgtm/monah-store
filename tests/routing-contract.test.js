@@ -491,27 +491,37 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("allow read, write: if false;");
   });
 
-  it("يسمح للتاجر يسجّل متجره بنفسه، ويعرض له إشعار توقف الدفع بالبطاقة مؤقتًا بدل الدفع الفوري", async () => {
+  it("يسمح للتاجر يسجّل متجره بنفسه ويفعّل اشتراكه فورًا بالبطاقة عبر OmPay", async () => {
     const main = await source("src/main.jsx");
     const landing = await source("src/App.jsx");
     const startStore = await source("src/StartStore.jsx");
+    const storePayResult = await source("src/StorePayResult.jsx");
     const signupApi = await source("api/merchant-signup.js");
+    const ompayClient = await source("lib/ompay-client.js");
 
     expect(main).toContain('lazy(() => import("./StartStore.jsx"))');
     expect(main).toContain('hash === "start-store"');
+    expect(main).toContain('hash.startsWith("store-pay-result/")');
     expect(landing).toContain('href={START_STORE_URL}');
 
     expect(startStore).toContain('signupRequest("register"');
+    expect(startStore).toContain('signupRequest("create_card_charge"');
     expect(startStore).not.toContain("submit_manual_proof");
-    expect(startStore).toContain("الدفع بالبطاقة متوقف مؤقتًا");
-    expect(startStore).toContain("https://wa.me/96876630905");
+    expect(storePayResult).toContain('"verify_card_charge"');
 
+    expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = 5");
     expect(signupApi).toContain('if (sellerSnap.exists) return res.status(409)');
+    expect(signupApi).toContain('result.status !== "SUCCESSFUL"');
+    expect(signupApi).toContain("async function activateSeller(uid, request)");
+    expect(signupApi).toContain("subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
     expect(signupApi).not.toContain("submit_manual_proof");
     expect(signupApi).not.toContain("requireOwner");
+
+    expect(ompayClient).toContain("export async function ompayRequest");
+    expect(ompayClient).toContain("https://api.truepay.ompay.om");
   });
 
-  it("يحذف تكامل تاب بالكامل من المنصة: لا بوابة دفع خاصة بالتاجر، ولا تحصيل بطاقة لحساب مُونة، حتى تُربط بوابة دفع جديدة", async () => {
+  it("لا يعيد تكامل تاب أبدًا: OmPay يحصّل فقط لحساب مُونة نفسه (اشتراك ودومين)، ولا بوابة دفع خاصة بالتاجر ولا تحصيل بطاقة للمشتري", async () => {
     const orderApi = await source("api/orders.js");
     const orderPanel = await source("src/ProductOrderPanel.jsx");
     const signupApi = await source("api/merchant-signup.js");
@@ -520,12 +530,11 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const main = await source("src/main.jsx");
 
     // ما فيه أي إشارة لتاب أو بوابة دفع تجار في أي مكان بالمنصة
-    expect(orderApi).not.toContain("tapRequest");
-    expect(orderApi).not.toContain("sellerTapSecretKey");
-    expect(orderApi).not.toContain("tap-client");
+    expect(orderApi).not.toContain("tap");
+    expect(orderApi).not.toContain("Tap");
     expect(orderApi).not.toContain("paymentGateway");
     expect(orderApi).not.toContain("cardPaymentAvailable");
-    expect(signupApi).not.toContain("tapRequest");
+    expect(signupApi).not.toMatch(/[tT]ap[A-Z]/);
     expect(signupApi).not.toContain("tap-client");
     expect(dashboard).not.toContain("tapSecretKey");
     expect(dashboard).not.toContain("paymentGateway");
@@ -533,30 +542,31 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(orderPanel).not.toContain("cardPaymentAvailable");
     expect(orderPanel).not.toContain("create_card_charge");
 
-    // ملف عميل تاب والصفحات المرتبطة بشحن البطاقة انحذفت كليًا
-    expect(main).not.toContain("PayResult");
-    expect(main).not.toContain("StorePayResult");
-    expect(main).not.toContain("pay-result");
-    expect(main).not.toContain("store-pay-result");
-
-    // التحويل اليدوي هو الطريقة الوحيدة المتاحة الآن لدفع العميل للتاجر
+    // صفحات شحن البطاقة الخاصة بالتاجر (buyer-facing) ما رجعت — التحويل اليدوي هو الوحيد للمشتري
+    expect(main).not.toContain("PayResult\"");
     expect(orderPanel).toContain("حوّل المبلغ للتاجر مباشرة");
   });
 
-  it("يوقف شراء الرابط الفرعي المدفوع مؤقتًا مع إبقاء الرابط المجاني ودومين أي تاجر فعّله سابقًا ظاهرين", async () => {
+  it("يوفر رابطًا فرعيًا مدفوعًا لكل تاجر كإضافة شهرية على اشتراكه عبر OmPay، مع إبقاء الرابط المجاني ظاهرًا دائمًا", async () => {
     const signupApi = await source("api/merchant-signup.js");
     const dashboard = await source("src/Dashboard.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
+    const storePayResult = await source("src/StorePayResult.jsx");
 
     expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
-    expect(signupApi).not.toContain("createDomainCharge");
-    expect(signupApi).not.toContain("verifyDomainCharge");
-    expect(signupApi).not.toContain('action === "create_domain_charge"');
+    expect(signupApi).toContain("const CUSTOM_DOMAIN_PRICE = 2");
+    expect(signupApi).toContain("async function createDomainCharge(req, res)");
+    expect(signupApi).toContain("async function verifyDomainCharge(req, res)");
+    expect(signupApi).toContain('action === "create_domain_charge"');
+    expect(signupApi).toContain('action === "verify_domain_charge"');
+    expect(signupApi).toContain("async function domainSlugAvailable(slug, excludeUid)");
 
     expect(dashboard).toContain("الخيار المجاني — رابط متجرك");
     expect(dashboard).toContain("الخيار المدفوع — رابط فرعي مخصص باسم متجرك");
-    expect(dashboard).toContain("الشراء بالبطاقة متوقف مؤقتًا");
-    expect(dashboard).toContain("customDomainSlug");
+    expect(dashboard).toContain('domainSignupRequest("create_domain_charge"');
+    expect(dashboard).toContain('domainSignupRequest("check_domain_slug"');
+
+    expect(storePayResult).toContain("verify_domain_charge");
   });
 
   it("يعرض بيانات التحويل البنكي كحقول منظمة قابلة للنسخ للمشتري، بالإضافة إلى الملاحظة العامة", async () => {
