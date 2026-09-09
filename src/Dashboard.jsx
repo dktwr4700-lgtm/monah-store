@@ -438,6 +438,11 @@ export default function Dashboard() {
   const [paymentMessage, setPaymentMessage] = useState("");
   const [customDomainSlug, setCustomDomainSlug] = useState("");
   const [customDomainExpiresAt, setCustomDomainExpiresAt] = useState("");
+  const [domainSlugInput, setDomainSlugInput] = useState("");
+  const [domainChecking, setDomainChecking] = useState(false);
+  const [domainAvailable, setDomainAvailable] = useState(null);
+  const [domainBuying, setDomainBuying] = useState(false);
+  const [domainMessage, setDomainMessage] = useState("");
 
   // overview: sales
   const [sellerOrders, setSellerOrders] = useState([]);
@@ -1224,6 +1229,55 @@ export default function Dashboard() {
       setPaymentMessage(err.message || "تعذر حفظ التعليمات الآن.");
     }
     setSavingPayment(false);
+  }
+
+  async function domainSignupRequest(action, extra) {
+    const idToken = await user.getIdToken();
+    const response = await fetch("/api/merchant-signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "تعذر تنفيذ العملية الآن.");
+    return data;
+  }
+
+  async function checkDomainSlug() {
+    const cleanSlug = domainSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (cleanSlug.length < 3) {
+      setDomainAvailable(false);
+      setDomainMessage("اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+      return;
+    }
+    setDomainChecking(true);
+    setDomainMessage("");
+    try {
+      const data = await domainSignupRequest("check_domain_slug", { slug: cleanSlug });
+      setDomainAvailable(data.available);
+      setDomainMessage(data.available ? "متاح! تقدر تكمل الشراء." : (data.reason || "هذا الاسم محجوز."));
+    } catch (err) {
+      setDomainAvailable(null);
+      setDomainMessage(err.message || "تعذر التحقق الآن.");
+    }
+    setDomainChecking(false);
+  }
+
+  async function buyDomain() {
+    const cleanSlug = domainSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (cleanSlug.length < 3) {
+      setDomainMessage("اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+      return;
+    }
+    setDomainBuying(true);
+    setDomainMessage("");
+    try {
+      const data = await domainSignupRequest("create_domain_charge", { slug: cleanSlug });
+      window.location.assign(data.url);
+    } catch (err) {
+      setDomainMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
+      setDomainBuying(false);
+    }
   }
 
   async function deleteCoupon(couponId) {
@@ -2141,7 +2195,30 @@ export default function Dashboard() {
                   {customDomainExpiresAt && <div className="dh-hint" style={{ marginTop: 8 }}>ساري حتى {customDomainExpiresAt}، يتجدد مع اشتراكك الشهري.</div>}
                 </>
               ) : (
-                <div className="dh-hint" style={{ marginTop: 12 }}>الشراء بالبطاقة متوقف مؤقتًا لحين ربط بوابة دفع جديدة. تواصل معنا لو تبي هذا الخيار الآن.</div>
+                <>
+                  <div className="dh-field" style={{ marginTop: 12 }}>
+                    <label>اختر اسم دومينك</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="text"
+                        value={domainSlugInput}
+                        onChange={(e) => { setDomainSlugInput(e.target.value); setDomainAvailable(null); setDomainMessage(""); }}
+                        placeholder="hind"
+                        style={{ direction: "ltr", textAlign: "right" }}
+                      />
+                      <span className="dh-hint" style={{ whiteSpace: "nowrap" }}>.monah-app.com</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button className="dh-btn" type="button" disabled={domainChecking} onClick={checkDomainSlug}>
+                      {domainChecking ? "جاري التحقق..." : "تحقق من التوفر"}
+                    </button>
+                    <button className="dh-btn" type="button" disabled={domainAvailable !== true || domainBuying} onClick={buyDomain}>
+                      {domainBuying ? "جاري تجهيز الدفع..." : `ادفع ${CUSTOM_DOMAIN_MONTHLY_PRICE.toFixed(2)} ر.ع وفعّل الرابط`}
+                    </button>
+                  </div>
+                  {domainMessage && <div className={domainAvailable ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{domainMessage}</div>}
+                </>
               )}
             </div>
           </>
