@@ -341,6 +341,9 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain('domainSignupRequest("create_addon_charge"');
     expect(dashboard).toContain('domainSignupRequest("create_renewal_charge"');
     expect(dashboard).toContain("مبلغ التجديد القادم");
+    expect(dashboard).toContain("subscriptionDaysLeft !== null && subscriptionDaysLeft <= 5");
+    expect(dashboard).toContain("اشتراك متجرك بينتهي خلال");
+    expect(dashboard).toContain("انتهى اشتراك متجرك");
 
     expect(signupApi).toContain("async function createAddOnCharge(req, res)");
     expect(signupApi).toContain("async function verifyAddOnCharge(req, res)");

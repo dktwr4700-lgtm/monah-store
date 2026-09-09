@@ -1550,6 +1550,7 @@ export default function Dashboard() {
 
   const nextStep = getNextStep();
   const isSettingsGroup = ["settings", "design", "subscription", "payment", "loyalty"].includes(tab);
+  const subscriptionDaysLeft = subscriptionExpiresAt ? Math.ceil((new Date(subscriptionExpiresAt) - new Date()) / (24 * 60 * 60 * 1000)) : null;
   const stalledOrders = sellerOrders.filter((o) => {
     if (o.status !== "draft" || !o.buyerPhone) return false;
     const createdMs = o.createdAt?.toMillis?.();
@@ -1598,6 +1599,13 @@ export default function Dashboard() {
         <div className="dh-verify-banner">
           <span>{verificationSent ? "أرسلنا رابط تأكيد جديد لبريدك. افتح بريدك واضغط الرابط." : "بريدك الإلكتروني غير مؤكد بعد. تأكيد بريدك يضمن وصولك لحسابك لو نسيت كلمة المرور."}</span>
           <button type="button" onClick={resendVerificationEmail} disabled={sendingVerification}>{sendingVerification ? "جاري الإرسال..." : verificationSent ? "إعادة الإرسال" : "إرسال رابط التأكيد"}</button>
+        </div>
+      )}
+
+      {subscriptionDaysLeft !== null && subscriptionDaysLeft <= 5 && (
+        <div className="dh-verify-banner" style={{ background: subscriptionDaysLeft < 0 ? "#F6E9E5" : "#FFF8E9", borderBottomColor: subscriptionDaysLeft < 0 ? "#E3C3B8" : "#EFD9AB", color: subscriptionDaysLeft < 0 ? "#A34839" : "#7A5A17" }}>
+          <span>{subscriptionDaysLeft < 0 ? "انتهى اشتراك متجرك. جدده الآن حتى يرجع يستقبل طلبات." : `اشتراك متجرك بينتهي خلال ${subscriptionDaysLeft} يوم. جدده الآن بدون انقطاع.`}</span>
+          <button type="button" onClick={renewSubscription} disabled={renewalBuying}>{renewalBuying ? "جاري تجهيز الدفع..." : "جدّد الاشتراك الآن"}</button>
         </div>
       )}
 
@@ -2418,7 +2426,7 @@ export default function Dashboard() {
           const addOnsMonthlyTotal = activeAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
           const monthlyTotal = BASE_MONTHLY_PRICE + addOnsMonthlyTotal;
           const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-          const daysLeft = subscriptionExpiresAt ? Math.ceil((new Date(subscriptionExpiresAt) - new Date()) / (24 * 60 * 60 * 1000)) : null;
+          const daysLeft = subscriptionDaysLeft;
           return (
           <>
             <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
