@@ -1,14 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 
 const CTA_WIDTH = 168;
-const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
-
-const CTA_WIDTH = 168;
-const FLEE_RADIUS = 100;
-const MAX_PUSH = 68;
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 const STORE_TYPES = { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" };
@@ -55,51 +50,6 @@ export default function StartStore() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [ctaOffsetX, setCtaOffsetX] = useState(0);
-  const [ctaFleeing, setCtaFleeing] = useState(false);
-  const ctaTrackRef = useRef(null);
-  const ctaBtnRef = useRef(null);
-
-  const emailReady = EMAIL_PATTERN.test(email.trim());
-  const passwordReady = password.length >= 6;
-  const ctaFieldsReady = emailReady && passwordReady;
-
-  useEffect(() => {
-    if (step !== "form" || ctaFieldsReady) {
-      setCtaOffsetX(0);
-      setCtaFleeing(false);
-      return;
-    }
-    const finePointer = window.matchMedia?.("(pointer: fine)").matches;
-    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (!finePointer || reducedMotion) return;
-
-    function handlePointerMove(event) {
-      const track = ctaTrackRef.current;
-      const btn = ctaBtnRef.current;
-      if (!track || !btn) return;
-      const trackRect = track.getBoundingClientRect();
-      const btnRect = btn.getBoundingClientRect();
-      const btnCenterX = btnRect.left + btnRect.width / 2;
-      const btnCenterY = btnRect.top + btnRect.height / 2;
-      const dx = event.clientX - btnCenterX;
-      const dy = event.clientY - btnCenterY;
-      const dist = Math.hypot(dx, dy);
-      if (dist >= FLEE_RADIUS || dist === 0) {
-        setCtaOffsetX(0);
-        setCtaFleeing(false);
-        return;
-      }
-      const strength = (FLEE_RADIUS - dist) / FLEE_RADIUS;
-      const maxOffset = Math.max(0, (trackRect.width - btnRect.width) / 2 - 6);
-      const pushX = Math.max(-maxOffset, Math.min(maxOffset, -(dx / dist) * strength * MAX_PUSH));
-      setCtaOffsetX(pushX);
-      setCtaFleeing(true);
-    }
-
-    document.addEventListener("pointermove", handlePointerMove);
-    return () => document.removeEventListener("pointermove", handlePointerMove);
-  }, [step, ctaFieldsReady]);
 
   const emailReady = EMAIL_PATTERN.test(email.trim());
   const passwordReady = password.length >= 6;
