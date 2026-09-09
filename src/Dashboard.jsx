@@ -2267,6 +2267,11 @@ export default function Dashboard() {
               <p className="dh-hint" style={{ marginBottom: 12 }}>
                 اربط حساب OmPay الخاص فيك (لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.
               </p>
+              {!activeAddOns.includes("digitalSelling") && (
+                <div className="dh-hint" style={{ marginBottom: 12, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
+                  مهم: ربط البوابة وحده ما يكفي — لازم تفعّل إضافة "البيع الرقمي" (٢ ر.ع شهريًا) من تبويب <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>اشتراك متجرك</button> حتى تشتغل الميزة فعليًا لعملائك.
+                </div>
+              )}
               {gatewayConnected ? (
                 <>
                   <div className="dh-hint" style={{ marginBottom: 12 }}>بوابتك مربوطة الآن وشغالة.</div>
@@ -2554,8 +2559,9 @@ export default function Dashboard() {
                 <div className="dh-title" style={{ marginBottom: 8 }}>{group}</div>
                 {ADD_ON_CATALOG.filter((item) => item.group === group).map((item) => {
                   const isActive = activeAddOns.includes(item.key);
+                  const gatewayLocked = item.key === "digitalSelling" && !isActive && !gatewayConnected;
                   return (
-                    <label className="dh-item" key={item.key} style={{ display: "block", cursor: isActive ? "default" : "pointer" }}>
+                    <label className="dh-item" key={item.key} style={{ display: "block", cursor: isActive || gatewayLocked ? "default" : "pointer" }}>
                       <div className="dh-item-top" style={{ alignItems: "flex-start", gap: 12 }}>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                           {!isActive && (
@@ -2563,6 +2569,7 @@ export default function Dashboard() {
                               type="checkbox"
                               checked={addOnSelection.includes(item.key)}
                               onChange={() => toggleAddOnSelection(item.key)}
+                              disabled={gatewayLocked}
                               style={{ marginTop: 3 }}
                             />
                           )}
@@ -2573,9 +2580,15 @@ export default function Dashboard() {
                         </div>
                         <b className="dh-item-price">+{item.price.toFixed(2)} ر.ع</b>
                       </div>
-                      <span style={{ display: "inline-block", marginTop: 6, background: isActive ? "#EAF0EB" : "#F3EBDD", color: isActive ? "#37724B" : "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>
-                        {isActive ? "مفعّل" : "غير مفعّل"}
-                      </span>
+                      {gatewayLocked ? (
+                        <span style={{ display: "inline-block", marginTop: 6, background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>
+                          اربط <button type="button" onClick={(e) => { e.preventDefault(); setTab("gateway"); }} style={{ background: "none", border: 0, padding: 0, margin: 0, color: "inherit", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>بوابة الدفع الخاصة بك</button> أولًا لتقدر تفعّلها
+                        </span>
+                      ) : (
+                        <span style={{ display: "inline-block", marginTop: 6, background: isActive ? "#EAF0EB" : "#F3EBDD", color: isActive ? "#37724B" : "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>
+                          {isActive ? "مفعّل" : "غير مفعّل"}
+                        </span>
+                      )}
                     </label>
                   );
                 })}
