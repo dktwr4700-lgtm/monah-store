@@ -808,6 +808,14 @@ export default function AdminDashboard() {
                     <div className="detail-empty" style={{ whiteSpace: "pre-line" }}>
                       {s.paymentInstructions || "لم يضف التاجر تعليمات تحويل بعد."}
                     </div>
+                    {(s.paymentBankName || s.paymentAccountHolder || s.paymentAccountNumber || s.paymentPhoneNumber) && (
+                      <div className="detail-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                        {s.paymentBankName && <span>البنك: {s.paymentBankName}</span>}
+                        {s.paymentAccountHolder && <span>صاحب الحساب: {s.paymentAccountHolder}</span>}
+                        {s.paymentAccountNumber && <span style={{ direction: "ltr" }}>رقم الحساب: {s.paymentAccountNumber}</span>}
+                        {s.paymentPhoneNumber && <span style={{ direction: "ltr" }}>رقم الجوال: {s.paymentPhoneNumber}</span>}
+                      </div>
+                    )}
                   </div>
                 </>
               )}

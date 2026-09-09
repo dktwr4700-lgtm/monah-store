@@ -580,4 +580,34 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(storePayResult).toContain("verify_domain_charge");
     expect(main).toContain('param={hash.split("/")[1]}');
   });
+
+  it("يعرض بيانات التحويل البنكي كحقول منظمة قابلة للنسخ للمشتري، بالإضافة إلى الملاحظة العامة", async () => {
+    const orderApi = await source("api/orders.js");
+    const dashboard = await source("src/Dashboard.jsx");
+    const orderPanel = await source("src/ProductOrderPanel.jsx");
+    const adminDashboard = await source("src/AdminDashboard.jsx");
+
+    // الخادم يحفظ ويعيد الحقول المنظمة إلى جانب الملاحظة الحرة
+    expect(orderApi).toContain("function sellerPaymentDetails(seller)");
+    expect(orderApi).toContain("const paymentBankName = cleanText(req.body?.paymentBankName, 80)");
+    expect(orderApi).toContain("const paymentAccountHolder = cleanText(req.body?.paymentAccountHolder, 80)");
+    expect(orderApi).toContain("const paymentAccountNumber = cleanText(req.body?.paymentAccountNumber, 40)");
+    expect(orderApi).toContain("const paymentPhoneNumber = cleanText(req.body?.paymentPhoneNumber, 20)");
+    expect(orderApi).toContain('paymentAccountNumber: order.paymentAccountNumber || ""');
+
+    // التاجر يعبّئ الحقول المنظمة من لوحته
+    expect(dashboard).toContain("اسم البنك");
+    expect(dashboard).toContain("اسم صاحب الحساب");
+    expect(dashboard).toContain("رقم الحساب");
+    expect(dashboard).toContain("paymentAccountNumber,");
+    expect(dashboard).toContain("paymentPhoneNumber,");
+
+    // المشتري يشوف بطاقة منظمة مع أزرار نسخ لرقم الحساب ورقم الجوال
+    expect(orderPanel).toContain("function copyPaymentField(value, key)");
+    expect(orderPanel).toContain('copyPaymentField(order.paymentAccountNumber, "account")');
+    expect(orderPanel).toContain('copyPaymentField(order.paymentPhoneNumber, "phone")');
+
+    // الأدمن يقدر يشوف نفس البيانات في تفاصيل التاجر
+    expect(adminDashboard).toContain("s.paymentAccountNumber");
+  });
 });

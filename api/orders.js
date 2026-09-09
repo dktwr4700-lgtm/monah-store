@@ -42,6 +42,16 @@ function requireActiveSeller(sellerSnap) {
   return seller;
 }
 
+function sellerPaymentDetails(seller) {
+  return {
+    paymentInstructions: cleanText(seller.paymentInstructions, 800),
+    paymentBankName: cleanText(seller.paymentBankName, 80),
+    paymentAccountHolder: cleanText(seller.paymentAccountHolder, 80),
+    paymentAccountNumber: cleanText(seller.paymentAccountNumber, 40),
+    paymentPhoneNumber: cleanText(seller.paymentPhoneNumber, 20),
+  };
+}
+
 function cleanPhone(value) {
   return String(value || "").replace(/[^\d+]/g, "").slice(0, 20);
 }
@@ -107,6 +117,10 @@ function publicOrder(order, id, unlockData, repeatCoupon) {
     createdAt: order.createdAt?.toDate?.().toISOString?.() || null,
     confirmedAt: order.confirmedAt?.toDate?.().toISOString?.() || null,
     paymentInstructions: order.paymentInstructions || "",
+    paymentBankName: order.paymentBankName || "",
+    paymentAccountHolder: order.paymentAccountHolder || "",
+    paymentAccountNumber: order.paymentAccountNumber || "",
+    paymentPhoneNumber: order.paymentPhoneNumber || "",
     proofSubmitted: Boolean(order.proofPath),
     repeatCoupon: confirmed && repeatCoupon ? repeatCoupon : null,
   };
@@ -209,8 +223,8 @@ async function createBundleOrder(req, res, account) {
 
   const sellerSnap = await db.collection("sellers").doc(bundle.ownerId).get();
   const seller = requireActiveSeller(sellerSnap);
-  const paymentInstructions = cleanText(seller.paymentInstructions, 800);
-  if (paymentInstructions.length < 6) {
+  const paymentDetails = sellerPaymentDetails(seller);
+  if (paymentDetails.paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذه الحزمة بعد.");
   }
   const cardPaymentAvailable = Boolean(seller.paymentGateway?.provider);
@@ -223,7 +237,18 @@ async function createBundleOrder(req, res, account) {
     .get();
   if (!draftSnap.empty) {
     const existing = draftSnap.docs[0].data();
-    return res.status(200).json({ order: { id: draftSnap.docs[0].id, paymentInstructions: existing.paymentInstructions, price: Number(existing.price), cardPaymentAvailable } });
+    return res.status(200).json({
+      order: {
+        id: draftSnap.docs[0].id,
+        paymentInstructions: existing.paymentInstructions,
+        paymentBankName: existing.paymentBankName || "",
+        paymentAccountHolder: existing.paymentAccountHolder || "",
+        paymentAccountNumber: existing.paymentAccountNumber || "",
+        paymentPhoneNumber: existing.paymentPhoneNumber || "",
+        price: Number(existing.price),
+        cardPaymentAvailable,
+      },
+    });
   }
 
   const orderRef = db.collection("orders").doc();
@@ -239,10 +264,10 @@ async function createBundleOrder(req, res, account) {
     price: Number(bundle.price),
     type: "bundle",
     status: "draft",
-    paymentInstructions,
+    ...paymentDetails,
     createdAt: FieldValue.serverTimestamp(),
   });
-  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: Number(bundle.price), cardPaymentAvailable } });
+  return res.status(201).json({ order: { id: orderRef.id, ...paymentDetails, price: Number(bundle.price), cardPaymentAvailable } });
 }
 
 async function createOrder(req, res, account) {
@@ -270,8 +295,8 @@ async function createOrder(req, res, account) {
 
   const sellerSnap = await db.collection("sellers").doc(product.ownerId).get();
   const seller = requireActiveSeller(sellerSnap);
-  const paymentInstructions = cleanText(seller.paymentInstructions, 800);
-  if (paymentInstructions.length < 6) {
+  const paymentDetails = sellerPaymentDetails(seller);
+  if (paymentDetails.paymentInstructions.length < 6) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذا المنتج بعد.");
   }
   const cardPaymentAvailable = Boolean(seller.paymentGateway?.provider);
@@ -294,6 +319,10 @@ async function createOrder(req, res, account) {
       order: {
         id: draftSnap.docs[0].id,
         paymentInstructions: existing.paymentInstructions,
+        paymentBankName: existing.paymentBankName || "",
+        paymentAccountHolder: existing.paymentAccountHolder || "",
+        paymentAccountNumber: existing.paymentAccountNumber || "",
+        paymentPhoneNumber: existing.paymentPhoneNumber || "",
         price: Number(existing.price),
         originalPrice: Number(existing.originalPrice),
         couponCode: existing.couponCode || "",
@@ -314,10 +343,10 @@ async function createOrder(req, res, account) {
     couponCode,
     type: product.type,
     status: "draft",
-    paymentInstructions,
+    ...paymentDetails,
     createdAt: FieldValue.serverTimestamp(),
   });
-  return res.status(201).json({ order: { id: orderRef.id, paymentInstructions, price: finalPrice, originalPrice, couponCode, cardPaymentAvailable } });
+  return res.status(201).json({ order: { id: orderRef.id, ...paymentDetails, price: finalPrice, originalPrice, couponCode, cardPaymentAvailable } });
 }
 
 async function submitProof(req, res, account) {
@@ -665,11 +694,22 @@ async function savePaymentInstructions(req, res, account) {
   if (/\b(password|otp|رمز\s*تحقق|كلمة\s*مرور)\b/i.test(paymentInstructions)) {
     throw new OrderError(400, "لا تضع كلمة مرور أو رمز تحقق ضمن تعليمات التحويل.");
   }
+  const paymentBankName = cleanText(req.body?.paymentBankName, 80);
+  const paymentAccountHolder = cleanText(req.body?.paymentAccountHolder, 80);
+  const paymentAccountNumber = cleanText(req.body?.paymentAccountNumber, 40);
+  const paymentPhoneNumber = cleanText(req.body?.paymentPhoneNumber, 20);
   const sellerRef = db.collection("sellers").doc(account.uid);
   const sellerSnap = await sellerRef.get();
   if (!sellerSnap.exists) throw new OrderError(409, "لم نجد متجرًا مفعّلًا لهذا الحساب.");
-  await sellerRef.set({ paymentInstructions, paymentInstructionsUpdatedAt: FieldValue.serverTimestamp() }, { merge: true });
-  return res.status(200).json({ ok: true, paymentInstructions });
+  await sellerRef.set({
+    paymentInstructions,
+    paymentBankName,
+    paymentAccountHolder,
+    paymentAccountNumber,
+    paymentPhoneNumber,
+    paymentInstructionsUpdatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return res.status(200).json({ ok: true, paymentInstructions, paymentBankName, paymentAccountHolder, paymentAccountNumber, paymentPhoneNumber });
 }
 
 async function saveSellerPaymentGateway(req, res, account) {

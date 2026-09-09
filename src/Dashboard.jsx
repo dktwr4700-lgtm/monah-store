@@ -417,6 +417,10 @@ export default function Dashboard() {
   const [storeAbout, setStoreAbout] = useState("");
   const [storeFaqs, setStoreFaqs] = useState([]);
   const [paymentInstructions, setPaymentInstructions] = useState("");
+  const [paymentBankName, setPaymentBankName] = useState("");
+  const [paymentAccountHolder, setPaymentAccountHolder] = useState("");
+  const [paymentAccountNumber, setPaymentAccountNumber] = useState("");
+  const [paymentPhoneNumber, setPaymentPhoneNumber] = useState("");
 
   // coupons
   const [coupons, setCoupons] = useState([]);
@@ -482,6 +486,10 @@ export default function Dashboard() {
         setSellerPlan(snap.data().plan || "basic");
         setSellerStoreType(snap.data().storeType || "files");
         setPaymentInstructions(snap.data().paymentInstructions || "");
+        setPaymentBankName(snap.data().paymentBankName || "");
+        setPaymentAccountHolder(snap.data().paymentAccountHolder || "");
+        setPaymentAccountNumber(snap.data().paymentAccountNumber || "");
+        setPaymentPhoneNumber(snap.data().paymentPhoneNumber || "");
         setGatewayConnected(Boolean(snap.data().paymentGateway?.provider));
         setCustomDomainSlug(snap.data().customDomainSlug || "");
         setCustomDomainExpiresAt(snap.data().customDomainExpiresAt || "");
@@ -1205,11 +1213,22 @@ export default function Dashboard() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ action: "save_payment_instructions", paymentInstructions }),
+        body: JSON.stringify({
+          action: "save_payment_instructions",
+          paymentInstructions,
+          paymentBankName,
+          paymentAccountHolder,
+          paymentAccountNumber,
+          paymentPhoneNumber,
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "تعذر حفظ التعليمات الآن.");
       setPaymentInstructions(data.paymentInstructions);
+      setPaymentBankName(data.paymentBankName || "");
+      setPaymentAccountHolder(data.paymentAccountHolder || "");
+      setPaymentAccountNumber(data.paymentAccountNumber || "");
+      setPaymentPhoneNumber(data.paymentPhoneNumber || "");
       setPaymentMessage("تم حفظ تعليمات التحويل. تظهر للمشتري بعد بدء الطلب فقط.");
     } catch (err) {
       setPaymentMessage(err.message || "تعذر حفظ التعليمات الآن.");
@@ -2164,9 +2183,27 @@ export default function Dashboard() {
             <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
             <div className="dh-card">
               <div className="dh-title" style={{ marginBottom: 10 }}>تعليمات التحويل لعملائك</div>
-              <p className="dh-hint" style={{ marginBottom: 12 }}>اكتب بيانات التحويل التي تريد أن تظهر للمشتري داخل الطلب. لا تضع كلمة مرور أو رمز تحقق.</p>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>اكتب ملاحظة عامة للمشتري، ثم بيانات الحساب البنكي بشكل منظم أسفلها حتى يقدر ينسخها بسهولة. لا تضع كلمة مرور أو رمز تحقق.</p>
               <div className="dh-field">
-                <textarea rows="5" value={paymentInstructions} onChange={(e) => setPaymentInstructions(e.target.value)} placeholder="مثال: حوّل المبلغ إلى الحساب ... ثم ارفع إثبات التحويل هنا." maxLength={800} />
+                <label>ملاحظة عامة</label>
+                <textarea rows="4" value={paymentInstructions} onChange={(e) => setPaymentInstructions(e.target.value)} placeholder="مثال: حوّل المبلغ بنفس اسمك الظاهر في تطبيق البنك، ثم ارفع إثبات التحويل هنا." maxLength={800} />
+              </div>
+              <div className="dh-field">
+                <label>اسم البنك</label>
+                <input type="text" value={paymentBankName} onChange={(e) => setPaymentBankName(e.target.value)} placeholder="بنك مسقط" maxLength={80} />
+              </div>
+              <div className="dh-field">
+                <label>اسم صاحب الحساب</label>
+                <input type="text" value={paymentAccountHolder} onChange={(e) => setPaymentAccountHolder(e.target.value)} placeholder="كما يظهر في حسابك البنكي" maxLength={80} />
+              </div>
+              <div className="dh-field">
+                <label>رقم الحساب</label>
+                <input type="text" value={paymentAccountNumber} onChange={(e) => setPaymentAccountNumber(e.target.value)} placeholder="مثال: 0123456789" style={{ direction: "ltr", textAlign: "right" }} maxLength={40} />
+              </div>
+              <div className="dh-field">
+                <label>رقم الجوال (للتحويل عبر الهاتف)</label>
+                <input type="text" value={paymentPhoneNumber} onChange={(e) => setPaymentPhoneNumber(e.target.value)} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} maxLength={20} />
+                <div className="dh-hint">اختياري — يظهر للمشتري مع رقم الحساب حتى ينسخه بسهولة.</div>
               </div>
               <button className="dh-btn" type="button" disabled={savingPayment} onClick={savePaymentInstructions}>{savingPayment ? "جاري الحفظ..." : "حفظ تعليمات التحويل"}</button>
               {paymentMessage && <div className={paymentMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{paymentMessage}</div>}

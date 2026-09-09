@@ -6,7 +6,7 @@ const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 const styles = `
-  .ppo-start{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;border:0;border-radius:999px;padding:14px 17px;background:var(--pp-brand);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}.ppo-start:disabled{background:#d7d4cb;color:#777;cursor:not-allowed}.ppo-sheet{margin-top:18px;padding:16px;border:1px solid #e7e3d8;border-radius:16px;background:#fbfaf7}.ppo-step{font-size:10px;font-weight:800;color:var(--pp-brand);margin-bottom:7px}.ppo-title{font-family:'Almarai',sans-serif;font-size:14px;font-weight:800;color:#111;margin-bottom:7px}.ppo-copy{font-size:11.5px;line-height:1.85;color:#5b5750}.ppo-instructions{white-space:pre-line;background:#fff;border:1px dashed #d8d4c8;border-radius:12px;padding:11px;font-size:11.5px;line-height:1.9;color:#383630;margin:12px 0}.ppo-field{margin-top:12px}.ppo-field label{display:block;font-size:11px;color:#6e695f;font-weight:800;margin-bottom:6px}.ppo-field input{box-sizing:border-box;width:100%;border:1px solid #ddd8cc;border-radius:10px;padding:11px 12px;background:#fff;color:#111;font-family:inherit;font-size:12.5px}.ppo-file{display:block;width:100%;box-sizing:border-box;border:1px dashed #c9c3b5;border-radius:12px;background:#fff;padding:11px;font-family:inherit;font-size:11.5px}.ppo-actions{display:flex;gap:8px;margin-top:13px}.ppo-primary,.ppo-secondary{flex:1;border-radius:999px;padding:11px 12px;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}.ppo-primary{border:0;background:#111;color:#fff}.ppo-secondary{border:1px solid #d8d4c8;background:#fff;color:#3d4a66}.ppo-primary:disabled,.ppo-secondary:disabled{opacity:.6;cursor:not-allowed}.ppo-error,.ppo-success{margin-top:11px;border-radius:10px;padding:9px 10px;font-size:11px;line-height:1.7}.ppo-error{background:#f6e9e5;color:#b24c3a}.ppo-success{background:#eaf0eb;color:#42634a}.ppo-small{font-size:10px;line-height:1.7;color:#89857a;margin:11px 2px 0}.ppo-orders-link{display:inline-block;margin-top:10px;color:var(--pp-brand);font-size:11px;font-weight:800;text-decoration:none}@media(max-width:680px){.ppo-actions{flex-direction:column}.ppo-primary,.ppo-secondary{min-height:42px}}
+  .ppo-start{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;border:0;border-radius:999px;padding:14px 17px;background:var(--pp-brand);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}.ppo-start:disabled{background:#d7d4cb;color:#777;cursor:not-allowed}.ppo-sheet{margin-top:18px;padding:16px;border:1px solid #e7e3d8;border-radius:16px;background:#fbfaf7}.ppo-step{font-size:10px;font-weight:800;color:var(--pp-brand);margin-bottom:7px}.ppo-title{font-family:'Almarai',sans-serif;font-size:14px;font-weight:800;color:#111;margin-bottom:7px}.ppo-copy{font-size:11.5px;line-height:1.85;color:#5b5750}.ppo-instructions{white-space:pre-line;background:#fff;border:1px dashed #d8d4c8;border-radius:12px;padding:11px;font-size:11.5px;line-height:1.9;color:#383630;margin:12px 0}.ppo-pay-card{background:#fff;border:1px solid #e7e3d8;border-radius:12px;padding:4px 12px;margin:12px 0}.ppo-pay-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f0ede4}.ppo-pay-row:last-child{border-bottom:0}.ppo-pay-label{font-size:10.5px;color:#89857a;font-weight:700;flex-shrink:0}.ppo-pay-value{font-family:monospace;font-size:12.5px;color:#111;direction:ltr;text-align:left;word-break:break-all}.ppo-pay-copy{flex-shrink:0;border:1px solid #d8d4c8;background:#fbfaf7;color:#3d4a66;border-radius:100px;padding:5px 11px;font-family:inherit;font-size:10.5px;font-weight:800;cursor:pointer}.ppo-field{margin-top:12px}.ppo-field label{display:block;font-size:11px;color:#6e695f;font-weight:800;margin-bottom:6px}.ppo-field input{box-sizing:border-box;width:100%;border:1px solid #ddd8cc;border-radius:10px;padding:11px 12px;background:#fff;color:#111;font-family:inherit;font-size:12.5px}.ppo-file{display:block;width:100%;box-sizing:border-box;border:1px dashed #c9c3b5;border-radius:12px;background:#fff;padding:11px;font-family:inherit;font-size:11.5px}.ppo-actions{display:flex;gap:8px;margin-top:13px}.ppo-primary,.ppo-secondary{flex:1;border-radius:999px;padding:11px 12px;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}.ppo-primary{border:0;background:#111;color:#fff}.ppo-secondary{border:1px solid #d8d4c8;background:#fff;color:#3d4a66}.ppo-primary:disabled,.ppo-secondary:disabled{opacity:.6;cursor:not-allowed}.ppo-error,.ppo-success{margin-top:11px;border-radius:10px;padding:9px 10px;font-size:11px;line-height:1.7}.ppo-error{background:#f6e9e5;color:#b24c3a}.ppo-success{background:#eaf0eb;color:#42634a}.ppo-small{font-size:10px;line-height:1.7;color:#89857a;margin:11px 2px 0}.ppo-orders-link{display:inline-block;margin-top:10px;color:var(--pp-brand);font-size:11px;font-weight:800;text-decoration:none}@media(max-width:680px){.ppo-actions{flex-direction:column}.ppo-primary,.ppo-secondary{min-height:42px}}
 `;
 
 async function orderRequest(action, payload) {
@@ -46,6 +46,14 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [complete, setComplete] = useState(false);
+  const [copiedField, setCopiedField] = useState("");
+
+  function copyPaymentField(value, key) {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedField(key);
+      setTimeout(() => setCopiedField(""), 1500);
+    });
+  }
 
   async function startOrder() {
     setError("");
@@ -155,6 +163,30 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
           <div className="ppo-small" style={{ textAlign: "center", margin: "13px 0" }}>— أو حوّل يدويًا —</div>
         </>}
         <div className="ppo-instructions">{order.paymentInstructions}</div>
+        {(order.paymentBankName || order.paymentAccountHolder || order.paymentAccountNumber || order.paymentPhoneNumber) && (
+          <div className="ppo-pay-card">
+            {order.paymentBankName && (
+              <div className="ppo-pay-row"><span className="ppo-pay-label">البنك</span><span className="ppo-pay-value" style={{ fontFamily: "inherit" }}>{order.paymentBankName}</span></div>
+            )}
+            {order.paymentAccountHolder && (
+              <div className="ppo-pay-row"><span className="ppo-pay-label">صاحب الحساب</span><span className="ppo-pay-value" style={{ fontFamily: "inherit" }}>{order.paymentAccountHolder}</span></div>
+            )}
+            {order.paymentAccountNumber && (
+              <div className="ppo-pay-row">
+                <span className="ppo-pay-label">رقم الحساب</span>
+                <span className="ppo-pay-value">{order.paymentAccountNumber}</span>
+                <button type="button" className="ppo-pay-copy" onClick={() => copyPaymentField(order.paymentAccountNumber, "account")}>{copiedField === "account" ? "تم النسخ" : "نسخ"}</button>
+              </div>
+            )}
+            {order.paymentPhoneNumber && (
+              <div className="ppo-pay-row">
+                <span className="ppo-pay-label">رقم الجوال</span>
+                <span className="ppo-pay-value">{order.paymentPhoneNumber}</span>
+                <button type="button" className="ppo-pay-copy" onClick={() => copyPaymentField(order.paymentPhoneNumber, "phone")}>{copiedField === "phone" ? "تم النسخ" : "نسخ"}</button>
+              </div>
+            )}
+          </div>
+        )}
         <div className="ppo-copy">بعد التحويل اليدوي، ارفع صورة أو PDF للإثبات. يظهر الإيصال للتاجر فقط لمراجعته.</div>
         <div className="ppo-field"><label htmlFor="payment-proof">إثبات التحويل</label><input id="payment-proof" className="ppo-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={chooseProof} /></div>
         {proofFile && <div className="ppo-small">تم اختيار: {proofFile.name}</div>}
