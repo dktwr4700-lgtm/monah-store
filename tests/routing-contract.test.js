@@ -319,7 +319,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5');
     expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1');
     expect(catalog).not.toContain('key: "customDomain"');
-    expect(catalog).toContain("export const CUSTOM_DOMAIN_ANNUAL_PRICE = 4");
+    expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
     expect(catalog).not.toContain('key: "affiliate"');
     expect(catalog).not.toContain('key: "giftCards"');
     expect(catalog).not.toContain('key: "upsell"');
@@ -545,33 +545,38 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(main).toContain('hash.startsWith("pay-result/")');
   });
 
-  it("يوفر دومين فرعي مدفوع لكل تاجر كخيار معزول تمامًا عن الاشتراك الشهري، مع إبقاء الرابط المجاني ظاهرًا دائمًا", async () => {
+  it("يوفر رابطًا فرعيًا مدفوعًا لكل تاجر كإضافة شهرية على اشتراكه (وليست دفعة سنوية معزولة)، مع إبقاء الرابط المجاني ظاهرًا دائمًا وتوضيح إنه رابط تابع للمنصة", async () => {
     const signupApi = await source("api/merchant-signup.js");
     const dashboard = await source("src/Dashboard.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
     const storePayResult = await source("src/StorePayResult.jsx");
     const main = await source("src/main.jsx");
 
-    // السعر معزول تمامًا عن الاشتراك الشهري (ليس ضمن ADD_ON_CATALOG المحسوب شهريًا)
-    expect(catalog).toContain("export const CUSTOM_DOMAIN_ANNUAL_PRICE = 4");
+    // السعر إضافة شهرية (٢ ر.ع) تتجدد بنفس دورة الاشتراك الأساسي، لا شحنة سنوية منفصلة
+    expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
+    expect(catalog).not.toContain("CUSTOM_DOMAIN_ANNUAL_PRICE");
     expect(catalog).not.toContain('key: "customDomain"');
 
-    // الشحن السنوي يمر بحساب مُونة نفسه (إيراد منصة) وليس بمفتاح أي تاجر
-    expect(signupApi).toContain("const CUSTOM_DOMAIN_PRICE = 4");
+    // الشحن يمر بحساب مُونة نفسه (إيراد منصة) وليس بمفتاح أي تاجر، وبنفس دورة الاشتراك الشهري (30 يوم) لا سنة كاملة
+    expect(signupApi).toContain("const CUSTOM_DOMAIN_PRICE = 2");
+    expect(signupApi).not.toContain("CUSTOM_DOMAIN_PERIOD_MS");
+    expect(signupApi).toContain("customDomainExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
     expect(signupApi).toContain("async function createDomainCharge(req, res)");
     expect(signupApi).toContain("async function verifyDomainCharge(req, res)");
     expect(signupApi).toContain('action === "create_domain_charge"');
     expect(signupApi).toContain('action === "verify_domain_charge"');
     expect(signupApi).toContain("async function domainSlugAvailable(slug, excludeUid)");
 
-    // لوحة التاجر تعرض الخيارين معًا: الرابط المجاني الحالي + الدومين المدفوع الاختياري
+    // لوحة التاجر تعرض الخيارين معًا: الرابط المجاني الحالي + الرابط الفرعي المدفوع الاختياري، وتوضّح إنه رابط تابع للمنصة وليس دومينًا مستقلًا
     expect(dashboard).toContain("الخيار المجاني — رابط متجرك");
-    expect(dashboard).toContain("الخيار المدفوع — دومين فرعي خاص باسم متجرك");
-    expect(dashboard).toContain("CUSTOM_DOMAIN_ANNUAL_PRICE");
+    expect(dashboard).toContain("الخيار المدفوع — رابط فرعي مخصص باسم متجرك");
+    expect(dashboard).toContain("CUSTOM_DOMAIN_MONTHLY_PRICE");
+    expect(dashboard).not.toContain("CUSTOM_DOMAIN_ANNUAL_PRICE");
+    expect(dashboard).toContain("وليس دومينًا مستقلًا بالكامل");
     expect(dashboard).toContain('domainSignupRequest("create_domain_charge"');
     expect(dashboard).toContain('domainSignupRequest("check_domain_slug"');
 
-    // صفحة تأكيد الدفع تفرّق بين تفعيل المتجر وشراء الدومين
+    // صفحة تأكيد الدفع تفرّق بين تفعيل المتجر وشراء الرابط الفرعي
     expect(storePayResult).toContain("verify_domain_charge");
     expect(main).toContain('param={hash.split("/")[1]}');
   });

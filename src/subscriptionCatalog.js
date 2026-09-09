@@ -1,5 +1,5 @@
 export const BASE_MONTHLY_PRICE = 5;
-export const CUSTOM_DOMAIN_ANNUAL_PRICE = 4;
+export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2;
 
 export const ADD_ON_CATALOG = [
   { key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2, desc: "عميلك يدفع ببطاقته أو محفظته ويستلم ملفه فورًا خلال ثوانٍ، بدون ما تراجع أو تؤكد شي بنفسك.", status: "متاح الآن", ready: true },

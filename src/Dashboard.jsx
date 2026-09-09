@@ -10,7 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import GrowthAssistant from "./GrowthAssistant.jsx";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_ANNUAL_PRICE } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -2220,10 +2220,13 @@ export default function Dashboard() {
             <div className="dh-card" style={{ borderTop: "3px solid #163F2E" }}>
               <div className="dh-title-row">
                 <div>
-                  <div className="dh-title">الخيار المدفوع — دومين فرعي خاص باسم متجرك</div>
-                  <div className="dh-hint" style={{ marginTop: 5 }}>عنوان أقصر وأسهل يتذكره عملاؤك، منفصل تمامًا عن اشتراكك الشهري.</div>
+                  <div className="dh-title">الخيار المدفوع — رابط فرعي مخصص باسم متجرك</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>عنوان أقصر وأنظف من الرابط المجاني، يُضاف كسطر إضافي على اشتراكك الشهري وليس دفعة منفصلة.</div>
                 </div>
-                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{CUSTOM_DOMAIN_ANNUAL_PRICE.toFixed(2)} ر.ع / سنة</b>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>+{CUSTOM_DOMAIN_MONTHLY_PRICE.toFixed(2)} ر.ع / شهريًا</b>
+              </div>
+              <div className="dh-hint" style={{ marginTop: 8, background: "#F7F7F2", borderRadius: 10, padding: "9px 12px" }}>
+                مهم توضيحه: هذا رابط فرعي تابع لمنصة مونة (مثل <code>اسمك.monah-app.com</code>)، وليس دومينًا مستقلًا بالكامل — اسم مونة يبقى ظاهر في آخر الرابط دائمًا.
               </div>
 
               {customDomainSlug ? (
@@ -2232,7 +2235,7 @@ export default function Dashboard() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span className="dh-store-url" style={{ direction: "ltr" }}>{`https://${customDomainSlug}.monah-app.com`}</span>
                   </div>
-                  {customDomainExpiresAt && <div className="dh-hint" style={{ marginTop: 8 }}>ساري حتى {customDomainExpiresAt}. تواصل معنا قبل انتهاء التاريخ لتجديده.</div>}
+                  {customDomainExpiresAt && <div className="dh-hint" style={{ marginTop: 8 }}>ساري حتى {customDomainExpiresAt}، يتجدد مع اشتراكك الشهري.</div>}
                 </>
               ) : (
                 <>
@@ -2254,7 +2257,7 @@ export default function Dashboard() {
                       {domainChecking ? "جاري التحقق..." : "تحقق من التوفر"}
                     </button>
                     <button className="dh-btn" type="button" disabled={domainAvailable !== true || domainBuying} onClick={buyDomain}>
-                      {domainBuying ? "جاري تجهيز الدفع..." : `ادفع ${CUSTOM_DOMAIN_ANNUAL_PRICE.toFixed(2)} ر.ع واشترِ الدومين`}
+                      {domainBuying ? "جاري تجهيز الدفع..." : `ادفع ${CUSTOM_DOMAIN_MONTHLY_PRICE.toFixed(2)} ر.ع وفعّل الرابط`}
                     </button>
                   </div>
                   {domainMessage && <div className={domainAvailable ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{domainMessage}</div>}

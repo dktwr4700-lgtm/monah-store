@@ -55,7 +55,7 @@ export default function StorePayResult({ param }) {
         </>}
         {state === "paid" && isDomain && <>
           <div className="pr-title">تم تفعيل دومينك الفرعي 🎉</div>
-          <div className="pr-copy">{slug ? `متجرك الآن على ${slug}.monah-app.com` : "دومينك الجديد"} شغال لمدة سنة كاملة.</div>
+          <div className="pr-copy">{slug ? `متجرك الآن على ${slug}.monah-app.com` : "دومينك الجديد"} شغال، ويتجدد تلقائيًا مع اشتراكك الشهري.</div>
           <a className="pr-btn" href="#dashboard/domain">فتح لوحة التاجر</a>
         </>}
         {state === "paid" && !isDomain && <>
