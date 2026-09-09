@@ -14,8 +14,7 @@ const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const MONTHLY_PLAN_PRICE = 5;
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
-const CUSTOM_DOMAIN_PRICE = 4;
-const CUSTOM_DOMAIN_PERIOD_MS = 365 * 24 * 60 * 60 * 1000;
+const CUSTOM_DOMAIN_PRICE = 2;
 const DOMAIN_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
 const RESERVED_DOMAIN_SLUGS = new Set(["www", "api", "admin", "app", "store", "mail", "monah", "dashboard", "assets", "static"]);
 
@@ -206,7 +205,7 @@ async function createDomainCharge(req, res) {
     source: { id: "src_all" },
     threeDSecure: true,
     statement_descriptor: "MONAH",
-    description: `دومين فرعي خاص - ${slug}.monah-app.com - سنة واحدة`,
+    description: `دومين فرعي خاص - ${slug}.monah-app.com - إضافة شهرية على الاشتراك`,
     reference: { order: `domain-${account.uid}` },
     metadata: { uid: account.uid, domainSlug: slug },
     redirect: { url: `${origin}/#store-pay-result/domain-${account.uid}` },
@@ -244,7 +243,7 @@ async function verifyDomainCharge(req, res) {
   }
   await sellerRef.update({
     customDomainSlug: slug,
-    customDomainExpiresAt: isoDate(new Date(Date.now() + CUSTOM_DOMAIN_PERIOD_MS)),
+    customDomainExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
     pendingDomainSlug: FieldValue.delete(),
     pendingDomainChargeId: FieldValue.delete(),
   });
