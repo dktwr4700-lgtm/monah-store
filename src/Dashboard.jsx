@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { auth, db, storage } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+import { storage } from "./firebase-storage.js";
 import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
 import {
   collection, addDoc, query, where, onSnapshot,

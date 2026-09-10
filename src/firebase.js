@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc",
@@ -16,7 +15,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-export const storage = getStorage(app);
 
 // يضمن وجود جلسة دخول (حتى لو مجهولة) قبل أي عملية تحتاج صلاحية
 // يُستخدم في صفحة المنتج قبل إصدار تصريح تحميل الملف
