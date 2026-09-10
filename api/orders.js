@@ -115,6 +115,7 @@ function publicOrder(order, id, unlockData, repeatCoupon) {
   const confirmed = order.status === "confirmed";
   const base = {
     id,
+    ownerId: order.ownerId,
     productId: order.productId,
     productName: order.productName,
     price: Number(order.price || 0),
