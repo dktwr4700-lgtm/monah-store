@@ -116,6 +116,7 @@ function publicSignup(data) {
     status: data.status,
     storeName: data.storeName,
     storeType: data.storeType,
+    hasPendingPayment: Boolean(data.ompayReferenceNumber),
   };
 }
 
