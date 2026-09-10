@@ -32,6 +32,15 @@ function cleanText(value, maxLength) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
+// أحرف بدون تشابه بصري (بدون 0/O و1/I/L) عشان العميل يقدر يكتبها صح من ملف اللعبة.
+const ACTIVATION_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function generateActivationCode() {
+  const bytes = randomBytes(8);
+  let code = "";
+  for (let i = 0; i < 8; i++) code += ACTIVATION_CODE_ALPHABET[bytes[i] % ACTIVATION_CODE_ALPHABET.length];
+  return code;
+}
+
 function requireActiveSeller(sellerSnap) {
   if (!sellerSnap.exists) return {};
   const seller = sellerSnap.data();
@@ -130,6 +139,9 @@ function publicOrder(order, id, unlockData, repeatCoupon) {
     paymentPhoneNumber: order.paymentPhoneNumber || "",
     proofSubmitted: Boolean(order.proofPath),
     repeatCoupon: confirmed && repeatCoupon ? repeatCoupon : null,
+    activationRequired: Boolean(order.activationRequired),
+    activationCode: confirmed && order.activationRequired ? (order.activationCode || "") : "",
+    activationUsed: Boolean(order.activationUsed),
   };
 
   if (order.type === "bundle") {
@@ -410,7 +422,7 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
     throw new OrderError(409, "ملف أحد منتجات هذا الطلب غير جاهز للتسليم الآن.");
   }
 
-  return () => {
+  const apply = () => {
     const unlockRef = db.collection("unlocks").doc(`${buyerUid}_${productId}`);
     const unlockPayload = {
       uid: buyerUid,
@@ -434,6 +446,7 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
     }
     transaction.set(unlockRef, unlockPayload, { merge: true });
   };
+  return { product, apply };
 }
 
 // كل قراءات المنتجات والأكواد لازم تنتهي قبل أي كتابة داخل نفس المعاملة،
@@ -449,26 +462,38 @@ async function markOrderConfirmed(orderRef, orderId, confirmedBy) {
     if (!Array.isArray(productIds) || productIds.length === 0) {
       throw new OrderError(409, "بيانات هذا الطلب غير مكتملة.");
     }
-    const applyUnlocks = [];
+    const unlockedProducts = [];
     for (const productId of productIds) {
-      applyUnlocks.push(await unlockOneProduct(transaction, {
+      const result = await unlockOneProduct(transaction, {
         productId,
         buyerUid: order.buyerUid,
         buyerPhone: order.buyerPhone,
         orderId,
         ownerId: order.ownerId,
-      }));
+      });
+      unlockedProducts.push(result);
     }
-    applyUnlocks.forEach((apply) => apply());
+    unlockedProducts.forEach(({ apply }) => apply());
 
     const deliveryToken = randomBytes(24).toString("hex");
-    transaction.update(orderRef, {
+    const orderUpdate = {
       status: "confirmed",
       confirmedAt: FieldValue.serverTimestamp(),
       confirmedBy,
       deliveryToken,
       deliveryTokenExpiresAt: Timestamp.fromDate(new Date(Date.now() + DELIVERY_TOKEN_TTL_MS)),
-    });
+    };
+
+    // كود التفعيل حاليًا للطلبات اللي فيها منتج ملف واحد بس (مو الحزم) وفعّل التاجر خيار الحماية عليه.
+    const singleProduct = order.type !== "bundle" ? unlockedProducts[0]?.product : null;
+    if (singleProduct?.type === "file" && singleProduct.requiresActivationCode) {
+      orderUpdate.activationRequired = true;
+      orderUpdate.activationCode = generateActivationCode();
+      orderUpdate.activationUsed = false;
+      orderUpdate.activationUsedAt = null;
+    }
+
+    transaction.update(orderRef, orderUpdate);
     return { alreadyConfirmed: false, type: order.type };
   });
 }

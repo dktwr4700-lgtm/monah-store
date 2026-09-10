@@ -29,7 +29,7 @@ service cloud.firestore {
         && (request.resource.data.price > 0 || request.resource.data.type == 'file')
         && request.resource.data.keys().hasOnly([
           'ownerId', 'name', 'price', 'description', 'category', 'type',
-          'filePath', 'codesCount', 'images', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt'
+          'filePath', 'codesCount', 'requiresActivationCode', 'images', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt'
         ]);
       allow update: if isAdmin() || (
         ownsExistingProduct()
@@ -38,7 +38,7 @@ service cloud.firestore {
         && (request.resource.data.price > 0 || resource.data.type == 'file')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'price', 'description', 'category', 'filePath', 'codesCount',
-          'images', 'hidden', 'featured', 'sortOrder'
+          'requiresActivationCode', 'images', 'hidden', 'featured', 'sortOrder'
         ])
       );
       allow delete: if ownsExistingProduct() || isAdmin();

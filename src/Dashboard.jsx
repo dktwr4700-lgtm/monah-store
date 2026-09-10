@@ -342,6 +342,7 @@ export default function Dashboard() {
   const [fileInputKey, setFileInputKey] = useState(0);
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState("file");
+  const [requiresActivationCode, setRequiresActivationCode] = useState(false);
   const [sellerPlan, setSellerPlan] = useState("basic");
   const [codesText, setCodesText] = useState("");
   const [productImages, setProductImages] = useState([]);
@@ -724,6 +725,7 @@ export default function Dashboard() {
         type: productType,
         filePath: "",
         codesCount: productType === "code" ? codesList.length : 0,
+        requiresActivationCode: productType === "file" ? requiresActivationCode : false,
         images: productImages,
         hidden: true,
         suspended: false,
@@ -766,6 +768,7 @@ export default function Dashboard() {
       setCategory("");
       setCodesText("");
       setProductType("file");
+      setRequiresActivationCode(false);
       setProductImages([]);
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
@@ -1881,6 +1884,11 @@ export default function Dashboard() {
                       </div>
                     )}
                     <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer" }}>
+                      <input type="checkbox" checked={requiresActivationCode} onChange={(e) => setRequiresActivationCode(e.target.checked)} />
+                      <span>يتطلب كود تفعيل (حماية إضافية)</span>
+                    </label>
+                    <div className="dh-hint">كل عميل ياخذ كود تفعيل مختلف تلقائيًا بعد ما تأكد استلام التحويل. الكود يشتغل مرة وحدة بس على جهاز وحد — لو حاول حد ثاني يستخدم نفس الكود على جهاز آخر، يترفض. يحتاج المنتج نفسه يدعم إدخال الكود بداخله.</div>
                   </div>
                 ) : (
                   <div className="dh-field">
