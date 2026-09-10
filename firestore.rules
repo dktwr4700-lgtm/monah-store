@@ -115,6 +115,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // أكواد خصم الاشتراك عند التسجيل — مونة فقط ينشئها ويديرها. الخادم يتحقق منها
+    // مباشرة عبر صلاحيات المشرف الكاملة (firebase-admin) بدون حاجة لقراءة عامة هنا.
+    match /signupCoupons/{code} {
+      allow read, write: if isAdmin();
+    }
+
     match /coupons/{couponId} {
       allow get, list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
       allow create: if signedIn()

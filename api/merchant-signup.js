@@ -58,6 +58,33 @@ function addOnsTotal(keys) {
   return keys.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
 }
 
+async function resolveSignupCoupon(rawCode) {
+  const code = cleanText(rawCode, 40).toUpperCase();
+  if (!code) return { discountAmount: 0, couponCode: "" };
+  const snap = await db.collection("signupCoupons").doc(code).get();
+  if (!snap.exists || snap.data().active === false) {
+    throw new SignupError(400, "كود الخصم غير صحيح أو غير مفعّل.");
+  }
+  const data = snap.data();
+  const maxUses = data.maxUses;
+  const usedCount = Number(data.usedCount || 0);
+  if (typeof maxUses === "number" && usedCount >= maxUses) {
+    throw new SignupError(400, "كود الخصم وصل الحد الأقصى للاستخدام.");
+  }
+  return { discountAmount: Number(data.discountAmount || 0), couponCode: code };
+}
+
+async function checkSignupCoupon(req, res) {
+  await authenticatedAccount(req);
+  try {
+    const { discountAmount, couponCode } = await resolveSignupCoupon(req.body?.code);
+    if (!couponCode) return res.status(200).json({ valid: false, reason: "اكتب كود الخصم." });
+    return res.status(200).json({ valid: true, discountAmount });
+  } catch (error) {
+    return res.status(200).json({ valid: false, reason: error.message || "كود الخصم غير صحيح." });
+  }
+}
+
 function chargeRedirectUrl(charge) {
   const url = charge?.redirect_url || charge?.redirectUrl || charge?.data?.redirect_url || charge?.data?.redirectUrl;
   if (!url) console.error("OmPay bank-hosted charge missing redirect_url. Raw response:", JSON.stringify(charge));
@@ -153,7 +180,9 @@ async function createCardCharge(req, res) {
   // "البيع الرقمي" يحتاج بوابة دفع خاصة بالتاجر مربوطة، وما فيه متجر بعد وقت التسجيل
   // حتى يقدر يربطها — تُستثنى هنا وتُشترى لاحقًا من لوحة التاجر بعد ربط البوابة.
   const selectedAddOns = cleanAddOnKeys(req.body?.addOns).filter((key) => key !== "digitalSelling");
-  const amount = MONTHLY_PLAN_PRICE + addOnsTotal(selectedAddOns);
+  const { discountAmount, couponCode } = await resolveSignupCoupon(req.body?.couponCode);
+  const rawAmount = MONTHLY_PLAN_PRICE + addOnsTotal(selectedAddOns);
+  const amount = Math.max(0.1, Number((rawAmount - discountAmount).toFixed(2)));
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `SUB-${account.uid}-${Date.now()}`;
   const charge = await ompayRequest("POST", "/api/v1/transactions/bank-hosted", {
@@ -167,7 +196,7 @@ async function createCardCharge(req, res) {
   if (!redirectUrl) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
-  await requestRef.update({ ompayReferenceNumber: referenceNumber, selectedAddOns });
+  await requestRef.update({ ompayReferenceNumber: referenceNumber, selectedAddOns, signupCouponCode: couponCode || null });
   return res.status(200).json({ url: redirectUrl });
 }
 
@@ -187,6 +216,9 @@ async function verifyCardCharge(req, res) {
     return res.status(200).json({ paid: false, status: result.status || "unknown" });
   }
   await activateSeller(account.uid, request);
+  if (request.signupCouponCode) {
+    await db.collection("signupCoupons").doc(request.signupCouponCode).update({ usedCount: FieldValue.increment(1) }).catch(() => {});
+  }
   return res.status(200).json({ paid: true });
 }
 
@@ -375,6 +407,7 @@ export default async function handler(req, res) {
     const action = cleanText(req.body?.action, 40);
     if (action === "register") return await register(req, res);
     if (action === "status") return await status(req, res);
+    if (action === "check_signup_coupon") return await checkSignupCoupon(req, res);
     if (action === "create_card_charge") return await createCardCharge(req, res);
     if (action === "verify_card_charge") return await verifyCardCharge(req, res);
     if (action === "check_domain_slug") return await checkDomainSlug(req, res);

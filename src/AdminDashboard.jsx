@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -154,6 +154,15 @@ export default function AdminDashboard() {
   const [deletingOrderId, setDeletingOrderId] = useState(null);
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
+  const [signupCoupons, setSignupCoupons] = useState([]);
+  const [signupCouponsLoading, setSignupCouponsLoading] = useState(false);
+  const [newCouponCode, setNewCouponCode] = useState("");
+  const [newCouponDiscount, setNewCouponDiscount] = useState("");
+  const [newCouponMaxUses, setNewCouponMaxUses] = useState("");
+  const [couponCreating, setCouponCreating] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const [couponBusyCode, setCouponBusyCode] = useState("");
+
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -279,6 +288,71 @@ export default function AdminDashboard() {
       setInviteError(error.message);
     }
     setDeletingInviteId("");
+  }
+
+  async function loadSignupCoupons() {
+    setSignupCouponsLoading(true);
+    try {
+      const snap = await getDocs(collection(db, "signupCoupons"));
+      const list = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setSignupCoupons(list);
+    } catch (error) {
+      console.error(error);
+    }
+    setSignupCouponsLoading(false);
+  }
+
+  async function createSignupCoupon(event) {
+    event.preventDefault();
+    setCouponError("");
+    const code = newCouponCode.trim().toUpperCase().replace(/\s+/g, "");
+    const discountAmount = Number(newCouponDiscount);
+    const maxUses = newCouponMaxUses.trim() === "" ? null : Number(newCouponMaxUses);
+    if (!code || code.length < 3) return setCouponError("اكتب كود من 3 أحرف أو أرقام على الأقل.");
+    if (!Number.isFinite(discountAmount) || discountAmount <= 0) return setCouponError("اكتب مبلغ خصم صحيح أكبر من صفر.");
+    if (newCouponMaxUses.trim() !== "" && (!Number.isInteger(maxUses) || maxUses <= 0)) return setCouponError("عدد مرات الاستخدام لازم يكون رقم صحيح أكبر من صفر، أو اتركه فاضي لاستخدام غير محدود.");
+    setCouponCreating(true);
+    try {
+      await setDoc(doc(db, "signupCoupons", code), {
+        code,
+        discountAmount,
+        maxUses,
+        usedCount: 0,
+        active: true,
+        createdAt: serverTimestamp(),
+      });
+      setNewCouponCode("");
+      setNewCouponDiscount("");
+      setNewCouponMaxUses("");
+      loadSignupCoupons();
+    } catch (error) {
+      setCouponError(error.message || "تعذر إنشاء الكود الآن.");
+    }
+    setCouponCreating(false);
+  }
+
+  async function toggleCouponActive(coupon) {
+    setCouponBusyCode(coupon.id);
+    try {
+      await updateDoc(doc(db, "signupCoupons", coupon.id), { active: !coupon.active });
+      setSignupCoupons((items) => items.map((item) => item.id === coupon.id ? { ...item, active: !coupon.active } : item));
+    } catch (error) {
+      setCouponError(error.message);
+    }
+    setCouponBusyCode("");
+  }
+
+  async function deleteSignupCoupon(coupon) {
+    if (!window.confirm(`تبي تحذف كود "${coupon.id}" نهائيًا؟`)) return;
+    setCouponBusyCode(coupon.id);
+    try {
+      await deleteDoc(doc(db, "signupCoupons", coupon.id));
+      setSignupCoupons((items) => items.filter((item) => item.id !== coupon.id));
+    } catch (error) {
+      setCouponError(error.message);
+    }
+    setCouponBusyCode("");
   }
 
   function inviteStatusLabel(status) {
@@ -620,6 +694,9 @@ export default function AdminDashboard() {
           <button className={"admin-tab" + (view === "invites" ? " active" : "")} onClick={() => { setView("invites"); loadInvites(); }}>
             دعوات التجار
           </button>
+          <button className={"admin-tab" + (view === "coupons" ? " active" : "")} onClick={() => { setView("coupons"); loadSignupCoupons(); }}>
+            أكواد خصم التسجيل
+          </button>
         </div>
 
         {view === "sellers" && (
@@ -949,6 +1026,45 @@ export default function AdminDashboard() {
                 <button className="seller-btn danger" type="button" onClick={() => deleteInvite(invite)} disabled={deletingInviteId === invite.id}>{deletingInviteId === invite.id ? "جاري الحذف..." : "حذف الدعوة نهائيًا"}</button>
               </div>
             </div>)}
+          </>
+        )}
+
+        {view === "coupons" && (
+          <>
+            <form className="invite-panel" onSubmit={createSignupCoupon}>
+              <div className="invite-title">كود خصم جديد لاشتراك التسجيل</div>
+              <div className="invite-sub">التاجر يكتب هذا الكود بصفحة الدفع عند فتح متجره، فينزل عليه مبلغ الخصم من الاشتراك الأساسي ({BASE_MONTHLY_PRICE.toFixed(2)} ر.ع).</div>
+              {couponError && <div className="invite-message error">{couponError}</div>}
+              <div className="invite-field"><label>الكود</label><input value={newCouponCode} onChange={(event) => setNewCouponCode(event.target.value)} placeholder="مثال: WELCOME3" style={{ direction: "ltr", textAlign: "right" }} required /></div>
+              <div className="invite-field"><label>مبلغ الخصم (ر.ع)</label><input type="number" min="0.1" step="0.1" value={newCouponDiscount} onChange={(event) => setNewCouponDiscount(event.target.value)} placeholder="مثال: 2" style={{ direction: "ltr", textAlign: "right" }} required /></div>
+              <div className="invite-field"><label>أقصى عدد مرات استخدام (اختياري)</label><input type="number" min="1" step="1" value={newCouponMaxUses} onChange={(event) => setNewCouponMaxUses(event.target.value)} placeholder="اتركه فاضي لاستخدام غير محدود" style={{ direction: "ltr", textAlign: "right" }} /></div>
+              <button className="invite-create" type="submit" disabled={couponCreating}>{couponCreating ? "جاري الإنشاء..." : "إنشاء الكود"}</button>
+            </form>
+
+            {signupCouponsLoading && <div className="loading">جاري تحميل الأكواد...</div>}
+            {!signupCouponsLoading && signupCoupons.length === 0 && <div className="empty">ما فيه أكواد خصم حتى الآن.</div>}
+            {!signupCouponsLoading && signupCoupons.map((coupon) => (
+              <div className="invite-row" key={coupon.id}>
+                <div className="invite-row-top">
+                  <div>
+                    <div className="invite-name">{coupon.id}</div>
+                    <div className="invite-email">خصم {Number(coupon.discountAmount || 0).toFixed(2)} ر.ع</div>
+                  </div>
+                  <span className={"seller-badge " + (coupon.active ? "badge-active" : "badge-disabled")}>{coupon.active ? "مفعّل" : "موقوف"}</span>
+                </div>
+                <div className="invite-meta">
+                  استُخدم {coupon.usedCount || 0} {coupon.maxUses ? `من ${coupon.maxUses}` : "مرة (بدون حد أقصى)"}
+                </div>
+                <div className="seller-actions">
+                  <button className="seller-btn" type="button" onClick={() => toggleCouponActive(coupon)} disabled={couponBusyCode === coupon.id}>
+                    {couponBusyCode === coupon.id ? "..." : coupon.active ? "إيقاف الكود" : "تفعيل الكود"}
+                  </button>
+                  <button className="seller-btn danger" type="button" onClick={() => deleteSignupCoupon(coupon)} disabled={couponBusyCode === coupon.id}>
+                    {couponBusyCode === coupon.id ? "..." : "حذف نهائي"}
+                  </button>
+                </div>
+              </div>
+            ))}
           </>
         )}
       </div>
