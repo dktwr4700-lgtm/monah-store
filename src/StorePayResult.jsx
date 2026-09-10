@@ -36,6 +36,33 @@ async function verifyRequest(kind) {
   return data;
 }
 
+const POLL_ATTEMPTS = 10;
+const POLL_INTERVAL_MS = 2500;
+
+// تسوية الدفع عند البنك ممكن تاخذ ثوانٍ بعد رجوع العميل من صفحة الدفع، فأول
+// استعلام أحيانًا يرجع "لسا ما تأكد" حتى لو الدفع نجح فعليًا. نعيد المحاولة
+// تلقائيًا لين نتأكد، بدل ما نعرض "لم يكتمل الدفع" على عميل دفع فعلاً.
+async function verifyWithRetry(kind, isCancelled) {
+  let lastData = null;
+  let lastError = null;
+  for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+    if (isCancelled()) return null;
+    try {
+      const data = await verifyRequest(kind);
+      if (data.paid) return { data };
+      lastData = data;
+      lastError = null;
+    } catch (requestError) {
+      lastError = requestError;
+    }
+    if (attempt < POLL_ATTEMPTS - 1) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+  }
+  if (lastData) return { data: lastData };
+  return { error: lastError };
+}
+
 export default function StorePayResult({ param }) {
   const kind = resultKind(param);
   const [state, setState] = useState("checking");
@@ -50,14 +77,14 @@ export default function StorePayResult({ param }) {
         if (!cancelled) { setState("error"); setError("سجّل دخولك أولًا ثم افتح هذا الرابط."); }
         return;
       }
-      verifyRequest(kind)
-        .then((data) => {
-          if (cancelled) return;
-          if (data.slug) setSlug(data.slug);
-          if (data.status) setRawStatus(data.status);
-          setState(data.paid ? "paid" : "pending");
-        })
-        .catch((requestError) => { if (!cancelled) { setError(requestError.message); setState("error"); } });
+      verifyWithRetry(kind, () => cancelled).then((result) => {
+        if (cancelled || !result) return;
+        if (result.error) { setError(result.error.message); setState("error"); return; }
+        const data = result.data;
+        if (data.slug) setSlug(data.slug);
+        if (data.status) setRawStatus(data.status);
+        setState(data.paid ? "paid" : "pending");
+      });
     });
     return () => { cancelled = true; unsub(); };
   }, [kind]);

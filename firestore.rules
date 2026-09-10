@@ -121,6 +121,13 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // سجل تشخيص ردود OmPay الخام لما ما نتعرف على حالة النجاح — يُكتب من الخادم
+    // فقط (Admin SDK)، ويُقرأ من الأدمن بس للمتابعة.
+    match /paymentDebugLog/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /coupons/{couponId} {
       allow get, list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
       allow create: if signedIn()

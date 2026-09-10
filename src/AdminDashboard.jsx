@@ -162,6 +162,9 @@ export default function AdminDashboard() {
   const [deletingOrderId, setDeletingOrderId] = useState(null);
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
+  const [paymentDebugLogs, setPaymentDebugLogs] = useState([]);
+  const [paymentDebugLoading, setPaymentDebugLoading] = useState(false);
+
   const [signupCoupons, setSignupCoupons] = useState([]);
   const [signupCouponsLoading, setSignupCouponsLoading] = useState(false);
   const [newCouponCode, setNewCouponCode] = useState("");
@@ -298,6 +301,19 @@ export default function AdminDashboard() {
       setInviteError(error.message);
     }
     setDeletingInviteId("");
+  }
+
+  async function loadPaymentDebugLogs() {
+    setPaymentDebugLoading(true);
+    try {
+      const snap = await getDocs(collection(db, "paymentDebugLog"));
+      const list = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+      setPaymentDebugLogs(list.slice(0, 50));
+    } catch (error) {
+      console.error(error);
+    }
+    setPaymentDebugLoading(false);
   }
 
   async function loadSignupCoupons() {
@@ -707,6 +723,9 @@ export default function AdminDashboard() {
           <button className={"admin-tab" + (view === "coupons" ? " active" : "")} onClick={() => { setView("coupons"); loadSignupCoupons(); }}>
             أكواد خصم التسجيل
           </button>
+          <button className={"admin-tab" + (view === "paymentDebug" ? " active" : "")} onClick={() => { setView("paymentDebug"); loadPaymentDebugLogs(); }}>
+            سجل تشخيص الدفع
+          </button>
         </div>
 
         {view === "sellers" && (
@@ -1077,6 +1096,36 @@ export default function AdminDashboard() {
                     {couponBusyCode === coupon.id ? "..." : "حذف نهائي"}
                   </button>
                 </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {view === "paymentDebug" && (
+          <>
+            <div className="invite-sub" style={{ marginBottom: 14 }}>
+              كل مرة ما نقدر نتأكد إن دفعة عند OmPay نجحت، نسجل الرد الخام هنا — يفيد بمعرفة السبب بالضبط بدل التخمين.
+            </div>
+            {paymentDebugLoading && <div className="loading">جاري تحميل السجل...</div>}
+            {!paymentDebugLoading && paymentDebugLogs.length === 0 && (
+              <div className="empty">ما فيه أي حالة دفع لم نتعرف عليها حتى الآن.</div>
+            )}
+            {!paymentDebugLoading && paymentDebugLogs.map((log) => (
+              <div className="invite-row" key={log.id}>
+                <div className="invite-row-top">
+                  <div>
+                    <div className="invite-name">{log.kind || "غير معروف"} · {log.status || "unknown"}</div>
+                    <div className="invite-email">{log.referenceNumber || "—"}</div>
+                  </div>
+                </div>
+                <div className="invite-meta">
+                  {log.createdAt?.toDate ? log.createdAt.toDate().toLocaleString("ar") : ""} · uid: {log.uid || "—"}
+                </div>
+                <pre style={{
+                  marginTop: 10, padding: 10, background: "#FBFAF7", border: "1px solid #E4E0D3",
+                  borderRadius: 8, fontSize: 10.5, direction: "ltr", textAlign: "left",
+                  whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: 220, overflow: "auto",
+                }}>{log.raw}</pre>
               </div>
             ))}
           </>
