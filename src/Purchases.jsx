@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { auth, ensureAnonymousAuth } from "./firebase.js";
 
 const styles = `
-  .buy-page{min-height:100vh;background:#f7f6f1;color:#111;font-family:'Cairo',sans-serif;direction:rtl}.buy-shell{max-width:720px;margin:auto;padding:22px 16px 40px}.buy-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}.buy-title{font-family:'Almarai',sans-serif;font-size:18px;font-weight:800}.buy-back{border:1px solid #e2ded3;border-radius:999px;background:#fff;color:#163f2e;text-decoration:none;padding:9px 12px;font-size:11px;font-weight:800}.buy-note{background:#fff8e9;border:1px solid #f0d8a3;border-radius:14px;padding:12px;font-size:11px;line-height:1.8;color:#755614;margin-bottom:14px}.buy-card{background:#fff;border:1px solid #e5e0d6;border-radius:17px;padding:16px;margin-bottom:11px}.buy-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.buy-name{font-size:14px;font-weight:800;line-height:1.6}.buy-price{font-family:'JetBrains Mono',monospace;font-size:12px;color:#163f2e;font-weight:800;white-space:nowrap}.buy-status{display:inline-block;margin-top:8px;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.buy-status.draft{background:#f3ebdd;color:#816422}.buy-status.awaiting{background:#fce9c6;color:#7a5a17}.buy-status.confirmed{background:#eaf0eb;color:#42634a}.buy-date{font-size:10.5px;color:#8a8677;margin-top:9px}.buy-download,.buy-copy{width:100%;border:0;border-radius:999px;padding:11px 13px;margin-top:12px;font-family:inherit;font-weight:800;font-size:11.5px;cursor:pointer}.buy-download{background:#111;color:#fff}.buy-copy{background:#fff;border:1px solid #d9d4c9;color:#163f2e}.buy-code{direction:ltr;text-align:left;margin-top:11px;border-radius:10px;background:#f7f6f1;border:1px dashed #d7d1c4;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all}.buy-empty{background:#fff;border:1px solid #e5e0d6;border-radius:18px;padding:30px 18px;text-align:center;font-size:12px;line-height:1.9;color:#777}.buy-error{background:#f6e9e5;color:#b24c3a;border-radius:12px;padding:11px;font-size:11.5px;line-height:1.7;margin-bottom:13px}.buy-bundle-item{border-top:1px dashed #e5e0d6;margin-top:12px;padding-top:12px}.buy-bundle-item .buy-name{font-size:12.5px}
+  .buy-page{min-height:100vh;background:#f7f6f1;color:#111;font-family:'Cairo',sans-serif;direction:rtl}.buy-shell{max-width:720px;margin:auto;padding:22px 16px 40px}.buy-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}.buy-title{font-family:'Almarai',sans-serif;font-size:18px;font-weight:800}.buy-back{border:1px solid #e2ded3;border-radius:999px;background:#fff;color:#163f2e;text-decoration:none;padding:9px 12px;font-size:11px;font-weight:800}.buy-note{background:#fff8e9;border:1px solid #f0d8a3;border-radius:14px;padding:12px;font-size:11px;line-height:1.8;color:#755614;margin-bottom:14px}.buy-card{background:#fff;border:1px solid #e5e0d6;border-radius:17px;padding:16px;margin-bottom:11px}.buy-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.buy-name{font-size:14px;font-weight:800;line-height:1.6}.buy-price{font-family:'JetBrains Mono',monospace;font-size:12px;color:#163f2e;font-weight:800;white-space:nowrap}.buy-status{display:inline-block;margin-top:8px;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.buy-status.draft{background:#f3ebdd;color:#816422}.buy-status.awaiting{background:#fce9c6;color:#7a5a17}.buy-status.confirmed{background:#eaf0eb;color:#42634a}.buy-date{font-size:10.5px;color:#8a8677;margin-top:9px}.buy-download,.buy-copy{width:100%;border:0;border-radius:999px;padding:11px 13px;margin-top:12px;font-family:inherit;font-weight:800;font-size:11.5px;cursor:pointer}.buy-download{background:#111;color:#fff}.buy-copy{background:#fff;border:1px solid #d9d4c9;color:#163f2e}.buy-code{direction:ltr;text-align:left;margin-top:11px;border-radius:10px;background:#f7f6f1;border:1px dashed #d7d1c4;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all;white-space:pre-line}.buy-empty{background:#fff;border:1px solid #e5e0d6;border-radius:18px;padding:30px 18px;text-align:center;font-size:12px;line-height:1.9;color:#777}.buy-error{background:#f6e9e5;color:#b24c3a;border-radius:12px;padding:11px;font-size:11.5px;line-height:1.7;margin-bottom:13px}.buy-bundle-item{border-top:1px dashed #e5e0d6;margin-top:12px;padding-top:12px}.buy-bundle-item .buy-name{font-size:12.5px}
 `;
 
 function labelFor(status) {
@@ -59,6 +59,7 @@ export default function Purchases() {
   const [downloadingId, setDownloadingId] = useState("");
   const [copiedId, setCopiedId] = useState("");
   const [copiedCouponId, setCopiedCouponId] = useState("");
+  const [copiedActivationId, setCopiedActivationId] = useState("");
 
   async function loadOrders() {
     setState("loading");
@@ -109,6 +110,16 @@ export default function Purchases() {
     }
   }
 
+  async function copyOrderId(orderId) {
+    try {
+      await navigator.clipboard.writeText(orderId);
+      setCopiedActivationId(orderId);
+      window.setTimeout(() => setCopiedActivationId(""), 1600);
+    } catch {
+      setError("تعذر نسخ رقم الطلب. انسخه يدويًا.");
+    }
+  }
+
   return (
     <div className="buy-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -143,6 +154,15 @@ export default function Purchases() {
               <DeliveryItem item={{ ...order, productId: order.productId }} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
             )}
 
+            {order.type !== "bundle" && Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && order.status === "confirmed" && (
+              <div className="buy-note" style={{ marginTop: 12, marginBottom: 0 }}>
+                🔒 هذا المنتج يحتاج تفعيل أول مرة تفتحه (يحتاج إنترنت أول مرة بس، بعدها يشتغل بدون نت). الكود موجود فوق — وهذا رقم طلبك، تحتاجه مع الكود داخل المنتج:
+                <div className="buy-code" style={{ marginTop: 6 }}>{order.id}</div>
+                <button className="buy-copy" type="button" onClick={() => copyOrderId(order.id)}>
+                  {copiedActivationId === order.id ? "تم نسخ رقم الطلب" : "نسخ رقم الطلب"}
+                </button>
+              </div>
+            )}
             {order.repeatCoupon && (
               <div className="buy-note" style={{ marginTop: 12, marginBottom: 0 }}>
                 🎁 عندك كوبون خصم {order.repeatCoupon.discountPercent}٪ لطلبك الجاي من هذا المتجر:

@@ -12,7 +12,7 @@ const styles = `
   .dlv-download,.dlv-copy{width:100%;border:0;border-radius:999px;padding:11px 13px;margin-top:10px;font-family:inherit;font-weight:800;font-size:11.5px;cursor:pointer}
   .dlv-download{background:#111;color:#fff}
   .dlv-copy{background:#fff;border:1px solid #d9d4c9;color:#163f2e}
-  .dlv-code{direction:ltr;text-align:left;margin-top:10px;border-radius:10px;background:#f7f6f1;border:1px dashed #d7d1c4;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all}
+  .dlv-code{direction:ltr;text-align:left;margin-top:10px;border-radius:10px;background:#f7f6f1;border:1px dashed #d7d1c4;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all;white-space:pre-line}
   .dlv-note{font-size:10.5px;line-height:1.7;color:#89857a;margin-top:8px}
   .dlv-state{background:#fff;border:1px solid #e5e0d6;border-radius:18px;padding:30px 18px;text-align:center;font-size:12px;line-height:1.9;color:#777}
 `;
@@ -97,6 +97,16 @@ export default function Deliver({ orderId, token }) {
     }
   }
 
+  async function copyOrderId() {
+    try {
+      await navigator.clipboard.writeText(orderId);
+      setCopiedId("activation");
+      window.setTimeout(() => setCopiedId(""), 1600);
+    } catch {
+      setError("تعذر نسخ رقم الطلب. انسخه يدويًا.");
+    }
+  }
+
   return (
     <div className="dlv-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -122,6 +132,15 @@ export default function Deliver({ orderId, token }) {
               <DeliveryItem item={order} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
             )}
 
+            {order.type !== "bundle" && Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && (
+              <div className="dlv-note" style={{ marginTop: 10 }}>
+                🔒 هذا المنتج يحتاج تفعيل أول مرة تفتحه (يحتاج إنترنت أول مرة بس، بعدها يشتغل بدون نت). الكود موجود فوق — وهذا رقم طلبك، تحتاجه مع الكود داخل المنتج:
+                <div className="dlv-code">{orderId}</div>
+                <button className="dlv-copy" type="button" onClick={copyOrderId}>
+                  {copiedId === "activation" ? "تم نسخ رقم الطلب" : "نسخ رقم الطلب"}
+                </button>
+              </div>
+            )}
             {error && <div className="dlv-note" style={{ color: "#b24c3a" }}>{error}</div>}
             <a className="dlv-copy" style={{ display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }} href={`#receipt/${orderId}/${token}`}>عرض الفاتورة</a>
             <div className="dlv-note">هذا الرابط خاص بطلبك، لا تشاركه مع أحد.</div>

@@ -130,6 +130,7 @@ function publicOrder(order, id, unlockData, repeatCoupon) {
     paymentPhoneNumber: order.paymentPhoneNumber || "",
     proofSubmitted: Boolean(order.proofPath),
     repeatCoupon: confirmed && repeatCoupon ? repeatCoupon : null,
+    activationRequiredProductIds: Array.isArray(order.activationRequiredProductIds) ? order.activationRequiredProductIds : [],
   };
 
   if (order.type === "bundle") {
