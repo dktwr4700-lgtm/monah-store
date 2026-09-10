@@ -37,6 +37,8 @@ export default function Orders({ ownerId, onAddProduct, storeName }) {
   const [confirmError, setConfirmError] = useState({});
   const [proofUrl, setProofUrl] = useState({});
   const [copiedId, setCopiedId] = useState("");
+  const [resettingActivation, setResettingActivation] = useState("");
+  const [activationResetDone, setActivationResetDone] = useState({});
 
   useEffect(() => {
     if (!ownerId) return;
@@ -87,6 +89,20 @@ export default function Orders({ ownerId, onAddProduct, storeName }) {
     } catch {
       setConfirmError((current) => ({ ...current, [order.id]: "تعذر نسخ الرابط. انسخه يدويًا." }));
     }
+  }
+
+  async function resetActivation(orderId, productId) {
+    const key = `${orderId}_${productId}`;
+    setResettingActivation(key);
+    setConfirmError((current) => ({ ...current, [orderId]: "" }));
+    try {
+      await orderRequest("reset_activation", { orderId, productId });
+      setActivationResetDone((current) => ({ ...current, [key]: true }));
+      window.setTimeout(() => setActivationResetDone((current) => ({ ...current, [key]: false })), 3000);
+    } catch (requestError) {
+      setConfirmError((current) => ({ ...current, [orderId]: requestError.message || "تعذر إعادة تصفير التفعيل." }));
+    }
+    setResettingActivation("");
   }
 
   function sendDeliveryOnWhatsApp(order) {
@@ -188,6 +204,31 @@ export default function Orders({ ownerId, onAddProduct, storeName }) {
                   <div style={{ marginTop: 8 }}>
                     <button className="ord-deliver-btn" type="button" onClick={() => sendDeliveryOnWhatsApp(order)}>إرسال رابط الاستلام عبر واتساب</button>
                     <button className="ord-proof-btn" type="button" onClick={() => copyDeliveryLink(order)}>{copiedId === order.id ? "تم نسخ الرابط" : "نسخ رابط الاستلام"}</button>
+                  </div>
+                )}
+                {Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div className="ord-confirm-note">
+                      هذا المنتج يتطلب كود تفعيل مرتبط بجهاز واحد. لو العميل غيّر جهازه وتواصل معك، تقدر تعيد له فرصة تفعيل جديدة:
+                    </div>
+                    {order.activationRequiredProductIds.map((productId) => {
+                      const key = `${order.id}_${productId}`;
+                      return (
+                        <button
+                          key={productId}
+                          className="ord-proof-btn"
+                          type="button"
+                          disabled={resettingActivation === key}
+                          onClick={() => resetActivation(order.id, productId)}
+                        >
+                          {resettingActivation === key
+                            ? "جاري إعادة التصفير..."
+                            : activationResetDone[key]
+                              ? "تم — يقدر يفعّل مرة ثانية"
+                              : "إعادة تصفير التفعيل"}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

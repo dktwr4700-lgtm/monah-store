@@ -29,7 +29,8 @@ service cloud.firestore {
         && (request.resource.data.price > 0 || request.resource.data.type == 'file')
         && request.resource.data.keys().hasOnly([
           'ownerId', 'name', 'price', 'description', 'category', 'type',
-          'filePath', 'codesCount', 'images', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt'
+          'filePath', 'codesCount', 'images', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt',
+          'requiresActivation'
         ]);
       allow update: if isAdmin() || (
         ownsExistingProduct()
@@ -38,7 +39,7 @@ service cloud.firestore {
         && (request.resource.data.price > 0 || resource.data.type == 'file')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'price', 'description', 'category', 'filePath', 'codesCount',
-          'images', 'hidden', 'featured', 'sortOrder'
+          'images', 'hidden', 'featured', 'sortOrder', 'requiresActivation'
         ])
       );
       allow delete: if ownsExistingProduct() || isAdmin();
@@ -168,6 +169,12 @@ service cloud.firestore {
     match /unlocks/{unlockId} {
       allow get: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
       allow list, create, update, delete: if false;
+    }
+
+    // كود تفعيل اللعبة/المنتج التفاعلي — يُقرأ ويُكتب فقط عبر api/activate-license.js
+    // و api/orders.js (Admin SDK)، ما فيه وصول مباشر من العميل أبدًا.
+    match /activations/{activationId} {
+      allow read, write: if false;
     }
   }
 }
