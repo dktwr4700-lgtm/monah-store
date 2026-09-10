@@ -38,24 +38,25 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const productId = cleanId(req.body?.productId);
   const orderId = cleanId(req.body?.orderId);
   const code = cleanCode(req.body?.code);
-  if (!productId || !orderId || !code) {
+  if (!orderId || !code) {
     return res.status(400).json({ error: "أدخل رقم الطلب وكود التفعيل كاملين." });
   }
 
-  const activationRef = db.collection("activations").doc(`${orderId}_${productId}`);
+  // الملف المستقل (اللعبة) ما يعرف productId بنفسه، فنبحث عن التفعيل بمعرف
+  // الطلب فقط — كل طلب عادةً فيه منتج واحد يتطلب تفعيل، فأول تطابق يكفي.
   try {
     const token = await db.runTransaction(async (transaction) => {
-      const snap = await transaction.get(activationRef);
-      if (!snap.exists || snap.data().code !== code) throw new Error("NOT_FOUND");
-      const data = snap.data();
+      const candidates = await transaction.get(db.collection("activations").where("orderId", "==", orderId));
+      const match = candidates.docs.find((doc) => doc.data().code === code);
+      if (!match) throw new Error("NOT_FOUND");
+      const data = match.data();
       const max = Number(data.maxActivations || 1);
       const count = Number(data.activationCount || 0);
       if (count >= max) throw new Error("LIMIT_REACHED");
       const newToken = randomBytes(16).toString("hex");
-      transaction.update(activationRef, {
+      transaction.update(match.ref, {
         activationCount: count + 1,
         lastActivatedAt: FieldValue.serverTimestamp(),
       });
