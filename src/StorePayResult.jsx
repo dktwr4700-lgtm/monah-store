@@ -41,6 +41,7 @@ export default function StorePayResult({ param }) {
   const [state, setState] = useState("checking");
   const [error, setError] = useState("");
   const [slug, setSlug] = useState("");
+  const [rawStatus, setRawStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +54,7 @@ export default function StorePayResult({ param }) {
         .then((data) => {
           if (cancelled) return;
           if (data.slug) setSlug(data.slug);
+          if (data.status) setRawStatus(data.status);
           setState(data.paid ? "paid" : "pending");
         })
         .catch((requestError) => { if (!cancelled) { setError(requestError.message); setState("error"); } });
@@ -91,17 +93,20 @@ export default function StorePayResult({ param }) {
         {state === "pending" && kind === "domain" && <>
           <div className="pr-title">لم تكتمل عملية الدفع</div>
           <div className="pr-copy">يبدو إن دفع الدومين ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول من لوحة التاجر.</div>
+          {rawStatus && <div className="pr-copy" style={{ marginTop: 8, fontFamily: "monospace", direction: "ltr", color: "#B0AC9C" }}>status: {rawStatus}</div>}
           <a className="pr-btn" href="#dashboard/domain">الرجوع للوحة التاجر</a>
         </>}
         {state === "pending" && (kind === "addon" || kind === "renew") && <>
           <div className="pr-title">لم تكتمل عملية الدفع</div>
           <div className="pr-copy">يبدو إن الدفع ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول من لوحة التاجر.</div>
+          {rawStatus && <div className="pr-copy" style={{ marginTop: 8, fontFamily: "monospace", direction: "ltr", color: "#B0AC9C" }}>status: {rawStatus}</div>}
           <a className="pr-btn" href="#dashboard/subscription">الرجوع للوحة التاجر</a>
         </>}
         {state === "pending" && kind === "signup" && <>
           <div className="pr-title">لم تكتمل عملية الدفع</div>
-          <div className="pr-copy">يبدو إن الدفع ما تم أو لسا قيد المعالجة. تقدر ترجع تحاول الدفع بالبطاقة مرة ثانية.</div>
-          <a className="pr-btn" href="#start-store">الرجوع لصفحة التسجيل</a>
+          <div className="pr-copy">يبدو إن الدفع ما تم أو لسا قيد المعالجة. لو تأكدت إن مبلغك انخصم فعلاً، لا تدفع مرة ثانية — تواصل معنا أو جرب تسجل دخول من جديد بعد شوي، لأن الموقع يعيد التحقق تلقائيًا كل ما تسجل دخول.</div>
+          {rawStatus && <div className="pr-copy" style={{ marginTop: 8, fontFamily: "monospace", direction: "ltr", color: "#B0AC9C" }}>status: {rawStatus}</div>}
+          <a className="pr-btn" href="#dashboard">الرجوع للوحة التاجر</a>
         </>}
         {state === "error" && <>
           <div className="pr-title">تعذر التحقق من الدفع</div>
