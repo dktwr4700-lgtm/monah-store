@@ -115,6 +115,7 @@ export default function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState(null);
   const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sellersError, setSellersError] = useState("");
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState(null);
 
@@ -193,6 +194,7 @@ export default function AdminDashboard() {
 
   async function loadSellers() {
     setLoading(true);
+    setSellersError("");
     try {
       const snap = await getDocs(collection(db, "sellers"));
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -200,6 +202,7 @@ export default function AdminDashboard() {
       setSellers(list);
     } catch (e) {
       console.error(e);
+      setSellersError(e.message || String(e));
     }
     setLoading(false);
   }
@@ -727,7 +730,11 @@ export default function AdminDashboard() {
 
         {view === "sellers" && loading && <div className="loading">جاري تحميل التجار...</div>}
 
-        {view === "sellers" && !loading && filtered.length === 0 && (
+        {view === "sellers" && sellersError && (
+          <div className="empty" style={{ color: "#B24C3A" }}>تعذر تحميل التجار: {sellersError}</div>
+        )}
+
+        {view === "sellers" && !loading && !sellersError && filtered.length === 0 && (
           <div className="empty">ما فيه تجار مطابقين</div>
         )}
 
