@@ -52,6 +52,10 @@ export default function StartStore() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [selectedAddOns, setSelectedAddOns] = useState([]);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponChecking, setCouponChecking] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState("");
 
   const emailReady = EMAIL_PATTERN.test(email.trim());
   const passwordReady = password.length >= 6;
@@ -108,14 +112,36 @@ export default function StartStore() {
   }
 
   const addOnsTotal = selectedAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-  const paymentTotal = BASE_MONTHLY_PRICE + addOnsTotal;
+  const paymentTotal = Math.max(0.1, BASE_MONTHLY_PRICE + addOnsTotal - couponDiscount);
+
+  async function checkCoupon() {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponMessage("");
+    setCouponChecking(true);
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const data = await signupRequest("check_signup_coupon", { code }, idToken);
+      if (data.valid) {
+        setCouponDiscount(Number(data.discountAmount) || 0);
+        setCouponMessage(`تم تطبيق خصم ${Number(data.discountAmount).toFixed(2)} ر.ع ✓`);
+      } else {
+        setCouponDiscount(0);
+        setCouponMessage(data.reason || "كود الخصم غير صحيح.");
+      }
+    } catch (requestError) {
+      setCouponDiscount(0);
+      setCouponMessage(requestError.message || "تعذر التحقق من الكود الآن.");
+    }
+    setCouponChecking(false);
+  }
 
   async function payByCard() {
     setError("");
     setBusy(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const data = await signupRequest("create_card_charge", { addOns: selectedAddOns }, idToken);
+      const data = await signupRequest("create_card_charge", { addOns: selectedAddOns, couponCode: couponCode.trim() }, idToken);
       window.location.assign(data.url);
     } catch (requestError) {
       setError(requestError.message || "تعذر بدء الدفع الآن.");
@@ -182,6 +208,22 @@ export default function StartStore() {
                 </span>
               </label>
             ))}
+          </div>
+          <div className="invite-field">
+            <label>كود خصم (اختياري)</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(event) => { setCouponCode(event.target.value); setCouponMessage(""); setCouponDiscount(0); }}
+                placeholder="اكتب الكود هنا"
+                style={{ flex: 1, direction: "ltr", textAlign: "right" }}
+              />
+              <button type="button" className="invite-btn" style={{ width: "auto", padding: "0 16px" }} onClick={checkCoupon} disabled={couponChecking || !couponCode.trim()}>
+                {couponChecking ? "..." : "تحقق"}
+              </button>
+            </div>
+            {couponMessage && <div style={{ fontSize: 11.5, marginTop: 6, color: couponDiscount > 0 ? "#37724B" : "#A34839", fontWeight: 700 }}>{couponMessage}</div>}
           </div>
           <div className="invite-message" style={{ background: "#F7F7F2", color: "#16233F", fontWeight: 700, textAlign: "center" }}>المجموع الشهري: {paymentTotal.toFixed(2)} ر.ع</div>
           <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : `ادفع ${paymentTotal.toFixed(2)} ر.ع بالبطاقة`}</button>
