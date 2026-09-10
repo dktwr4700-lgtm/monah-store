@@ -146,7 +146,8 @@ const styles = `
 
   .dh-field{ margin-bottom:12px; }
   .dh-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
-  .dh-field input, .dh-field textarea, .dh-field select{ width:100%; padding:11px 13px; border:1px solid #EDEAE0; border-radius:10px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; }
+  .dh-field input:not([type="checkbox"]):not([type="radio"]), .dh-field textarea, .dh-field select{ width:100%; padding:11px 13px; border:1px solid #EDEAE0; border-radius:10px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; }
+  .dh-field input[type="checkbox"], .dh-field input[type="radio"]{ width:16px; height:16px; flex-shrink:0; }
   .dh-hint{ color:#8A8677; font-size:10.5px; margin-top:6px; line-height:1.6; }
   .dh-btn{ width:100%; background:#0B0B0C; color:#fff; border:none; padding:13px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer; }
   .dh-btn:disabled{ opacity:.6; }
@@ -293,7 +294,7 @@ const styles = `
     .dh-section>summary{ gap:10px; padding:15px 14px; }
     .dh-section-body{ padding:14px; }
     .dh-section-summary b{ font-size:13.5px; }
-    .dh-field input,.dh-field textarea,.dh-field select{ min-height:44px; font-size:14px; }
+    .dh-field input:not([type="checkbox"]):not([type="radio"]),.dh-field textarea,.dh-field select{ min-height:44px; font-size:14px; }
     .dh-type-toggle,.dh-ai-actions,.dh-edit-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .dh-ai-btn{ min-height:38px; padding:8px 9px; }
     .dh-item-top{ gap:8px; }
@@ -1939,9 +1940,9 @@ export default function Dashboard() {
                       </div>
                     )}
                     <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12.5, cursor: "pointer" }}>
-                      <input type="checkbox" checked={requiresActivation} onChange={(e) => setRequiresActivation(e.target.checked)} />
-                      يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب — كل عميل ياخذ كود يفعّله مرة واحدة بجهاز واحد)
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10, fontSize: 12.5, cursor: "pointer" }}>
+                      <input type="checkbox" checked={requiresActivation} onChange={(e) => setRequiresActivation(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                      <span style={{ flex: 1, minWidth: 0 }}>يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب — كل عميل ياخذ كود يفعّله مرة واحدة بجهاز واحد)</span>
                     </label>
                   </div>
                 ) : (
@@ -2027,9 +2028,9 @@ export default function Dashboard() {
                         </div>
                       )}
                       {p.type === "file" && (
-                        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 12.5, cursor: "pointer" }}>
-                          <input type="checkbox" checked={editRequiresActivation} onChange={(e) => setEditRequiresActivation(e.target.checked)} />
-                          يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب)
+                        <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10, fontSize: 12.5, cursor: "pointer" }}>
+                          <input type="checkbox" checked={editRequiresActivation} onChange={(e) => setEditRequiresActivation(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                          <span style={{ flex: 1, minWidth: 0 }}>يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب)</span>
                         </label>
                       )}
                       <div className="dh-edit-actions">
