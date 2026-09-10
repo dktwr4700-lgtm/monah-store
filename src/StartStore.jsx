@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
@@ -62,6 +62,32 @@ export default function StartStore() {
   const ctaFieldsReady = emailReady && passwordReady;
   const { trackRef: ctaTrackRef, btnRef: ctaBtnRef, offsetX: ctaOffsetX, fleeing: ctaFleeing } = useRunawayButton(ctaFieldsReady || step !== "form");
 
+  // متصفحات الجوال (خصوصًا داخل تطبيقات زي واتساب) كثير تمنع نافذة تسجيل الدخول المنبثقة
+  // (popup) لجوجل، فنستخدم تحويل صفحة كامل (redirect) بدلها — يحتاج حفظ بيانات المتجر
+  // مؤقتًا لأن الصفحة تعيد تحميل نفسها بعد رجوعها من جوجل.
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result?.user) return;
+        setBusy(true);
+        const savedStoreName = sessionStorage.getItem("monah_pending_store_name") || "";
+        const savedStoreType = sessionStorage.getItem("monah_pending_store_type") || "files";
+        sessionStorage.removeItem("monah_pending_store_name");
+        sessionStorage.removeItem("monah_pending_store_type");
+        const idToken = await result.user.getIdToken(true);
+        await signupRequest("register", { storeName: savedStoreName.trim(), storeType: savedStoreType }, idToken);
+        setStoreName(savedStoreName);
+        setStoreType(savedStoreType);
+        setStep("payment");
+      } catch (redirectError) {
+        await signOut(auth).catch(() => {});
+        setError(redirectError.message || "تعذر إكمال تسجيل الدخول عبر جوجل.");
+      }
+      setBusy(false);
+    })();
+  }, []);
+
   async function submitForm(event) {
     event.preventDefault();
     setError("");
@@ -94,17 +120,13 @@ export default function StartStore() {
     if (storeName.trim().length < 2) return setError("اكتب اسم متجرك أولًا.");
     setBusy(true);
     try {
-      const credential = await signInWithPopup(auth, new GoogleAuthProvider());
-      const idToken = await credential.user.getIdToken(true);
-      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken);
-      setStep("payment");
+      sessionStorage.setItem("monah_pending_store_name", storeName.trim());
+      sessionStorage.setItem("monah_pending_store_type", storeType);
+      await signInWithRedirect(auth, new GoogleAuthProvider());
     } catch (submitError) {
-      if (submitError.code !== "auth/popup-closed-by-user" && submitError.code !== "auth/cancelled-popup-request") {
-        await signOut(auth).catch(() => {});
-        setError(submitError.message || "تعذر إنشاء الحساب الآن.");
-      }
+      setError(submitError.message || "تعذر إنشاء الحساب الآن.");
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   function toggleAddOn(key) {

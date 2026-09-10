@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
-import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -59,19 +59,29 @@ export default function Login() {
     }
   }
 
+  // متصفحات الجوال (خصوصًا داخل تطبيقات زي واتساب) كثير تمنع نافذة تسجيل الدخول
+  // المنبثقة (popup) لجوجل، فنستخدم تحويل صفحة كامل (redirect) بدلها.
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) afterLogin(result.user);
+      } catch (err) {
+        setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
+      }
+    })();
+  }, []);
+
   async function handleGoogleSignIn() {
     setError("");
     setResetMsg("");
     setGoogleLoading(true);
     try {
-      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
-      afterLogin(cred.user);
+      await signInWithRedirect(auth, new GoogleAuthProvider());
     } catch (err) {
-      if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
-        setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
-      }
+      setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
+      setGoogleLoading(false);
     }
-    setGoogleLoading(false);
   }
 
   async function handleSubmit(e) {
