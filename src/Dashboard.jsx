@@ -317,6 +317,7 @@ export default function Dashboard() {
   const [verificationSent, setVerificationSent] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);
   const [sellerAccess, setSellerAccess] = useState("checking");
+  const [hasPendingSignupPayment, setHasPendingSignupPayment] = useState(false);
   const [sellerStoreType, setSellerStoreType] = useState("files");
   function getTabFromHash() {
     const parts = window.location.hash.replace("#", "").split("/");
@@ -493,7 +494,21 @@ export default function Dashboard() {
       try {
         const snap = await getDoc(doc(db, "sellers", user.uid));
         if (cancelled) return;
-        if (!snap.exists()) return setSellerAccess("denied");
+        if (!snap.exists()) {
+          try {
+            const idToken = await user.getIdToken();
+            const response = await fetch("/api/merchant-signup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+              body: JSON.stringify({ action: "status" }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!cancelled) setHasPendingSignupPayment(Boolean(data?.signup?.hasPendingPayment));
+          } catch (statusErr) {
+            console.error(statusErr);
+          }
+          return setSellerAccess("denied");
+        }
         setSellerPlan(snap.data().plan || "basic");
         setSellerStoreType(snap.data().storeType || "files");
         setPaymentInstructions(snap.data().paymentInstructions || "");
@@ -1511,7 +1526,18 @@ export default function Dashboard() {
   if (checking || !user || sellerAccess === "checking") return null;
 
   if (sellerAccess !== "active") {
-    return <div className="dh-page" dir="rtl" lang="ar"><style>{styles}</style><main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}><section style={{ maxWidth: 380, textAlign: "center", border: "1px solid #EDEAE0", borderRadius: 18, padding: 24 }}><strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>ما أكملت فتح متجرك بعد</strong><p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>هذا الحساب ما عنده اشتراك مفعّل. لو كنت بدأت تفتح متجرًا وما أكملت الدفع، تقدر تكمل من هنا.</p><a className="dh-btn" href="#start-store" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>أكمل فتح متجرك</a><button className="dh-logout" onClick={handleLogout}>تسجيل الخروج</button></section></main></div>;
+    return <div className="dh-page" dir="rtl" lang="ar"><style>{styles}</style><main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}><section style={{ maxWidth: 380, textAlign: "center", border: "1px solid #EDEAE0", borderRadius: 18, padding: 24 }}>
+      {hasPendingSignupPayment ? (<>
+        <strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>عندك عملية دفع لسه ما تأكدت</strong>
+        <p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>حسابك بدأ فتح متجر ودفع، بس ما تأكدنا من نجاح الدفع بعد. اضغط تحقق قبل لا تجرب تدفع مرة ثانية — تجنبًا لأي خصم مكرر.</p>
+        <a className="dh-btn" href="#store-pay-result/x" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>تحقق من حالة دفعتي</a>
+      </>) : (<>
+        <strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>ما أكملت فتح متجرك بعد</strong>
+        <p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>هذا الحساب ما عنده اشتراك مفعّل. لو كنت بدأت تفتح متجرًا وما أكملت الدفع، تقدر تكمل من هنا.</p>
+        <a className="dh-btn" href="#start-store" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>أكمل فتح متجرك</a>
+      </>)}
+      <button className="dh-logout" onClick={handleLogout}>تسجيل الخروج</button>
+    </section></main></div>;
   }
 
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
