@@ -32,15 +32,6 @@ function cleanText(value, maxLength) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
-// أحرف بدون تشابه بصري (بدون 0/O و1/I/L) عشان العميل يقدر يكتبها صح من ملف اللعبة.
-const ACTIVATION_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-function generateActivationCode() {
-  const bytes = randomBytes(8);
-  let code = "";
-  for (let i = 0; i < 8; i++) code += ACTIVATION_CODE_ALPHABET[bytes[i] % ACTIVATION_CODE_ALPHABET.length];
-  return code;
-}
-
 function requireActiveSeller(sellerSnap) {
   if (!sellerSnap.exists) return {};
   const seller = sellerSnap.data();
@@ -139,9 +130,7 @@ function publicOrder(order, id, unlockData, repeatCoupon) {
     paymentPhoneNumber: order.paymentPhoneNumber || "",
     proofSubmitted: Boolean(order.proofPath),
     repeatCoupon: confirmed && repeatCoupon ? repeatCoupon : null,
-    activationRequired: Boolean(order.activationRequired),
-    activationCode: confirmed && order.activationRequired ? (order.activationCode || "") : "",
-    activationUsed: Boolean(order.activationUsed),
+    activationRequiredProductIds: Array.isArray(order.activationRequiredProductIds) ? order.activationRequiredProductIds : [],
   };
 
   if (order.type === "bundle") {
@@ -405,6 +394,15 @@ async function submitProof(req, res, account) {
   return res.status(200).json({ ok: true, status: "awaiting_seller_confirmation" });
 }
 
+// أحرف بدون 0/O و 1/I/L عشان الكود يُكتب يدويًا بسهولة بدون التباس
+const ACTIVATION_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+function generateActivationCode() {
+  const bytes = randomBytes(8);
+  let raw = "";
+  for (let i = 0; i < bytes.length; i++) raw += ACTIVATION_ALPHABET[bytes[i] % ACTIVATION_ALPHABET.length];
+  return `${raw.slice(0, 4)}-${raw.slice(4)}`;
+}
+
 async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, orderId, ownerId }) {
   const productRef = db.collection("products").doc(productId);
   const productSnap = await transaction.get(productRef);
@@ -422,31 +420,50 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
     throw new OrderError(409, "ملف أحد منتجات هذا الطلب غير جاهز للتسليم الآن.");
   }
 
-  const apply = () => {
-    const unlockRef = db.collection("unlocks").doc(`${buyerUid}_${productId}`);
-    const unlockPayload = {
-      uid: buyerUid,
-      productId,
-      orderId,
-      ownerId,
-      type: product.type === "code" ? "code" : "file",
-      downloadCount: 0,
-      createdAt: FieldValue.serverTimestamp(),
-      expiresAt: Timestamp.fromDate(new Date(Date.now() + UNLOCK_TTL_MS)),
-    };
-    if (codeDoc) {
-      transaction.update(codeDoc.ref, {
-        used: true,
-        usedBy: buyerPhone,
-        usedByUid: buyerUid,
-        usedAt: FieldValue.serverTimestamp(),
-      });
-      transaction.update(productRef, { codesCount: Math.max(0, Number(product.codesCount || 0) - 1) });
-      unlockPayload.licenseCode = codeDoc.data().code;
-    }
-    transaction.set(unlockRef, unlockPayload, { merge: true });
+  // منتجات تفاعلية (مثل الألعاب) تشتغل بدون نت بعد أول تشغيل، فحد التنزيلات وحده ما يكفي
+  // لحمايتها — نولّد لها كود تفعيل مرتبط بجهاز واحد فقط، يتحقق منه api/activate-license.js
+  const activationCode = product.requiresActivation ? generateActivationCode() : null;
+
+  return {
+    activationRequired: Boolean(activationCode),
+    apply: () => {
+      const unlockRef = db.collection("unlocks").doc(`${buyerUid}_${productId}`);
+      const unlockPayload = {
+        uid: buyerUid,
+        productId,
+        orderId,
+        ownerId,
+        type: product.type === "code" ? "code" : "file",
+        downloadCount: 0,
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromDate(new Date(Date.now() + UNLOCK_TTL_MS)),
+      };
+      if (codeDoc) {
+        transaction.update(codeDoc.ref, {
+          used: true,
+          usedBy: buyerPhone,
+          usedByUid: buyerUid,
+          usedAt: FieldValue.serverTimestamp(),
+        });
+        transaction.update(productRef, { codesCount: Math.max(0, Number(product.codesCount || 0) - 1) });
+        unlockPayload.licenseCode = codeDoc.data().code;
+      }
+      if (activationCode) {
+        unlockPayload.licenseCode = activationCode;
+        transaction.set(db.collection("activations").doc(`${orderId}_${productId}`), {
+          code: activationCode,
+          productId,
+          orderId,
+          buyerUid,
+          ownerId,
+          maxActivations: 1,
+          activationCount: 0,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
+      transaction.set(unlockRef, unlockPayload, { merge: true });
+    },
   };
-  return { product, apply };
 }
 
 // كل قراءات المنتجات والأكواد لازم تنتهي قبل أي كتابة داخل نفس المعاملة،
@@ -462,38 +479,31 @@ async function markOrderConfirmed(orderRef, orderId, confirmedBy) {
     if (!Array.isArray(productIds) || productIds.length === 0) {
       throw new OrderError(409, "بيانات هذا الطلب غير مكتملة.");
     }
-    const unlockedProducts = [];
+    const unlocks = [];
     for (const productId of productIds) {
-      const result = await unlockOneProduct(transaction, {
+      unlocks.push({
         productId,
-        buyerUid: order.buyerUid,
-        buyerPhone: order.buyerPhone,
-        orderId,
-        ownerId: order.ownerId,
+        ...(await unlockOneProduct(transaction, {
+          productId,
+          buyerUid: order.buyerUid,
+          buyerPhone: order.buyerPhone,
+          orderId,
+          ownerId: order.ownerId,
+        })),
       });
-      unlockedProducts.push(result);
     }
-    unlockedProducts.forEach(({ apply }) => apply());
+    unlocks.forEach(({ apply }) => apply());
+    const activationRequiredProductIds = unlocks.filter((u) => u.activationRequired).map((u) => u.productId);
 
     const deliveryToken = randomBytes(24).toString("hex");
-    const orderUpdate = {
+    transaction.update(orderRef, {
       status: "confirmed",
       confirmedAt: FieldValue.serverTimestamp(),
       confirmedBy,
       deliveryToken,
       deliveryTokenExpiresAt: Timestamp.fromDate(new Date(Date.now() + DELIVERY_TOKEN_TTL_MS)),
-    };
-
-    // كود التفعيل حاليًا للطلبات اللي فيها منتج ملف واحد بس (مو الحزم) وفعّل التاجر خيار الحماية عليه.
-    const singleProduct = order.type !== "bundle" ? unlockedProducts[0]?.product : null;
-    if (singleProduct?.type === "file" && singleProduct.requiresActivationCode) {
-      orderUpdate.activationRequired = true;
-      orderUpdate.activationCode = generateActivationCode();
-      orderUpdate.activationUsed = false;
-      orderUpdate.activationUsedAt = null;
-    }
-
-    transaction.update(orderRef, orderUpdate);
+      ...(activationRequiredProductIds.length > 0 ? { activationRequiredProductIds } : {}),
+    });
     return { alreadyConfirmed: false, type: order.type };
   });
 }
@@ -774,6 +784,28 @@ async function saveSellerPaymentGateway(req, res, account) {
   return res.status(200).json({ ok: true, connected: true, provider });
 }
 
+async function resetActivation(req, res, account) {
+  await requireSeller(account.uid);
+  const orderId = cleanText(req.body?.orderId, 160);
+  const productId = cleanText(req.body?.productId, 160);
+  if (!isValidId(orderId) || !isValidId(productId)) throw new OrderError(400, "بيانات غير مكتملة.");
+
+  const orderSnap = await db.collection("orders").doc(orderId).get();
+  if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
+  if (orderSnap.data().ownerId !== account.uid) throw new OrderError(403, "لا تملك هذا الطلب.");
+
+  const activationRef = db.collection("activations").doc(`${orderId}_${productId}`);
+  const activationSnap = await activationRef.get();
+  if (!activationSnap.exists) throw new OrderError(404, "ما فيه كود تفعيل مرتبط بهذا المنتج بهذا الطلب.");
+
+  await activationRef.update({
+    activationCount: 0,
+    resetAt: FieldValue.serverTimestamp(),
+    resetCount: FieldValue.increment(1),
+  });
+  return res.status(200).json({ ok: true });
+}
+
 async function saveRepeatCouponSettings(req, res, account) {
   await requireSeller(account.uid);
   const enabled = Boolean(req.body?.enabled);
@@ -808,6 +840,7 @@ export default async function handler(req, res) {
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
     if (action === "save_payment_gateway") return await saveSellerPaymentGateway(req, res, account);
     if (action === "save_repeat_coupon_settings") return await saveRepeatCouponSettings(req, res, account);
+    if (action === "reset_activation") return await resetActivation(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {
     if (error instanceof OrderError) return res.status(error.code).json({ error: error.message });

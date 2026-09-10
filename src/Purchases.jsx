@@ -110,13 +110,13 @@ export default function Purchases() {
     }
   }
 
-  async function copyActivation(orderId, orderNumber, code) {
+  async function copyOrderId(orderId) {
     try {
-      await navigator.clipboard.writeText(`${orderNumber} - ${code}`);
+      await navigator.clipboard.writeText(orderId);
       setCopiedActivationId(orderId);
       window.setTimeout(() => setCopiedActivationId(""), 1600);
     } catch {
-      setError("تعذر نسخ رقم الطلب والكود. انسخهما يدويًا.");
+      setError("تعذر نسخ رقم الطلب. انسخه يدويًا.");
     }
   }
 
@@ -154,14 +154,13 @@ export default function Purchases() {
               <DeliveryItem item={{ ...order, productId: order.productId }} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
             )}
 
-            {order.activationRequired && order.status === "confirmed" && (
+            {order.type !== "bundle" && Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && order.status === "confirmed" && (
               <div className="buy-note" style={{ marginTop: 12, marginBottom: 0 }}>
-                🔒 هذا المنتج يحتاج كود تفعيل — افتح المنتج بعد التنزيل واكتب رقم الطلب والكود بالضبط زي ما هنا (يحتاج إنترنت أول مرة بس، بعدها يشتغل بدون نت):
-                <div className="buy-code" style={{ marginTop: 6 }}>{order.id}{"\n"}{order.activationCode}</div>
-                <button className="buy-copy" type="button" onClick={() => copyActivation(order.id, order.id, order.activationCode)}>
-                  {copiedActivationId === order.id ? "تم النسخ" : "نسخ رقم الطلب والكود"}
+                🔒 هذا المنتج يحتاج تفعيل أول مرة تفتحه (يحتاج إنترنت أول مرة بس، بعدها يشتغل بدون نت). الكود موجود فوق — وهذا رقم طلبك، تحتاجه مع الكود داخل المنتج:
+                <div className="buy-code" style={{ marginTop: 6 }}>{order.id}</div>
+                <button className="buy-copy" type="button" onClick={() => copyOrderId(order.id)}>
+                  {copiedActivationId === order.id ? "تم نسخ رقم الطلب" : "نسخ رقم الطلب"}
                 </button>
-                {order.activationUsed && <div className="buy-date" style={{ marginTop: 6 }}>تم استخدام هذا الكود من قبل على جهاز واحد بالفعل.</div>}
               </div>
             )}
             {order.repeatCoupon && (

@@ -342,7 +342,7 @@ export default function Dashboard() {
   const [fileInputKey, setFileInputKey] = useState(0);
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState("file");
-  const [requiresActivationCode, setRequiresActivationCode] = useState(false);
+  const [requiresActivation, setRequiresActivation] = useState(false);
   const [sellerPlan, setSellerPlan] = useState("basic");
   const [codesText, setCodesText] = useState("");
   const [productImages, setProductImages] = useState([]);
@@ -353,6 +353,7 @@ export default function Dashboard() {
   const [editPrice, setEditPrice] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editRequiresActivation, setEditRequiresActivation] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -725,13 +726,13 @@ export default function Dashboard() {
         type: productType,
         filePath: "",
         codesCount: productType === "code" ? codesList.length : 0,
-        requiresActivationCode: productType === "file" ? requiresActivationCode : false,
         images: productImages,
         hidden: true,
         suspended: false,
         featured: false,
         sortOrder: Date.now(),
         createdAt: serverTimestamp(),
+        requiresActivation: productType === "file" ? requiresActivation : false,
       });
 
       if (productType === "code" && codesList.length > 0) {
@@ -768,7 +769,7 @@ export default function Dashboard() {
       setCategory("");
       setCodesText("");
       setProductType("file");
-      setRequiresActivationCode(false);
+      setRequiresActivation(false);
       setProductImages([]);
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
@@ -783,6 +784,7 @@ export default function Dashboard() {
     setEditPrice(String(p.price));
     setEditDescription(p.description || "");
     setEditCategory(p.category || "");
+    setEditRequiresActivation(Boolean(p.requiresActivation));
   }
 
   function cancelEdit() {
@@ -808,6 +810,7 @@ export default function Dashboard() {
         price: numericPrice,
         description: editDescription || "",
         category: editCategory || "عام",
+        ...(product?.type === "file" ? { requiresActivation: editRequiresActivation } : {}),
       });
       setEditingId(null);
     } catch (err) {
@@ -1884,11 +1887,10 @@ export default function Dashboard() {
                       </div>
                     )}
                     <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer" }}>
-                      <input type="checkbox" checked={requiresActivationCode} onChange={(e) => setRequiresActivationCode(e.target.checked)} />
-                      <span>يتطلب كود تفعيل (حماية إضافية)</span>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12.5, cursor: "pointer" }}>
+                      <input type="checkbox" checked={requiresActivation} onChange={(e) => setRequiresActivation(e.target.checked)} />
+                      يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب — كل عميل ياخذ كود يفعّله مرة واحدة بجهاز واحد)
                     </label>
-                    <div className="dh-hint">كل عميل ياخذ كود تفعيل مختلف تلقائيًا بعد ما تأكد استلام التحويل. الكود يشتغل مرة وحدة بس على جهاز وحد — لو حاول حد ثاني يستخدم نفس الكود على جهاز آخر، يترفض. يحتاج المنتج نفسه يدعم إدخال الكود بداخله.</div>
                   </div>
                 ) : (
                   <div className="dh-field">
@@ -1971,6 +1973,12 @@ export default function Dashboard() {
                         <div className="dh-hint" style={{ marginBottom: 10 }}>
                           لتغيير الملف نفسه، احذفي هذا المنتج وأضيفيه من جديد مؤقتًا.
                         </div>
+                      )}
+                      {p.type === "file" && (
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 12.5, cursor: "pointer" }}>
+                          <input type="checkbox" checked={editRequiresActivation} onChange={(e) => setEditRequiresActivation(e.target.checked)} />
+                          يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب)
+                        </label>
                       )}
                       <div className="dh-edit-actions">
                         <button className="dh-item-action" onClick={cancelEdit} type="button">إلغاء</button>

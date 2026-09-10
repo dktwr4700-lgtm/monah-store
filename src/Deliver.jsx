@@ -97,13 +97,13 @@ export default function Deliver({ orderId, token }) {
     }
   }
 
-  async function copyActivation(text) {
+  async function copyOrderId() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(orderId);
       setCopiedId("activation");
       window.setTimeout(() => setCopiedId(""), 1600);
     } catch {
-      setError("تعذر نسخ رقم الطلب والكود. انسخهما يدويًا.");
+      setError("تعذر نسخ رقم الطلب. انسخه يدويًا.");
     }
   }
 
@@ -132,14 +132,13 @@ export default function Deliver({ orderId, token }) {
               <DeliveryItem item={order} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
             )}
 
-            {order.activationRequired && (
+            {order.type !== "bundle" && Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && (
               <div className="dlv-note" style={{ marginTop: 10 }}>
-                🔒 هذا المنتج يحتاج كود تفعيل — افتحه بعد التنزيل واكتب رقم الطلب والكود بالضبط زي ما هنا (يحتاج إنترنت أول مرة بس):
-                <div className="dlv-code">{orderId}{"\n"}{order.activationCode}</div>
-                <button className="dlv-copy" type="button" onClick={() => copyActivation(`${orderId} - ${order.activationCode}`)}>
-                  {copiedId === "activation" ? "تم النسخ" : "نسخ رقم الطلب والكود"}
+                🔒 هذا المنتج يحتاج تفعيل أول مرة تفتحه (يحتاج إنترنت أول مرة بس، بعدها يشتغل بدون نت). الكود موجود فوق — وهذا رقم طلبك، تحتاجه مع الكود داخل المنتج:
+                <div className="dlv-code">{orderId}</div>
+                <button className="dlv-copy" type="button" onClick={copyOrderId}>
+                  {copiedId === "activation" ? "تم نسخ رقم الطلب" : "نسخ رقم الطلب"}
                 </button>
-                {order.activationUsed && <div className="dlv-note">تم استخدام هذا الكود من قبل على جهاز واحد بالفعل.</div>}
               </div>
             )}
             {error && <div className="dlv-note" style={{ color: "#b24c3a" }}>{error}</div>}
