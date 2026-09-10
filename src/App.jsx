@@ -556,7 +556,7 @@ export default function App() {
 
       <div className="foot-black">
         <div className="foot-top">
-          <div><b>تواصل</b><div className="foot-contact">واتساب: <a href="https://wa.me/96876630905" target="_blank" rel="noopener noreferrer">76630905</a></div></div>
+          <div><b>تواصل</b><div className="foot-contact">واتساب: <a href="https://wa.me/96876630905" target="_blank" rel="noopener noreferrer">76630905</a></div><div className="foot-contact" style={{ marginTop: 4 }}>إيميل: <a href="mailto:monahapp@outlook.sa">monahapp@outlook.sa</a></div></div>
           <div><b>روابط</b><a href="#privacy">سياسة الخصوصية</a><a href="#terms">الشروط والأحكام</a></div>
         </div>
         <div className="foot-wordmark">Monah</div>

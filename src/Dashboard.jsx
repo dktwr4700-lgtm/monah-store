@@ -405,6 +405,7 @@ export default function Dashboard() {
   const [tagline, setTagline] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [slug, setSlug] = useState("");
   const [slugError, setSlugError] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -584,6 +585,7 @@ export default function Dashboard() {
         setTagline(data.tagline || "");
         setWhatsapp(data.whatsapp || "");
         setInstagram(data.instagram || "");
+        setContactEmail(data.contactEmail || "");
         setSlug(data.slug || "");
         setLogoUrl(data.logoUrl || "");
         setCoverUrl(data.coverUrl || "");
@@ -1114,6 +1116,12 @@ export default function Dashboard() {
         setDesignSaving(false);
         return;
       }
+      const cleanContactEmail = contactEmail.trim();
+      if (cleanContactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanContactEmail)) {
+        setError("إيميل التواصل غير صحيح، تأكد منه أو اتركه فاضي.");
+        setDesignSaving(false);
+        return;
+      }
       {
         const q = query(collection(db, "stores"), where("slug", "==", cleanSlug));
         const snap = await getDocs(q);
@@ -1130,6 +1138,7 @@ export default function Dashboard() {
         tagline: tagline || "",
         whatsapp: whatsapp || "",
         instagram: instagram || "",
+        contactEmail: cleanContactEmail || "",
         slug: cleanSlug || "",
         logoUrl: logoUrl || "",
         coverUrl: coverUrl || "",
@@ -2478,6 +2487,11 @@ export default function Dashboard() {
               <div className="dh-field">
                 <label>حساب إنستغرام (اختياري)</label>
                 <input type="text" value={instagram} onChange={(e) => { setInstagram(e.target.value); setDesignDirty(true); }} placeholder="username" style={{ direction: "ltr", textAlign: "right" }} />
+              </div>
+              <div className="dh-field">
+                <label>إيميل خدمة العملاء (اختياري)</label>
+                <input type="email" value={contactEmail} onChange={(e) => { setContactEmail(e.target.value); setDesignDirty(true); }} placeholder="support@yourbrand.com" style={{ direction: "ltr", textAlign: "right" }} />
+                <div className="dh-hint">يظهر للعميل بجانب رقم الواتساب كطريقة تواصل ثانية، لو حاب متجرك يستخدم إيميل مخصص لخدمة العملاء.</div>
               </div>
               <div className="dh-field">
                 <label>نبذة عن المتجر (اختياري)</label>

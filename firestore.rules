@@ -84,14 +84,14 @@ service cloud.firestore {
       allow create: if owns(ownerId)
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.keys().hasOnly([
-          'ownerId', 'name', 'color', 'tagline', 'whatsapp', 'instagram', 'slug',
+          'ownerId', 'name', 'color', 'tagline', 'whatsapp', 'instagram', 'contactEmail', 'slug',
           'logoUrl', 'coverUrl', 'about', 'faqs', 'updatedAt'
         ]);
       allow update: if isAdmin() || (
         owns(ownerId)
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'color', 'tagline', 'whatsapp', 'instagram', 'slug', 'logoUrl',
+          'name', 'color', 'tagline', 'whatsapp', 'instagram', 'contactEmail', 'slug', 'logoUrl',
           'coverUrl', 'about', 'faqs', 'updatedAt'
         ])
       );
