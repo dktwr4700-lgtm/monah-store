@@ -4,7 +4,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
-import { ompayRequest as ompayRequestRaw } from "../lib/ompay-client.js";
+import { ompayRequest as ompayRequestRaw, ompayChargeSucceeded } from "../lib/ompay-client.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -607,8 +607,9 @@ async function verifyCardCharge(req, res, account) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: order.ompayReferenceNumber,
   }, credentials);
-  if (result.status !== "SUCCESSFUL") {
-    return res.status(200).json({ paid: false, status: result.status || "unknown" });
+  const { succeeded, status } = ompayChargeSucceeded(result);
+  if (!succeeded) {
+    return res.status(200).json({ paid: false, status });
   }
   const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
   if (!result2.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);

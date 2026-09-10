@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { ompayRequest } from "../lib/ompay-client.js";
+import { ompayRequest, ompayChargeSucceeded } from "../lib/ompay-client.js";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
@@ -212,8 +212,9 @@ async function verifyCardCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: request.ompayReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  if (result.status !== "SUCCESSFUL") {
-    return res.status(200).json({ paid: false, status: result.status || "unknown" });
+  const { succeeded, status } = ompayChargeSucceeded(result);
+  if (!succeeded) {
+    return res.status(200).json({ paid: false, status });
   }
   await activateSeller(account.uid, request);
   if (request.signupCouponCode) {
@@ -272,8 +273,9 @@ async function verifyDomainCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: seller.pendingDomainReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  if (result.status !== "SUCCESSFUL") {
-    return res.status(200).json({ paid: false, status: result.status || "unknown" });
+  const { succeeded, status } = ompayChargeSucceeded(result);
+  if (!succeeded) {
+    return res.status(200).json({ paid: false, status });
   }
 
   const slug = seller.pendingDomainSlug;
@@ -339,8 +341,9 @@ async function verifyAddOnCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: seller.pendingAddOnReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  if (result.status !== "SUCCESSFUL") {
-    return res.status(200).json({ paid: false, status: result.status || "unknown" });
+  const { succeeded, status } = ompayChargeSucceeded(result);
+  if (!succeeded) {
+    return res.status(200).json({ paid: false, status });
   }
 
   const activeAddOns = Array.from(new Set([...(seller.activeAddOns || []), ...seller.pendingAddOns]));
@@ -388,8 +391,9 @@ async function verifyRenewalCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: seller.pendingRenewalReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  if (result.status !== "SUCCESSFUL") {
-    return res.status(200).json({ paid: false, status: result.status || "unknown" });
+  const { succeeded, status } = ompayChargeSucceeded(result);
+  if (!succeeded) {
+    return res.status(200).json({ paid: false, status });
   }
 
   const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
