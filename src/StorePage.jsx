@@ -32,6 +32,7 @@ function SearchIcon(){return <svg width="15" height="15" viewBox="0 0 24 24" fil
 function CartIcon(){return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 4h2l2 11h10l2-8H6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="20" r="1" fill="currentColor"/><circle cx="17" cy="20" r="1" fill="currentColor"/></svg>}
 function WhatsappIcon(){return <svg viewBox="0 0 24 24" fill="none"><path d="M17 14c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z" fill="#fff"/><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" stroke="#fff" strokeWidth="1.3"/></svg>}
 function InstagramIcon(){return <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#fff" strokeWidth="1.6"/><circle cx="12" cy="12" r="4" stroke="#fff" strokeWidth="1.6"/><circle cx="17.5" cy="6.5" r="1.1" fill="#fff"/></svg>}
+function EmailIcon(){return <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="3" stroke="#fff" strokeWidth="1.6"/><path d="M4 7l8 6 8-6" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
 function FileIcon(){return <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#4B6152" strokeWidth="1.6"/><path d="M14 2v6h6M9 15l2 2 4-4" stroke="#4B6152" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
 function ShareIcon(){return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L8 8m4-4 4 4M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>}
 
@@ -97,6 +98,7 @@ export default function StorePage({ sellerId }) {
   const logoUrl = store?.logoUrl;
   const whatsappUrl = safeSocialUrl(store?.whatsapp, "whatsapp");
   const instagramUrl = safeSocialUrl(store?.instagram, "instagram");
+  const contactEmail = String(store?.contactEmail || "").trim();
   const coverUrl = store?.coverUrl;
   const storeAbout = store?.about || "";
   const storeFaqs = Array.isArray(store?.faqs) ? store.faqs.filter((faq) => faq?.question && faq?.answer) : [];
@@ -150,9 +152,10 @@ export default function StorePage({ sellerId }) {
               <div className="mc-store-name">{brandName}</div>
               <div className="mc-store-tagline">{tagline}</div>
               <div className="mc-store-meta">متجر رقمي مستقل</div>
-              {(whatsappUrl || instagramUrl) && <div className="mc-store-socials">
+              {(whatsappUrl || instagramUrl || contactEmail) && <div className="mc-store-socials">
                 {whatsappUrl && <a className="mc-social" href={whatsappUrl} target="_blank" rel="noopener noreferrer" title="واتساب"><WhatsappIcon /></a>}
                 {instagramUrl && <a className="mc-social" href={instagramUrl} target="_blank" rel="noopener noreferrer" title="إنستغرام"><InstagramIcon /></a>}
+                {contactEmail && <a className="mc-social" href={`mailto:${contactEmail}`} title="إيميل"><EmailIcon /></a>}
               </div>}
             </div>
           </div>
