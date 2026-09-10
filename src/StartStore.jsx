@@ -109,7 +109,7 @@ export default function StartStore() {
       await signOut(auth).catch(() => {});
       if (submitError.code === "auth/weak-password") setError("كلمة المرور ضعيفة، اختر كلمة أطول.");
       else if (submitError.code === "auth/invalid-email") setError("اكتب بريدك الإلكتروني بشكل صحيح.");
-      else if (submitError.code === "auth/wrong-password") setError("كلمة المرور غير صحيحة لهذا البريد.");
+      else if (submitError.code === "auth/wrong-password" || submitError.code === "auth/invalid-credential") setError("هذا البريد عنده حساب بالفعل وكلمة المرور غير صحيحة. لو نسيت كلمة المرور، سجّل الدخول من صفحة \"تسجيل الدخول\" واضغط \"نسيت كلمة المرور؟\"، أو استخدم بريدًا مختلفًا.");
       else setError(submitError.message || "تعذر إنشاء الحساب الآن.");
     }
     setBusy(false);
