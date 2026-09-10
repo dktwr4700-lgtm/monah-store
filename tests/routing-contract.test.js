@@ -494,7 +494,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(admin).toContain("دخلت بحساب غير حساب المالك");
     expect(admin).toContain("سجل خروج ثم ادخل بحساب المالك.");
     expect(dashboard).not.toContain("ensureSellerProfile");
-    expect(dashboard).toContain("ما عندك دعوة مفعّلة");
+    expect(dashboard).toContain("ما أكملت فتح متجرك بعد");
     expect(admin).toContain("دعوات التجار");
     expect(admin).toContain("إنشاء رابط دعوة");
     expect(invitePage).toContain('inviteRequest("inspect", { token })');
@@ -535,7 +535,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = BASE_MONTHLY_PRICE");
     expect(signupApi).toContain('import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js"');
     expect(signupApi).toContain('if (sellerSnap.exists) return res.status(409)');
-    expect(signupApi).toContain('result.status !== "SUCCESSFUL"');
+    expect(signupApi).toContain("ompayChargeSucceeded(result)");
     expect(signupApi).toContain("async function activateSeller(uid, request)");
     expect(signupApi).toContain("subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
     expect(signupApi).not.toContain("submit_manual_proof");

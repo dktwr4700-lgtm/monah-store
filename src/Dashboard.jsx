@@ -1511,7 +1511,7 @@ export default function Dashboard() {
   if (checking || !user || sellerAccess === "checking") return null;
 
   if (sellerAccess !== "active") {
-    return <div className="dh-page" dir="rtl" lang="ar"><style>{styles}</style><main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}><section style={{ maxWidth: 380, textAlign: "center", border: "1px solid #EDEAE0", borderRadius: 18, padding: 24 }}><strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>ما عندك دعوة مفعّلة</strong><p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>هذا الحساب يحتاج رابط دعوة خاص من صاحب مُونة حتى يفتح متجرًا.</p><button className="dh-logout" onClick={handleLogout}>تسجيل الخروج</button></section></main></div>;
+    return <div className="dh-page" dir="rtl" lang="ar"><style>{styles}</style><main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}><section style={{ maxWidth: 380, textAlign: "center", border: "1px solid #EDEAE0", borderRadius: 18, padding: 24 }}><strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>ما أكملت فتح متجرك بعد</strong><p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>هذا الحساب ما عنده اشتراك مفعّل. لو كنت بدأت تفتح متجرًا وما أكملت الدفع، تقدر تكمل من هنا.</p><a className="dh-btn" href="#start-store" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>أكمل فتح متجرك</a><button className="dh-logout" onClick={handleLogout}>تسجيل الخروج</button></section></main></div>;
   }
 
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
