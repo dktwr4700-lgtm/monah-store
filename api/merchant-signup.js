@@ -213,7 +213,7 @@ async function verifyCardCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: request.ompayReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  const { succeeded, status } = ompayChargeSucceeded(result);
+  const { succeeded, status } = await ompayChargeSucceeded(result, { kind: "signup", referenceNumber: request.ompayReferenceNumber, uid: account.uid });
   if (!succeeded) {
     return res.status(200).json({ paid: false, status });
   }
@@ -274,7 +274,7 @@ async function verifyDomainCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: seller.pendingDomainReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  const { succeeded, status } = ompayChargeSucceeded(result);
+  const { succeeded, status } = await ompayChargeSucceeded(result, { kind: "domain", referenceNumber: seller.pendingDomainReferenceNumber, uid: account.uid });
   if (!succeeded) {
     return res.status(200).json({ paid: false, status });
   }
@@ -342,7 +342,7 @@ async function verifyAddOnCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: seller.pendingAddOnReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  const { succeeded, status } = ompayChargeSucceeded(result);
+  const { succeeded, status } = await ompayChargeSucceeded(result, { kind: "addon", referenceNumber: seller.pendingAddOnReferenceNumber, uid: account.uid });
   if (!succeeded) {
     return res.status(200).json({ paid: false, status });
   }
@@ -392,7 +392,7 @@ async function verifyRenewalCharge(req, res) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: seller.pendingRenewalReferenceNumber,
   }).catch((error) => { throw new SignupError(error.code || 502, error.message); });
-  const { succeeded, status } = ompayChargeSucceeded(result);
+  const { succeeded, status } = await ompayChargeSucceeded(result, { kind: "renew", referenceNumber: seller.pendingRenewalReferenceNumber, uid: account.uid });
   if (!succeeded) {
     return res.status(200).json({ paid: false, status });
   }

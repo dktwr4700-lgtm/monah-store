@@ -22,22 +22,44 @@ async function verifyRequest(orderId) {
   return data;
 }
 
+const POLL_ATTEMPTS = 10;
+const POLL_INTERVAL_MS = 2500;
+
+// تسوية الدفع عند البنك ممكن تاخذ ثوانٍ بعد رجوع العميل من صفحة الدفع، فأول
+// استعلام أحيانًا يرجع "لسا ما تأكد" حتى لو الدفع نجح فعليًا. نعيد المحاولة
+// تلقائيًا لين نتأكد، بدل ما نعرض "لم يكتمل الدفع" على عميل دفع فعلاً.
+async function verifyWithRetry(orderId, isCancelled) {
+  let lastData = null;
+  let lastError = null;
+  for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+    if (isCancelled()) return null;
+    try {
+      const data = await verifyRequest(orderId);
+      if (data.paid) return { data };
+      lastData = data;
+      lastError = null;
+    } catch (requestError) {
+      lastError = requestError;
+    }
+    if (attempt < POLL_ATTEMPTS - 1) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+  }
+  if (lastData) return { data: lastData };
+  return { error: lastError };
+}
+
 export default function PayResult({ orderId }) {
   const [state, setState] = useState("checking");
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    verifyRequest(orderId)
-      .then((data) => {
-        if (cancelled) return;
-        setState(data.paid ? "paid" : "pending");
-      })
-      .catch((requestError) => {
-        if (cancelled) return;
-        setError(requestError.message);
-        setState("error");
-      });
+    verifyWithRetry(orderId, () => cancelled).then((result) => {
+      if (cancelled || !result) return;
+      if (result.error) { setError(result.error.message); setState("error"); return; }
+      setState(result.data.paid ? "paid" : "pending");
+    });
     return () => { cancelled = true; };
   }, [orderId]);
 

@@ -607,7 +607,7 @@ async function verifyCardCharge(req, res, account) {
   const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
     reference_number: order.ompayReferenceNumber,
   }, credentials);
-  const { succeeded, status } = ompayChargeSucceeded(result);
+  const { succeeded, status } = await ompayChargeSucceeded(result, { kind: "order", referenceNumber: order.ompayReferenceNumber, uid: account.uid });
   if (!succeeded) {
     return res.status(200).json({ paid: false, status });
   }
