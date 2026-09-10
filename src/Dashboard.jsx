@@ -490,40 +490,57 @@ export default function Dashboard() {
       return;
     }
     let cancelled = false;
+    function applySellerData(data) {
+      setSellerPlan(data.plan || "basic");
+      setSellerStoreType(data.storeType || "files");
+      setPaymentInstructions(data.paymentInstructions || "");
+      setGatewayConnected(data.paymentGateway?.provider === "ompay");
+      setPaymentBankName(data.paymentBankName || "");
+      setPaymentAccountHolder(data.paymentAccountHolder || "");
+      setPaymentAccountNumber(data.paymentAccountNumber || "");
+      setPaymentPhoneNumber(data.paymentPhoneNumber || "");
+      setCustomDomainSlug(data.customDomainSlug || "");
+      setCustomDomainExpiresAt(data.customDomainExpiresAt || "");
+      setActiveAddOns(data.activeAddOns || []);
+      setSubscriptionExpiresAt(data.subscriptionExpiresAt || "");
+      setRepeatCouponEnabled(Boolean(data.repeatCouponEnabled));
+      setRepeatCouponPercent(Number(data.repeatCouponPercent) || 10);
+      setSellerAccess("active");
+    }
+    async function merchantSignupAction(action) {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/merchant-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action }),
+      });
+      return response.json().catch(() => ({}));
+    }
     async function verifySellerAccess() {
       try {
         const snap = await getDoc(doc(db, "sellers", user.uid));
         if (cancelled) return;
-        if (!snap.exists()) {
-          try {
-            const idToken = await user.getIdToken();
-            const response = await fetch("/api/merchant-signup", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-              body: JSON.stringify({ action: "status" }),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!cancelled) setHasPendingSignupPayment(Boolean(data?.signup?.hasPendingPayment));
-          } catch (statusErr) {
-            console.error(statusErr);
+        if (snap.exists()) return applySellerData(snap.data());
+
+        // ما فيه حساب تاجر بعد — لو صار دفع سابق ما تأكد، نتحقق منه ونفعّل تلقائيًا
+        // بدون ما نطلب من التاجر يسوي أي خطوة يدوية (رابط، إعادة تسجيل، إلخ).
+        try {
+          const statusData = await merchantSignupAction("status");
+          if (cancelled) return;
+          const pending = Boolean(statusData?.signup?.hasPendingPayment);
+          setHasPendingSignupPayment(pending);
+          if (pending) {
+            const verifyData = await merchantSignupAction("verify_card_charge");
+            if (cancelled) return;
+            if (verifyData?.paid) {
+              const retrySnap = await getDoc(doc(db, "sellers", user.uid));
+              if (!cancelled && retrySnap.exists()) return applySellerData(retrySnap.data());
+            }
           }
-          return setSellerAccess("denied");
+        } catch (autoVerifyErr) {
+          console.error(autoVerifyErr);
         }
-        setSellerPlan(snap.data().plan || "basic");
-        setSellerStoreType(snap.data().storeType || "files");
-        setPaymentInstructions(snap.data().paymentInstructions || "");
-        setGatewayConnected(snap.data().paymentGateway?.provider === "ompay");
-        setPaymentBankName(snap.data().paymentBankName || "");
-        setPaymentAccountHolder(snap.data().paymentAccountHolder || "");
-        setPaymentAccountNumber(snap.data().paymentAccountNumber || "");
-        setPaymentPhoneNumber(snap.data().paymentPhoneNumber || "");
-        setCustomDomainSlug(snap.data().customDomainSlug || "");
-        setCustomDomainExpiresAt(snap.data().customDomainExpiresAt || "");
-        setActiveAddOns(snap.data().activeAddOns || []);
-        setSubscriptionExpiresAt(snap.data().subscriptionExpiresAt || "");
-        setRepeatCouponEnabled(Boolean(snap.data().repeatCouponEnabled));
-        setRepeatCouponPercent(Number(snap.data().repeatCouponPercent) || 10);
-        setSellerAccess("active");
+        if (!cancelled) setSellerAccess("denied");
       } catch (err) {
         console.error(err);
         if (!cancelled) setSellerAccess("denied");
