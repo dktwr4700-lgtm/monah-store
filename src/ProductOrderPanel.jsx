@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { auth, ensureAnonymousAuth, storage } from "./firebase.js";
+import { auth, ensureAnonymousAuth } from "./firebase.js";
+import { storage } from "./firebase-storage.js";
 import { ref, uploadBytes } from "firebase/storage";
 
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
