@@ -96,6 +96,13 @@ const styles = `
   @media (max-width:390px){.admin-wrap{padding:16px 14px 48px}.admin-header{margin-bottom:16px}.admin-tabs{overflow-x:auto;padding-bottom:2px}.admin-tab{white-space:nowrap;padding:8px 12px}.invite-panel,.invite-row{padding:14px}.invite-row-top{gap:8px}.seller-badge{flex-shrink:0}.invite-link{align-items:flex-start}.invite-copy{min-height:34px}}
 `;
 
+function toMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
 function planLabel(plan) {
   if (plan === "basic") return "أساسية";
   if (plan === "pro") return "احترافية";
@@ -198,7 +205,7 @@ export default function AdminDashboard() {
     try {
       const snap = await getDocs(collection(db, "sellers"));
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
       setSellers(list);
     } catch (e) {
       console.error(e);
@@ -756,7 +763,7 @@ export default function AdminDashboard() {
                   الباقة: <b><span className="seller-badge badge-plan">{planLabel(s.plan)}</span></b>
                 </span>
                 <span className="seller-meta-item">
-                  تاريخ التسجيل: <b>{s.createdAt ? new Date(s.createdAt).toLocaleDateString("ar") : "—"}</b>
+                  تاريخ التسجيل: <b>{s.createdAt ? new Date(toMillis(s.createdAt)).toLocaleDateString("ar") : "—"}</b>
                 </span>
                 {isSubscriptionExpired(s) && (
                   <span className="seller-badge badge-expired">منتهي الاشتراك</span>
