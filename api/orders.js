@@ -573,17 +573,17 @@ async function createCardCharge(req, res, account) {
 
   // لو فيه محاولة دفع سابقة على نفس الطلب، نتحقق منها أولًا بدل ما ننشئ شحنة
   // جديدة — عشان ما نخصم العميل مرتين على دفعة نجحت فعليًا بس ما تأكدنا منها.
+  // لو التحقق نفسه فشل (خطأ اتصال مثلاً) نوقف بدل ما نكمل ونخاطر بخصم مزدوج،
+  // لأننا وقتها فعليًا ما نعرف حالة الدفعة القديمة.
   if (order.ompayReferenceNumber) {
     const priorResult = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
       reference_number: order.ompayReferenceNumber,
-    }, credentials).catch(() => null);
-    if (priorResult) {
-      const { succeeded } = await ompayChargeSucceeded(priorResult, { kind: "order", referenceNumber: order.ompayReferenceNumber, uid: account.uid });
-      if (succeeded) {
-        const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
-        if (!result2.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
-        return res.status(200).json({ alreadyPaid: true, type: result2.type });
-      }
+    }, credentials).catch((error) => { throw new OrderError(error.code || 502, "تعذر التحقق من محاولة دفع سابقة على هذا الطلب. حاول مرة ثانية بعد قليل بدل ما تدفع من جديد."); });
+    const { succeeded } = await ompayChargeSucceeded(priorResult, { kind: "order", referenceNumber: order.ompayReferenceNumber, uid: account.uid });
+    if (succeeded) {
+      const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
+      if (!result2.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
+      return res.status(200).json({ alreadyPaid: true, type: result2.type });
     }
   }
 
