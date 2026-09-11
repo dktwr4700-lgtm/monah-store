@@ -151,48 +151,62 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
         <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>رجوع</button><button type="button" className="ppo-primary" onClick={startOrder} disabled={busy}>{busy ? "جاري التجهيز..." : "متابعة للتحويل"}</button></div>
         <div className="ppo-small">في نسخة التجربة، متابعة الطلب والتنزيل مرتبطة بهذا الجهاز والمتصفح، وتقدر أيضًا تستلم رابط منتجك على واتساب.</div>
       </> : <>
-        <div className="ppo-step">2 من 2 · الدفع</div>
-        <div className="ppo-title">{order.cardPaymentAvailable ? "اختر طريقة الدفع" : "حوّل المبلغ للتاجر مباشرة"}</div>
-        {order.couponCode ? (
-          <div className="ppo-success">تم تطبيق كوبون {order.couponCode}. المبلغ المطلوب: {order.price.toFixed(2)} ر.ع بدل {order.originalPrice.toFixed(2)} ر.ع.</div>
-        ) : (
-          <div className="ppo-copy">المبلغ المطلوب: <b>{order.price.toFixed(2)} ر.ع</b></div>
-        )}
-        {error && <div className="ppo-error">{error}</div>}
-        {order.cardPaymentAvailable && <>
-          <button type="button" className="ppo-primary" style={{ width: "100%", marginTop: 12 }} onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : "ادفع الآن بالبطاقة"}</button>
-          <div className="ppo-small" style={{ textAlign: "center", margin: "13px 0" }}>— أو حوّل يدويًا —</div>
-        </>}
-        <div className="ppo-instructions">{order.paymentInstructions}</div>
-        {(order.paymentBankName || order.paymentAccountHolder || order.paymentAccountNumber || order.paymentPhoneNumber) && (
-          <div className="ppo-pay-card">
-            {order.paymentBankName && (
-              <div className="ppo-pay-row"><span className="ppo-pay-label">البنك</span><span className="ppo-pay-value" style={{ fontFamily: "inherit" }}>{order.paymentBankName}</span></div>
+        {(() => {
+          const hasManualTransfer = Boolean(order.paymentInstructions);
+          return <>
+            <div className="ppo-step">2 من 2 · الدفع</div>
+            <div className="ppo-title">
+              {order.cardPaymentAvailable && hasManualTransfer ? "اختر طريقة الدفع"
+                : order.cardPaymentAvailable ? "ادفع بالبطاقة"
+                : "حوّل المبلغ للتاجر مباشرة"}
+            </div>
+            {order.couponCode ? (
+              <div className="ppo-success">تم تطبيق كوبون {order.couponCode}. المبلغ المطلوب: {order.price.toFixed(2)} ر.ع بدل {order.originalPrice.toFixed(2)} ر.ع.</div>
+            ) : (
+              <div className="ppo-copy">المبلغ المطلوب: <b>{order.price.toFixed(2)} ر.ع</b></div>
             )}
-            {order.paymentAccountHolder && (
-              <div className="ppo-pay-row"><span className="ppo-pay-label">صاحب الحساب</span><span className="ppo-pay-value" style={{ fontFamily: "inherit" }}>{order.paymentAccountHolder}</span></div>
-            )}
-            {order.paymentAccountNumber && (
-              <div className="ppo-pay-row">
-                <span className="ppo-pay-label">رقم الحساب</span>
-                <span className="ppo-pay-value">{order.paymentAccountNumber}</span>
-                <button type="button" className="ppo-pay-copy" onClick={() => copyPaymentField(order.paymentAccountNumber, "account")}>{copiedField === "account" ? "تم النسخ" : "نسخ"}</button>
-              </div>
-            )}
-            {order.paymentPhoneNumber && (
-              <div className="ppo-pay-row">
-                <span className="ppo-pay-label">رقم الجوال</span>
-                <span className="ppo-pay-value">{order.paymentPhoneNumber}</span>
-                <button type="button" className="ppo-pay-copy" onClick={() => copyPaymentField(order.paymentPhoneNumber, "phone")}>{copiedField === "phone" ? "تم النسخ" : "نسخ"}</button>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="ppo-copy">بعد التحويل اليدوي، ارفع صورة أو PDF للإثبات. يظهر الإيصال للتاجر فقط لمراجعته.</div>
-        <div className="ppo-field"><label htmlFor="payment-proof">إثبات التحويل</label><input id="payment-proof" className="ppo-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={chooseProof} /></div>
-        {proofFile && <div className="ppo-small">تم اختيار: {proofFile.name}</div>}
-        <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>أكمل لاحقًا</button><button type="button" className="ppo-primary" onClick={uploadProof} disabled={busy || !proofFile}>{busy ? "جاري رفع الإثبات..." : "إرسال الإثبات للتاجر"}</button></div>
-        <div className="ppo-small">لا تضغط الإرسال إلا بعد إتمام التحويل. لا تطلب مُونَة كلمات المرور أو رموز التحقق.</div>
+            {error && <div className="ppo-error">{error}</div>}
+            {order.cardPaymentAvailable && <>
+              <button type="button" className="ppo-primary" style={{ width: "100%", marginTop: 12 }} onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : "ادفع الآن بالبطاقة"}</button>
+              {hasManualTransfer && <div className="ppo-small" style={{ textAlign: "center", margin: "13px 0" }}>— أو حوّل يدويًا —</div>}
+            </>}
+            {hasManualTransfer && <>
+              <div className="ppo-instructions">{order.paymentInstructions}</div>
+              {(order.paymentBankName || order.paymentAccountHolder || order.paymentAccountNumber || order.paymentPhoneNumber) && (
+                <div className="ppo-pay-card">
+                  {order.paymentBankName && (
+                    <div className="ppo-pay-row"><span className="ppo-pay-label">البنك</span><span className="ppo-pay-value" style={{ fontFamily: "inherit" }}>{order.paymentBankName}</span></div>
+                  )}
+                  {order.paymentAccountHolder && (
+                    <div className="ppo-pay-row"><span className="ppo-pay-label">صاحب الحساب</span><span className="ppo-pay-value" style={{ fontFamily: "inherit" }}>{order.paymentAccountHolder}</span></div>
+                  )}
+                  {order.paymentAccountNumber && (
+                    <div className="ppo-pay-row">
+                      <span className="ppo-pay-label">رقم الحساب</span>
+                      <span className="ppo-pay-value">{order.paymentAccountNumber}</span>
+                      <button type="button" className="ppo-pay-copy" onClick={() => copyPaymentField(order.paymentAccountNumber, "account")}>{copiedField === "account" ? "تم النسخ" : "نسخ"}</button>
+                    </div>
+                  )}
+                  {order.paymentPhoneNumber && (
+                    <div className="ppo-pay-row">
+                      <span className="ppo-pay-label">رقم الجوال</span>
+                      <span className="ppo-pay-value">{order.paymentPhoneNumber}</span>
+                      <button type="button" className="ppo-pay-copy" onClick={() => copyPaymentField(order.paymentPhoneNumber, "phone")}>{copiedField === "phone" ? "تم النسخ" : "نسخ"}</button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="ppo-copy">بعد التحويل اليدوي، ارفع صورة أو PDF للإثبات. يظهر الإيصال للتاجر فقط لمراجعته.</div>
+              <div className="ppo-field"><label htmlFor="payment-proof">إثبات التحويل</label><input id="payment-proof" className="ppo-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={chooseProof} /></div>
+              {proofFile && <div className="ppo-small">تم اختيار: {proofFile.name}</div>}
+            </>}
+            <div className="ppo-actions">
+              <button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>{hasManualTransfer ? "أكمل لاحقًا" : "رجوع"}</button>
+              {hasManualTransfer && <button type="button" className="ppo-primary" onClick={uploadProof} disabled={busy || !proofFile}>{busy ? "جاري رفع الإثبات..." : "إرسال الإثبات للتاجر"}</button>}
+            </div>
+            {hasManualTransfer && <div className="ppo-small">لا تضغط الإرسال إلا بعد إتمام التحويل. لا تطلب مُونَة كلمات المرور أو رموز التحقق.</div>}
+          </>;
+        })()}
       </>}
     </section>
   );
