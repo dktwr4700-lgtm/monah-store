@@ -571,6 +571,22 @@ async function createCardCharge(req, res, account) {
   }
   const credentials = await sellerOmpayCredentials(order.ownerId);
 
+  // لو فيه محاولة دفع سابقة على نفس الطلب، نتحقق منها أولًا بدل ما ننشئ شحنة
+  // جديدة — عشان ما نخصم العميل مرتين على دفعة نجحت فعليًا بس ما تأكدنا منها.
+  if (order.ompayReferenceNumber) {
+    const priorResult = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
+      reference_number: order.ompayReferenceNumber,
+    }, credentials).catch(() => null);
+    if (priorResult) {
+      const { succeeded } = await ompayChargeSucceeded(priorResult, { kind: "order", referenceNumber: order.ompayReferenceNumber, uid: account.uid });
+      if (succeeded) {
+        const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
+        if (!result2.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
+        return res.status(200).json({ alreadyPaid: true, type: result2.type });
+      }
+    }
+  }
+
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `ORDER-${orderId}-${Date.now()}`;
   const charge = await ompayRequest("POST", "/api/v1/transactions/bank-hosted", {

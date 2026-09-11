@@ -95,6 +95,12 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
     setBusy(true);
     try {
       const data = await orderRequest("create_card_charge", { orderId: order.id });
+      // دفعة سابقة على نفس الطلب تأكدت الحين بدل ما تُنشأ شحنة جديدة — نروح
+      // مباشرة لصفحة نتيجة الدفع اللي بتعرض النجاح، بدون خصم إضافي.
+      if (data.alreadyPaid) {
+        window.location.hash = `pay-result/${order.id}`;
+        return;
+      }
       window.location.assign(data.url);
     } catch (requestError) {
       setError(requestError.message || "تعذر بدء الدفع بالبطاقة الآن.");
