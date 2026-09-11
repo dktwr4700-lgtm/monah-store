@@ -192,7 +192,7 @@ export default function Orders({ ownerId, onAddProduct, storeName }) {
                 )}
                 {Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && (
                   <div className="ord-confirm-note" style={{ marginTop: 8 }}>
-                    هذا الطلب فيه منتج يتطلب كود تفعيل. الكود يظهر للعميل في صفحة "طلباتي" ويشتغل مباشرة من داخل الملف بدون إنترنت.
+                    هذا الطلب فيه منتج تفاعلي (يشتغل من داخل الموقع). العميل يضغط "العب الآن" من صفحة "طلباتي" ويشغّله مباشرة، بدون ما يحتاج ينزّل أي ملف.
                   </div>
                 )}
               </div>

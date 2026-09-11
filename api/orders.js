@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
@@ -99,28 +99,22 @@ function requireAdmin(account) {
 }
 
 function unlockView(unlock, confirmed) {
-  const isFile = !unlock || unlock.type !== "code";
-  const downloadsRemaining = isFile && unlock
+  const isCode = unlock?.type === "code";
+  const isFile = !unlock || !isCode;
+  // منتجات "تفاعلية" (ألعاب) تُشغَّل من داخل الموقع بدل ما تُنزَّل. نتعرّف عليها
+  // من علامة "interactive" الجديدة، أو من وجود كود ترخيص قديم على نوع "file" —
+  // هذا كان قبل العلامة الوسيلة الوحيدة اللي تدل على منتج يتطلب تفعيل، فنعتبره
+  // تلقائيًا جاهز للتشغيل المباشر بدل ما نعرض له كود ما عاد له داعٍ.
+  const isInteractive = isFile && Boolean(unlock) && (Boolean(unlock.interactive) || Boolean(unlock.licenseCode));
+  const downloadsRemaining = isFile && unlock && !isInteractive
     ? Math.max(0, MAX_FILE_DOWNLOADS - Number(unlock.downloadCount || 0))
     : null;
-  let licenseCode = confirmed && unlock?.licenseCode ? unlock.licenseCode : "";
-  // أكواد التفعيل كانت تُولَّد عشوائيًا وتُتحقق عبر السيرفر؛ صارت الآن تُشتق من
-  // رقم الطلب نفسه عشان تشتغل بدون نت. نصحّح أي كود قديم تلقائيًا هنا أول ما
-  // يُقرأ (بدون أي تدخل يدوي)، وما نلمس النوع "code" إطلاقًا لأنها أكواد حقيقية
-  // رفعها التاجر بنفسه.
-  if (licenseCode && unlock.type !== "code" && unlock.orderId && unlock.uid && unlock.productId) {
-    const expected = offlineActivationCode(unlock.orderId);
-    if (licenseCode !== expected) {
-      licenseCode = expected;
-      db.collection("unlocks").doc(`${unlock.uid}_${unlock.productId}`).update({ licenseCode: expected })
-        .catch((err) => console.error("failed to migrate legacy activation code:", err?.message || err));
-    }
-  }
   return {
-    downloadReady: confirmed && isFile && Boolean(unlock) && downloadsRemaining > 0,
+    downloadReady: confirmed && isFile && !isInteractive && Boolean(unlock) && downloadsRemaining > 0,
+    playReady: confirmed && isInteractive,
     downloadsRemaining,
-    maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
-    licenseCode,
+    maxDownloads: isFile && !isInteractive ? MAX_FILE_DOWNLOADS : null,
+    licenseCode: confirmed && isCode && unlock?.licenseCode ? unlock.licenseCode : "",
   };
 }
 
@@ -408,24 +402,6 @@ async function submitProof(req, res, account) {
   return res.status(200).json({ ok: true, status: "awaiting_seller_confirmation" });
 }
 
-// أحرف بدون 0/O و 1/I/L عشان الكود يُكتب يدويًا بسهولة بدون التباس
-const ACTIVATION_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-
-// منتجات "يتطلب كود تفعيل" (ألعاب تشتغل من ملف محلي بدون نت) لازم كودها يتحقق
-// بدون اتصال إنترنت من داخل الملف نفسه — جرّبنا كود عشوائي يتحقق من السيرفر
-// (activate-license.js) لكنه فشل بشكل متكرر على متصفحات الجوال لما الملف
-// مفتوح محليًا (فحص الشبكة يعلّق بصمت). الحل: الكود يُشتق رياضيًا من رقم الطلب
-// عبر HMAC بمفتاح ثابت، فالملف نفسه يقدر يتحقق منه بدون ما يكلم السيرفر إطلاقًا.
-// (هذا المفتاح ما هو سر فعلي — لازم يكون موجود داخل الملف الموزّع نفسه عشان
-// يقدر يتحقق بدون نت، فهو مجرد تمويه بسيط وليس حماية قوية ضد نسخ الكود.)
-const OFFLINE_ACTIVATION_SALT = "monah-offline-activation-v1";
-function offlineActivationCode(orderId) {
-  const digest = createHmac("sha256", OFFLINE_ACTIVATION_SALT).update(orderId).digest();
-  let raw = "";
-  for (let i = 0; i < 8; i++) raw += ACTIVATION_ALPHABET[digest[i] % ACTIVATION_ALPHABET.length];
-  return `${raw.slice(0, 4)}-${raw.slice(4)}`;
-}
-
 async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, orderId, ownerId }) {
   const productRef = db.collection("products").doc(productId);
   const productSnap = await transaction.get(productRef);
@@ -443,12 +419,13 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
     throw new OrderError(409, "ملف أحد منتجات هذا الطلب غير جاهز للتسليم الآن.");
   }
 
-  // منتجات تفاعلية (مثل الألعاب) تشتغل بدون نت — نولّد لها كود تفعيل يُشتق من رقم
-  // الطلب نفسه (offlineActivationCode)، فالملف يتحقق منه محليًا بدون ما يحتاج إنترنت.
-  const activationCode = product.requiresActivation ? offlineActivationCode(orderId) : null;
+  // منتجات تفاعلية (مثل الألعاب) تشتغل من داخل الموقع نفسه بزر "العب الآن" — بث
+  // مباشر من رابط موقّع قصير العمر بعد التحقق من ملكية الطلب، بدل تنزيل ملف محلي
+  // يفتحه المشتري بنفسه (كان يعلّق على الجوال ومافيه أي حماية حقيقية ضد المشاركة).
+  const interactive = Boolean(product.requiresActivation);
 
   return {
-    activationRequired: Boolean(activationCode),
+    activationRequired: interactive,
     apply: () => {
       const unlockRef = db.collection("unlocks").doc(`${buyerUid}_${productId}`);
       const unlockPayload = {
@@ -471,8 +448,8 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
         transaction.update(productRef, { codesCount: Math.max(0, Number(product.codesCount || 0) - 1) });
         unlockPayload.licenseCode = codeDoc.data().code;
       }
-      if (activationCode) {
-        unlockPayload.licenseCode = activationCode;
+      if (interactive) {
+        unlockPayload.interactive = true;
       }
       transaction.set(unlockRef, unlockPayload, { merge: true });
     },

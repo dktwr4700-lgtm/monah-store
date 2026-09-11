@@ -1986,7 +1986,7 @@ export default function Dashboard() {
                     <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10, fontSize: 12.5, cursor: "pointer" }}>
                       <input type="checkbox" checked={requiresActivation} onChange={(e) => setRequiresActivation(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
-                      <span style={{ flex: 1, minWidth: 0 }}>يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب — كل عميل ياخذ كود خاص بطلبه، ويتحقق منه الملف نفسه بدون إنترنت)</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>ملف تفاعلي (مثل الألعاب) — يشتغل مباشرة داخل الموقع بزر "العب الآن" بدل ما يُنزَّل، عشان يشتغل مضمون على أي جهاز وما ينسخه أحد غير المشتري</span>
                     </label>
                   </div>
                 ) : (
@@ -2074,7 +2074,7 @@ export default function Dashboard() {
                       {p.type === "file" && (
                         <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10, fontSize: 12.5, cursor: "pointer" }}>
                           <input type="checkbox" checked={editRequiresActivation} onChange={(e) => setEditRequiresActivation(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
-                          <span style={{ flex: 1, minWidth: 0 }}>يتطلب كود تفعيل (لملفات تفاعلية تشتغل بدون نت، مثل الألعاب)</span>
+                          <span style={{ flex: 1, minWidth: 0 }}>ملف تفاعلي (مثل الألعاب) — يشتغل مباشرة داخل الموقع بزر "العب الآن" بدل ما يُنزَّل</span>
                         </label>
                       )}
                       <div className="dh-edit-actions">
