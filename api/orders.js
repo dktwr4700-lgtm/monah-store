@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { createHmac, randomBytes } from "crypto";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
@@ -397,10 +397,19 @@ async function submitProof(req, res, account) {
 
 // أحرف بدون 0/O و 1/I/L عشان الكود يُكتب يدويًا بسهولة بدون التباس
 const ACTIVATION_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-function generateActivationCode() {
-  const bytes = randomBytes(8);
+
+// منتجات "يتطلب كود تفعيل" (ألعاب تشتغل من ملف محلي بدون نت) لازم كودها يتحقق
+// بدون اتصال إنترنت من داخل الملف نفسه — جرّبنا كود عشوائي يتحقق من السيرفر
+// (activate-license.js) لكنه فشل بشكل متكرر على متصفحات الجوال لما الملف
+// مفتوح محليًا (فحص الشبكة يعلّق بصمت). الحل: الكود يُشتق رياضيًا من رقم الطلب
+// عبر HMAC بمفتاح ثابت، فالملف نفسه يقدر يتحقق منه بدون ما يكلم السيرفر إطلاقًا.
+// (هذا المفتاح ما هو سر فعلي — لازم يكون موجود داخل الملف الموزّع نفسه عشان
+// يقدر يتحقق بدون نت، فهو مجرد تمويه بسيط وليس حماية قوية ضد نسخ الكود.)
+const OFFLINE_ACTIVATION_SALT = "monah-offline-activation-v1";
+function offlineActivationCode(orderId) {
+  const digest = createHmac("sha256", OFFLINE_ACTIVATION_SALT).update(orderId).digest();
   let raw = "";
-  for (let i = 0; i < bytes.length; i++) raw += ACTIVATION_ALPHABET[bytes[i] % ACTIVATION_ALPHABET.length];
+  for (let i = 0; i < 8; i++) raw += ACTIVATION_ALPHABET[digest[i] % ACTIVATION_ALPHABET.length];
   return `${raw.slice(0, 4)}-${raw.slice(4)}`;
 }
 
@@ -421,9 +430,9 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
     throw new OrderError(409, "ملف أحد منتجات هذا الطلب غير جاهز للتسليم الآن.");
   }
 
-  // منتجات تفاعلية (مثل الألعاب) تشتغل بدون نت بعد أول تشغيل، فحد التنزيلات وحده ما يكفي
-  // لحمايتها — نولّد لها كود تفعيل مرتبط بجهاز واحد فقط، يتحقق منه api/activate-license.js
-  const activationCode = product.requiresActivation ? generateActivationCode() : null;
+  // منتجات تفاعلية (مثل الألعاب) تشتغل بدون نت — نولّد لها كود تفعيل يُشتق من رقم
+  // الطلب نفسه (offlineActivationCode)، فالملف يتحقق منه محليًا بدون ما يحتاج إنترنت.
+  const activationCode = product.requiresActivation ? offlineActivationCode(orderId) : null;
 
   return {
     activationRequired: Boolean(activationCode),
@@ -451,16 +460,6 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
       }
       if (activationCode) {
         unlockPayload.licenseCode = activationCode;
-        transaction.set(db.collection("activations").doc(`${orderId}_${productId}`), {
-          code: activationCode,
-          productId,
-          orderId,
-          buyerUid,
-          ownerId,
-          maxActivations: 1,
-          activationCount: 0,
-          createdAt: FieldValue.serverTimestamp(),
-        });
       }
       transaction.set(unlockRef, unlockPayload, { merge: true });
     },
@@ -802,28 +801,6 @@ async function saveSellerPaymentGateway(req, res, account) {
   return res.status(200).json({ ok: true, connected: true, provider });
 }
 
-async function resetActivation(req, res, account) {
-  await requireSeller(account.uid);
-  const orderId = cleanText(req.body?.orderId, 160);
-  const productId = cleanText(req.body?.productId, 160);
-  if (!isValidId(orderId) || !isValidId(productId)) throw new OrderError(400, "بيانات غير مكتملة.");
-
-  const orderSnap = await db.collection("orders").doc(orderId).get();
-  if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
-  if (orderSnap.data().ownerId !== account.uid) throw new OrderError(403, "لا تملك هذا الطلب.");
-
-  const activationRef = db.collection("activations").doc(`${orderId}_${productId}`);
-  const activationSnap = await activationRef.get();
-  if (!activationSnap.exists) throw new OrderError(404, "ما فيه كود تفعيل مرتبط بهذا المنتج بهذا الطلب.");
-
-  await activationRef.update({
-    activationCount: 0,
-    resetAt: FieldValue.serverTimestamp(),
-    resetCount: FieldValue.increment(1),
-  });
-  return res.status(200).json({ ok: true });
-}
-
 async function saveRepeatCouponSettings(req, res, account) {
   await requireSeller(account.uid);
   const enabled = Boolean(req.body?.enabled);
@@ -858,7 +835,6 @@ export default async function handler(req, res) {
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
     if (action === "save_payment_gateway") return await saveSellerPaymentGateway(req, res, account);
     if (action === "save_repeat_coupon_settings") return await saveRepeatCouponSettings(req, res, account);
-    if (action === "reset_activation") return await resetActivation(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {
     if (error instanceof OrderError) return res.status(error.code).json({ error: error.message });
