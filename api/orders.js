@@ -107,7 +107,7 @@ function unlockView(unlock, confirmed) {
     downloadReady: confirmed && isFile && Boolean(unlock) && downloadsRemaining > 0,
     downloadsRemaining,
     maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
-    licenseCode: confirmed && unlock?.type === "code" ? (unlock.licenseCode || "") : "",
+    licenseCode: confirmed && unlock?.licenseCode ? unlock.licenseCode : "",
   };
 }
 
