@@ -233,10 +233,10 @@ async function createBundleOrder(req, res, account) {
   const sellerSnap = await db.collection("sellers").doc(bundle.ownerId).get();
   const seller = requireActiveSeller(sellerSnap);
   const paymentDetails = sellerPaymentDetails(seller);
-  if (paymentDetails.paymentInstructions.length < 6) {
+  const cardPaymentAvailable = sellerCardPaymentAvailable(seller);
+  if (paymentDetails.paymentInstructions.length < 6 && !cardPaymentAvailable) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذه الحزمة بعد.");
   }
-  const cardPaymentAvailable = sellerCardPaymentAvailable(seller);
 
   const draftSnap = await db.collection("orders")
     .where("buyerUid", "==", account.uid)
@@ -305,10 +305,10 @@ async function createOrder(req, res, account) {
   const sellerSnap = await db.collection("sellers").doc(product.ownerId).get();
   const seller = requireActiveSeller(sellerSnap);
   const paymentDetails = sellerPaymentDetails(seller);
-  if (paymentDetails.paymentInstructions.length < 6) {
+  const cardPaymentAvailable = sellerCardPaymentAvailable(seller);
+  if (paymentDetails.paymentInstructions.length < 6 && !cardPaymentAvailable) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذا المنتج بعد.");
   }
-  const cardPaymentAvailable = sellerCardPaymentAvailable(seller);
 
   const originalPrice = Number(product.price);
   const { discountPercent, couponCode } = await resolveCoupon(req.body?.couponCode, productId, product.ownerId, account.uid);
