@@ -75,7 +75,7 @@ const styles = `
   .empty{ text-align:center; color:#8A8677; font-size:13.5px; padding:40px 0; }
   .loading{ text-align:center; color:#8A8677; font-size:13.5px; padding:40px 0; }
 
-  .admin-tabs{ display:flex; gap:8px; margin-bottom:18px; }
+  .admin-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
   .admin-tab{ padding:9px 16px; border-radius:100px; font-size:12.5px; font-weight:700; border:1px solid #E4E0D3; background:#FFFFFF; color:#3D4A66; cursor:pointer; }
   .admin-tab.active{ background:#16233F; color:#fff; border-color:#16233F; }
 
@@ -93,7 +93,7 @@ const styles = `
   .invite-create{ width:100%; min-height:42px; border:0; border-radius:100px; background:#16233F; color:#fff; font:700 12.5px 'Cairo',sans-serif; cursor:pointer; }.invite-create:disabled{ opacity:.6; }.invite-message{ margin:0 0 12px; padding:9px 11px; border-radius:10px; font-size:11.5px; line-height:1.7; }.invite-message.error{ background:#F6E9E5; color:#A34839; }.invite-message.success{ background:#EAF0EB; color:#37724B; }
   .invite-link{ display:flex; align-items:center; gap:8px; border:1px solid #D8E5D8; background:#F5F9F4; border-radius:11px; padding:8px 9px; direction:ltr; }.invite-link code{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#22372C; font:10px 'JetBrains Mono',monospace; }.invite-copy{ flex-shrink:0; border:0; border-radius:8px; background:#16233F; color:#fff; padding:7px 10px; font:700 10.5px 'Cairo',sans-serif; cursor:pointer; }
   .invite-row{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:14px 16px; margin-bottom:10px; }.invite-row-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }.invite-name{ font-weight:800; font-size:14px; }.invite-email{ color:#625F55; font-size:11.5px; margin-top:3px; }.invite-meta{ color:#625F55; font-size:10.5px; margin-top:8px; }.badge-pending{ background:#F3EBDD; color:#8A5B18; }.badge-accepted{ background:#EAF0EB; color:#37724B; }.badge-revoked,.badge-expired{ background:#F6E9E5; color:#A34839; }
-  @media (max-width:390px){.admin-wrap{padding:16px 14px 48px}.admin-header{margin-bottom:16px}.admin-tabs{overflow-x:auto;padding-bottom:2px}.admin-tab{white-space:nowrap;padding:8px 12px}.invite-panel,.invite-row{padding:14px}.invite-row-top{gap:8px}.seller-badge{flex-shrink:0}.invite-link{align-items:flex-start}.invite-copy{min-height:34px}}
+  @media (max-width:390px){.admin-wrap{padding:16px 14px 48px}.admin-header{margin-bottom:16px}.admin-tab{padding:8px 12px}.invite-panel,.invite-row{padding:14px}.invite-row-top{gap:8px}.seller-badge{flex-shrink:0}.invite-link{align-items:flex-start}.invite-copy{min-height:34px}}
 `;
 
 function toMillis(value) {
