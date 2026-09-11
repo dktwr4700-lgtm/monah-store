@@ -518,11 +518,40 @@ export default function Dashboard() {
       });
       return response.json().catch(() => ({}));
     }
+    // لو فيه دفعة إضافة/دومين/تجديد سابقة ما تأكدت وقت حصولها (مثلاً OmPay رجعت
+    // حالة مؤقتة غير واضحة)، نعيد التحقق منها تلقائيًا كل ما يفتح التاجر لوحته —
+    // بدون ما يحتاج يعيد الدفع بنفسه أو يتواصل معنا.
+    async function autoVerifyPendingPurchases(data) {
+      const checks = [
+        ["pendingAddOnReferenceNumber", "verify_addon_charge"],
+        ["pendingDomainReferenceNumber", "verify_domain_charge"],
+        ["pendingRenewalReferenceNumber", "verify_renewal_charge"],
+      ];
+      for (const [field, action] of checks) {
+        if (cancelled || !data[field]) continue;
+        try {
+          const result = await merchantSignupAction(action);
+          if (cancelled) return;
+          if (result?.paid) {
+            const retrySnap = await getDoc(doc(db, "sellers", user.uid));
+            if (!cancelled && retrySnap.exists()) {
+              data = retrySnap.data();
+              applySellerData(data);
+            }
+          }
+        } catch (autoVerifyErr) {
+          console.error(autoVerifyErr);
+        }
+      }
+    }
     async function verifySellerAccess() {
       try {
         const snap = await getDoc(doc(db, "sellers", user.uid));
         if (cancelled) return;
-        if (snap.exists()) return applySellerData(snap.data());
+        if (snap.exists()) {
+          applySellerData(snap.data());
+          return autoVerifyPendingPurchases(snap.data());
+        }
 
         // ما فيه حساب تاجر بعد — لو صار دفع سابق ما تأكد، نتحقق منه ونفعّل تلقائيًا
         // بدون ما نطلب من التاجر يسوي أي خطوة يدوية (رابط، إعادة تسجيل، إلخ).
@@ -1383,6 +1412,12 @@ export default function Dashboard() {
     setDomainMessage("");
     try {
       const data = await domainSignupRequest("create_domain_charge", { slug: cleanSlug });
+      // دفعة سابقة على نفس الطلب تأكدت الحين بدل ما تُنشأ شحنة جديدة — نحدّث
+      // الصفحة عشان تظهر حالتك الجديدة، بدون خصم إضافي أو الرجوع لبوابة الدفع.
+      if (data.activated) {
+        window.location.reload();
+        return;
+      }
       window.location.assign(data.url);
     } catch (err) {
       setDomainMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
@@ -1400,6 +1435,10 @@ export default function Dashboard() {
     setAddOnMessage("");
     try {
       const data = await domainSignupRequest("create_addon_charge", { addOns: addOnSelection });
+      if (data.activated) {
+        window.location.reload();
+        return;
+      }
       window.location.assign(data.url);
     } catch (err) {
       setAddOnMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
@@ -1412,6 +1451,10 @@ export default function Dashboard() {
     setRenewalMessage("");
     try {
       const data = await domainSignupRequest("create_renewal_charge", {});
+      if (data.activated) {
+        window.location.reload();
+        return;
+      }
       window.location.assign(data.url);
     } catch (err) {
       setRenewalMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");

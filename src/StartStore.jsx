@@ -164,6 +164,10 @@ export default function StartStore() {
     try {
       const idToken = await auth.currentUser.getIdToken();
       const data = await signupRequest("create_card_charge", { addOns: selectedAddOns, couponCode: couponCode.trim() }, idToken);
+      if (data.activated) {
+        window.location.hash = "dashboard";
+        return;
+      }
       window.location.assign(data.url);
     } catch (requestError) {
       setError(requestError.message || "تعذر بدء الدفع الآن.");
