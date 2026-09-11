@@ -103,11 +103,24 @@ function unlockView(unlock, confirmed) {
   const downloadsRemaining = isFile && unlock
     ? Math.max(0, MAX_FILE_DOWNLOADS - Number(unlock.downloadCount || 0))
     : null;
+  let licenseCode = confirmed && unlock?.licenseCode ? unlock.licenseCode : "";
+  // أكواد التفعيل كانت تُولَّد عشوائيًا وتُتحقق عبر السيرفر؛ صارت الآن تُشتق من
+  // رقم الطلب نفسه عشان تشتغل بدون نت. نصحّح أي كود قديم تلقائيًا هنا أول ما
+  // يُقرأ (بدون أي تدخل يدوي)، وما نلمس النوع "code" إطلاقًا لأنها أكواد حقيقية
+  // رفعها التاجر بنفسه.
+  if (licenseCode && unlock.type !== "code" && unlock.orderId && unlock.uid && unlock.productId) {
+    const expected = offlineActivationCode(unlock.orderId);
+    if (licenseCode !== expected) {
+      licenseCode = expected;
+      db.collection("unlocks").doc(`${unlock.uid}_${unlock.productId}`).update({ licenseCode: expected })
+        .catch((err) => console.error("failed to migrate legacy activation code:", err?.message || err));
+    }
+  }
   return {
     downloadReady: confirmed && isFile && Boolean(unlock) && downloadsRemaining > 0,
     downloadsRemaining,
     maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
-    licenseCode: confirmed && unlock?.licenseCode ? unlock.licenseCode : "",
+    licenseCode,
   };
 }
 
