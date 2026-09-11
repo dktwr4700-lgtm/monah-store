@@ -170,6 +170,17 @@ async function status(req, res) {
   return res.status(200).json({ activated: false, signup: publicSignup(requestSnap.data()) });
 }
 
+// لو فيه محاولة دفع سابقة على نفس الطلب، نتحقق منها أولًا بدل ما ننشئ شحنة جديدة —
+// عشان ما نخصم التاجر مرتين على دفعة نجحت فعليًا بس ما تأكدنا منها وقت حصولها.
+// لو التحقق نفسه فشل (خطأ اتصال مثلاً) نوقف بدل ما نكمل ونخاطر بخصم مزدوج.
+async function priorChargeSucceeded(referenceNumber, kind, uid) {
+  const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
+    reference_number: referenceNumber,
+  }).catch((error) => { throw new SignupError(error.code || 502, "تعذر التحقق من محاولة دفع سابقة على هذا الطلب. حاول مرة ثانية بعد قليل بدل ما تدفع من جديد."); });
+  const { succeeded } = await ompayChargeSucceeded(result, { kind, referenceNumber, uid });
+  return succeeded;
+}
+
 async function createCardCharge(req, res) {
   const account = await authenticatedAccount(req);
   const requestRef = db.collection("merchantSignups").doc(account.uid);
@@ -177,6 +188,13 @@ async function createCardCharge(req, res) {
   if (!requestSnap.exists) throw new SignupError(404, "ما فيه طلب تسجيل لهذا الحساب.");
   const request = requestSnap.data();
   if (request.status === "activated") return res.status(200).json({ activated: true });
+  if (request.ompayReferenceNumber && await priorChargeSucceeded(request.ompayReferenceNumber, "signup", account.uid)) {
+    await activateSeller(account.uid, request);
+    if (request.signupCouponCode) {
+      await db.collection("signupCoupons").doc(request.signupCouponCode).update({ usedCount: FieldValue.increment(1) }).catch(() => {});
+    }
+    return res.status(200).json({ activated: true });
+  }
 
   // "البيع الرقمي" يحتاج بوابة دفع خاصة بالتاجر مربوطة، وما فيه متجر بعد وقت التسجيل
   // حتى يقدر يربطها — تُستثنى هنا وتُشترى لاحقًا من لوحة التاجر بعد ربط البوابة.
@@ -240,6 +258,25 @@ async function createDomainCharge(req, res) {
 
   const slug = cleanDomainSlug(req.body?.slug);
   if (slug.length < 3) throw new SignupError(400, "اكتب اسم دومين من 3 أحرف إنجليزية أو أرقام على الأقل.");
+
+  const seller = sellerSnap.data();
+  if (seller.pendingDomainReferenceNumber && seller.pendingDomainSlug
+    && await priorChargeSucceeded(seller.pendingDomainReferenceNumber, "domain", account.uid)) {
+    const pendingSlug = seller.pendingDomainSlug;
+    const stillAvailable = await domainSlugAvailable(pendingSlug, account.uid);
+    if (stillAvailable) {
+      await sellerRef.update({
+        customDomainSlug: pendingSlug,
+        customDomainExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
+        pendingDomainSlug: FieldValue.delete(),
+        pendingDomainReferenceNumber: FieldValue.delete(),
+      });
+      return res.status(200).json({ activated: true, slug: pendingSlug });
+    }
+    await sellerRef.update({ pendingDomainSlug: FieldValue.delete(), pendingDomainReferenceNumber: FieldValue.delete() });
+    throw new SignupError(409, "للأسف صار الاسم اللي دفعت عليه محجوزًا. تواصل معنا لاسترجاع المبلغ.");
+  }
+
   const available = await domainSlugAvailable(slug, account.uid);
   if (!available) throw new SignupError(409, "هذا الاسم محجوز، جرّب اسمًا آخر.");
 
@@ -300,6 +337,17 @@ async function createAddOnCharge(req, res) {
   const sellerSnap = await sellerRef.get();
   if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
   const seller = sellerSnap.data();
+
+  if (seller.pendingAddOnReferenceNumber && Array.isArray(seller.pendingAddOns) && seller.pendingAddOns.length
+    && await priorChargeSucceeded(seller.pendingAddOnReferenceNumber, "addon", account.uid)) {
+    const activeAddOns = Array.from(new Set([...(seller.activeAddOns || []), ...seller.pendingAddOns]));
+    await sellerRef.update({
+      activeAddOns,
+      pendingAddOns: FieldValue.delete(),
+      pendingAddOnReferenceNumber: FieldValue.delete(),
+    });
+    return res.status(200).json({ activated: true, activeAddOns });
+  }
 
   const active = new Set(seller.activeAddOns || []);
   const requested = cleanAddOnKeys(req.body?.addOns);
@@ -362,6 +410,14 @@ async function createRenewalCharge(req, res) {
   const sellerSnap = await sellerRef.get();
   if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
   const seller = sellerSnap.data();
+
+  if (seller.pendingRenewalReferenceNumber
+    && await priorChargeSucceeded(seller.pendingRenewalReferenceNumber, "renew", account.uid)) {
+    const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
+    await sellerRef.update({ subscriptionExpiresAt, pendingRenewalReferenceNumber: FieldValue.delete() });
+    return res.status(200).json({ activated: true, subscriptionExpiresAt });
+  }
+
   const amount = MONTHLY_PLAN_PRICE + addOnsTotal(seller.activeAddOns || []);
 
   const origin = `https://${req.headers.host || "monah-app.com"}`;
