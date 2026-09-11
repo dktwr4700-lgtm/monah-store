@@ -14,7 +14,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
     expect(main).toContain('lazy(() => import("./ProductPage.jsx"))');
     expect(main).toContain('hash.startsWith("product/")');
-    expect(main).toContain("<ProductPage productId={hash.split(\"/\")[1]} />");
+    expect(main).toContain("<ProductPage productId={hashSegment(hash, 1)} />");
     expect(productPage).toContain('getDoc(doc(db, "products", productId))');
     expect(productPage).toContain('setStatus("missing")');
     expect(productPage).toContain("navigator.share");
