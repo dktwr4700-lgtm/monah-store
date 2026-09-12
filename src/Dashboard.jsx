@@ -121,7 +121,7 @@ const styles = `
   .dh-stat:nth-child(2){ background:#163F2E; }
   .dh-stat:nth-child(3){ background:#0A2E22; }
   .dh-stat b{ display:block; font-family:'JetBrains Mono',monospace; font-weight:700; color:#fff; font-size:18px; }
-  .dh-stat span{ display:block; color:#B9C9BC; font-size:9.5px; margin-top:4px; }
+  .dh-stat span{ display:block; color:#B9C9BC; font-size:11px; margin-top:4px; }
 
   .dh-figures{ display:flex; align-items:flex-end; justify-content:space-between; padding-bottom:16px; margin-bottom:16px; border-bottom:1px solid #EDEAE0; }
   .dh-figure-main b{ display:block; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:24px; color:#0B0B0C; line-height:1; }
