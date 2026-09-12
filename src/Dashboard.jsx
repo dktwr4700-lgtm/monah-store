@@ -146,10 +146,10 @@ const styles = `
   .dh-title-count{ font-family:'JetBrains Mono',monospace; color:#8A8677; font-size:11px; }
 
   .dh-field{ margin-bottom:12px; }
-  .dh-field label{ display:block; font-size:11.5px; color:#8A8677; margin-bottom:6px; font-weight:600; }
+  .dh-field label{ display:block; font-size:12.5px; color:#625F55; margin-bottom:6px; font-weight:600; }
   .dh-field input:not([type="checkbox"]):not([type="radio"]), .dh-field textarea, .dh-field select{ width:100%; padding:11px 13px; border:1px solid #EDEAE0; border-radius:10px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; }
   .dh-field input[type="checkbox"], .dh-field input[type="radio"]{ width:16px; height:16px; flex-shrink:0; }
-  .dh-hint{ color:#8A8677; font-size:10.5px; margin-top:6px; line-height:1.6; }
+  .dh-hint{ color:#625F55; font-size:12px; margin-top:6px; line-height:1.7; }
   .dh-btn{ width:100%; background:#0B0B0C; color:#fff; border:none; padding:13px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer; }
   .dh-btn:disabled{ opacity:.6; }
   .dh-type-toggle{ display:flex; gap:8px; }
@@ -170,6 +170,8 @@ const styles = `
   .dh-edit-actions{ display:flex; gap:8px; margin-top:4px; }
   .dh-error{ background:#F6E9E5; color:#B24C3A; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
   .dh-success{ background:#EAF0EB; color:#4B6152; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; }
+  .dh-toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#163F2E; color:#fff; padding:12px 22px; border-radius:100px; font-size:13px; font-weight:700; box-shadow:0 10px 26px rgba(22,63,46,.35); z-index:9999; animation:dh-toast-in .2s ease-out; }
+  @keyframes dh-toast-in{ from{ opacity:0; transform:translateX(-50%) translateY(10px); } to{ opacity:1; transform:translateX(-50%) translateY(0); } }
   .dh-file-picked{ background:#EAF0EB; color:#4B6152; font-size:11.5px; padding:9px 12px; border-radius:10px; margin-top:8px; }
   .dh-section{background:#FFFFFF;border:1px solid #EDEAE0;border-radius:16px;margin-bottom:14px;overflow:hidden}.dh-section>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;cursor:pointer}.dh-section>summary::-webkit-details-marker{display:none}.dh-section>summary::after{content:'⌄';font-size:19px;line-height:1;color:#8A8677;transition:transform .18s ease-out}.dh-section[open]>summary{border-bottom:1px solid #EDEAE0}.dh-section[open]>summary::after{transform:rotate(180deg)}.dh-section-body{padding:16px 18px 18px}.dh-section-summary{min-width:0}.dh-section-summary b{display:block;font-family:'Almarai',sans-serif;font-size:14px;color:#0B0B0C}.dh-section-summary span{display:block;margin-top:4px;font-size:10.5px;line-height:1.6;color:#8A8677}
   .dh-ai-draft{margin-top:9px;border:1px solid #D6E5D8;background:#F5F9F4;border-radius:12px;padding:12px}.dh-ai-draft-title{font-size:11px;font-weight:800;color:#163F2E;margin-bottom:6px}.dh-ai-draft p{font-size:12px;line-height:1.9;color:#3D4A66;margin:0;white-space:pre-line}.dh-ai-actions{display:flex;gap:8px;margin-top:10px}.dh-ai-btn{border:1px solid #C9DBC9;background:#fff;color:#163F2E;border-radius:100px;padding:8px 11px;font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:800;cursor:pointer}.dh-ai-btn.primary{background:#163F2E;border-color:#163F2E;color:#fff}
@@ -250,7 +252,6 @@ const styles = `
   .dh-item-action{ min-width:0; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; padding:8px 10px; font-weight:800; line-height:1.45; }
   .dh-sort-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:8px; }
   .dh-sort-btn{ min-height:36px; border-radius:10px; font-size:10.5px; }
-  .dh-hint{ color:#625F55; font-size:11px; line-height:1.7; }
 
   /* ترتيب موحد للجوال الضيق في كل تبويبات لوحة التاجر */
   .dh-field label,.dh-section-summary span,.dh-title-count,.dh-store-label,.dh-share-sub,.dh-qr-sub,.dh-health-number span,.ds-preview-bar,.ds-preview-tag,.ds-save-status,.cp-scope{ color:#625F55; }
@@ -418,6 +419,7 @@ export default function Dashboard() {
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverError, setCoverError] = useState("");
   const [designSaved, setDesignSaved] = useState(false);
+  const [toast, setToast] = useState("");
   const [designSaving, setDesignSaving] = useState(false);
   const [designDirty, setDesignDirty] = useState(false);
   const [storeAbout, setStoreAbout] = useState("");
@@ -1167,6 +1169,14 @@ export default function Dashboard() {
     setCoverUploading(false);
   }
 
+  // إشعار "تم الحفظ" يطلع ثابت أسفل الشاشة (مش جوا الصفحة نفسها)، عشان يبين
+  // فورًا حتى لو زر الحفظ تحت وباقي محتوى الصفحة فوق — بدون ما التاجر يحتاج
+  // يسحب لفوق عشان يتأكد إن الحفظ صار.
+  function flashToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(""), 2500);
+  }
+
   async function handleSaveDesign() {
     setDesignSaving(true);
     setDesignSaved(false);
@@ -1224,6 +1234,7 @@ export default function Dashboard() {
       setDesignSaved(true);
       setDesignDirty(false);
       setTimeout(() => setDesignSaved(false), 2000);
+      flashToast("تم حفظ تصميم متجرك ✓");
     } catch (err) {
       setError("تعذر حفظ التصميم، حاول مرة ثانية.");
     }
@@ -1325,6 +1336,7 @@ export default function Dashboard() {
       setPaymentPhoneNumber(data.paymentPhoneNumber || "");
       setNotifyEmail(data.notifyEmail || "");
       setPaymentMessage("تم حفظ تعليمات التحويل. تظهر للمشتري بعد بدء الطلب فقط.");
+      flashToast("تم حفظ تعليمات التحويل ✓");
     } catch (err) {
       setPaymentMessage(err.message || "تعذر حفظ التعليمات الآن.");
     }
@@ -1747,6 +1759,7 @@ export default function Dashboard() {
     <DebugErrorBoundary>
     <div className="dh-page" dir="rtl" lang="ar">
       <style>{styles}</style>
+      {toast && <div className="dh-toast" role="status">{toast}</div>}
       <div className="dh-header">
         <div className="dh-brand">{storeName || "متجرك"} <span>· لوحة التاجر · {STORE_TYPE_LABELS[sellerStoreType] || "منتجات رقمية"}</span></div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
