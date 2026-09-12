@@ -67,6 +67,7 @@ export default function Purchases() {
   const [copiedCouponId, setCopiedCouponId] = useState("");
   const [backUrl, setBackUrl] = useState("#");
   const [backLabel, setBackLabel] = useState("العودة للرئيسية");
+  const [storeNames, setStoreNames] = useState({});
 
   async function loadOrders() {
     setState("loading");
@@ -77,8 +78,20 @@ export default function Purchases() {
       setOrders(list);
       setState("ready");
 
-      // لو كل طلبات هذا الجهاز من نفس المتجر، نرجّع العميل لمتجره بدل الصفحة الرئيسية
+      // لو الطلبات من أكثر من متجر، نجيب اسم كل متجر عشان نوضح تحت كل طلب من وين
+      // جا بالضبط — لأن القائمة تجمع طلبات كل المتاجر لهذا الجهاز في مكان وحد.
       const ownerIds = Array.from(new Set(list.map((order) => order.ownerId).filter(Boolean)));
+      if (ownerIds.length > 1) {
+        try {
+          const entries = await Promise.all(ownerIds.map(async (ownerId) => {
+            const storeSnap = await getDoc(doc(db, "stores", ownerId));
+            return [ownerId, storeSnap.exists() ? storeSnap.data().name || "" : ""];
+          }));
+          setStoreNames(Object.fromEntries(entries.filter(([, name]) => name)));
+        } catch {
+          // نتجاهل ونعرض الطلبات بدون اسم المتجر
+        }
+      }
       if (ownerIds.length === 1) {
         try {
           const storeSnap = await getDoc(doc(db, "stores", ownerIds[0]));
@@ -177,6 +190,7 @@ export default function Purchases() {
           <article className="buy-card" key={order.id}>
             <div className="buy-card-top">
               <div>
+                {storeNames[order.ownerId] && <div className="buy-date" style={{ marginTop: 0, marginBottom: 3 }}>من متجر: {storeNames[order.ownerId]}</div>}
                 <div className="buy-name">{order.productName}</div>
                 <span className={`buy-status ${order.status === "confirmed" ? "confirmed" : order.status === "awaiting_seller_confirmation" ? "awaiting" : "draft"}`}>{labelFor(order.status)}</span>
               </div>
