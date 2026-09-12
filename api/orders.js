@@ -83,6 +83,56 @@ function safeProofPath(uid, orderId, proofPath) {
   return normalized.startsWith(prefix) && normalized.length > prefix.length && !normalized.includes("..") ? normalized : "";
 }
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_TIMEOUT_MS = 6000;
+
+// إشعار البائع بإيميل لما عميل يرفع إثبات تحويل — على نفس إيميل حساب البائع في
+// مونة (فيرباس)، بدون ما نحتاج حقل إعدادات جديد. أفضل-جهد فقط: أي فشل هنا
+// (ما فيه مفتاح، الإيميل بطيء، إلخ) ما يوقف تسليم إثبات التحويل للعميل.
+async function notifySellerOfProof(order, orderId) {
+  if (!RESEND_API_KEY || !order.ownerId) return;
+  try {
+    const [sellerUser, sellerSnap] = await Promise.all([
+      auth.getUser(order.ownerId).catch(() => null),
+      db.collection("sellers").doc(order.ownerId).get(),
+    ]);
+    const sellerEmail = sellerUser?.email;
+    if (!sellerEmail) return;
+    const storeName = sellerSnap.exists ? cleanText(sellerSnap.data().name, 80) : "";
+    const items = order.type === "bundle" && Array.isArray(order.productNames)
+      ? order.productNames.join("، ")
+      : (order.productName || "منتج رقمي");
+    const price = Number(order.price || 0);
+    const html = `
+      <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
+        <h2 style="margin:0 0 12px">طلب جديد بانتظار تأكيدك 🎉</h2>
+        <p>عميل رفع إثبات تحويل لطلب في متجرك${storeName ? ` "${storeName}"` : ""} على مُونة.</p>
+        <p><strong>المنتج:</strong> ${items}</p>
+        <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع</p>
+        <p>ادخلي لوحة التحكم في مونة وراجعي الإيصال لتأكيد الطلب وتسليم المنتج للعميل.</p>
+      </div>`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: "مُونة <onboarding@resend.dev>",
+          to: [sellerEmail],
+          subject: `طلب جديد بانتظار تأكيدك${storeName ? " - " + storeName : ""}`,
+          html,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (err) {
+    console.error("notifySellerOfProof failed", err);
+  }
+}
+
 async function authenticatedAccount(req) {
   const header = String(req.headers.authorization || "");
   const idToken = header.startsWith("Bearer ") ? header.slice(7) : "";
@@ -410,6 +460,7 @@ async function submitProof(req, res, account) {
     proofSize: size,
     proofSubmittedAt: FieldValue.serverTimestamp(),
   });
+  await notifySellerOfProof(order, orderId);
   return res.status(200).json({ ok: true, status: "awaiting_seller_confirmation" });
 }
 
