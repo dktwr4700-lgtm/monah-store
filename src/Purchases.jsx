@@ -58,7 +58,7 @@ function DeliveryItem({ item, downloadingId, copiedId, onDownload, onPlay, onCop
   );
 }
 
-export default function Purchases() {
+export default function Purchases({ ownerId }) {
   const [state, setState] = useState("loading");
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
@@ -73,7 +73,7 @@ export default function Purchases() {
     setState("loading");
     setError("");
     try {
-      const data = await requestOrders("list_buyer");
+      const data = await requestOrders("list_buyer", ownerId ? { ownerId } : {});
       const list = Array.isArray(data.orders) ? data.orders : [];
       setOrders(list);
       setState("ready");
@@ -107,7 +107,7 @@ export default function Purchases() {
     }
   }
 
-  useEffect(() => { loadOrders(); }, []);
+  useEffect(() => { loadOrders(); }, [ownerId]);
 
   async function download(productId) {
     setDownloadingId(productId);
@@ -182,7 +182,7 @@ export default function Purchases() {
           <div className="buy-title">طلباتي</div>
           <button type="button" className="buy-back" onClick={goBack}>{backLabel}</button>
         </header>
-        <div className="buy-note">هذه الصفحة تعرض طلبات هذا الجهاز فقط في نسخة التجربة. بعد تأكيد التاجر استلام التحويل، يفتح تنزيل المنتج هنا.</div>
+        <div className="buy-note">{ownerId ? "هذه الصفحة تعرض طلباتك من هذا المتجر فقط." : "هذه الصفحة تعرض طلبات هذا الجهاز فقط في نسخة التجربة."} بعد تأكيد التاجر استلام التحويل، يفتح تنزيل المنتج هنا.</div>
         {error && <div className="buy-error">{error}</div>}
         {state === "ready" && orders.length === 0 ? (
           <div className="buy-empty">ما عندك طلبات على هذا الجهاز حاليًا.<br />افتح رابط المنتج لبدء طلب جديد.</div>

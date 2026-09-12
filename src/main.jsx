@@ -78,7 +78,7 @@ function Root() {
   else if (hash.startsWith("invite/")) page = <InviteActivation token={hashSegment(hash, 1)} />;
   else if (hash.startsWith("product/")) page = <ProductPage productId={hashSegment(hash, 1)} />;
   else if (hash.startsWith("bundle/")) page = <BundlePage bundleId={hashSegment(hash, 1)} />;
-  else if (hash === "purchases") page = <Purchases />;
+  else if (hash === "purchases" || hash.startsWith("purchases/")) page = <Purchases ownerId={hashSegment(hash, 1) || undefined} />;
   else if (hash.startsWith("receipt/")) page = <Receipt orderId={hashSegment(hash, 1)} token={hashSegment(hash, 2)} />;
   else if (hash.startsWith("deliver/")) page = <Deliver orderId={hashSegment(hash, 1)} token={hashSegment(hash, 2)} />;
   else if (hash.startsWith("pay-result/")) page = <PayResult orderId={hashSegment(hash, 1)} />;

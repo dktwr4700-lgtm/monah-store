@@ -608,7 +608,7 @@ async function verifyCardCharge(req, res, account) {
   }
   const order = orderSnap.data();
   if (order.status === "confirmed") {
-    return res.status(200).json({ paid: true, type: order.type });
+    return res.status(200).json({ paid: true, type: order.type, ownerId: order.ownerId });
   }
   if (!order.ompayReferenceNumber) {
     throw new OrderError(409, "لا توجد عملية دفع بالبطاقة لهذا الطلب.");
@@ -624,7 +624,7 @@ async function verifyCardCharge(req, res, account) {
   }
   const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
   if (!result2.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
-  return res.status(200).json({ paid: true, type: result2.type });
+  return res.status(200).json({ paid: true, type: result2.type, ownerId: order.ownerId });
 }
 
 async function deleteOrderAsAdmin(req, res, account) {
@@ -641,6 +641,7 @@ async function deleteOrderAsAdmin(req, res, account) {
 }
 
 async function listBuyerOrders(req, res, account) {
+  const ownerId = cleanText(req.body?.ownerId, 128);
   const [snap, couponsSnap] = await Promise.all([
     db.collection("orders").where("buyerUid", "==", account.uid).limit(100).get(),
     db.collection("coupons").where("buyerUid", "==", account.uid).where("active", "==", true).get(),
@@ -650,7 +651,10 @@ async function listBuyerOrders(req, res, account) {
     const data = item.data();
     couponByOwner[data.ownerId] = { code: data.code, discountPercent: Number(data.discountPercent || 0) };
   });
-  const rows = await Promise.all(snap.docs.map(async (document) => {
+  // كل تاجر يشتغل كمتجر مستقل عن الثاني، فطلبات المشتري من متجر ما لازم تظهر له وهو
+  // بصفحة "طلباتي" الجاية من متجر ثاني — نفلتر هنا بدل ما نعرض كل تاريخ الجهاز.
+  const docs = ownerId ? snap.docs.filter((document) => document.data().ownerId === ownerId) : snap.docs;
+  const rows = await Promise.all(docs.map(async (document) => {
     const order = document.data();
     const repeatCoupon = couponByOwner[order.ownerId] || null;
     if (order.status !== "confirmed") return publicOrder(order, document.id, null, repeatCoupon);
@@ -718,6 +722,7 @@ async function receipt(req, res, account) {
   return res.status(200).json({
     receipt: {
       orderId,
+      ownerId: order.ownerId,
       receiptNumber: orderId.slice(0, 8).toUpperCase(),
       storeName,
       storeLogoUrl,

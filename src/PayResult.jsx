@@ -68,6 +68,7 @@ export default function PayResult({ orderId }) {
   const [state, setState] = useState("checking");
   const [error, setError] = useState("");
   const [rawStatus, setRawStatus] = useState("");
+  const [ownerId, setOwnerId] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +76,7 @@ export default function PayResult({ orderId }) {
       if (cancelled || !result) return;
       if (result.error) { setError(result.error.message); setState("error"); return; }
       if (result.data.status) setRawStatus(result.data.status);
+      if (result.data.ownerId) setOwnerId(result.data.ownerId);
       setState(result.data.paid ? "paid" : "pending");
     });
     return () => { cancelled = true; };
@@ -91,13 +93,13 @@ export default function PayResult({ orderId }) {
         {state === "paid" && <>
           <div className="pr-title">تم الدفع بنجاح 🎉</div>
           <div className="pr-copy">طلبك جاهز الآن. تقدر تفتح "طلباتي" وتنزّل منتجك مباشرة.</div>
-          <a className="pr-btn" href="#purchases">فتح طلباتي</a>
+          <a className="pr-btn" href={`#purchases/${ownerId}`}>فتح طلباتي</a>
         </>}
         {state === "pending" && <>
           <div className="pr-title">لم تكتمل عملية الدفع</div>
           <div className="pr-copy">يبدو إن الدفع ما تم أو لسا قيد المعالجة. لو تأكدت إن مبلغك انخصم فعلاً، لا تدفع مرة ثانية — الموقع يتحقق تلقائيًا من أي دفعة سابقة قبل ما يفتح لك دفعة جديدة، فقط جرّب تفتح "طلباتي" بعد شوي.</div>
           {rawStatus && <div className="pr-copy" style={{ marginTop: 8, fontFamily: "monospace", direction: "ltr", color: "#B0AC9C" }}>status: {rawStatus}</div>}
-          <a className="pr-btn" href="#purchases">فتح طلباتي</a>
+          <a className="pr-btn" href={`#purchases/${ownerId}`}>فتح طلباتي</a>
         </>}
         {state === "error" && <>
           <div className="pr-title">تعذر التحقق من الدفع</div>
