@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
@@ -147,10 +147,39 @@ export default function StartStore() {
     setBusy(false);
   }
 
+  // النافذة المنبثقة (popup) لدخول جوجل أوثق من التحويل الكامل (redirect) — ما تعتمد
+  // على حفظ حالة الدخول عبر تحميل صفحة جديدة، وهذا بالضبط اللي كان يفشل بصمت على
+  // بعض متصفحات الجوال (سامسونج إنترنت). نجرب النافذة المنبثقة أولًا، ونرجع للتحويل
+  // الكامل فقط لو المتصفح يمنعها فعليًا (متصفحات داخل تطبيقات زي واتساب مثلًا).
+  const POPUP_UNAVAILABLE_CODES = new Set([
+    "auth/popup-blocked",
+    "auth/operation-not-supported-in-this-environment",
+    "auth/operation-not-allowed",
+  ]);
+
   async function submitWithGoogle() {
     setError("");
     if (storeName.trim().length < 2) return setError("اكتب اسم متجرك أولًا.");
     setBusy(true);
+    try {
+      const credential = await signInWithPopup(auth, new GoogleAuthProvider());
+      const idToken = await credential.user.getIdToken(true);
+      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken);
+      setStep("payment");
+      setBusy(false);
+      return;
+    } catch (popupError) {
+      if (popupError.code === "auth/popup-closed-by-user" || popupError.code === "auth/cancelled-popup-request") {
+        setBusy(false);
+        return;
+      }
+      if (!POPUP_UNAVAILABLE_CODES.has(popupError.code)) {
+        await signOut(auth).catch(() => {});
+        setError(popupError.message || "تعذر إنشاء الحساب عبر جوجل الآن.");
+        setBusy(false);
+        return;
+      }
+    }
     try {
       sessionStorage.setItem("monah_pending_store_name", storeName.trim());
       sessionStorage.setItem("monah_pending_store_type", storeType);
