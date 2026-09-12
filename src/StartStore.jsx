@@ -90,7 +90,18 @@ export default function StartStore() {
     (async () => {
       try {
         const result = await getRedirectResult(auth);
-        if (!result?.user) return;
+        if (!result?.user) {
+          // بعض متصفحات الجوال (خصوصًا سامسونج إنترنت) أحيانًا تفقد حالة الدخول عبر
+          // جوجل بعد التحويل، فترجع الصفحة بدون نتيجة ولا أي رسالة — كنا نسكت هنا
+          // فيحس المستخدم إن الزر "رجّعه لنفس الصفحة" بدون سبب. لو كان فيه محاولة
+          // دخول بجوجل معلّقة فعلاً، نوضح السبب بدل السكوت.
+          if (sessionStorage.getItem("monah_pending_store_name") !== null) {
+            sessionStorage.removeItem("monah_pending_store_name");
+            sessionStorage.removeItem("monah_pending_store_type");
+            setError("تعذر إكمال الدخول بحساب جوجل على هذا المتصفح. جرّبي «بريدك الإلكتروني وكلمة المرور» بدلها.");
+          }
+          return;
+        }
         setBusy(true);
         const savedStoreName = sessionStorage.getItem("monah_pending_store_name") || "";
         const savedStoreType = sessionStorage.getItem("monah_pending_store_type") || "files";
