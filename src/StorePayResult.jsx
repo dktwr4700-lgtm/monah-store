@@ -24,13 +24,28 @@ function resultKind(param) {
   return "signup";
 }
 
+const REQUEST_TIMEOUT_MS = 6000;
+
 async function verifyRequest(kind) {
   const idToken = await auth.currentUser.getIdToken();
-  const response = await fetch("/api/merchant-signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ action: VERIFY_ACTIONS[kind] }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch("/api/merchant-signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ action: VERIFY_ACTIONS[kind] }),
+      signal: controller.signal,
+    });
+  } catch (fetchError) {
+    // بعض متصفحات الجوال أحيانًا تعلّق الاتصال بصمت (لا ينجح ولا يفشل) — بدون
+    // هذا المهلة، صفحة "جاري التحقق" تضل عالقة للأبد. المهلة تخلي المحاولة
+    // تفشل بوضوح فتنتقل تلقائيًا للمحاولة التالية بدل ما تعلّق إلى الأبد.
+    throw new Error("تعذر الاتصال بالخادم. جاري إعادة المحاولة...");
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "تعذر التحقق من الدفع الآن.");
   return data;
