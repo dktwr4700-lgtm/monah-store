@@ -96,9 +96,12 @@ async function notifySellerOfProof(order, orderId) {
       auth.getUser(order.ownerId).catch(() => null),
       db.collection("sellers").doc(order.ownerId).get(),
     ]);
-    const sellerEmail = sellerUser?.email;
+    const sellerData = sellerSnap.exists ? sellerSnap.data() : {};
+    // البائع ممكن يحدد إيميل مخصص للإشعارات (شي مثل بريد عمل مختلف عن إيميل
+    // تسجيل الدخول)، وإذا ما حدده نستخدم إيميل حسابه في فيرباس كافتراضي.
+    const sellerEmail = cleanText(sellerData.notifyEmail, 160) || sellerUser?.email;
     if (!sellerEmail) return;
-    const storeName = sellerSnap.exists ? cleanText(sellerSnap.data().name, 80) : "";
+    const storeName = cleanText(sellerData.name, 80);
     const items = order.type === "bundle" && Array.isArray(order.productNames)
       ? order.productNames.join("، ")
       : (order.productName || "منتج رقمي");
@@ -806,6 +809,8 @@ async function proofUrl(req, res, account) {
   return res.status(200).json({ url });
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 async function savePaymentInstructions(req, res, account) {
   await requireSeller(account.uid);
   const paymentInstructions = cleanText(req.body?.paymentInstructions, 800);
@@ -819,6 +824,10 @@ async function savePaymentInstructions(req, res, account) {
   const paymentAccountHolder = cleanText(req.body?.paymentAccountHolder, 80);
   const paymentAccountNumber = cleanText(req.body?.paymentAccountNumber, 40);
   const paymentPhoneNumber = cleanText(req.body?.paymentPhoneNumber, 20);
+  const notifyEmail = cleanText(req.body?.notifyEmail, 160);
+  if (notifyEmail && !EMAIL_PATTERN.test(notifyEmail)) {
+    throw new OrderError(400, "اكتب إيميل صحيح لإشعارات الطلبات، أو اتركه فاضي.");
+  }
   const sellerRef = db.collection("sellers").doc(account.uid);
   const sellerSnap = await sellerRef.get();
   if (!sellerSnap.exists) throw new OrderError(409, "لم نجد متجرًا مفعّلًا لهذا الحساب.");
@@ -828,9 +837,10 @@ async function savePaymentInstructions(req, res, account) {
     paymentAccountHolder,
     paymentAccountNumber,
     paymentPhoneNumber,
+    notifyEmail,
     paymentInstructionsUpdatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
-  return res.status(200).json({ ok: true, paymentInstructions, paymentBankName, paymentAccountHolder, paymentAccountNumber, paymentPhoneNumber });
+  return res.status(200).json({ ok: true, paymentInstructions, paymentBankName, paymentAccountHolder, paymentAccountNumber, paymentPhoneNumber, notifyEmail });
 }
 
 async function saveSellerPaymentGateway(req, res, account) {

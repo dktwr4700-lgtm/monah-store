@@ -427,6 +427,7 @@ export default function Dashboard() {
   const [paymentAccountHolder, setPaymentAccountHolder] = useState("");
   const [paymentAccountNumber, setPaymentAccountNumber] = useState("");
   const [paymentPhoneNumber, setPaymentPhoneNumber] = useState("");
+  const [notifyEmail, setNotifyEmail] = useState("");
 
   // coupons
   const [coupons, setCoupons] = useState([]);
@@ -501,6 +502,7 @@ export default function Dashboard() {
       setPaymentAccountHolder(data.paymentAccountHolder || "");
       setPaymentAccountNumber(data.paymentAccountNumber || "");
       setPaymentPhoneNumber(data.paymentPhoneNumber || "");
+      setNotifyEmail(data.notifyEmail || "");
       setCustomDomainSlug(data.customDomainSlug || "");
       setCustomDomainExpiresAt(data.customDomainExpiresAt || "");
       setActiveAddOns(data.activeAddOns || []);
@@ -1308,6 +1310,7 @@ export default function Dashboard() {
           paymentAccountHolder,
           paymentAccountNumber,
           paymentPhoneNumber,
+          notifyEmail,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -1317,6 +1320,7 @@ export default function Dashboard() {
       setPaymentAccountHolder(data.paymentAccountHolder || "");
       setPaymentAccountNumber(data.paymentAccountNumber || "");
       setPaymentPhoneNumber(data.paymentPhoneNumber || "");
+      setNotifyEmail(data.notifyEmail || "");
       setPaymentMessage("تم حفظ تعليمات التحويل. تظهر للمشتري بعد بدء الطلب فقط.");
     } catch (err) {
       setPaymentMessage(err.message || "تعذر حفظ التعليمات الآن.");
@@ -2377,6 +2381,11 @@ export default function Dashboard() {
                 <label>رقم الجوال (للتحويل عبر الهاتف)</label>
                 <input type="text" value={paymentPhoneNumber} onChange={(e) => setPaymentPhoneNumber(e.target.value)} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} maxLength={20} />
                 <div className="dh-hint">اختياري — يظهر للمشتري مع رقم الحساب حتى ينسخه بسهولة.</div>
+              </div>
+              <div className="dh-field">
+                <label>إيميل إشعارات الطلبات</label>
+                <input type="email" value={notifyEmail} onChange={(e) => setNotifyEmail(e.target.value)} placeholder="مثال: store@outlook.com" style={{ direction: "ltr", textAlign: "right" }} maxLength={160} />
+                <div className="dh-hint">نرسل لك إيميل تلقائي على هذا العنوان كل ما عميل يرفع إثبات تحويل. اتركه فاضي لاستخدام إيميل تسجيل دخولك بدلًا منه.</div>
               </div>
               <button className="dh-btn" type="button" disabled={savingPayment} onClick={savePaymentInstructions}>{savingPayment ? "جاري الحفظ..." : "حفظ تعليمات التحويل"}</button>
               {paymentMessage && <div className={paymentMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{paymentMessage}</div>}
