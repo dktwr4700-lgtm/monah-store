@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
-import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -39,6 +39,23 @@ const styles = `
   @media (prefers-reduced-motion: reduce){.auth-cta-track .auth-btn,.auth-cta-track .auth-btn.fleeing{transform:none!important;transition:background 200ms ease}}
 `;
 
+const AUTH_TIMEOUT_MS = 8000;
+
+// بعض متصفحات الجوال تعلّق الاتصال بصمت (لا ينجح ولا يفشل) — بدون هذي المهلة،
+// زر "تسجيل الدخول" يضل يدور للأبد بدون أي رسالة، فيحس المستخدم إن الزر "ما يستجيب".
+function withTimeout(promise, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), AUTH_TIMEOUT_MS)),
+  ]);
+}
+
+const POPUP_UNAVAILABLE_CODES = new Set([
+  "auth/popup-blocked",
+  "auth/operation-not-supported-in-this-environment",
+  "auth/operation-not-allowed",
+]);
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,26 +76,53 @@ export default function Login() {
     }
   }
 
-  // متصفحات الجوال (خصوصًا داخل تطبيقات زي واتساب) كثير تمنع نافذة تسجيل الدخول
-  // المنبثقة (popup) لجوجل، فنستخدم تحويل صفحة كامل (redirect) بدلها.
   useEffect(() => {
     (async () => {
       try {
         const result = await getRedirectResult(auth);
-        if (result?.user) afterLogin(result.user);
+        if (result?.user) { afterLogin(result.user); return; }
+        // بعض متصفحات الجوال (سامسونج إنترنت خصوصًا) تفقد حالة الدخول عبر جوجل بعد
+        // التحويل، فترجع الصفحة بدون نتيجة ولا أي رسالة. لو كان فيه محاولة معلّقة
+        // فعلاً (العلامة اللي نحطها قبل التحويل)، نوضح السبب بدل السكوت.
+        if (sessionStorage.getItem("monah_google_signin_pending")) {
+          sessionStorage.removeItem("monah_google_signin_pending");
+          setError("تعذر إكمال الدخول بحساب جوجل على هذا المتصفح. جرّبي «بريدك الإلكتروني وكلمة المرور» بدلها.");
+        }
       } catch (err) {
+        sessionStorage.removeItem("monah_google_signin_pending");
         setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
       }
     })();
   }, []);
 
+  // النافذة المنبثقة (popup) لدخول جوجل أوثق من التحويل الكامل (redirect) — ما
+  // تعتمد على حفظ حالة الدخول عبر تحميل صفحة جديدة. نجرب النافذة المنبثقة أولًا،
+  // ونرجع للتحويل الكامل فقط لو المتصفح يمنعها فعليًا (متصفحات داخل تطبيقات زي
+  // واتساب مثلًا).
   async function handleGoogleSignIn() {
     setError("");
     setResetMsg("");
     setGoogleLoading(true);
     try {
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      afterLogin(cred.user);
+      return;
+    } catch (popupError) {
+      if (popupError.code === "auth/popup-closed-by-user" || popupError.code === "auth/cancelled-popup-request") {
+        setGoogleLoading(false);
+        return;
+      }
+      if (!POPUP_UNAVAILABLE_CODES.has(popupError.code)) {
+        setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
+        setGoogleLoading(false);
+        return;
+      }
+    }
+    try {
+      sessionStorage.setItem("monah_google_signin_pending", "1");
       await signInWithRedirect(auth, new GoogleAuthProvider());
     } catch (err) {
+      sessionStorage.removeItem("monah_google_signin_pending");
       setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
       setGoogleLoading(false);
     }
@@ -90,7 +134,7 @@ export default function Login() {
     setResetMsg("");
     setLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const cred = await withTimeout(signInWithEmailAndPassword(auth, email, password), "تعذر تسجيل الدخول الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
       afterLogin(cred.user);
     } catch (err) {
       if (err.code === "auth/user-not-found") {
@@ -99,6 +143,8 @@ export default function Login() {
         setError("كلمة المرور غير صحيحة. تقدر تضغط \"نسيت كلمة المرور؟\" تحت.");
       } else if (err.code === "auth/invalid-credential") {
         setError("البريد أو كلمة المرور غير صحيحة. تأكد منهما، أو اضغط \"نسيت كلمة المرور؟\" تحت.");
+      } else if (!err.code) {
+        setError(err.message || "تعذر تسجيل الدخول الآن. حاول مرة ثانية.");
       } else {
         setError("البريد أو كلمة المرور غير صحيحة.");
       }
