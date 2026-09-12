@@ -2386,6 +2386,7 @@ export default function Dashboard() {
                 <label>إيميل إشعارات الطلبات</label>
                 <input type="email" value={notifyEmail} onChange={(e) => setNotifyEmail(e.target.value)} placeholder="مثال: store@outlook.com" style={{ direction: "ltr", textAlign: "right" }} maxLength={160} />
                 <div className="dh-hint">نرسل لك إيميل تلقائي على هذا العنوان كل ما عميل يرفع إثبات تحويل. اتركه فاضي لاستخدام إيميل تسجيل دخولك بدلًا منه.</div>
+                <div className="dh-hint">⚠️ أول إيميل يوصلك ممكن يوصل مجلد "الرسائل غير المرغوب فيها/Spam" بدل الرئيسي — افتحيه واضغطي "ليس بريدًا مزعجًا" عشان الإيميلات الجاية توصل صح تلقائيًا.</div>
               </div>
               <button className="dh-btn" type="button" disabled={savingPayment} onClick={savePaymentInstructions}>{savingPayment ? "جاري الحفظ..." : "حفظ تعليمات التحويل"}</button>
               {paymentMessage && <div className={paymentMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{paymentMessage}</div>}
