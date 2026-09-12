@@ -10,6 +10,11 @@ const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DELIVERY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// منتجات "تفاعلية" (تُشغَّل أونلاين بزر "العب الآن" بدل التنزيل) ما فيها نسخة
+// يحتفظ بها المشتري عنده — فحد الـ30 يوم (المصمم أصلاً لتحديد نافذة تنزيل ملف)
+// لازم ما ينطبق عليها، وإلا يتوقف الوصول للعبة اللي المشتري دفع فيها مرة وحدة
+// ويفترض تشتغل له دائمًا (مثل معلمة تستخدمها طول السنة الدراسية).
+const INTERACTIVE_UNLOCK_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 export const MAX_FILE_DOWNLOADS = 5;
 
 if (!getApps().length) {
@@ -99,15 +104,22 @@ function requireAdmin(account) {
 }
 
 function unlockView(unlock, confirmed) {
-  const isFile = !unlock || unlock.type !== "code";
-  const downloadsRemaining = isFile && unlock
+  const isCode = unlock?.type === "code";
+  const isFile = !unlock || !isCode;
+  // منتجات "تفاعلية" (ألعاب) تُشغَّل من داخل الموقع بدل ما تُنزَّل. نتعرّف عليها
+  // من علامة "interactive" الجديدة، أو من وجود كود ترخيص قديم على نوع "file" —
+  // هذا كان قبل العلامة الوسيلة الوحيدة اللي تدل على منتج يتطلب تفعيل، فنعتبره
+  // تلقائيًا جاهز للتشغيل المباشر بدل ما نعرض له كود ما عاد له داعٍ.
+  const isInteractive = isFile && Boolean(unlock) && (Boolean(unlock.interactive) || Boolean(unlock.licenseCode));
+  const downloadsRemaining = isFile && unlock && !isInteractive
     ? Math.max(0, MAX_FILE_DOWNLOADS - Number(unlock.downloadCount || 0))
     : null;
   return {
-    downloadReady: confirmed && isFile && Boolean(unlock) && downloadsRemaining > 0,
+    downloadReady: confirmed && isFile && !isInteractive && Boolean(unlock) && downloadsRemaining > 0,
+    playReady: confirmed && isInteractive,
     downloadsRemaining,
-    maxDownloads: isFile ? MAX_FILE_DOWNLOADS : null,
-    licenseCode: confirmed && unlock?.licenseCode ? unlock.licenseCode : "",
+    maxDownloads: isFile && !isInteractive ? MAX_FILE_DOWNLOADS : null,
+    licenseCode: confirmed && isCode && unlock?.licenseCode ? unlock.licenseCode : "",
   };
 }
 
@@ -395,15 +407,6 @@ async function submitProof(req, res, account) {
   return res.status(200).json({ ok: true, status: "awaiting_seller_confirmation" });
 }
 
-// أحرف بدون 0/O و 1/I/L عشان الكود يُكتب يدويًا بسهولة بدون التباس
-const ACTIVATION_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-function generateActivationCode() {
-  const bytes = randomBytes(8);
-  let raw = "";
-  for (let i = 0; i < bytes.length; i++) raw += ACTIVATION_ALPHABET[bytes[i] % ACTIVATION_ALPHABET.length];
-  return `${raw.slice(0, 4)}-${raw.slice(4)}`;
-}
-
 async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, orderId, ownerId }) {
   const productRef = db.collection("products").doc(productId);
   const productSnap = await transaction.get(productRef);
@@ -421,12 +424,13 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
     throw new OrderError(409, "ملف أحد منتجات هذا الطلب غير جاهز للتسليم الآن.");
   }
 
-  // منتجات تفاعلية (مثل الألعاب) تشتغل بدون نت بعد أول تشغيل، فحد التنزيلات وحده ما يكفي
-  // لحمايتها — نولّد لها كود تفعيل مرتبط بجهاز واحد فقط، يتحقق منه api/activate-license.js
-  const activationCode = product.requiresActivation ? generateActivationCode() : null;
+  // منتجات تفاعلية (مثل الألعاب) تشتغل من داخل الموقع نفسه بزر "العب الآن" — بث
+  // مباشر من رابط موقّع قصير العمر بعد التحقق من ملكية الطلب، بدل تنزيل ملف محلي
+  // يفتحه المشتري بنفسه (كان يعلّق على الجوال ومافيه أي حماية حقيقية ضد المشاركة).
+  const interactive = Boolean(product.requiresActivation);
 
   return {
-    activationRequired: Boolean(activationCode),
+    activationRequired: interactive,
     apply: () => {
       const unlockRef = db.collection("unlocks").doc(`${buyerUid}_${productId}`);
       const unlockPayload = {
@@ -437,7 +441,7 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
         type: product.type === "code" ? "code" : "file",
         downloadCount: 0,
         createdAt: FieldValue.serverTimestamp(),
-        expiresAt: Timestamp.fromDate(new Date(Date.now() + UNLOCK_TTL_MS)),
+        expiresAt: Timestamp.fromDate(new Date(Date.now() + (interactive ? INTERACTIVE_UNLOCK_TTL_MS : UNLOCK_TTL_MS))),
       };
       if (codeDoc) {
         transaction.update(codeDoc.ref, {
@@ -449,18 +453,8 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
         transaction.update(productRef, { codesCount: Math.max(0, Number(product.codesCount || 0) - 1) });
         unlockPayload.licenseCode = codeDoc.data().code;
       }
-      if (activationCode) {
-        unlockPayload.licenseCode = activationCode;
-        transaction.set(db.collection("activations").doc(`${orderId}_${productId}`), {
-          code: activationCode,
-          productId,
-          orderId,
-          buyerUid,
-          ownerId,
-          maxActivations: 1,
-          activationCount: 0,
-          createdAt: FieldValue.serverTimestamp(),
-        });
+      if (interactive) {
+        unlockPayload.interactive = true;
       }
       transaction.set(unlockRef, unlockPayload, { merge: true });
     },
@@ -802,28 +796,6 @@ async function saveSellerPaymentGateway(req, res, account) {
   return res.status(200).json({ ok: true, connected: true, provider });
 }
 
-async function resetActivation(req, res, account) {
-  await requireSeller(account.uid);
-  const orderId = cleanText(req.body?.orderId, 160);
-  const productId = cleanText(req.body?.productId, 160);
-  if (!isValidId(orderId) || !isValidId(productId)) throw new OrderError(400, "بيانات غير مكتملة.");
-
-  const orderSnap = await db.collection("orders").doc(orderId).get();
-  if (!orderSnap.exists) throw new OrderError(404, "لم نجد هذا الطلب.");
-  if (orderSnap.data().ownerId !== account.uid) throw new OrderError(403, "لا تملك هذا الطلب.");
-
-  const activationRef = db.collection("activations").doc(`${orderId}_${productId}`);
-  const activationSnap = await activationRef.get();
-  if (!activationSnap.exists) throw new OrderError(404, "ما فيه كود تفعيل مرتبط بهذا المنتج بهذا الطلب.");
-
-  await activationRef.update({
-    activationCount: 0,
-    resetAt: FieldValue.serverTimestamp(),
-    resetCount: FieldValue.increment(1),
-  });
-  return res.status(200).json({ ok: true });
-}
-
 async function saveRepeatCouponSettings(req, res, account) {
   await requireSeller(account.uid);
   const enabled = Boolean(req.body?.enabled);
@@ -858,7 +830,6 @@ export default async function handler(req, res) {
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
     if (action === "save_payment_gateway") return await saveSellerPaymentGateway(req, res, account);
     if (action === "save_repeat_coupon_settings") return await saveRepeatCouponSettings(req, res, account);
-    if (action === "reset_activation") return await resetActivation(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {
     if (error instanceof OrderError) return res.status(error.code).json({ error: error.message });

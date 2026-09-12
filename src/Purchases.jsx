@@ -26,9 +26,14 @@ async function requestOrders(action, payload = {}) {
   return data;
 }
 
-function DeliveryItem({ item, downloadingId, copiedId, onDownload, onCopy }) {
+function DeliveryItem({ item, downloadingId, copiedId, onDownload, onPlay, onCopy }) {
   return (
     <>
+      {item.playReady && (
+        <button className="buy-download" type="button" disabled={downloadingId === item.productId} onClick={() => onPlay(item.productId)}>
+          {downloadingId === item.productId ? "جاري التجهيز..." : "العب الآن"}
+        </button>
+      )}
       {item.downloadReady && (
         <button className="buy-download" type="button" disabled={downloadingId === item.productId} onClick={() => onDownload(item.productId)}>
           {downloadingId === item.productId ? "جاري تجهيز التنزيل..." : "تنزيل المنتج"}
@@ -60,7 +65,6 @@ export default function Purchases() {
   const [downloadingId, setDownloadingId] = useState("");
   const [copiedId, setCopiedId] = useState("");
   const [copiedCouponId, setCopiedCouponId] = useState("");
-  const [copiedActivationId, setCopiedActivationId] = useState("");
   const [backUrl, setBackUrl] = useState("#");
   const [backLabel, setBackLabel] = useState("العودة للرئيسية");
 
@@ -106,6 +110,27 @@ export default function Purchases() {
     setDownloadingId("");
   }
 
+  async function play(productId) {
+    setDownloadingId(productId);
+    // نفتح التبويب فورًا (بدون أي await قبله) عشان يضل معتبر "فتحه المستخدم
+    // بنفسه" عند سفاري خصوصًا — لو فتحناه بعد التحويل والانتظار على الشبكة،
+    // المتصفح أحيانًا يحجبه بصمت كأنه نافذة منبثقة، فيطلع للمستخدم تبويب فاضي
+    // ما يتفاعل معه. نعبّي رابطه الحقيقي بعد ما يجهز.
+    const win = window.open("", "_blank");
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const response = await fetch("/api/download", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` }, body: JSON.stringify({ productId, mode: "play" }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.url) throw new Error(data.error || "تعذر تجهيز التشغيل الآن.");
+      if (win) { win.opener = null; win.location.href = data.url; }
+      else window.location.assign(data.url);
+    } catch (requestError) {
+      if (win) win.close();
+      setError(requestError.message || "تعذر تجهيز التشغيل الآن.");
+    }
+    setDownloadingId("");
+  }
+
   async function copyCode(productId, licenseCode) {
     try {
       await navigator.clipboard.writeText(licenseCode);
@@ -136,16 +161,6 @@ export default function Purchases() {
     }
   }
 
-  async function copyOrderId(orderId) {
-    try {
-      await navigator.clipboard.writeText(orderId);
-      setCopiedActivationId(orderId);
-      window.setTimeout(() => setCopiedActivationId(""), 1600);
-    } catch {
-      setError("تعذر نسخ رقم الطلب. انسخه يدويًا.");
-    }
-  }
-
   return (
     <div className="buy-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -173,20 +188,16 @@ export default function Purchases() {
               order.items.map((item) => (
                 <div className="buy-bundle-item" key={item.productId}>
                   <div className="buy-name">{item.productName}</div>
-                  <DeliveryItem item={item} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
+                  <DeliveryItem item={item} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onPlay={play} onCopy={copyCode} />
                 </div>
               ))
             ) : (
-              <DeliveryItem item={{ ...order, productId: order.productId }} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
+              <DeliveryItem item={{ ...order, productId: order.productId }} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onPlay={play} onCopy={copyCode} />
             )}
 
             {order.type !== "bundle" && Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && order.status === "confirmed" && (
               <div className="buy-note" style={{ marginTop: 12, marginBottom: 0 }}>
-                🔒 هذا المنتج يحتاج تفعيل أول مرة تفتحه (يحتاج إنترنت أول مرة بس، بعدها يشتغل بدون نت). الكود موجود فوق — وهذا رقم طلبك، تحتاجه مع الكود داخل المنتج:
-                <div className="buy-code" style={{ marginTop: 6 }}>{order.id}</div>
-                <button className="buy-copy" type="button" onClick={() => copyOrderId(order.id)}>
-                  {copiedActivationId === order.id ? "تم نسخ رقم الطلب" : "نسخ رقم الطلب"}
-                </button>
+                🔒 هذا المنتج يشتغل مباشرة من الموقع — اضغط "العب الآن" فوق، ما تحتاج تنزّل أي ملف.
               </div>
             )}
             {order.repeatCoupon && (

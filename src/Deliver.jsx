@@ -26,9 +26,14 @@ async function requestOrders(action, payload) {
   return data;
 }
 
-function DeliveryItem({ item, downloadingId, copiedId, onDownload, onCopy }) {
+function DeliveryItem({ item, downloadingId, copiedId, onDownload, onPlay, onCopy }) {
   return (
     <>
+      {item.playReady && (
+        <button className="dlv-download" type="button" disabled={downloadingId === item.productId} onClick={() => onPlay(item.productId)}>
+          {downloadingId === item.productId ? "جاري التجهيز..." : "العب الآن"}
+        </button>
+      )}
       {item.downloadReady && (
         <button className="dlv-download" type="button" disabled={downloadingId === item.productId} onClick={() => onDownload(item.productId)}>
           {downloadingId === item.productId ? "جاري تجهيز التنزيل..." : "تنزيل المنتج"}
@@ -87,6 +92,26 @@ export default function Deliver({ orderId, token }) {
     setDownloadingId("");
   }
 
+  async function play(productId) {
+    setDownloadingId(productId);
+    // نفتح التبويب فورًا (بدون أي await قبله) عشان يضل معتبر "فتحه المستخدم
+    // بنفسه" عند سفاري خصوصًا — لو فتحناه بعد التحويل والانتظار على الشبكة،
+    // المتصفح أحيانًا يحجبه بصمت كأنه نافذة منبثقة، فيطلع للمستخدم تبويب فاضي
+    // ما يتفاعل معه. نعبّي رابطه الحقيقي بعد ما يجهز.
+    const win = window.open("", "_blank");
+    try {
+      const response = await fetch("/api/download", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, orderId, deliveryToken: token, mode: "play" }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.url) throw new Error(data.error || "تعذر تجهيز التشغيل الآن.");
+      if (win) { win.opener = null; win.location.href = data.url; }
+      else window.location.assign(data.url);
+    } catch (requestError) {
+      if (win) win.close();
+      setError(requestError.message || "تعذر تجهيز التشغيل الآن.");
+    }
+    setDownloadingId("");
+  }
+
   async function copyCode(productId, licenseCode) {
     try {
       await navigator.clipboard.writeText(licenseCode);
@@ -94,16 +119,6 @@ export default function Deliver({ orderId, token }) {
       window.setTimeout(() => setCopiedId(""), 1600);
     } catch {
       setError("تعذر نسخ الكود. انسخه يدويًا.");
-    }
-  }
-
-  async function copyOrderId() {
-    try {
-      await navigator.clipboard.writeText(orderId);
-      setCopiedId("activation");
-      window.setTimeout(() => setCopiedId(""), 1600);
-    } catch {
-      setError("تعذر نسخ رقم الطلب. انسخه يدويًا.");
     }
   }
 
@@ -125,20 +140,16 @@ export default function Deliver({ orderId, token }) {
               order.items.map((item) => (
                 <div className="dlv-item" key={item.productId}>
                   <div className="dlv-name" style={{ fontSize: 12.5 }}>{item.productName}</div>
-                  <DeliveryItem item={item} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
+                  <DeliveryItem item={item} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onPlay={play} onCopy={copyCode} />
                 </div>
               ))
             ) : (
-              <DeliveryItem item={order} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onCopy={copyCode} />
+              <DeliveryItem item={order} downloadingId={downloadingId} copiedId={copiedId} onDownload={download} onPlay={play} onCopy={copyCode} />
             )}
 
             {order.type !== "bundle" && Array.isArray(order.activationRequiredProductIds) && order.activationRequiredProductIds.length > 0 && (
               <div className="dlv-note" style={{ marginTop: 10 }}>
-                🔒 هذا المنتج يحتاج تفعيل أول مرة تفتحه (يحتاج إنترنت أول مرة بس، بعدها يشتغل بدون نت). الكود موجود فوق — وهذا رقم طلبك، تحتاجه مع الكود داخل المنتج:
-                <div className="dlv-code">{orderId}</div>
-                <button className="dlv-copy" type="button" onClick={copyOrderId}>
-                  {copiedId === "activation" ? "تم نسخ رقم الطلب" : "نسخ رقم الطلب"}
-                </button>
+                🔒 هذا المنتج يشتغل مباشرة من الموقع — اضغط "العب الآن" فوق، ما تحتاج تنزّل أي ملف.
               </div>
             )}
             {error && <div className="dlv-note" style={{ color: "#b24c3a" }}>{error}</div>}

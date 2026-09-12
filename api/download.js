@@ -25,7 +25,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { productId, orderId, deliveryToken } = req.body || {};
+  const { productId, orderId, deliveryToken, mode } = req.body || {};
+  const playMode = mode === 'play';
   if (!productId) {
     return res.status(400).json({ error: 'productId مطلوب.' });
   }
@@ -72,44 +73,66 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'هذا المنتج غير متاح حاليًا.' });
     }
 
+    // منتجات "تفاعلية" (ألعاب) تُشغَّل فقط ببث مباشر من الموقع (mode=play)، ما
+    // نسمح بتنزيلها كملف خام — لأنها بقت بدون أي كود تفعيل، فأي ملف يُنزَّل
+    // يشتغل فورًا لأي شخص بدون أي حماية. العكس أيضًا صحيح: منتج عادي ما يدعم "play".
+    if (playMode && !product.requiresActivation) {
+      return res.status(400).json({ error: 'هذا المنتج ما يدعم التشغيل المباشر من الموقع.' });
+    }
+    if (!playMode && product.requiresActivation) {
+      return res.status(403).json({ error: 'هذا المنتج يشتغل فقط داخل الموقع. استخدم زر «العب الآن».' });
+    }
+
     // المسار (أ): المستخدم هو مالك المنتج (تاجر يعيد إرسال التسليم)
     const isOwner = product.ownerId === uid;
 
-    // المسار (ب): المستخدم مشترٍ عنده تصريح unlock صالح لهذا المنتج بالذات،
-    // ولسه ما تجاوز الحد الأقصى لعدد مرات التنزيل. العدّ يتم داخل معاملة (transaction)
-    // عشان ضغطتين متزامنتين ما تفوتان الحد.
+    // المسار (ب): المستخدم مشترٍ عنده تصريح unlock صالح لهذا المنتج بالذات.
+    // للتنزيل العادي: نعدّ المرات داخل معاملة (transaction) عشان ضغطتين متزامنتين
+    // ما تفوتان الحد. للتشغيل المباشر (play): بدون حد لعدد المرات، فقط نتأكد إن
+    // التصريح صالح ولم ينتهِ.
     let hasValidUnlock = false;
     if (!isOwner) {
       const unlockRef = db.collection('unlocks').doc(`${uid}_${productId}`);
-      try {
-        await db.runTransaction(async (transaction) => {
-          const unlockSnap = await transaction.get(unlockRef);
-          if (!unlockSnap.exists) throw new Error('NO_UNLOCK');
+      if (playMode) {
+        const unlockSnap = await unlockRef.get();
+        if (unlockSnap.exists) {
           const unlock = unlockSnap.data();
           const expiresAt = unlock.expiresAt && unlock.expiresAt.toDate
             ? unlock.expiresAt.toDate()
             : new Date(unlock.expiresAt);
-          if (expiresAt <= new Date()) throw new Error('EXPIRED');
-          const downloadCount = Number(unlock.downloadCount || 0);
-          if (downloadCount >= MAX_FILE_DOWNLOADS) throw new Error('LIMIT_REACHED');
-          transaction.update(unlockRef, {
-            downloadCount: downloadCount + 1,
-            lastDownloadAt: FieldValue.serverTimestamp(),
-          });
-        });
-        hasValidUnlock = true;
-      } catch (transactionError) {
-        if (transactionError.message === 'LIMIT_REACHED') {
-          return res.status(403).json({
-            error: `وصلت للحد الأقصى لعدد مرات تنزيل هذا الملف (${MAX_FILE_DOWNLOADS} مرات). تواصل مع التاجر لو تحتاج نسخة إضافية.`,
-          });
+          hasValidUnlock = expiresAt > new Date();
         }
-        hasValidUnlock = false;
+      } else {
+        try {
+          await db.runTransaction(async (transaction) => {
+            const unlockSnap = await transaction.get(unlockRef);
+            if (!unlockSnap.exists) throw new Error('NO_UNLOCK');
+            const unlock = unlockSnap.data();
+            const expiresAt = unlock.expiresAt && unlock.expiresAt.toDate
+              ? unlock.expiresAt.toDate()
+              : new Date(unlock.expiresAt);
+            if (expiresAt <= new Date()) throw new Error('EXPIRED');
+            const downloadCount = Number(unlock.downloadCount || 0);
+            if (downloadCount >= MAX_FILE_DOWNLOADS) throw new Error('LIMIT_REACHED');
+            transaction.update(unlockRef, {
+              downloadCount: downloadCount + 1,
+              lastDownloadAt: FieldValue.serverTimestamp(),
+            });
+          });
+          hasValidUnlock = true;
+        } catch (transactionError) {
+          if (transactionError.message === 'LIMIT_REACHED') {
+            return res.status(403).json({
+              error: `وصلت للحد الأقصى لعدد مرات تنزيل هذا الملف (${MAX_FILE_DOWNLOADS} مرات). تواصل مع التاجر لو تحتاج نسخة إضافية.`,
+            });
+          }
+          hasValidUnlock = false;
+        }
       }
     }
 
     if (!isOwner && !hasValidUnlock) {
-      return res.status(403).json({ error: 'ما عندك صلاحية تحميل هذا الملف. تأكد إنك أتممت الشراء.' });
+      return res.status(403).json({ error: playMode ? 'ما عندك صلاحية تشغيل هذا المنتج. تأكد إنك أتممت الشراء.' : 'ما عندك صلاحية تحميل هذا الملف. تأكد إنك أتممت الشراء.' });
     }
 
     const file = bucket.file(product.filePath);
@@ -118,13 +141,20 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'تعذر إيجاد ملف المنتج على السيرفر.' });
     }
 
-    const safeFileName = String(product.filePath.split('/').pop() || 'product').replace(/["\\]/g, '_');
-    const [signedUrl] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + SIGNED_URL_TTL_MS,
-      responseDisposition: `attachment; filename="${safeFileName}"`,
-    });
+    const signedUrl = playMode
+      ? (await file.getSignedUrl({
+          version: 'v4',
+          action: 'read',
+          expires: Date.now() + SIGNED_URL_TTL_MS,
+          responseDisposition: 'inline',
+          responseType: 'text/html; charset=utf-8',
+        }))[0]
+      : (await file.getSignedUrl({
+          version: 'v4',
+          action: 'read',
+          expires: Date.now() + SIGNED_URL_TTL_MS,
+          responseDisposition: `attachment; filename="${String(product.filePath.split('/').pop() || 'product').replace(/["\\]/g, '_')}"`,
+        }))[0];
 
     return res.status(200).json({ url: signedUrl });
   } catch (err) {
