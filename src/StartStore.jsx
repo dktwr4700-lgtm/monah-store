@@ -32,12 +32,33 @@ const styles = `
   @media (prefers-reduced-motion: reduce){.invite-cta-track .invite-btn,.invite-cta-track .invite-btn.fleeing{transform:none!important;transition:background 200ms ease}}
 `;
 
+const REQUEST_TIMEOUT_MS = 8000;
+
+// بعض متصفحات الجوال تعلّق الاتصال بصمت (لا ينجح ولا يفشل) — بدون هذي المهلة،
+// زر "متابعة" يضل يدور للأبد بدون أي رسالة، فيحس المستخدم إن الزر "ما يستجيب".
+function withTimeout(promise, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), REQUEST_TIMEOUT_MS)),
+  ]);
+}
+
 async function signupRequest(action, payload, idToken = "") {
-  const response = await fetch("/api/merchant-signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
-    body: JSON.stringify({ action, ...payload }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch("/api/merchant-signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
+      body: JSON.stringify({ action, ...payload }),
+      signal: controller.signal,
+    });
+  } catch (fetchError) {
+    throw new Error("تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "تعذر تنفيذ العملية الآن.");
   return data;
@@ -97,10 +118,10 @@ export default function StartStore() {
     try {
       let credential;
       try {
-        credential = await createUserWithEmailAndPassword(auth, email, password);
+        credential = await withTimeout(createUserWithEmailAndPassword(auth, email, password), "تعذر إنشاء الحساب الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
       } catch (createError) {
         if (createError.code !== "auth/email-already-in-use") throw createError;
-        credential = await signInWithEmailAndPassword(auth, email, password);
+        credential = await withTimeout(signInWithEmailAndPassword(auth, email, password), "تعذر تسجيل الدخول الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
       }
       const idToken = await credential.user.getIdToken(true);
       await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken);
