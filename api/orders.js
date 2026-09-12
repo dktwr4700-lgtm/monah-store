@@ -90,17 +90,30 @@ const RESEND_TIMEOUT_MS = 6000;
 // مونة (فيرباس)، بدون ما نحتاج حقل إعدادات جديد. أفضل-جهد فقط: أي فشل هنا
 // (ما فيه مفتاح، الإيميل بطيء، إلخ) ما يوقف تسليم إثبات التحويل للعميل.
 async function notifySellerOfProof(order, orderId) {
-  if (!RESEND_API_KEY || !order.ownerId) return;
+  if (!RESEND_API_KEY) {
+    console.error("notifySellerOfProof: skipped, RESEND_API_KEY is not set in this environment");
+    return;
+  }
+  if (!order.ownerId) {
+    console.error("notifySellerOfProof: skipped, order has no ownerId", orderId);
+    return;
+  }
   try {
     const [sellerUser, sellerSnap] = await Promise.all([
-      auth.getUser(order.ownerId).catch(() => null),
+      auth.getUser(order.ownerId).catch((err) => {
+        console.error("notifySellerOfProof: auth.getUser failed", err.message);
+        return null;
+      }),
       db.collection("sellers").doc(order.ownerId).get(),
     ]);
     const sellerData = sellerSnap.exists ? sellerSnap.data() : {};
     // البائع ممكن يحدد إيميل مخصص للإشعارات (شي مثل بريد عمل مختلف عن إيميل
     // تسجيل الدخول)، وإذا ما حدده نستخدم إيميل حسابه في فيرباس كافتراضي.
     const sellerEmail = cleanText(sellerData.notifyEmail, 160) || sellerUser?.email;
-    if (!sellerEmail) return;
+    if (!sellerEmail) {
+      console.error("notifySellerOfProof: skipped, no seller email found for", order.ownerId);
+      return;
+    }
     const storeName = cleanText(sellerData.name, 80);
     const items = order.type === "bundle" && Array.isArray(order.productNames)
       ? order.productNames.join("، ")
@@ -117,7 +130,7 @@ async function notifySellerOfProof(order, orderId) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
     try {
-      await fetch("https://api.resend.com/emails", {
+      const resendResponse = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
         body: JSON.stringify({
@@ -128,6 +141,12 @@ async function notifySellerOfProof(order, orderId) {
         }),
         signal: controller.signal,
       });
+      if (!resendResponse.ok) {
+        const body = await resendResponse.text().catch(() => "");
+        console.error("notifySellerOfProof: Resend rejected the request", resendResponse.status, body);
+      } else {
+        console.log("notifySellerOfProof: sent to", sellerEmail);
+      }
     } finally {
       clearTimeout(timeoutId);
     }
