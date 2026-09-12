@@ -184,7 +184,7 @@ const styles = `
   .dh-item-link{ display:flex; gap:8px; align-items:center; background:#FBFAF7; border:1px solid #EDEAE0; border-radius:8px; padding:7px 9px; }
   .dh-item-link-text{ flex:1; font-size:10px; color:#8A8677; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .dh-item-link-btn{ background:#0B0B0C; color:#fff; border:none; padding:5px 10px; border-radius:100px; font-size:10px; cursor:pointer; }
-  .empty-note{ color:#B0AC9C; font-size:13px; text-align:center; padding:22px 0; }
+  .empty-note{ color:#8A8677; font-size:13px; text-align:center; padding:32px 16px; background:#FBFAF7; border:1px dashed #EDEAE0; border-radius:14px; line-height:1.8; }
 
   .ds-preview{ background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; overflow:hidden; margin-bottom:16px; }
   .ds-preview-bar{ padding:10px 14px; background:#FBFAF7; border-bottom:1px solid #EDEAE0; font-size:10px; color:#8A8677; font-weight:700; font-family:'JetBrains Mono',monospace; }
