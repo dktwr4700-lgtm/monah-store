@@ -47,6 +47,7 @@ function safeSocialUrl(value, type){
 export default function StorePage({ sellerId }) {
   const [products, setProducts] = useState([]);
   const [store, setStore] = useState(null);
+  const [ownerId, setOwnerId] = useState(sellerId);
   const [status, setStatus] = useState("loading");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("الكل");
@@ -72,6 +73,7 @@ export default function StorePage({ sellerId }) {
           return;
         }
         setStore(storeData);
+        setOwnerId(resolvedOwnerId);
         const productQuery = query(
           collection(db, "products"),
           where("ownerId", "==", resolvedOwnerId),
@@ -138,7 +140,7 @@ export default function StorePage({ sellerId }) {
           <div className="mc-top-actions">
             <button className="mc-icon-btn" type="button" onClick={shareStore} title="مشاركة المتجر" aria-label="مشاركة المتجر"><ShareIcon /></button>
             <button className="mc-icon-btn" type="button" onClick={scrollToProducts} title="المنتجات" aria-label="المنتجات"><SearchIcon /></button>
-            <a className="mc-icon-btn" href="#purchases" title="المشتريات"><CartIcon /></a>
+            <a className="mc-icon-btn" href={`#purchases/${ownerId}`} title="المشتريات"><CartIcon /></a>
           </div>
         </div>
       </header>

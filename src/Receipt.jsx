@@ -63,7 +63,7 @@ export default function Receipt({ orderId, token }) {
       <main className="rcpt-shell">
         <header className="rcpt-top">
           <div />
-          <a className="rcpt-back" href="#purchases">العودة لطلباتي</a>
+          <a className="rcpt-back" href={`#purchases/${data?.ownerId || ""}`}>العودة لطلباتي</a>
         </header>
 
         {state === "loading" && <div className="rcpt-empty">جاري تجهيز الفاتورة…</div>}

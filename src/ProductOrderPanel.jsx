@@ -146,7 +146,7 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
         <div className="ppo-copy">عند تأكيد التاجر استلام التحويل، يفتح زر تنزيل المنتج هنا في مُونَة.</div>
         <div className="ppo-success">لا يتم تأكيد التحويل تلقائيًا. التاجر يراجعه بنفسه.</div>
         {notifyLink && <a className="ppo-primary" style={{ display: "block", textAlign: "center", textDecoration: "none", marginTop: 12 }} href={notifyLink} target="_blank" rel="noopener noreferrer">نبّه التاجر الآن عبر واتساب</a>}
-        <a className="ppo-orders-link" href="#purchases">متابعة طلباتي</a>
+        <a className="ppo-orders-link" href={`#purchases/${item?.ownerId || ""}`}>متابعة طلباتي</a>
       </> : !order ? <>
         <div className="ppo-step">1 من 2 · إنشاء الطلب</div>
         <div className="ppo-title">اكتب رقم واتسابك للطلب</div>
