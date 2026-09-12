@@ -78,6 +78,13 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: "لا تملك صلاحية إنشاء مسودة لهذا المنتج." });
     }
   }
+
+  const sellerSnap = await db.collection("sellers").doc(uid).get();
+  const activeAddOns = sellerSnap.exists ? sellerSnap.data().activeAddOns : [];
+  if (!Array.isArray(activeAddOns) || !activeAddOns.includes("aiTools")) {
+    return res.status(403).json({ error: "فعّل إضافة \"أدوات الذكاء\" أولًا من تبويب اشتراك متجرك." });
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: "ميزة وصف الذكاء غير متاحة الآن." });
   }

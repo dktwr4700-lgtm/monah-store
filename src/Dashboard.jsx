@@ -708,7 +708,7 @@ export default function Dashboard() {
       setDescriptionDraft(data.description);
       setDescriptionDraftTarget(target);
     } catch (draftError) {
-      setDescriptionDraftError("تعذر تجهيز المسودة الآن. حاول بعد قليل.");
+      setDescriptionDraftError(draftError.message && draftError.message !== "draft unavailable" ? draftError.message : "تعذر تجهيز المسودة الآن. حاول بعد قليل.");
     }
     setDescriptionDraftLoading("");
   }
@@ -1931,9 +1931,15 @@ export default function Dashboard() {
                 <div className="dh-field">
                   <label>وصف مختصر (اختياري)</label>
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
-                  <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft("new")} disabled={descriptionDraftLoading === "new"} style={{ marginTop: 8 }}>
-                    {descriptionDraftLoading === "new" ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
-                  </button>
+                  {activeAddOns.includes("aiTools") ? (
+                    <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft("new")} disabled={descriptionDraftLoading === "new"} style={{ marginTop: 8 }}>
+                      {descriptionDraftLoading === "new" ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                    </button>
+                  ) : (
+                    <div className="dh-hint" style={{ marginTop: 8, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
+                      ✨ فعّل إضافة "أدوات الذكاء" (١ ر.ع شهريًا) من تبويب <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>اشتراك متجرك</button> عشان يكتب لك الذكاء الاصطناعي مسودة وصف.
+                    </div>
+                  )}
                   {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
                   {descriptionDraftTarget === "new" && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — عدّلها أو استخدمها إذا ناسبتك</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft("new")}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
                 </div>
@@ -2060,9 +2066,15 @@ export default function Dashboard() {
                       <div className="dh-field">
                         <label>وصف مختصر</label>
                         <textarea rows="2" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-                        <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft(p.id, p)} disabled={descriptionDraftLoading === p.id} style={{ marginTop: 8 }}>
-                          {descriptionDraftLoading === p.id ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
-                        </button>
+                        {activeAddOns.includes("aiTools") ? (
+                          <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft(p.id, p)} disabled={descriptionDraftLoading === p.id} style={{ marginTop: 8 }}>
+                            {descriptionDraftLoading === p.id ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                          </button>
+                        ) : (
+                          <div className="dh-hint" style={{ marginTop: 8, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
+                            ✨ فعّل إضافة "أدوات الذكاء" (١ ر.ع شهريًا) من تبويب <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>اشتراك متجرك</button> عشان يكتب لك الذكاء الاصطناعي مسودة وصف.
+                          </div>
+                        )}
                         {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
                         {descriptionDraftTarget === p.id && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لا تُحفظ إلا إذا ضغطت حفظ المنتج</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft(p.id)}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
                       </div>
