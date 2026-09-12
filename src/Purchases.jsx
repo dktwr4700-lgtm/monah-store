@@ -112,13 +112,20 @@ export default function Purchases() {
 
   async function play(productId) {
     setDownloadingId(productId);
+    // نفتح التبويب فورًا (بدون أي await قبله) عشان يضل معتبر "فتحه المستخدم
+    // بنفسه" عند سفاري خصوصًا — لو فتحناه بعد التحويل والانتظار على الشبكة،
+    // المتصفح أحيانًا يحجبه بصمت كأنه نافذة منبثقة، فيطلع للمستخدم تبويب فاضي
+    // ما يتفاعل معه. نعبّي رابطه الحقيقي بعد ما يجهز.
+    const win = window.open("", "_blank");
     try {
       const idToken = await auth.currentUser.getIdToken();
       const response = await fetch("/api/download", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` }, body: JSON.stringify({ productId, mode: "play" }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.url) throw new Error(data.error || "تعذر تجهيز التشغيل الآن.");
-      window.open(data.url, "_blank", "noopener,noreferrer");
+      if (win) { win.opener = null; win.location.href = data.url; }
+      else window.location.assign(data.url);
     } catch (requestError) {
+      if (win) win.close();
       setError(requestError.message || "تعذر تجهيز التشغيل الآن.");
     }
     setDownloadingId("");
