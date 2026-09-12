@@ -335,18 +335,24 @@ async function createOrder(req, res, account) {
     .limit(1)
     .get();
   if (!draftSnap.empty) {
+    const draftRef = draftSnap.docs[0].ref;
     const existing = draftSnap.docs[0].data();
+    // مسودة من محاولة سابقة كانت موجودة — لو العميل دخل كود خصم مختلف هالمرة (أو
+    // شاله)، لازم نحدّث السعر بدل ما نرجّع نفس المسودة القديمة ونتجاهل الكود الجديد بصمت.
+    if ((existing.couponCode || "") !== couponCode) {
+      await draftRef.update({ price: finalPrice, originalPrice, couponCode });
+    }
     return res.status(200).json({
       order: {
-        id: draftSnap.docs[0].id,
+        id: draftRef.id,
         paymentInstructions: existing.paymentInstructions,
         paymentBankName: existing.paymentBankName || "",
         paymentAccountHolder: existing.paymentAccountHolder || "",
         paymentAccountNumber: existing.paymentAccountNumber || "",
         paymentPhoneNumber: existing.paymentPhoneNumber || "",
-        price: Number(existing.price),
-        originalPrice: Number(existing.originalPrice),
-        couponCode: existing.couponCode || "",
+        price: finalPrice,
+        originalPrice,
+        couponCode,
         cardPaymentAvailable,
       },
     });
