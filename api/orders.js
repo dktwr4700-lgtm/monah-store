@@ -137,7 +137,7 @@ async function notifySellerOfProof(order, orderId) {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
         body: JSON.stringify({
-          from: "مُونة <onboarding@resend.dev>",
+          from: "مُونة <notifications@monah-app.com>",
           to: [sellerEmail],
           subject: `طلب جديد بانتظار تأكيدك${storeName ? " - " + storeName : ""}`,
           html,
