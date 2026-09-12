@@ -18,6 +18,35 @@ const PayResult = lazy(() => import("./PayResult.jsx"));
 const StartStore = lazy(() => import("./StartStore.jsx"));
 const StorePayResult = lazy(() => import("./StorePayResult.jsx"));
 
+const LAZY_PAGE_IMPORTS = [
+  () => import("./Register.jsx"),
+  () => import("./Login.jsx"),
+  () => import("./Dashboard.jsx"),
+  () => import("./ProductPage.jsx"),
+  () => import("./Purchases.jsx"),
+  () => import("./StorePage.jsx"),
+  () => import("./LegalPage.jsx"),
+  () => import("./AdminDashboard.jsx"),
+  () => import("./InviteActivation.jsx"),
+  () => import("./Receipt.jsx"),
+  () => import("./BundlePage.jsx"),
+  () => import("./Deliver.jsx"),
+  () => import("./PayResult.jsx"),
+  () => import("./StartStore.jsx"),
+  () => import("./StorePayResult.jsx"),
+];
+
+// كل صفحة غير الرئيسية محمّلة كقطعة منفصلة (code-split)، فأول دخول لها يطلب ملفها
+// عبر الشبكة ويعرض شاشة "جاري التحميل" قبل ما تظهر الصفحة الحقيقية — وهذا يحس
+// المستخدم إن المحتوى "يقفز" مع كل تنقل. نبدأ بتحميل كل الصفحات بصمت في الخلفية
+// بعد ما الصفحة الرئيسية تجهز، عشان لما يضغط أي رابط يكون ملفها جاهز مسبقًا
+// والانتقال يصير فوري بدون شاشة تحميل ولا قفزة.
+function prefetchLazyPages() {
+  const run = () => LAZY_PAGE_IMPORTS.forEach((load) => load().catch(() => {}));
+  if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 4000 });
+  else setTimeout(run, 1200);
+}
+
 // بعض بوابات الدفع تضيف query string بعد الرجوع من صفحة الدفع (مثل
 // #pay-result/xxx?foo=bar)، وبما إن التوجيه هنا يعتمد على قص الـ hash بالفواصل،
 // أي جزء زائد بعد "؟" يصير جزء من المعرّف نفسه ويكسر التحقق. هذي الدالة تتأكد
@@ -64,3 +93,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <Root />
   </React.StrictMode>
 );
+
+prefetchLazyPages();
