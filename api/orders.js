@@ -10,6 +10,11 @@ const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const UNLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DELIVERY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// منتجات "تفاعلية" (تُشغَّل أونلاين بزر "العب الآن" بدل التنزيل) ما فيها نسخة
+// يحتفظ بها المشتري عنده — فحد الـ30 يوم (المصمم أصلاً لتحديد نافذة تنزيل ملف)
+// لازم ما ينطبق عليها، وإلا يتوقف الوصول للعبة اللي المشتري دفع فيها مرة وحدة
+// ويفترض تشتغل له دائمًا (مثل معلمة تستخدمها طول السنة الدراسية).
+const INTERACTIVE_UNLOCK_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 export const MAX_FILE_DOWNLOADS = 5;
 
 if (!getApps().length) {
@@ -436,7 +441,7 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
         type: product.type === "code" ? "code" : "file",
         downloadCount: 0,
         createdAt: FieldValue.serverTimestamp(),
-        expiresAt: Timestamp.fromDate(new Date(Date.now() + UNLOCK_TTL_MS)),
+        expiresAt: Timestamp.fromDate(new Date(Date.now() + (interactive ? INTERACTIVE_UNLOCK_TTL_MS : UNLOCK_TTL_MS))),
       };
       if (codeDoc) {
         transaction.update(codeDoc.ref, {
