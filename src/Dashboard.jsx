@@ -502,7 +502,10 @@ export default function Dashboard() {
       setPaymentAccountHolder(data.paymentAccountHolder || "");
       setPaymentAccountNumber(data.paymentAccountNumber || "");
       setPaymentPhoneNumber(data.paymentPhoneNumber || "");
-      setNotifyEmail(data.notifyEmail || "");
+      // لو التاجر ما حدد إيميل إشعارات مخصص، نعبّي له الخانة بإيميل تسجيل
+      // دخوله تلقائيًا — هذا أصلاً نفس الإيميل اللي يستخدمه السيرفر كافتراضي،
+      // بس نخليه يبين بالخانة عشان يكون واضح ومو مخفي.
+      setNotifyEmail(data.notifyEmail || user.email || "");
       setCustomDomainSlug(data.customDomainSlug || "");
       setCustomDomainExpiresAt(data.customDomainExpiresAt || "");
       setActiveAddOns(data.activeAddOns || []);
