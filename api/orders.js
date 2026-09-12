@@ -83,7 +83,10 @@ function safeProofPath(uid, orderId, proofPath) {
   return normalized.startsWith(prefix) && normalized.length > prefix.length && !normalized.includes("..") ? normalized : "";
 }
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+// نتخلص من أي مسافات أو سطر جديد زايد ممكن ينلصق بالخطأ عند نسخ المفتاح من
+// Resend ولصقه في إعدادات Vercel — قيمة فيها سطر جديد تخلي طلب fetch يفشل
+// بصمت (ترويسة Authorization غير صالحة) قبل حتى ما يوصل Resend.
+const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim();
 const RESEND_TIMEOUT_MS = 6000;
 
 // إشعار البائع بإيميل لما عميل يرفع إثبات تحويل — على نفس إيميل حساب البائع في
