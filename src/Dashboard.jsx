@@ -10,7 +10,6 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
-import GrowthAssistant from "./GrowthAssistant.jsx";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 class DebugErrorBoundary extends React.Component {
@@ -1630,24 +1629,7 @@ export default function Dashboard() {
   const selectedStoreStyle = STORE_STYLES.find((style) => style.color === storeColor) || STORE_STYLES[0];
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`تصفح منتجات ${storeName || "متجري"}: ${storeUrl}`)}`;
 
-  const assistantContext = {
-    storeName,
-    tagline,
-    plan: sellerPlan,
-    productsCount: products.length,
-    products: products.slice(0, 20).map((p) => ({
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      category: p.category,
-      description: p.description,
-      hidden: !!p.hidden,
-    })),
-    ordersCount: sellerOrders.filter((o) => o.status !== "draft").length,
-    totalSales: sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0),
-  };
-
-  // يحدد أهم خطوة ناقصة بمتجر التاجر حاليًا — تُستخدم ببطاقة "خطوتك التالية" وبترحيب المساعد الذكي
+  // يحدد أهم خطوة ناقصة بمتجر التاجر حاليًا — تُستخدم ببطاقة "خطوتك التالية"
   function getNextStep() {
     const hasProduct = products.length > 0;
     const hasTagline = !!tagline;
@@ -2798,8 +2780,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      <GrowthAssistant storeData={assistantContext} plan={sellerPlan} onUpgradeClick={() => setTab("subscription")} nextStep={nextStep} />
     </div>
     </DebugErrorBoundary>
   );
