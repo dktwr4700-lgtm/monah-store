@@ -4,10 +4,10 @@
 
 ## روابط أساسية
 
-- [الصفحة الرئيسية](https://monah-app.com/): شرح المنصة، الأسعار، وطريقة العمل
-- [افتح متجرك](https://monah-app.com/#start-store): التسجيل وتفعيل الاشتراك
-- [الشروط والأحكام](https://monah-app.com/#terms)
-- [سياسة الخصوصية](https://monah-app.com/#privacy)
+- [الصفحة الرئيسية](https://www.monah-app.com/): شرح المنصة، الأسعار، وطريقة العمل
+- [افتح متجرك](https://www.monah-app.com/#start-store): التسجيل وتفعيل الاشتراك
+- [الشروط والأحكام](https://www.monah-app.com/#terms)
+- [سياسة الخصوصية](https://www.monah-app.com/#privacy)
 
 ## معلومات أساسية
 
