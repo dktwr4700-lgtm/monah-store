@@ -240,7 +240,7 @@ export default function StartStore() {
     <div className="invite-page" dir="rtl" lang="ar">
       <style>{styles}</style>
       <main className="invite-card">
-        <div className="invite-brand">مُونة</div>
+        <a className="invite-brand" href="#" style={{ display: "block", textDecoration: "none", color: "inherit" }}>مُونة</a>
 
         {step === "form" && <>
           <div className="invite-title">افتح متجرك الرقمي الآن</div>
