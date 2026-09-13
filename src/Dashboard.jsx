@@ -406,6 +406,7 @@ export default function Dashboard() {
   // store design
   const [storeName, setStoreName] = useState("");
   const [storeColor, setStoreColor] = useState(COLORS[0]);
+  const [storeTemplate, setStoreTemplate] = useState("default");
   const [tagline, setTagline] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [instagram, setInstagram] = useState("");
@@ -652,6 +653,7 @@ export default function Dashboard() {
         const data = snap.data();
         setStoreName(data.name || "");
         setStoreColor(data.color || COLORS[0]);
+        setStoreTemplate(data.template || "default");
         setTagline(data.tagline || "");
         setWhatsapp(data.whatsapp || "");
         setInstagram(data.instagram || "");
@@ -1213,6 +1215,7 @@ export default function Dashboard() {
       await setDoc(doc(db, "stores", user.uid), {
         name: cleanStoreName,
         color: storeColor,
+        template: storeTemplate,
         tagline: tagline || "",
         whatsapp: whatsapp || "",
         instagram: instagram || "",
@@ -2650,6 +2653,15 @@ export default function Dashboard() {
                   ))}
                 </div>
                 <div className="dh-hint">{STORE_STYLES.find((style) => style.color === storeColor)?.name || "مظهر المتجر"} · {STORE_STYLES.find((style) => style.color === storeColor)?.hint || ""}</div>
+              </div>
+
+              <div className="dh-field">
+                <label>شكل صفحة متجرك</label>
+                <div className="dh-type-toggle">
+                  <button type="button" className={"dh-type-btn" + (storeTemplate === "default" ? " active" : "")} onClick={() => { setStoreTemplate("default"); setDesignDirty(true); }}>الافتراضي</button>
+                  <button type="button" className={"dh-type-btn" + (storeTemplate === "formal" ? " active" : "")} onClick={() => { setStoreTemplate("formal"); setDesignDirty(true); }}>رسمي</button>
+                </div>
+                <div className="dh-hint">"رسمي" يبسّط الشكل — حواف أقل استدارة، بدون ظلال أو زخارف، بإطار ذهبي هادئ. باقي بياناتك (الاسم، الشعار، المنتجات) نفسها بدون تغيير.</div>
               </div>
 
               <div className="dh-field">
