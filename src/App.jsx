@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 
 const styles = `
@@ -21,69 +21,79 @@ const styles = `
   .nav-cta{ background:#153A2C; color:#fff; padding:10px 18px; border-radius:100px; font-size:12.5px; font-weight:700; box-shadow:0 8px 18px rgba(14,59,44,.18); }
 
   /* ===== HERO ===== */
-  .hero{ margin-top:18px; padding:58px 58px 42px; display:flex; align-items:center; gap:50px; background:linear-gradient(130deg,#102F24 0%,#174434 62%,#245344 100%); border-radius:32px; position:relative; overflow:hidden; isolation:isolate; box-shadow:0 28px 60px rgba(15,45,34,.18); }
-  .hero::before{ content:""; position:absolute; width:430px; height:430px; border:1px solid rgba(214,243,92,.22); border-radius:50%; left:-175px; top:-225px; z-index:-1; }
-  .hero::after{ content:""; position:absolute; width:290px; height:290px; background:rgba(214,243,92,.08); border-radius:50%; right:34%; bottom:-205px; filter:blur(2px); z-index:-1; }
-  .hero-copy{ flex:1; min-width:280px; position:relative; z-index:2; }
-  .hero-eyebrow{ display:inline-flex; align-items:center; gap:7px; background:rgba(214,243,92,.13); border:1px solid rgba(214,243,92,.26); color:#D6F35C; font-size:11.5px; font-weight:700; padding:7px 14px; border-radius:100px; margin-bottom:20px; }
-  .hero-eyebrow::before{ content:""; width:6px; height:6px; background:#D6F35C; border-radius:50%; box-shadow:0 0 0 4px rgba(214,243,92,.13); }
-  .hero h1{ font-family:'Almarai', sans-serif; font-weight:800; font-size:clamp(34px,4.1vw,50px); line-height:1.26; color:#FFFDF7; margin-bottom:16px; letter-spacing:-.025em; }
-  .hero p{ color:#D7E2DB; font-size:15px; line-height:1.9; max-width:400px; margin-bottom:22px; }
-  .pill-black{ display:inline-flex; align-items:center; gap:8px; background:#D6F35C; color:#143226; padding:14px 23px; border-radius:100px; font-weight:800; font-size:14px; cursor:pointer; border:none; font-family:'Cairo', sans-serif; box-shadow:0 10px 22px rgba(0,0,0,.15); }
-  .hero-ghost{ display:inline-flex; margin:0 14px 0 0; color:#E5EEE9; font-size:12.5px; border-bottom:1px solid rgba(229,238,233,.45); padding-bottom:2px; }
-  .hero-signals{ display:flex; flex-wrap:wrap; gap:12px 18px; margin-top:25px; color:#D7E2DB; font-size:11.5px; font-weight:600; }
-  .hero-signals span{ display:flex; align-items:center; gap:6px; }
-  .hero-signals i{ width:17px; height:17px; display:inline-flex; align-items:center; justify-content:center; background:rgba(214,243,92,.15); color:#D6F35C; border-radius:50%; font-style:normal; font-size:10px; }
+  .hero{ margin-top:40px; display:flex; align-items:center; gap:0; }
+  .hero-copy{ flex:1 1 380px; min-width:280px; padding-inline-end:44px; position:relative; z-index:2; }
+  .hero h1{ font-family:'Almarai', sans-serif; font-weight:800; font-size:clamp(32px,4.1vw,48px); line-height:1.32; color:#153A2C; margin-bottom:18px; letter-spacing:-.02em; text-wrap:balance; }
+  .hero p{ color:#8A8677; font-size:15px; line-height:1.9; max-width:400px; margin-bottom:26px; }
+  .pill-black{ display:inline-flex; align-items:center; gap:8px; background:#D6F35C; color:#143226; padding:14px 23px; border-radius:100px; font-weight:800; font-size:14px; cursor:pointer; border:none; font-family:'Cairo', sans-serif; box-shadow:0 10px 22px rgba(0,0,0,.15); transition:transform .16s ease-out, box-shadow .16s ease-out; }
+  .pill-black:hover{ transform:translateY(-2px); box-shadow:0 16px 28px rgba(21,58,44,.16); }
+  .hero-cta-row{ display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+  .hero-ghost{ display:inline-flex; color:#375044; font-size:12.5px; border-bottom:1px solid #D8D2C2; padding-bottom:2px; transition:border-color .16s ease; }
+  .hero-ghost:hover{ border-color:#153A2C; }
 
-  .progress-dots{ display:flex; gap:6px; margin-top:23px; }
-  .progress-dots span{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.28); transition:background .3s ease, width .3s ease; }
-  .progress-dots span.active{ background:#D6F35C; width:18px; border-radius:4px; }
+  /* ---- receipt mockup ---- */
+  .receipt-stage{ flex:0 0 320px; position:relative; padding:22px 0 44px; }
+  .receipt-copy2{ position:absolute; inset:36px 14px 20px -10px; background:#F1D9A0; border-radius:4px; transform:rotate(-3.5deg); box-shadow:0 10px 24px rgba(34,46,37,.08); }
+  .receipt{
+    position:relative; background:#FFFFFF; border:1px solid #EDEAE0; border-radius:4px 4px 0 0;
+    padding:26px 24px 96px; box-shadow:0 24px 50px rgba(23,35,28,.10);
+    clip-path: polygon(
+      0% 0%, 100% 0%, 100% 95%,
+      95% 98%, 90% 95%, 85% 98%, 80% 95%, 75% 98%, 70% 95%, 65% 98%, 60% 95%,
+      55% 98%, 50% 95%, 45% 98%, 40% 95%, 35% 98%, 30% 95%, 25% 98%, 20% 95%,
+      15% 98%, 10% 95%, 5% 98%, 0% 95%
+    );
+  }
+  .receipt-tag{ position:absolute; top:-11px; right:22px; background:#153A2C; color:#F5F2EA; font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:100px; }
+  .receipt-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+  .receipt-head b{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; color:#0B0B0C; }
+  .receipt-head span{ font-size:11px; color:#8A8677; }
+  .receipt-sub{ font-size:11px; color:#8A8677; margin-bottom:16px; }
+  .receipt-rule{ border-top:1px dashed #E1DDD1; margin:14px 0; }
+  .receipt-line{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; font-size:12.5px; padding:5px 0; }
+  .receipt-line .label{ color:#0B0B0C; }
+  .receipt-line .label small{ display:block; color:#8A8677; font-size:10.5px; margin-top:2px; }
+  .receipt-line .value{ font-size:12.5px; color:#0B0B0C; }
+  .receipt-total{ display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; }
+  .receipt-total b{ font-size:11.5px; color:#8A8677; font-weight:600; }
+  .receipt-total .amount{ font-size:21px; font-weight:700; color:#0B0B0C; }
 
-  .hero-phone-col{ flex:0 0 315px; display:flex; justify-content:center; position:relative; perspective:1200px; z-index:2; }
-  .hero-phone-col::before{ content:""; position:absolute; width:350px; height:210px; bottom:22px; left:50%; transform:translateX(-50%) rotateX(64deg) rotateZ(-18deg); background:linear-gradient(rgba(214,243,92,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(214,243,92,.18) 1px,transparent 1px); background-size:24px 24px; border-radius:34px; opacity:.7; pointer-events:none; }
-  .hero-phone-col::after{ content:""; position:absolute; width:276px; height:276px; top:78px; left:12px; border:1px solid rgba(214,243,92,.3); border-radius:50%; transform:rotateX(58deg) rotateZ(35deg); pointer-events:none; }
-  .phone{ width:276px; height:556px; background:#0A1511; border-radius:42px; padding:11px; box-shadow:0 40px 70px rgba(0,0,0,.32),0 0 0 1px rgba(255,255,255,.16); position:relative; transform-style:preserve-3d; transition:transform .25s ease-out; }
-  .phone-screen{ width:100%; height:100%; background:#FBFAF6; border-radius:32px; overflow:hidden; position:relative; }
-  .phone-notch{ position:absolute; top:0; left:50%; transform:translateX(-50%); width:115px; height:24px; background:#0B0B0C; border-radius:0 0 15px 15px; z-index:6; }
-  .screen-status{ display:flex; justify-content:space-between; padding:13px 18px 4px; font-size:10px; color:#0B0B0C; }
-  .screen-top{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px 6px; }
-  .screen-logo{ width:18px; height:18px; border-radius:5px; background:#0E3B2C; }
-  .screen-menu{ color:#0B0B0C; font-size:15px; }
+  .stamp{ position:absolute; left:26px; bottom:14px; width:92px; height:92px; border-radius:50%; opacity:.94; display:flex; align-items:center; justify-content:center; text-align:center; transform:rotate(-13deg); }
+  .stamp::before{ content:""; position:absolute; inset:0; border:2px solid #153A2C; border-radius:50%; }
+  .stamp::after{ content:""; position:absolute; inset:7px; border:1px solid #153A2C; border-radius:50%; opacity:.5; }
+  .stamp-text{ position:relative; font-family:'Almarai', sans-serif; font-weight:800; font-size:11px; color:#153A2C; line-height:1.3; }
+  .stamp-text small{ display:block; font-size:7.5px; font-weight:700; letter-spacing:.04em; margin-top:3px; }
+  .stamp-impact{ position:absolute; left:26px; bottom:14px; width:92px; height:92px; border:2px solid #153A2C; border-radius:50%; opacity:0; pointer-events:none; }
 
-  .screen-stage{ position:relative; height:400px; overflow:hidden; }
-  .slide{ position:absolute; inset:0; opacity:0; transform:translateX(22px); transition:opacity .5s ease, transform .5s ease; }
-  .slide.active{ opacity:1; transform:translateX(0); }
+  /* ---- ledger trust row ---- */
+  .ledger{ margin-top:52px; border-top:1px solid #E1DDD1; border-bottom:1px solid #E1DDD1; padding:6px 0; }
+  .ledger-row{ display:flex; align-items:baseline; gap:14px; padding:15px 2px; border-top:1px dashed #EDEAE0; }
+  .ledger-row:first-child{ border-top:none; }
+  .ledger-row .k{ font-size:13.5px; font-weight:700; color:#153A2C; white-space:nowrap; }
+  .ledger-row .fill{ flex:1; border-bottom:1px dotted #D8D2C2; transform:translateY(-4px); }
+  .ledger-row .v{ font-size:13px; color:#8A8677; white-space:nowrap; }
+  .ledger-row .v.strong{ color:#0B0B0C; font-weight:700; }
 
-  .screen-title{ padding:16px 16px 6px; font-family:'Almarai', sans-serif; font-weight:800; font-size:18px; line-height:1.35; color:#0B0B0C; }
-  .screen-sub{ padding:0 16px 12px; font-size:10.5px; color:#8A8677; line-height:1.6; max-width:210px; }
-  .screen-visual{ margin:6px 16px; height:135px; border-radius:15px; background:linear-gradient(135deg, #0E3B2C, #1C4632); display:flex; align-items:center; justify-content:center; }
-  .screen-visual .pct{ color:#D6F35C; font-family:'Almarai', sans-serif; font-weight:800; font-size:30px; }
-  .screen-card{ margin:12px 16px; background:#FFFFFF; border:1px solid #EDEAE0; border-radius:13px; padding:11px 13px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 8px 20px rgba(0,0,0,0.04); }
-  .screen-card .left{ display:flex; align-items:center; gap:9px; }
-  .screen-card .icon{ width:30px; height:30px; border-radius:8px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; font-size:13px; }
-  .screen-card b{ display:block; font-size:11.5px; font-weight:700; color:#0B0B0C; }
-  .screen-card span{ font-size:9.5px; color:#8A8677; }
-  .screen-card .pct2{ font-size:10.5px; color:#4B6152; font-weight:700; }
-
-  .confirm-badge{ margin:26px auto 0; width:80px; height:80px; border-radius:50%; background:#EAF0EB; display:flex; align-items:center; justify-content:center; font-size:30px; color:#4B6152; }
-  .confirm-title{ text-align:center; font-family:'Almarai', sans-serif; font-weight:800; font-size:15.5px; margin-top:14px; }
-  .confirm-sub{ text-align:center; font-size:10.5px; color:#8A8677; margin-top:5px; }
-  .confirm-amount{ text-align:center; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:23px; color:#0B0B0C; margin-top:14px; }
-
-  .screen-nav{ position:absolute; bottom:14px; left:14px; right:14px; background:#0B0B0C; border-radius:100px; padding:11px; display:flex; justify-content:space-around; z-index:5; }
-  .screen-nav span{ width:14px; height:14px; border-radius:4px; background:#4B4B4B; }
-  .screen-nav span.dot-active{ background:#D6F35C; }
-
-  .float-card{ position:absolute; bottom:56px; left:-26px; background:#FFFFFF; border-radius:15px; padding:11px 15px; box-shadow:0 20px 40px rgba(0,0,0,0.12); display:flex; align-items:center; gap:11px; border:1px solid #F1F0EA; transition:transform .25s ease-out; }
-  .float-card .icon{ width:34px; height:34px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; font-size:15px; }
-  .float-card b{ display:block; font-size:12px; font-weight:700; }
-  .float-card span{ font-size:10px; color:#8A8677; }
-
-  .stats{ display:flex; border:1px solid #E1DDD1; background:#FFFEFA; border-radius:18px; max-width:720px; margin:28px auto 0; overflow:hidden; box-shadow:0 10px 30px rgba(34,46,37,.05); }
-  .stat{ flex:1; text-align:center; padding:20px 10px; border-inline-start:1px solid #E8E3D8; }
-  .stat:first-child{ border-inline-start:none; }
-  .stat b{ display:block; font-family:'Almarai', sans-serif; font-weight:800; font-size:18px; color:#153A2C; }
-  .stat span{ display:block; color:#8A8677; font-size:11.5px; margin-top:4px; }
+  @media (prefers-reduced-motion: no-preference){
+    .hero-copy{ animation: monahFadeUp .6s cubic-bezier(.22,.75,.32,1) both; }
+    .receipt{ animation: monahPrintUp .65s cubic-bezier(.22,.75,.32,1) .18s both; }
+    .receipt-copy2{ animation: monahPrintUpTilted .65s cubic-bezier(.22,.75,.32,1) .1s both; }
+    .stamp{ animation: monahStampDown .5s cubic-bezier(.31,1.4,.5,1) .82s both; }
+    .stamp-impact{ animation: monahInkImpact .6s ease-out .82s both; }
+  }
+  @keyframes monahFadeUp{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes monahPrintUp{ from{ opacity:0; transform:translateY(38px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes monahPrintUpTilted{ from{ opacity:0; transform:translateY(56px) rotate(-3.5deg); } to{ opacity:1; transform:translateY(0) rotate(-3.5deg); } }
+  @keyframes monahStampDown{
+    0%{ opacity:0; transform:translate(-4px,-34px) rotate(-36deg) scale(1.45); }
+    68%{ opacity:1; transform:translate(0,3px) rotate(-10deg) scale(.94); }
+    100%{ opacity:.94; transform:translate(0,0) rotate(-13deg) scale(1); }
+  }
+  @keyframes monahInkImpact{
+    0%{ opacity:0; transform:scale(.55); }
+    35%{ opacity:.4; }
+    100%{ opacity:0; transform:scale(1.75); }
+  }
 
   section.section{ padding:78px 0; }
   .section-eyebrow{ text-align:center; font-size:11.5px; color:#B9832F; font-weight:700; letter-spacing:.04em; margin-bottom:8px; }
@@ -182,20 +192,14 @@ const styles = `
   @media (max-width:760px){
     .nav{ margin-top:10px; border-radius:15px; padding:10px 11px 10px 14px; }
     .nav-cta{ padding:9px 13px; }
-    .hero{ flex-direction:column; padding:38px 22px 30px; border-radius:24px; gap:28px; }
-    .hero h1{ font-size:29px; text-align:center; }
-    .hero-copy{ text-align:center; }
+    .hero{ flex-direction:column; align-items:stretch; gap:0; }
+    .hero-copy{ flex:none; padding-inline-end:0; text-align:center; }
     .hero p{ margin-inline:auto; }
-    .hero-signals{ justify-content:center; gap:10px; }
-    .hero-ghost{ display:inline-flex; margin:14px 0 0; }
-    .progress-dots{ justify-content:center; }
-    .float-card{ display:none; }
-    .phone{ width:230px; height:470px; }
-    .screen-stage{ height:320px; }
+    .hero-cta-row{ justify-content:center; }
+    .receipt-stage{ flex:none; margin:36px auto 0; max-width:320px; width:100%; }
+    .ledger-row{ flex-wrap:wrap; }
     section.section{ padding:54px 0; }
     .price-card.popular{ transform:none; }
-    .hero-phone-col::before{ width:270px; bottom:15px; }
-    .hero-phone-col::after{ width:220px; height:220px; left:5px; }
     .final-cta{ padding:50px 0 24px; }
     .final-cta-inner{ padding:34px 24px 28px; min-height:0; flex-direction:column; text-align:center; }
     .final-orbit{ transform:scale(.82); margin:-20px 0 -26px; }
@@ -270,41 +274,6 @@ function FaqItem({ q, a, id }) {
 }
 
 export default function App() {
-  const [slide, setSlide] = useState(0);
-  const phoneColRef = useRef(null);
-  const phoneRef = useRef(null);
-  const floatCardRef = useRef(null);
-
-  useEffect(() => {
-    const timer = setInterval(() => setSlide((s) => (s + 1) % 2), 3000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const col = phoneColRef.current;
-    if (!col) return;
-    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-    if (!canHover) return;
-
-    function handleMove(e) {
-      const rect = col.getBoundingClientRect();
-      const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
-      const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
-      if (phoneRef.current) phoneRef.current.style.transform = `rotateY(${x * 14}deg) rotateX(${-y * 10}deg)`;
-      if (floatCardRef.current) floatCardRef.current.style.transform = `translate(${x * 10}px, ${y * 10}px)`;
-    }
-    function handleLeave() {
-      if (phoneRef.current) phoneRef.current.style.transform = "rotateY(0) rotateX(0)";
-      if (floatCardRef.current) floatCardRef.current.style.transform = "translate(0,0)";
-    }
-    col.addEventListener("mousemove", handleMove);
-    col.addEventListener("mouseleave", handleLeave);
-    return () => {
-      col.removeEventListener("mousemove", handleMove);
-      col.removeEventListener("mouseleave", handleLeave);
-    };
-  }, []);
-
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }),
@@ -334,63 +303,61 @@ export default function App() {
       <div className="wrap">
         <div className="hero">
           <div className="hero-copy">
-            <div className="hero-eyebrow">بدون عمولة على أي عملية بيع</div>
             <h1>بيع منتجك الرقمي<br/>من رابط واحد</h1>
-            <p>ارفع ملفاتك الرقمية وشارك رابط كل منتج على واتساب وإنستغرام. تظهر خيارات البيع الإلكتروني عند تفعيلها في المنصة.</p>
-            <a className="pill-black" href={START_STORE_URL}>افتح متجرك الحين ←</a>
-            <a className="hero-ghost" href="#how">شاهد كيف تعمل</a>
-            <div className="hero-signals">
-              <span><i>✓</i> واجهة عربية سهلة</span>
-              <span><i>✓</i> رابط خاص لكل منتج</span>
-              <span><i>✓</i> من الجوال أو الكمبيوتر</span>
-            </div>
-            <div className="progress-dots">
-              <span className={slide === 0 ? "active" : ""} />
-              <span className={slide === 1 ? "active" : ""} />
+            <p>ارفع ملفك، شارك رابط منتجك على واتساب أو إنستغرام، والعميل يطلبه ويرفع إثبات التحويل — تؤكد الاستلام فيفتح التنزيل له تلقائيًا.</p>
+            <div className="hero-cta-row">
+              <a className="pill-black" href={START_STORE_URL}>افتح متجرك الحين ←</a>
+              <a className="hero-ghost" href="#how">شاهد كيف تعمل</a>
             </div>
           </div>
 
-          <div className="hero-phone-col" ref={phoneColRef}>
-            <div className="phone" ref={phoneRef}>
-              <div className="phone-screen">
-                <div className="phone-notch" />
-                <div className="screen-status"><span>9:41</span><span>◉ ▲ ▮</span></div>
-                <div className="screen-top"><span className="screen-logo" /><span className="screen-menu">☰</span></div>
-
-                <div className="screen-stage">
-                  <div className={"slide" + (slide === 0 ? " active" : "")}>
-                    <div className="screen-title">متجرك الرقمي<br/>جاهز خلال دقائق</div>
-                    <div className="screen-sub">ارفع منتجك، شارك الرابط، واستلم أرباحك كاملة بدون عمولة.</div>
-                    <div className="screen-visual"><span className="pct mono">٪٠</span></div>
-                    <div className="screen-card">
-                      <div className="left"><span className="icon">🛍️</span><div><b>رزمة قوالب سيرة ذاتية</b><span>متجر هند للتصاميم</span></div></div>
-                      <span className="pct2 mono">٥.٠٠</span>
-                    </div>
-                  </div>
-                  <div className={"slide" + (slide === 1 ? " active" : "")}>
-                    <div className="confirm-badge">✓</div>
-                    <div className="confirm-title">بانتظار تأكيدك للتحويل</div>
-                    <div className="confirm-sub">العميل رفع إثبات التحويل؛ أكّد الاستلام ليفتح التنزيل</div>
-                    <div className="confirm-amount mono">٥.٠٠ ر.ع</div>
-                  </div>
-                </div>
-
-                <div className="screen-nav">
-                  <span className="dot-active" /><span /><span /><span />
-                </div>
+          <div className="receipt-stage">
+            <div className="receipt-copy2" aria-hidden="true" />
+            <div className="receipt">
+              <div className="receipt-tag mono">#٠٠١٤</div>
+              <div className="receipt-head">
+                <b>وصل بيع رقمي</b>
+                <span className="mono">١٤:٠٦</span>
+              </div>
+              <div className="receipt-sub">متجر هند للتصاميم</div>
+              <div className="receipt-rule" />
+              <div className="receipt-line">
+                <div className="label">رزمة قوالب سيرة ذاتية<small>ملف PDF قابل للتعديل</small></div>
+                <div className="value mono">٥.٠٠</div>
+              </div>
+              <div className="receipt-line">
+                <div className="label">العمولة على البيع</div>
+                <div className="value mono">٪٠</div>
+              </div>
+              <div className="receipt-rule" />
+              <div className="receipt-total">
+                <b>الإجمالي المستلم</b>
+                <span className="amount mono">٥.٠٠ ر.ع</span>
               </div>
             </div>
-            <div className="float-card" ref={floatCardRef}>
-              <span className="icon">🛍️</span>
-              <div><b>متجر هند</b><span>نشط · متصل</span></div>
+            <div className="stamp-impact" aria-hidden="true" />
+            <div className="stamp" aria-hidden="true">
+              <div className="stamp-text">تم تأكيد<br/>الاستلام<small>Monah</small></div>
             </div>
           </div>
         </div>
 
-        <div className="stats">
-          <div className="stat"><b>٪٠</b><span>عمولة على البيع</span></div>
-          <div className="stat"><b>بعد تأكيدك</b><span>تسليم الملف</span></div>
-          <div className="stat"><b>مفعّلة</b><span>روابط تحميل محمية</span></div>
+        <div className="ledger">
+          <div className="ledger-row">
+            <span className="k">العمولة على مبيعاتك</span>
+            <span className="fill" />
+            <span className="v strong">٪٠ — دائمًا</span>
+          </div>
+          <div className="ledger-row">
+            <span className="k">وقت فتح رابط التحميل</span>
+            <span className="fill" />
+            <span className="v">فور تأكيدك استلام المبلغ</span>
+          </div>
+          <div className="ledger-row">
+            <span className="k">حماية روابط التنزيل</span>
+            <span className="fill" />
+            <span className="v strong">مفعّلة على كل منتج</span>
+          </div>
         </div>
       </div>
 
