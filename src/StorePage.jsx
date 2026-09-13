@@ -26,17 +26,6 @@ const styles = `
 
   .mc-page button{ transition:transform 100ms ease-out; }
   .mc-page button:active{ transform:scale(0.96); }
-
-  /* نمط "رسمي" اختياري — يختاره التاجر بنفسه من هوية متجره، شكل مسطّح وهادئ
-     بدل البطاقات المستديرة والظلال، بإطار ذهبي رفيع بدل الدوائر الزخرفية. */
-  .mc-formal .mc-store{ border-radius:6px; box-shadow:none; border:1px solid rgba(214,164,80,.55); }
-  .mc-formal .mc-store:before, .mc-formal .mc-store:after{ display:none; }
-  .mc-formal .mc-assurances{ border-radius:6px; box-shadow:none; }
-  .mc-formal .mc-featured, .mc-formal .mc-about, .mc-formal .mc-faq details, .mc-formal .mc-reassurance, .mc-formal .mc-empty{ border-radius:6px; box-shadow:none; }
-  .mc-formal .mc-product{ border-radius:6px; box-shadow:none; }
-  .mc-formal .mc-product:hover{ transform:none; box-shadow:none; border-color:rgba(214,164,80,.5); }
-  .mc-formal .mc-product-img{ border-radius:3px; }
-  .mc-formal .mc-icon-btn, .mc-formal .mc-search input, .mc-formal .mc-filter, .mc-formal .mc-category, .mc-formal .mc-view, .mc-formal .mc-empty-cta{ border-radius:6px; }
 `;
 
 function SearchIcon(){return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6" stroke="#7B7A74" strokeWidth="1.7"/><path d="M16 16l4 4" stroke="#7B7A74" strokeWidth="1.7" strokeLinecap="round"/></svg>}
@@ -106,7 +95,6 @@ export default function StorePage({ sellerId }) {
   }, [sellerId]);
 
   const brandColor = store?.color || "#0B0B0C";
-  const formal = store?.template === "formal";
   const brandName = store?.name || "متجر رقمي";
   const tagline = store?.tagline || "منتجات رقمية جاهزة للتحميل";
   const logoUrl = store?.logoUrl;
@@ -144,7 +132,7 @@ export default function StorePage({ sellerId }) {
   }
 
   return (
-    <div className={"mc-page" + (formal ? " mc-formal" : "")} dir="rtl" lang="ar" style={{ "--mc-brand": brandColor }}>
+    <div className="mc-page" dir="rtl" lang="ar" style={{ "--mc-brand": brandColor }}>
       <style>{styles}</style>
       <header className="mc-top">
         <div className="mc-top-in">
