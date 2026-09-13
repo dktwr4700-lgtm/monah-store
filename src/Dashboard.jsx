@@ -260,7 +260,7 @@ const styles = `
   .dh-studio-tag{ color:rgba(255,255,255,.86); }
   .dh-studio-meta{ color:rgba(255,255,255,.78); }
   .dh-stat span{ color:#D5E2D6; }
-  @media (max-width:390px){
+  @media (max-width:480px){
     .dh-header{ align-items:flex-start; gap:10px; padding:13px 14px; }
     .dh-header>div:last-child{ flex-shrink:0; gap:6px !important; }
     .dh-brand{ min-width:0; font-size:14px; line-height:1.55; }

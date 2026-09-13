@@ -216,7 +216,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const dashboard = await source("src/Dashboard.jsx");
     const orders = await source("src/Orders.jsx");
 
-    expect(dashboard).toContain("@media (max-width:390px)");
+    expect(dashboard).toContain("@media (max-width:480px)");
     expect(dashboard).toContain("dh-studio-action.primary,.dh-share-btn.primary");
     expect(dashboard).toContain("dh-subscription-base");
     expect(dashboard).toContain("رابط التتبع");
