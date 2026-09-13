@@ -166,23 +166,19 @@ async function notifyBuyerOfConfirmation(order, orderId, deliveryToken) {
     console.error("notifyBuyerOfConfirmation: skipped, RESEND_API_KEY is not set in this environment");
     return;
   }
-  if (!order.buyerUid || !deliveryToken) {
-    console.error("notifyBuyerOfConfirmation: skipped, missing buyerUid or deliveryToken", orderId);
+  if (!deliveryToken) {
+    console.error("notifyBuyerOfConfirmation: skipped, missing deliveryToken", orderId);
+    return;
+  }
+  // العميل يشتري كضيف (تسجيل دخول مجهول بفيرباس)، فحساب Firebase ما فيه إيميل
+  // أبدًا — نعتمد على الإيميل اللي العميل كتبه بنفسه بنموذج الطلب (اختياري).
+  const buyerEmail = cleanText(order.buyerEmail, 160);
+  if (!buyerEmail) {
+    console.log("notifyBuyerOfConfirmation: skipped, buyer did not provide an email for", orderId);
     return;
   }
   try {
-    const [buyerUser, sellerSnap] = await Promise.all([
-      auth.getUser(order.buyerUid).catch((err) => {
-        console.error("notifyBuyerOfConfirmation: auth.getUser failed", err.message);
-        return null;
-      }),
-      db.collection("sellers").doc(order.ownerId).get(),
-    ]);
-    const buyerEmail = buyerUser?.email;
-    if (!buyerEmail) {
-      console.error("notifyBuyerOfConfirmation: skipped, no buyer email found for", order.buyerUid);
-      return;
-    }
+    const sellerSnap = await db.collection("sellers").doc(order.ownerId).get();
     const storeName = cleanText(sellerSnap.exists ? sellerSnap.data().name : "", 80);
     const items = order.type === "bundle" && Array.isArray(order.productNames)
       ? order.productNames.join("، ")
@@ -364,8 +360,10 @@ async function grantRepeatCoupon(ownerId, buyerUid) {
 async function createBundleOrder(req, res, account) {
   const bundleId = cleanText(req.body?.bundleId, 160);
   const buyerPhone = cleanPhone(req.body?.buyerPhone);
+  const buyerEmail = cleanText(req.body?.buyerEmail, 160);
   if (!isValidId(bundleId)) throw new OrderError(400, "رابط الحزمة غير واضح.");
   if (!validPhone(buyerPhone)) throw new OrderError(400, "اكتب رقم واتسابك بشكل صحيح.");
+  if (buyerEmail && !EMAIL_PATTERN.test(buyerEmail)) throw new OrderError(400, "اكتب إيميلك بشكل صحيح.");
 
   const bundleSnap = await db.collection("bundles").doc(bundleId).get();
   if (!bundleSnap.exists) throw new OrderError(404, "الحزمة غير موجودة.");
@@ -420,6 +418,7 @@ async function createBundleOrder(req, res, account) {
     ownerId: bundle.ownerId,
     buyerUid: account.uid,
     buyerPhone,
+    buyerEmail,
     bundleId,
     productId: `bundle_${bundleId}`,
     productIds,
@@ -438,8 +437,10 @@ async function createOrder(req, res, account) {
   if (req.body?.bundleId) return createBundleOrder(req, res, account);
   const productId = cleanText(req.body?.productId, 160);
   const buyerPhone = cleanPhone(req.body?.buyerPhone);
+  const buyerEmail = cleanText(req.body?.buyerEmail, 160);
   if (!isValidId(productId)) throw new OrderError(400, "رابط المنتج غير واضح.");
   if (!validPhone(buyerPhone)) throw new OrderError(400, "اكتب رقم واتسابك بشكل صحيح.");
+  if (buyerEmail && !EMAIL_PATTERN.test(buyerEmail)) throw new OrderError(400, "اكتب إيميلك بشكل صحيح.");
 
   const productSnap = await db.collection("products").doc(productId).get();
   if (!productSnap.exists) throw new OrderError(404, "المنتج غير موجود.");
@@ -506,6 +507,7 @@ async function createOrder(req, res, account) {
     ownerId: product.ownerId,
     buyerUid: account.uid,
     buyerPhone,
+    buyerEmail,
     productId,
     productName: cleanText(product.name, 160) || "منتج رقمي",
     price: finalPrice,
