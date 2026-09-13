@@ -822,8 +822,6 @@ export default function AdminDashboard() {
                   onChange={(e) => setPlanDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
                 >
                   <option value="basic">أساسية</option>
-                  <option value="pro">احترافية</option>
-                  <option value="full">متجر متكامل</option>
                 </select>
                 <button type="button" disabled={savingPlanId === s.id} onClick={() => savePlan(s)}>
                   {savingPlanId === s.id ? "جاري الحفظ..." : "حفظ الباقة"}
