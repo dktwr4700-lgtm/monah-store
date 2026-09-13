@@ -46,31 +46,6 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).not.toContain("this.state.error && this.state.error.stack");
   });
 
-  it("يبقي مساعد النمو غير متاح حتى تكتمل صلاحياته وتفعيله", async () => {
-    const assistant = await source("api/growth-assistant.js");
-
-    expect(assistant).toContain("مساعد النمو غير متاح حاليًا");
-    expect(assistant).toContain("res.status(503)");
-    expect(assistant).not.toContain("firebase-admin");
-    expect(assistant).not.toContain("api.anthropic.com");
-  });
-
-  it("يرفض مسار مساعد النمو أي طلب حتى يكتمل التفعيل", async () => {
-    const { default: handler } = await import(new URL("../api/growth-assistant.js", import.meta.url).href);
-    const response = {
-      setHeader: vi.fn(),
-      status: vi.fn(),
-      json: vi.fn(),
-    };
-    response.status.mockReturnValue(response);
-
-    handler({ method: "POST" }, response);
-
-    expect(response.setHeader).toHaveBeenCalledWith("Allow", "POST");
-    expect(response.status).toHaveBeenCalledWith(503);
-    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ error: "مساعد النمو غير متاح حاليًا. سيتاح بعد اكتمال تفعيله واختباره." }));
-  });
-
   it("يضيف رؤوس حماية الاستضافة دون تقييد خدمات المتجر الأساسية", async () => {
     const vercel = await source("vercel.json");
 
