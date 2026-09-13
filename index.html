@@ -13,6 +13,7 @@
 
     <title>مُونَة — أنشئ متجرك الرقمي</title>
     <meta name="description" content="مُونَة منصة عُمانية تساعدك على عرض منتجاتك الرقمية وبناء صفحة متجر مستقلة." />
+    <link rel="canonical" href="https://monah-app.com/" />
 
     <meta property="og:title" content="مُونَة — أنشئ متجرك الرقمي" />
     <meta property="og:description" content="أنشئ متجرك الرقمي وشارك رابط منتجك مباشرة." />
@@ -28,6 +29,88 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@700;800&family=Cairo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "مُونَة",
+        "alternateName": "Monah",
+        "url": "https://monah-app.com/",
+        "logo": "https://monah-app.com/monah-mark-512.png",
+        "description": "منصة عُمانية تساعد أصحاب المشاريع الصغيرة وصنّاع المحتوى على بيع منتجاتهم الرقمية عبر رابط متجر خاص بهم، بدون عمولة إضافية على المبيعات.",
+        "areaServed": "OM",
+        "email": "monahapp@outlook.sa"
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "مُونَة",
+        "url": "https://monah-app.com/",
+        "inLanguage": "ar"
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "serviceType": "منصة بيع المنتجات الرقمية",
+        "provider": { "@type": "Organization", "name": "مُونَة", "url": "https://monah-app.com/" },
+        "areaServed": "OM",
+        "description": "افتح متجرك الرقمي وبع ملفاتك (PDF، دورات، أكواد، تصاميم) برابط واحد. العميل يرفع إثبات التحويل، وتؤكد استلام المبلغ فيفتح التنزيل له تلقائيًا — بدون عمولة إضافية على المبيعات.",
+        "offers": {
+          "@type": "Offer",
+          "price": "5",
+          "priceCurrency": "OMR",
+          "description": "اشتراك شهري لمتجر رقمي أساسي، بدون عمولة إضافية على المبيعات."
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "هل أحتاج خبرة تقنية؟",
+            "acceptedAnswer": { "@type": "Answer", "text": "أبدًا. ترفع ملفك وتحدد السعر، تشارك رابط منتجك، والعميل يطلبه ويرفع إثبات التحويل — وأنت تؤكد الاستلام ليوصله الملف." }
+          },
+          {
+            "@type": "Question",
+            "name": "وش أنواع الملفات المسموحة؟",
+            "acceptedAnswer": { "@type": "Answer", "text": "أي ملف رقمي: PDF، تصاميم، أكواد، فيديوهات، وغيرها." }
+          },
+          {
+            "@type": "Question",
+            "name": "فيه عمولة على مبيعاتي؟",
+            "acceptedAnswer": { "@type": "Answer", "text": "لا توجد عمولة إضافية على المبيعات. وتظهر تفاصيل الاشتراك والسعر قبل أي تفعيل." }
+          },
+          {
+            "@type": "Question",
+            "name": "أقدر أربط دومين خاص فيني؟",
+            "acceptedAnswer": { "@type": "Answer", "text": "هذي ميزة قادمة قريبًا للباقة المتكاملة، لسا قيد التطوير." }
+          },
+          {
+            "@type": "Question",
+            "name": "وش يصير لو ألغيت اشتراكي؟",
+            "acceptedAnswer": { "@type": "Answer", "text": "تظهر سياسة الإلغاء بوضوح عند تفعيل الاشتراك، قبل أن توافق على أي تفعيل." }
+          },
+          {
+            "@type": "Question",
+            "name": "أقدر أغيّر باقتي بعدين؟",
+            "acceptedAnswer": { "@type": "Answer", "text": "تقدر تجهز منتجاتك وحزمك داخل لوحة التاجر. خيارات الإضافات تظهر مع تفاصيلها قبل التفعيل." }
+          },
+          {
+            "@type": "Question",
+            "name": "وش الفرق بين الاشتراك الشهري والسنوي؟",
+            "acceptedAnswer": { "@type": "Answer", "text": "الاشتراك المرن يعتمد على المتجر الأساسي والإضافات التي تختارها. أي خيارات إضافية تظهر بتفاصيلها قبل التفعيل." }
+          }
+        ]
+      }
+    </script>
 
     <style>
       /* شاشة التحميل الأولية — تظهر فوراً قبل ما يجهز كود الموقع، وتُستبدل تلقائيًا لما React يشتغل */
@@ -67,6 +150,15 @@
         <div class="boot-mark">Monah</div>
       </div>
     </div>
+    <noscript>
+      <div style="max-width:640px;margin:60px auto;padding:0 24px;font-family:sans-serif;line-height:1.9;color:#16233F">
+        <h1>مُونَة — أنشئ متجرك الرقمي</h1>
+        <p>منصة عُمانية تساعد أصحاب المشاريع الصغيرة وصنّاع المحتوى على بيع منتجاتهم الرقمية (ملفات، دورات، أكواد، تصاميم) عبر رابط متجر خاص بهم، بدون عمولة إضافية على المبيعات.</p>
+        <p>العميل يرفع إثبات التحويل بعد الطلب، وتؤكد استلام المبلغ من لوحة الطلبات فيفتح رابط التنزيل له تلقائيًا.</p>
+        <p>الاشتراك: 5 ر.ع شهريًا لمتجر أساسي، بدون عمولة إضافية على المبيعات.</p>
+        <p>يحتاج هذا الموقع تفعيل جافاسكربت بالمتصفح لعرض المتجر والتسجيل.</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

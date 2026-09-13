@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://monah-app.com/sitemap.xml
