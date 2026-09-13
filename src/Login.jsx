@@ -173,7 +173,7 @@ export default function Login() {
     <div className="auth-page" dir="rtl" lang="ar">
       <style>{styles}</style>
       <div className="auth-card">
-        <div className="auth-brand">Monah</div>
+        <a className="auth-brand" href="#" style={{ display: "block", textDecoration: "none" }}>Monah</a>
         <div className="auth-title">تسجيل الدخول</div>
 
         {error && <div className="auth-error">{error}</div>}
