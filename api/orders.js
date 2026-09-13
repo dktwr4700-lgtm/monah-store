@@ -158,6 +158,74 @@ async function notifySellerOfProof(order, orderId) {
   }
 }
 
+// إشعار العميل بإيميل لما التاجر يؤكد استلام التحويل (أو تتأكد عملية الدفع
+// بالبطاقة) — يوصله رابط تسليم منتجه مباشرة بدون حاجة لتسجيل دخول. أفضل-جهد
+// فقط: أي فشل هنا ما يوقف تأكيد الطلب نفسه.
+async function notifyBuyerOfConfirmation(order, orderId, deliveryToken) {
+  if (!RESEND_API_KEY) {
+    console.error("notifyBuyerOfConfirmation: skipped, RESEND_API_KEY is not set in this environment");
+    return;
+  }
+  if (!order.buyerUid || !deliveryToken) {
+    console.error("notifyBuyerOfConfirmation: skipped, missing buyerUid or deliveryToken", orderId);
+    return;
+  }
+  try {
+    const [buyerUser, sellerSnap] = await Promise.all([
+      auth.getUser(order.buyerUid).catch((err) => {
+        console.error("notifyBuyerOfConfirmation: auth.getUser failed", err.message);
+        return null;
+      }),
+      db.collection("sellers").doc(order.ownerId).get(),
+    ]);
+    const buyerEmail = buyerUser?.email;
+    if (!buyerEmail) {
+      console.error("notifyBuyerOfConfirmation: skipped, no buyer email found for", order.buyerUid);
+      return;
+    }
+    const storeName = cleanText(sellerSnap.exists ? sellerSnap.data().name : "", 80);
+    const items = order.type === "bundle" && Array.isArray(order.productNames)
+      ? order.productNames.join("، ")
+      : (order.productName || "منتج رقمي");
+    const price = Number(order.price || 0);
+    const deliverUrl = `https://www.monah-app.com/#deliver/${orderId}/${deliveryToken}`;
+    const html = `
+      <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
+        <h2 style="margin:0 0 12px">منتجك جاهز للتنزيل 🎉</h2>
+        <p>التاجر${storeName ? ` "${storeName}"` : ""} أكّد استلام مبلغ طلبك على مُونة.</p>
+        <p><strong>المنتج:</strong> ${items}</p>
+        <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع</p>
+        <p><a href="${deliverUrl}" style="display:inline-block;background:#153A2C;color:#fff;text-decoration:none;padding:12px 22px;border-radius:100px;font-weight:700">تنزيل منتجك</a></p>
+        <p style="color:#8A8677;font-size:12.5px">لو الزر ما اشتغل، افتح هذا الرابط: ${deliverUrl}</p>
+      </div>`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+    try {
+      const resendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: "مُونة <notifications@monah-app.com>",
+          to: [buyerEmail],
+          subject: `منتجك جاهز للتنزيل${storeName ? " - " + storeName : ""}`,
+          html,
+        }),
+        signal: controller.signal,
+      });
+      if (!resendResponse.ok) {
+        const body = await resendResponse.text().catch(() => "");
+        console.error("notifyBuyerOfConfirmation: Resend rejected the request", resendResponse.status, body);
+      } else {
+        console.log("notifyBuyerOfConfirmation: sent to", buyerEmail);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (err) {
+    console.error("notifyBuyerOfConfirmation failed", err);
+  }
+}
+
 async function authenticatedAccount(req) {
   const header = String(req.headers.authorization || "");
   const idToken = header.startsWith("Bearer ") ? header.slice(7) : "";
@@ -581,7 +649,7 @@ async function markOrderConfirmed(orderRef, orderId, confirmedBy) {
       deliveryTokenExpiresAt: Timestamp.fromDate(new Date(Date.now() + DELIVERY_TOKEN_TTL_MS)),
       ...(activationRequiredProductIds.length > 0 ? { activationRequiredProductIds } : {}),
     });
-    return { alreadyConfirmed: false, type: order.type };
+    return { alreadyConfirmed: false, type: order.type, deliveryToken };
   });
 }
 
@@ -600,7 +668,10 @@ async function confirmPayment(req, res, account) {
   }
 
   const result = await markOrderConfirmed(orderRef, orderId, account.uid);
-  if (!result.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
+  if (!result.alreadyConfirmed) {
+    await grantRepeatCoupon(order.ownerId, order.buyerUid);
+    await notifyBuyerOfConfirmation(order, orderId, result.deliveryToken);
+  }
   return res.status(200).json({ ok: true, alreadyConfirmed: result.alreadyConfirmed, type: result.type });
 }
 
@@ -658,7 +729,10 @@ async function createCardCharge(req, res, account) {
     const { succeeded } = await ompayChargeSucceeded(priorResult, { kind: "order", referenceNumber: order.ompayReferenceNumber, uid: account.uid });
     if (succeeded) {
       const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
-      if (!result2.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
+      if (!result2.alreadyConfirmed) {
+        await grantRepeatCoupon(order.ownerId, order.buyerUid);
+        await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
+      }
       return res.status(200).json({ alreadyPaid: true, type: result2.type });
     }
   }
@@ -705,7 +779,10 @@ async function verifyCardCharge(req, res, account) {
     return res.status(200).json({ paid: false, status });
   }
   const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
-  if (!result2.alreadyConfirmed) await grantRepeatCoupon(order.ownerId, order.buyerUid);
+  if (!result2.alreadyConfirmed) {
+    await grantRepeatCoupon(order.ownerId, order.buyerUid);
+    await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
+  }
   return res.status(200).json({ paid: true, type: result2.type, ownerId: order.ownerId });
 }
 
