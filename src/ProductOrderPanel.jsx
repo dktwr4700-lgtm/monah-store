@@ -41,6 +41,7 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
   const notifyLink = notifySellerLink(sellerWhatsapp, item?.name);
   const [open, setOpen] = useState(false);
   const [buyerPhone, setBuyerPhone] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [order, setOrder] = useState(null);
   const [proofFile, setProofFile] = useState(null);
@@ -63,12 +64,17 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
       setError("اكتب رقم واتسابك بشكل صحيح.");
       return;
     }
+    const email = buyerEmail.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("اكتب إيميلك بشكل صحيح، أو اتركه فارغًا.");
+      return;
+    }
     setBusy(true);
     try {
       await ensureAnonymousAuth();
       const payload = isBundle
-        ? { bundleId: item.id, buyerPhone: phone }
-        : { productId: item.id, buyerPhone: phone, couponCode: couponCode.trim() };
+        ? { bundleId: item.id, buyerPhone: phone, buyerEmail: email }
+        : { productId: item.id, buyerPhone: phone, buyerEmail: email, couponCode: couponCode.trim() };
       const data = await orderRequest("create", payload);
       setOrder(data.order);
     } catch (requestError) {
@@ -152,6 +158,7 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp }) {
         <div className="ppo-title">اكتب رقم واتسابك للطلب</div>
         <div className="ppo-copy">التاجر يرسل لك رابط استلام منتجك على هذا الرقم بعد ما يأكد استلام التحويل. لا تدخل كلمة مرور أو رمز تحقق.</div>
         <div className="ppo-field"><label htmlFor="buyer-phone">رقم واتساب</label><input id="buyer-phone" type="tel" value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} placeholder="9xxxxxxx" autoComplete="tel" dir="ltr" /></div>
+        <div className="ppo-field"><label htmlFor="buyer-email">إيميلك (اختياري)</label><input id="buyer-email" type="email" value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} placeholder="لاستلام رابط التنزيل تلقائيًا بعد التأكيد" autoComplete="email" dir="ltr" /></div>
         {!isBundle && <div className="ppo-field"><label htmlFor="coupon-code">كود الخصم (اختياري)</label><input id="coupon-code" type="text" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="اتركه فارغًا إذا ما عندك كود" /></div>}
         {error && <div className="ppo-error">{error}</div>}
         <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>رجوع</button><button type="button" className="ppo-primary" onClick={startOrder} disabled={busy}>{busy ? "جاري التجهيز..." : "متابعة للتحويل"}</button></div>
