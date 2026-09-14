@@ -3,6 +3,7 @@ import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { useLang, LangToggle } from "./i18n.jsx";
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
 
@@ -10,9 +11,11 @@ const styles = `
   .admin-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; color:#16233F; }
   .admin-page *{ box-sizing:border-box; }
   .admin-wrap{ max-width:960px; margin:0 auto; padding:24px 20px 60px; }
-  .admin-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+  .admin-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; gap:8px; flex-wrap:wrap; }
   .admin-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:22px; }
+  .admin-header-actions{ display:flex; align-items:center; gap:8px; }
   .admin-logout{ background:transparent; border:1px solid #E4E0D3; border-radius:9px; padding:9px 16px; font-size:13px; font-weight:700; color:#16233F; cursor:pointer; }
+  .admin-lang{ background:transparent; border:1px solid #E4E0D3; border-radius:9px; padding:9px 13px; font-size:12px; font-weight:800; color:#16233F; cursor:pointer; font-family:inherit; }
 
   .admin-denied{ display:flex; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; }
   .admin-denied p{ color:#8A8677; font-size:14px; margin-top:8px; }
@@ -96,6 +99,287 @@ const styles = `
   @media (max-width:480px){.admin-wrap{padding:16px 14px 48px}.admin-header{margin-bottom:16px}.admin-tab{padding:8px 12px}.invite-panel,.invite-row{padding:14px}.invite-row-top{gap:8px}.seller-badge{flex-shrink:0}.invite-link{align-items:flex-start}.invite-copy{min-height:34px}}
 `;
 
+const ADMIN_T = {
+  ar: {
+    planTrial: "تجربة مجانية", planBasic: "أساسية", planPro: "احترافية", planFull: "متجر متكامل", planNone: "بدون باقة",
+    storeTypeBooks: "كتب رقمية", storeTypeVideos: "فيديوهات ودورات", storeTypeCodes: "أكواد وتراخيص", storeTypeFiles: "ملفات وقوالب",
+    inviteRequestError: "تعذر تنفيذ الدعوة الآن.",
+    inviteLinkCreated: "تم إنشاء الرابط. انسخه الآن وأرسله للتاجر؛ ينتهي بعد 3 أيام.",
+    inviteLinkCopied: "تم نسخ رابط الدعوة. أرسله للتاجر على واتساب.",
+    copyAutoFailed: "تعذر النسخ تلقائيًا. انسخ الرابط يدويًا.",
+    confirmRevokeInvite: (storeName) => `تبي توقف دعوة ${storeName}؟ الرابط لن يفتح بعد الآن.`,
+    confirmDeleteInvite: (storeName) => `تبي تحذف دعوة ${storeName} نهائيًا؟ هذا يحذف سجل الدعوة فقط، ولا يحذف حساب التاجر لو كان فعّلها.`,
+    couponCodeMinLength: "اكتب كود من 3 أحرف أو أرقام على الأقل.",
+    couponAmountInvalid: "اكتب مبلغ خصم صحيح أكبر من صفر.",
+    couponMaxUsesInvalid: "عدد مرات الاستخدام لازم يكون رقم صحيح أكبر من صفر، أو اتركه فاضي لاستخدام غير محدود.",
+    createCouponError: "تعذر إنشاء الكود الآن.",
+    confirmDeleteCoupon: (id) => `تبي تحذف كود "${id}" نهائيًا؟`,
+    inviteStatusAccepted: "مفعّلة", inviteStatusRevoked: "موقوفة", inviteStatusExpired: "منتهية", inviteStatusPending: "بانتظار التفعيل",
+    checkingEllipsis: "جاري التحقق...",
+    loginFirst: "سجّل دخولك أولًا",
+    loginFirstText: "ادخل بحساب مالك مُونة، وبعدها تقدر تدير دعوات التجار.",
+    login: "تسجيل الدخول",
+    wrongAccount: "دخلت بحساب غير حساب المالك",
+    wrongAccountText: "هذه الصفحة خاصة بصاحب مُونة. سجل خروج ثم ادخل بحساب المالك.",
+    logout: "تسجيل الخروج",
+    confirmDeleteOrder: (name) => `متأكد تبي تحذف طلب "${name}" نهائيًا؟ (استخدمها للطلبات التجريبية بس)`,
+    orderFallback: "طلب",
+    deleteOrderError: "تعذر حذف الطلب الآن.",
+    confirmDeleteProduct: (name) => `متأكد تبي تحذف منتج "${name}" نهائيًا؟`,
+    confirmDeleteSeller: (name) => `متأكد تبي تحذف حساب "${name}" ومنتجاته كلها نهائيًا؟ هذا الإجراء ما يترجع.`,
+    adminPanelTitle: "لوحة تحكم الأدمن",
+    totalSellers: "إجمالي التجار",
+    activeAccounts: "حسابات نشطة",
+    disabledAccounts: "حسابات موقوفة",
+    expiringWithinWeek: "اشتراكات تنتهي خلال أسبوع",
+    approxMonthlyRevenue: "الإيراد الشهري التقريبي",
+    totalOrders: "إجمالي الطلبات",
+    awaitingSellerConfirmation: "بانتظار تأكيد التاجر",
+    totalConfirmedSales: "إجمالي المبيعات المؤكدة",
+    sellersTab: "التجار",
+    allProductsTab: "كل المنتجات",
+    allOrdersTab: "كل الطلبات",
+    invitesTab: "دعوات التجار",
+    signupCouponsTab: "أكواد خصم التسجيل",
+    paymentDebugTab: "سجل تشخيص الدفع",
+    searchPlaceholder: "ابحث باسم المتجر أو الإيميل...",
+    allPlans: "كل الباقات",
+    allStatuses: "كل الحالات",
+    activeStatus: "نشط",
+    disabledStatus: "موقوف",
+    expiringSoonStatus: "اشتراك قارب ينتهي",
+    loadingSellers: "جاري تحميل التجار...",
+    loadSellersError: (msg) => `تعذر تحميل التجار: ${msg}`,
+    noMatchingSellers: "ما فيه تجار مطابقين",
+    noNameFallback: "بدون اسم",
+    disabled: "موقوف",
+    active: "نشط",
+    planLabel: "الباقة:",
+    registrationDate: "تاريخ التسجيل:",
+    subscriptionExpired: "منتهي الاشتراك",
+    emailUnverified: "البريد غير مؤكد",
+    emailVerified: "البريد مؤكد",
+    subscriptionValidUntil: "الاشتراك ساري لين:",
+    savingEllipsis: "جاري الحفظ...",
+    saveDate: "حفظ التاريخ",
+    savePlan: "حفظ الباقة",
+    hideFullDetails: "إخفاء التفاصيل الكاملة ▲",
+    showFullDetails: "عرض التفاصيل الكاملة ▼",
+    productsHeading: "المنتجات",
+    loadingProducts: "جاري تحميل المنتجات...",
+    noProductsAdded: "ما عنده أي منتج مضاف.",
+    generalCategory: "عام",
+    codeLicense: "كود/ترخيص",
+    file: "ملف",
+    deletingEllipsis: "جاري الحذف...",
+    delete: "حذف",
+    lastOrdersHeading: "آخر الطلبات",
+    noOrdersForStore: "ما فيه طلبات لهذا المتجر بعد.",
+    couponsHeading: "الكوبونات",
+    loadingCoupons: "جاري تحميل الكوبونات...",
+    noCoupons: "ما عنده أي كوبون.",
+    discountLabel: (percent) => `خصم ${percent}٪`,
+    couponActive: "فعّال",
+    couponStopped: "متوقف",
+    manualTransferInstructionsHeading: "تعليمات التحويل اليدوي",
+    noTransferInstructions: "لم يضف التاجر تعليمات تحويل بعد.",
+    bankLabel: "البنك:",
+    accountHolderLabel: "صاحب الحساب:",
+    accountNumberLabel: "رقم الحساب:",
+    phoneNumberLabel: "رقم الجوال:",
+    reactivateAccount: "إعادة تفعيل الحساب",
+    disableAccount: "إيقاف الحساب",
+    deletePermanently: "حذف نهائي",
+    loadingAllProducts: "جاري تحميل كل المنتجات...",
+    noProductsOnPlatform: "ما فيه منتجات بالمنصة لسا",
+    sellerLabel: "التاجر:",
+    suspended: "معلّق",
+    cancelSuspension: "إلغاء التعليق",
+    suspendTemporarily: "تعليق مؤقت",
+    confirmed: "مؤكد",
+    draftAwaitingTransfer: "بانتظار التحويل",
+    loadingOrders: "جاري تحميل الطلبات...",
+    noMatchingOrders: "ما فيه طلبات مطابقة",
+    unknownDeleted: "غير معروف (محذوف)",
+    newInviteTitle: "دعوة تاجر جديد",
+    newInviteSub: "اختر نوع متجره ثم أرسل له الرابط. التاجر يسجّل ببريده وكلمة مروره بنفسه ويؤكد بريده بنفسه، والرابط يستخدم مرة واحدة.",
+    copyLink: "نسخ الرابط",
+    storeNameLabel: "اسم المتجر",
+    storeNamePlaceholder: "مثال: متجر هند للتصاميم",
+    whatDoesItSell: "ماذا يبيع؟",
+    creatingLinkEllipsis: "جاري إنشاء الرابط...",
+    createInviteLink: "إنشاء رابط دعوة",
+    loadingInvites: "جاري تحميل الدعوات...",
+    noInvitesYet: "ما فيه دعوات حتى الآن.",
+    notRegisteredYet: "لم يسجّل بعد",
+    genericProducts: "منتجات رقمية",
+    expiresLabel: (date) => `تنتهي ${date}`,
+    stoppingEllipsis: "جاري الإيقاف...",
+    stopInvite: "إيقاف الدعوة",
+    deleteInvitePermanently: "حذف الدعوة نهائيًا",
+    newSignupCouponTitle: "كود خصم جديد لاشتراك التسجيل",
+    newSignupCouponSub: (price) => `التاجر يكتب هذا الكود بصفحة الدفع عند فتح متجره، فينزل عليه مبلغ الخصم من الاشتراك الأساسي (${price} ر.ع).`,
+    codeLabel: "الكود",
+    codePlaceholder: "مثال: WELCOME3",
+    discountAmountLabel: "مبلغ الخصم (ر.ع)",
+    maxUsesLabel: "أقصى عدد مرات استخدام (اختياري)",
+    unlimitedUsesPlaceholder: "اتركه فاضي لاستخدام غير محدود",
+    creatingEllipsis: "جاري الإنشاء...",
+    createCode: "إنشاء الكود",
+    loadingCodes: "جاري تحميل الأكواد...",
+    noSignupCouponsYet: "ما فيه أكواد خصم حتى الآن.",
+    couponActiveBadge: "مفعّل",
+    usedCount: (count, maxPart) => `استُخدم ${count} ${maxPart}`,
+    ofMax: (max) => `من ${max}`,
+    timesNoLimit: "مرة (بدون حد أقصى)",
+    stopCode: "إيقاف الكود",
+    activateCode: "تفعيل الكود",
+    paymentDebugIntro: "كل مرة ما نقدر نتأكد إن دفعة عند OmPay نجحت، نسجل الرد الخام هنا — يفيد بمعرفة السبب بالضبط بدل التخمين.",
+    loadingLog: "جاري تحميل السجل...",
+    noUnrecognizedPayments: "ما فيه أي حالة دفع لم نتعرف عليها حتى الآن.",
+    unknown: "غير معروف",
+  },
+  en: {
+    planTrial: "Free trial", planBasic: "Basic", planPro: "Pro", planFull: "Full store", planNone: "No plan",
+    storeTypeBooks: "Digital books", storeTypeVideos: "Videos & courses", storeTypeCodes: "Codes & licenses", storeTypeFiles: "Files & templates",
+    inviteRequestError: "Couldn't complete the invite request right now.",
+    inviteLinkCreated: "The link was created. Copy it now and send it to the seller; it expires after 3 days.",
+    inviteLinkCopied: "Invite link copied. Send it to the seller on WhatsApp.",
+    copyAutoFailed: "Couldn't copy automatically. Copy the link manually.",
+    confirmRevokeInvite: (storeName) => `Stop the invite for ${storeName}? The link will no longer open.`,
+    confirmDeleteInvite: (storeName) => `Delete the invite for ${storeName} permanently? This only deletes the invite record, not the seller's account if they already activated it.`,
+    couponCodeMinLength: "Write a code of at least 3 letters or digits.",
+    couponAmountInvalid: "Write a valid discount amount greater than zero.",
+    couponMaxUsesInvalid: "The max uses must be a whole number greater than zero, or leave it empty for unlimited use.",
+    createCouponError: "Couldn't create the code right now.",
+    confirmDeleteCoupon: (id) => `Delete code "${id}" permanently?`,
+    inviteStatusAccepted: "Activated", inviteStatusRevoked: "Stopped", inviteStatusExpired: "Expired", inviteStatusPending: "Awaiting activation",
+    checkingEllipsis: "Checking...",
+    loginFirst: "Log in first",
+    loginFirstText: "Log in with Monah's owner account, then you can manage seller invites.",
+    login: "Log in",
+    wrongAccount: "You're logged in with a different account than the owner's",
+    wrongAccountText: "This page is private to Monah's owner. Log out then log in with the owner account.",
+    logout: "Log out",
+    confirmDeleteOrder: (name) => `Delete order "${name}" permanently? (Use this for test orders only)`,
+    orderFallback: "order",
+    deleteOrderError: "Couldn't delete the order right now.",
+    confirmDeleteProduct: (name) => `Delete product "${name}" permanently?`,
+    confirmDeleteSeller: (name) => `Delete the account "${name}" and all its products permanently? This action cannot be undone.`,
+    adminPanelTitle: "Admin panel",
+    totalSellers: "Total sellers",
+    activeAccounts: "Active accounts",
+    disabledAccounts: "Disabled accounts",
+    expiringWithinWeek: "Subscriptions ending within a week",
+    approxMonthlyRevenue: "Approx. monthly revenue",
+    totalOrders: "Total orders",
+    awaitingSellerConfirmation: "Awaiting seller confirmation",
+    totalConfirmedSales: "Total confirmed sales",
+    sellersTab: "Sellers",
+    allProductsTab: "All products",
+    allOrdersTab: "All orders",
+    invitesTab: "Seller invites",
+    signupCouponsTab: "Signup discount codes",
+    paymentDebugTab: "Payment debug log",
+    searchPlaceholder: "Search by store name or email...",
+    allPlans: "All plans",
+    allStatuses: "All statuses",
+    activeStatus: "Active",
+    disabledStatus: "Disabled",
+    expiringSoonStatus: "Subscription ending soon",
+    loadingSellers: "Loading sellers...",
+    loadSellersError: (msg) => `Couldn't load sellers: ${msg}`,
+    noMatchingSellers: "No matching sellers",
+    noNameFallback: "No name",
+    disabled: "Disabled",
+    active: "Active",
+    planLabel: "Plan:",
+    registrationDate: "Registration date:",
+    subscriptionExpired: "Subscription expired",
+    emailUnverified: "Email not verified",
+    emailVerified: "Email verified",
+    subscriptionValidUntil: "Subscription valid until:",
+    savingEllipsis: "Saving...",
+    saveDate: "Save date",
+    savePlan: "Save plan",
+    hideFullDetails: "Hide full details ▲",
+    showFullDetails: "Show full details ▼",
+    productsHeading: "Products",
+    loadingProducts: "Loading products...",
+    noProductsAdded: "No products added yet.",
+    generalCategory: "General",
+    codeLicense: "Code/license",
+    file: "File",
+    deletingEllipsis: "Deleting...",
+    delete: "Delete",
+    lastOrdersHeading: "Latest orders",
+    noOrdersForStore: "No orders for this store yet.",
+    couponsHeading: "Coupons",
+    loadingCoupons: "Loading coupons...",
+    noCoupons: "No coupons.",
+    discountLabel: (percent) => `${percent}% off`,
+    couponActive: "Active",
+    couponStopped: "Stopped",
+    manualTransferInstructionsHeading: "Manual transfer instructions",
+    noTransferInstructions: "The seller hasn't added transfer instructions yet.",
+    bankLabel: "Bank:",
+    accountHolderLabel: "Account holder:",
+    accountNumberLabel: "Account number:",
+    phoneNumberLabel: "Phone number:",
+    reactivateAccount: "Reactivate account",
+    disableAccount: "Disable account",
+    deletePermanently: "Delete permanently",
+    loadingAllProducts: "Loading all products...",
+    noProductsOnPlatform: "No products on the platform yet",
+    sellerLabel: "Seller:",
+    suspended: "Suspended",
+    cancelSuspension: "Cancel suspension",
+    suspendTemporarily: "Suspend temporarily",
+    confirmed: "Confirmed",
+    draftAwaitingTransfer: "Awaiting transfer",
+    loadingOrders: "Loading orders...",
+    noMatchingOrders: "No matching orders",
+    unknownDeleted: "Unknown (deleted)",
+    newInviteTitle: "Invite a new seller",
+    newInviteSub: "Choose what they sell, then send them the link. The seller registers with their own email and password and confirms their own email; the link is single-use.",
+    copyLink: "Copy link",
+    storeNameLabel: "Store name",
+    storeNamePlaceholder: "e.g. Hind's Design Store",
+    whatDoesItSell: "What do they sell?",
+    creatingLinkEllipsis: "Creating link...",
+    createInviteLink: "Create invite link",
+    loadingInvites: "Loading invites...",
+    noInvitesYet: "No invites yet.",
+    notRegisteredYet: "Not registered yet",
+    genericProducts: "Digital products",
+    expiresLabel: (date) => `Expires ${date}`,
+    stoppingEllipsis: "Stopping...",
+    stopInvite: "Stop invite",
+    deleteInvitePermanently: "Delete invite permanently",
+    newSignupCouponTitle: "New signup subscription discount code",
+    newSignupCouponSub: (price) => `The seller types this code on the payment page when opening their store, and the discount amount is deducted from the base subscription (${price} OMR).`,
+    codeLabel: "Code",
+    codePlaceholder: "e.g. WELCOME3",
+    discountAmountLabel: "Discount amount (OMR)",
+    maxUsesLabel: "Max uses (optional)",
+    unlimitedUsesPlaceholder: "Leave empty for unlimited use",
+    creatingEllipsis: "Creating...",
+    createCode: "Create code",
+    loadingCodes: "Loading codes...",
+    noSignupCouponsYet: "No discount codes yet.",
+    couponActiveBadge: "Active",
+    usedCount: (count, maxPart) => `Used ${count} ${maxPart}`,
+    ofMax: (max) => `of ${max}`,
+    timesNoLimit: "times (no limit)",
+    stopCode: "Stop code",
+    activateCode: "Activate code",
+    paymentDebugIntro: "Whenever we can't confirm a payment succeeded at OmPay, we log the raw response here — useful for knowing the exact reason instead of guessing.",
+    loadingLog: "Loading log...",
+    noUnrecognizedPayments: "No unrecognized payment cases yet.",
+    unknown: "Unknown",
+  },
+};
+
 function toMillis(value) {
   if (!value) return 0;
   if (typeof value.toMillis === "function") return value.toMillis();
@@ -103,22 +387,33 @@ function toMillis(value) {
   return Number.isFinite(t) ? t : 0;
 }
 
-function planLabel(plan) {
-  if (plan === "trial") return "تجربة مجانية";
-  if (plan === "basic") return "أساسية";
-  if (plan === "pro") return "احترافية";
-  if (plan === "full") return "متجر متكامل";
-  return "بدون باقة";
-}
-
-const STORE_TYPES = {
-  books: "كتب رقمية",
-  videos: "فيديوهات ودورات",
-  codes: "أكواد وتراخيص",
-  files: "ملفات وقوالب",
-};
-
 export default function AdminDashboard() {
+  const [lang, setLang] = useLang();
+  const t = ADMIN_T[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
+  const dateLocale = lang === "ar" ? "ar" : "en-GB";
+
+  function planLabel(plan) {
+    if (plan === "trial") return t.planTrial;
+    if (plan === "basic") return t.planBasic;
+    if (plan === "pro") return t.planPro;
+    if (plan === "full") return t.planFull;
+    return t.planNone;
+  }
+
+  const STORE_TYPES = {
+    books: t.storeTypeBooks,
+    videos: t.storeTypeVideos,
+    codes: t.storeTypeCodes,
+    files: t.storeTypeFiles,
+  };
+
+  const orderStatusLabel = {
+    confirmed: t.confirmed,
+    awaiting_seller_confirmation: t.awaitingSellerConfirmation,
+    draft: t.draftAwaitingTransfer,
+  };
+
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [sellers, setSellers] = useState([]);
@@ -190,6 +485,7 @@ export default function AdminDashboard() {
     loadInvites();
     loadSellerStatus();
     loadOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authChecked, currentUser]);
 
   async function loadOrders() {
@@ -235,7 +531,7 @@ export default function AdminDashboard() {
       body: JSON.stringify({ action, ...payload }),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "تعذر تنفيذ الدعوة الآن.");
+    if (!response.ok) throw new Error(data.error || t.inviteRequestError);
     return data;
   }
 
@@ -260,7 +556,7 @@ export default function AdminDashboard() {
       const data = await inviteRequest("create", { storeName: inviteStoreName, storeType: inviteStoreType });
       const link = `${window.location.origin}${window.location.pathname}#invite/${data.token}`;
       setLatestInviteUrl(link);
-      setInviteSuccess("تم إنشاء الرابط. انسخه الآن وأرسله للتاجر؛ ينتهي بعد 3 أيام.");
+      setInviteSuccess(t.inviteLinkCreated);
       setInviteStoreName("");
       setInviteStoreType("files");
       loadInvites();
@@ -274,14 +570,14 @@ export default function AdminDashboard() {
     if (!latestInviteUrl) return;
     try {
       await navigator.clipboard.writeText(latestInviteUrl);
-      setInviteSuccess("تم نسخ رابط الدعوة. أرسله للتاجر على واتساب.");
+      setInviteSuccess(t.inviteLinkCopied);
     } catch {
-      setInviteError("تعذر النسخ تلقائيًا. انسخ الرابط يدويًا.");
+      setInviteError(t.copyAutoFailed);
     }
   }
 
   async function revokeInvite(invite) {
-    if (!window.confirm(`تبي توقف دعوة ${invite.storeName}؟ الرابط لن يفتح بعد الآن.`)) return;
+    if (!window.confirm(t.confirmRevokeInvite(invite.storeName))) return;
     setRevokingInviteId(invite.id);
     try {
       await inviteRequest("revoke", { inviteId: invite.id });
@@ -293,7 +589,7 @@ export default function AdminDashboard() {
   }
 
   async function deleteInvite(invite) {
-    if (!window.confirm(`تبي تحذف دعوة ${invite.storeName} نهائيًا؟ هذا يحذف سجل الدعوة فقط، ولا يحذف حساب التاجر لو كان فعّلها.`)) return;
+    if (!window.confirm(t.confirmDeleteInvite(invite.storeName))) return;
     setDeletingInviteId(invite.id);
     try {
       await inviteRequest("delete", { inviteId: invite.id });
@@ -336,9 +632,9 @@ export default function AdminDashboard() {
     const code = newCouponCode.trim().toUpperCase().replace(/\s+/g, "");
     const discountAmount = Number(newCouponDiscount);
     const maxUses = newCouponMaxUses.trim() === "" ? null : Number(newCouponMaxUses);
-    if (!code || code.length < 3) return setCouponError("اكتب كود من 3 أحرف أو أرقام على الأقل.");
-    if (!Number.isFinite(discountAmount) || discountAmount <= 0) return setCouponError("اكتب مبلغ خصم صحيح أكبر من صفر.");
-    if (newCouponMaxUses.trim() !== "" && (!Number.isInteger(maxUses) || maxUses <= 0)) return setCouponError("عدد مرات الاستخدام لازم يكون رقم صحيح أكبر من صفر، أو اتركه فاضي لاستخدام غير محدود.");
+    if (!code || code.length < 3) return setCouponError(t.couponCodeMinLength);
+    if (!Number.isFinite(discountAmount) || discountAmount <= 0) return setCouponError(t.couponAmountInvalid);
+    if (newCouponMaxUses.trim() !== "" && (!Number.isInteger(maxUses) || maxUses <= 0)) return setCouponError(t.couponMaxUsesInvalid);
     setCouponCreating(true);
     try {
       await setDoc(doc(db, "signupCoupons", code), {
@@ -354,7 +650,7 @@ export default function AdminDashboard() {
       setNewCouponMaxUses("");
       loadSignupCoupons();
     } catch (error) {
-      setCouponError(error.message || "تعذر إنشاء الكود الآن.");
+      setCouponError(error.message || t.createCouponError);
     }
     setCouponCreating(false);
   }
@@ -371,7 +667,7 @@ export default function AdminDashboard() {
   }
 
   async function deleteSignupCoupon(coupon) {
-    if (!window.confirm(`تبي تحذف كود "${coupon.id}" نهائيًا؟`)) return;
+    if (!window.confirm(t.confirmDeleteCoupon(coupon.id))) return;
     setCouponBusyCode(coupon.id);
     try {
       await deleteDoc(doc(db, "signupCoupons", coupon.id));
@@ -383,10 +679,10 @@ export default function AdminDashboard() {
   }
 
   function inviteStatusLabel(status) {
-    if (status === "accepted") return "مفعّلة";
-    if (status === "revoked") return "موقوفة";
-    if (status === "expired") return "منتهية";
-    return "بانتظار التفعيل";
+    if (status === "accepted") return t.inviteStatusAccepted;
+    if (status === "revoked") return t.inviteStatusRevoked;
+    if (status === "expired") return t.inviteStatusExpired;
+    return t.inviteStatusPending;
   }
 
   function expiryDraftFor(seller) {
@@ -425,9 +721,7 @@ export default function AdminDashboard() {
   }
 
   async function deleteSeller(seller) {
-    const ok = window.confirm(
-      `متأكد تبي تحذف حساب "${seller.storeName || seller.email}" ومنتجاته كلها نهائيًا؟ هذا الإجراء ما يترجع.`
-    );
+    const ok = window.confirm(t.confirmDeleteSeller(seller.storeName || seller.email));
     if (!ok) return;
     setBusyId(seller.id);
     try {
@@ -503,7 +797,7 @@ export default function AdminDashboard() {
   }
 
   async function deleteOrder(order) {
-    const ok = window.confirm(`متأكد تبي تحذف طلب "${order.productName || "طلب"}" نهائيًا؟ (استخدمها للطلبات التجريبية بس)`);
+    const ok = window.confirm(t.confirmDeleteOrder(order.productName || t.orderFallback));
     if (!ok) return;
     setDeletingOrderId(order.id);
     try {
@@ -514,17 +808,17 @@ export default function AdminDashboard() {
         body: JSON.stringify({ action: "admin_delete_order", orderId: order.id }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "تعذر حذف الطلب الآن.");
+      if (!response.ok) throw new Error(data.error || t.deleteOrderError);
       setOrders((prev) => prev.filter((o) => o.id !== order.id));
     } catch (e) {
       console.error(e);
-      window.alert(e.message || "تعذر حذف الطلب الآن.");
+      window.alert(e.message || t.deleteOrderError);
     }
     setDeletingOrderId(null);
   }
 
   async function deleteProduct(sellerId, product) {
-    const ok = window.confirm(`متأكد تبي تحذف منتج "${product.name}" نهائيًا؟`);
+    const ok = window.confirm(t.confirmDeleteProduct(product.name));
     if (!ok) return;
     setDeletingProductId(product.id);
     try {
@@ -572,7 +866,7 @@ export default function AdminDashboard() {
   }
 
   async function deleteAnyProduct(product) {
-    const ok = window.confirm(`متأكد تبي تحذف منتج "${product.name}" نهائيًا؟`);
+    const ok = window.confirm(t.confirmDeleteProduct(product.name));
     if (!ok) return;
     setBusyProductId(product.id);
     try {
@@ -588,21 +882,21 @@ export default function AdminDashboard() {
     return (
       <div className="admin-page">
         <style>{styles}</style>
-        <div className="admin-denied">جاري التحقق...</div>
+        <div className="admin-denied">{t.checkingEllipsis}</div>
       </div>
     );
   }
 
   if (!currentUser) {
     return (
-      <div className="admin-page" dir="rtl" lang="ar">
+      <div className="admin-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
         <style>{styles}</style>
         <div className="admin-denied">
           <div>
             <div style={{ fontSize: 40, marginBottom: 10 }}>🔒</div>
-            <b>سجّل دخولك أولًا</b>
-            <p>ادخل بحساب مالك مُونة، وبعدها تقدر تدير دعوات التجار.</p>
-            <a className="admin-logout" href="#login">تسجيل الدخول</a>
+            <b>{t.loginFirst}</b>
+            <p>{t.loginFirstText}</p>
+            <a className="admin-logout" href="#login">{t.login}</a>
           </div>
         </div>
       </div>
@@ -611,14 +905,14 @@ export default function AdminDashboard() {
 
   if (currentUser.email !== ADMIN_EMAIL) {
     return (
-      <div className="admin-page" dir="rtl" lang="ar">
+      <div className="admin-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
         <style>{styles}</style>
         <div className="admin-denied">
           <div>
             <div style={{ fontSize: 40, marginBottom: 10 }}>🔒</div>
-            <b>دخلت بحساب غير حساب المالك</b>
-            <p>هذه الصفحة خاصة بصاحب مُونة. سجل خروج ثم ادخل بحساب المالك.</p>
-            <button className="admin-logout" onClick={() => signOut(auth)}>تسجيل الخروج</button>
+            <b>{t.wrongAccount}</b>
+            <p>{t.wrongAccountText}</p>
+            <button className="admin-logout" onClick={() => signOut(auth)}>{t.logout}</button>
           </div>
         </div>
       </div>
@@ -653,86 +947,83 @@ export default function AdminDashboard() {
   const pendingOrders = orders.filter((o) => o.status === "awaiting_seller_confirmation");
   const totalSalesVolume = confirmedOrders.reduce((sum, o) => sum + Number(o.price || 0), 0);
 
-  const orderStatusLabel = {
-    confirmed: "مؤكد",
-    awaiting_seller_confirmation: "بانتظار تأكيد التاجر",
-    draft: "بانتظار التحويل",
-  };
-
   return (
-    <div className="admin-page" dir="rtl" lang="ar">
+    <div className="admin-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <style>{styles}</style>
       <div className="admin-wrap">
         <div className="admin-header">
-          <div className="admin-title">لوحة تحكم الأدمن</div>
-          <button className="admin-logout" onClick={() => signOut(auth)}>
-            تسجيل الخروج
-          </button>
+          <div className="admin-title">{t.adminPanelTitle}</div>
+          <div className="admin-header-actions">
+            <LangToggle lang={lang} onChange={setLang} className="admin-lang" />
+            <button className="admin-logout" onClick={() => signOut(auth)}>
+              {t.logout}
+            </button>
+          </div>
         </div>
 
         <div className="admin-stats">
           <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("all"); }}>
             <b>{sellers.length}</b>
-            <span>إجمالي التجار</span>
+            <span>{t.totalSellers}</span>
           </button>
           <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}>
             <b>{activeCount}</b>
-            <span>حسابات نشطة</span>
+            <span>{t.activeAccounts}</span>
           </button>
           <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("disabled"); }}>
             <b>{disabledCount}</b>
-            <span>حسابات موقوفة</span>
+            <span>{t.disabledAccounts}</span>
           </button>
           <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("expiring"); }}>
             <b>{expiringSoonCount}</b>
-            <span>اشتراكات تنتهي خلال أسبوع</span>
+            <span>{t.expiringWithinWeek}</span>
           </button>
         </div>
 
         <div className="admin-stats">
           <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}>
-            <b>{monthlyRevenue.toFixed(2)} ر.ع</b>
-            <span>الإيراد الشهري التقريبي</span>
+            <b>{monthlyRevenue.toFixed(2)} {curr}</b>
+            <span>{t.approxMonthlyRevenue}</span>
           </button>
           <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("all"); }}>
             <b>{ordersLoading ? "…" : orders.length}</b>
-            <span>إجمالي الطلبات</span>
+            <span>{t.totalOrders}</span>
           </button>
           <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("awaiting_seller_confirmation"); }}>
             <b>{ordersLoading ? "…" : pendingOrders.length}</b>
-            <span>بانتظار تأكيد التاجر</span>
+            <span>{t.awaitingSellerConfirmation}</span>
           </button>
           <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("confirmed"); }}>
-            <b>{ordersLoading ? "…" : totalSalesVolume.toFixed(2)} ر.ع</b>
-            <span>إجمالي المبيعات المؤكدة</span>
+            <b>{ordersLoading ? "…" : totalSalesVolume.toFixed(2)} {curr}</b>
+            <span>{t.totalConfirmedSales}</span>
           </button>
         </div>
 
         <div className="admin-tabs">
           <button className={"admin-tab" + (view === "sellers" ? " active" : "")} onClick={() => setView("sellers")}>
-            التجار
+            {t.sellersTab}
           </button>
           <button className={"admin-tab" + (view === "products" ? " active" : "")} onClick={openProductsView}>
-            كل المنتجات
+            {t.allProductsTab}
           </button>
           <button className={"admin-tab" + (view === "orders" ? " active" : "")} onClick={() => setView("orders")}>
-            كل الطلبات
+            {t.allOrdersTab}
           </button>
           <button className={"admin-tab" + (view === "invites" ? " active" : "")} onClick={() => { setView("invites"); loadInvites(); }}>
-            دعوات التجار
+            {t.invitesTab}
           </button>
           <button className={"admin-tab" + (view === "coupons" ? " active" : "")} onClick={() => { setView("coupons"); loadSignupCoupons(); }}>
-            أكواد خصم التسجيل
+            {t.signupCouponsTab}
           </button>
           <button className={"admin-tab" + (view === "paymentDebug" ? " active" : "")} onClick={() => { setView("paymentDebug"); loadPaymentDebugLogs(); }}>
-            سجل تشخيص الدفع
+            {t.paymentDebugTab}
           </button>
         </div>
 
         {view === "sellers" && (
         <input
           className="admin-search"
-          placeholder="ابحث باسم المتجر أو الإيميل..."
+          placeholder={t.searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -741,29 +1032,29 @@ export default function AdminDashboard() {
         {view === "sellers" && (
         <div className="admin-filters">
           <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}>
-            <option value="all">كل الباقات</option>
-            <option value="trial">تجربة مجانية</option>
-            <option value="basic">أساسية</option>
-            <option value="pro">احترافية</option>
-            <option value="full">متجر متكامل</option>
+            <option value="all">{t.allPlans}</option>
+            <option value="trial">{t.planTrial}</option>
+            <option value="basic">{t.planBasic}</option>
+            <option value="pro">{t.planPro}</option>
+            <option value="full">{t.planFull}</option>
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">كل الحالات</option>
-            <option value="active">نشط</option>
-            <option value="disabled">موقوف</option>
-            <option value="expiring">اشتراك قارب ينتهي</option>
+            <option value="all">{t.allStatuses}</option>
+            <option value="active">{t.activeStatus}</option>
+            <option value="disabled">{t.disabledStatus}</option>
+            <option value="expiring">{t.expiringSoonStatus}</option>
           </select>
         </div>
         )}
 
-        {view === "sellers" && loading && <div className="loading">جاري تحميل التجار...</div>}
+        {view === "sellers" && loading && <div className="loading">{t.loadingSellers}</div>}
 
         {view === "sellers" && sellersError && (
-          <div className="empty" style={{ color: "#B24C3A" }}>تعذر تحميل التجار: {sellersError}</div>
+          <div className="empty" style={{ color: "#B24C3A" }}>{t.loadSellersError(sellersError)}</div>
         )}
 
         {view === "sellers" && !loading && !sellersError && filtered.length === 0 && (
-          <div className="empty">ما فيه تجار مطابقين</div>
+          <div className="empty">{t.noMatchingSellers}</div>
         )}
 
         {view === "sellers" && !loading &&
@@ -771,34 +1062,34 @@ export default function AdminDashboard() {
             <div className="seller-card" key={s.id}>
               <div className="seller-top" onClick={() => toggleExpand(s.id)}>
                 <div>
-                  <div className="seller-name">{s.storeName || "بدون اسم"}</div>
+                  <div className="seller-name">{s.storeName || t.noNameFallback}</div>
                   <div className="seller-email">{s.email}</div>
                 </div>
                 <span className={"seller-badge " + (s.disabled ? "badge-disabled" : "badge-active")}>
-                  {s.disabled ? "موقوف" : "نشط"}
+                  {s.disabled ? t.disabled : t.active}
                 </span>
               </div>
 
               <div className="seller-meta">
                 <span className="seller-meta-item">
-                  الباقة: <b><span className="seller-badge badge-plan">{planLabel(s.plan)}</span></b>
+                  {t.planLabel} <b><span className="seller-badge badge-plan">{planLabel(s.plan)}</span></b>
                 </span>
                 <span className="seller-meta-item">
-                  تاريخ التسجيل: <b>{s.createdAt ? new Date(toMillis(s.createdAt)).toLocaleDateString("ar") : "—"}</b>
+                  {t.registrationDate} <b>{s.createdAt ? new Date(toMillis(s.createdAt)).toLocaleDateString(dateLocale) : "—"}</b>
                 </span>
                 {isSubscriptionExpired(s) && (
-                  <span className="seller-badge badge-expired">منتهي الاشتراك</span>
+                  <span className="seller-badge badge-expired">{t.subscriptionExpired}</span>
                 )}
                 {emailVerifiedMap[s.id] === false && (
-                  <span className="seller-badge badge-expired">البريد غير مؤكد</span>
+                  <span className="seller-badge badge-expired">{t.emailUnverified}</span>
                 )}
                 {emailVerifiedMap[s.id] === true && (
-                  <span className="seller-badge badge-active">البريد مؤكد</span>
+                  <span className="seller-badge badge-active">{t.emailVerified}</span>
                 )}
               </div>
 
               <div className="expiry-row">
-                <label htmlFor={`expiry-${s.id}`}>الاشتراك ساري لين:</label>
+                <label htmlFor={`expiry-${s.id}`}>{t.subscriptionValidUntil}</label>
                 <input
                   id={`expiry-${s.id}`}
                   type="date"
@@ -812,37 +1103,37 @@ export default function AdminDashboard() {
                   disabled={savingExpiryId === s.id}
                   onClick={() => saveSubscriptionExpiry(s)}
                 >
-                  {savingExpiryId === s.id ? "جاري الحفظ..." : "حفظ التاريخ"}
+                  {savingExpiryId === s.id ? t.savingEllipsis : t.saveDate}
                 </button>
               </div>
 
               <div className="plan-row">
-                <label htmlFor={`plan-${s.id}`}>الباقة:</label>
+                <label htmlFor={`plan-${s.id}`}>{t.planLabel}</label>
                 <select
                   id={`plan-${s.id}`}
                   value={planDraftFor(s)}
                   onChange={(e) => setPlanDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
                 >
-                  <option value="basic">أساسية</option>
+                  <option value="basic">{t.planBasic}</option>
                 </select>
                 <button type="button" disabled={savingPlanId === s.id} onClick={() => savePlan(s)}>
-                  {savingPlanId === s.id ? "جاري الحفظ..." : "حفظ الباقة"}
+                  {savingPlanId === s.id ? t.savingEllipsis : t.savePlan}
                 </button>
               </div>
 
               <div className="seller-expand-hint" onClick={() => toggleExpand(s.id)}>
-                {expandedId === s.id ? "إخفاء التفاصيل الكاملة ▲" : "عرض التفاصيل الكاملة ▼"}
+                {expandedId === s.id ? t.hideFullDetails : t.showFullDetails}
               </div>
 
               {expandedId === s.id && (
                 <>
                   <div className="products-box">
-                    <div className="detail-heading">المنتجات</div>
+                    <div className="detail-heading">{t.productsHeading}</div>
                     {productsLoading && !sellerProducts[s.id] && (
-                      <div className="products-loading">جاري تحميل المنتجات...</div>
+                      <div className="products-loading">{t.loadingProducts}</div>
                     )}
                     {sellerProducts[s.id] && sellerProducts[s.id].length === 0 && (
-                      <div className="products-empty">ما عنده أي منتج مضاف.</div>
+                      <div className="products-empty">{t.noProductsAdded}</div>
                     )}
                     {sellerProducts[s.id] &&
                       sellerProducts[s.id].map((p) => (
@@ -850,7 +1141,7 @@ export default function AdminDashboard() {
                           <div className="product-info">
                             <div className="product-name">{p.name}</div>
                             <div className="product-sub">
-                              {p.price} ر.ع · {p.category || "عام"} · {p.type === "code" ? "كود/ترخيص" : "ملف"}
+                              {p.price} {curr} · {p.category || t.generalCategory} · {p.type === "code" ? t.codeLicense : t.file}
                             </div>
                           </div>
                           <button
@@ -858,32 +1149,32 @@ export default function AdminDashboard() {
                             disabled={deletingProductId === p.id}
                             onClick={() => deleteProduct(s.id, p)}
                           >
-                            {deletingProductId === p.id ? "جاري الحذف..." : "حذف"}
+                            {deletingProductId === p.id ? t.deletingEllipsis : t.delete}
                           </button>
                         </div>
                       ))}
                   </div>
 
                   <div className="detail-section">
-                    <div className="detail-heading">آخر الطلبات</div>
+                    <div className="detail-heading">{t.lastOrdersHeading}</div>
                     {orders.filter((o) => o.ownerId === s.id).length === 0 && (
-                      <div className="detail-empty">ما فيه طلبات لهذا المتجر بعد.</div>
+                      <div className="detail-empty">{t.noOrdersForStore}</div>
                     )}
                     {orders
                       .filter((o) => o.ownerId === s.id)
                       .slice(0, 15)
                       .map((o) => (
                         <div className="detail-row" key={o.id}>
-                          <span>{o.productName || "طلب"}</span>
+                          <span>{o.productName || t.orderFallback}</span>
                           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {Number(o.price || 0).toFixed(2)} ر.ع · {orderStatusLabel[o.status] || o.status}
+                            {Number(o.price || 0).toFixed(2)} {curr} · {orderStatusLabel[o.status] || o.status}
                             <button
                               type="button"
                               className="product-del"
                               disabled={deletingOrderId === o.id}
                               onClick={() => deleteOrder(o)}
                             >
-                              {deletingOrderId === o.id ? "جاري الحذف..." : "حذف"}
+                              {deletingOrderId === o.id ? t.deletingEllipsis : t.delete}
                             </button>
                           </span>
                         </div>
@@ -891,33 +1182,33 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="detail-section">
-                    <div className="detail-heading">الكوبونات</div>
+                    <div className="detail-heading">{t.couponsHeading}</div>
                     {couponsLoading && !sellerCoupons[s.id] && (
-                      <div className="detail-empty">جاري تحميل الكوبونات...</div>
+                      <div className="detail-empty">{t.loadingCoupons}</div>
                     )}
                     {sellerCoupons[s.id] && sellerCoupons[s.id].length === 0 && (
-                      <div className="detail-empty">ما عنده أي كوبون.</div>
+                      <div className="detail-empty">{t.noCoupons}</div>
                     )}
                     {sellerCoupons[s.id] &&
                       sellerCoupons[s.id].map((c) => (
                         <div className="detail-row" key={c.id}>
                           <span>{c.code}</span>
-                          <span>خصم {c.discountPercent}٪ · {c.active ? "فعّال" : "متوقف"}</span>
+                          <span>{t.discountLabel(c.discountPercent)} · {c.active ? t.couponActive : t.couponStopped}</span>
                         </div>
                       ))}
                   </div>
 
                   <div className="detail-section">
-                    <div className="detail-heading">تعليمات التحويل اليدوي</div>
+                    <div className="detail-heading">{t.manualTransferInstructionsHeading}</div>
                     <div className="detail-empty" style={{ whiteSpace: "pre-line" }}>
-                      {s.paymentInstructions || "لم يضف التاجر تعليمات تحويل بعد."}
+                      {s.paymentInstructions || t.noTransferInstructions}
                     </div>
                     {(s.paymentBankName || s.paymentAccountHolder || s.paymentAccountNumber || s.paymentPhoneNumber) && (
                       <div className="detail-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                        {s.paymentBankName && <span>البنك: {s.paymentBankName}</span>}
-                        {s.paymentAccountHolder && <span>صاحب الحساب: {s.paymentAccountHolder}</span>}
-                        {s.paymentAccountNumber && <span style={{ direction: "ltr" }}>رقم الحساب: {s.paymentAccountNumber}</span>}
-                        {s.paymentPhoneNumber && <span style={{ direction: "ltr" }}>رقم الجوال: {s.paymentPhoneNumber}</span>}
+                        {s.paymentBankName && <span>{t.bankLabel} {s.paymentBankName}</span>}
+                        {s.paymentAccountHolder && <span>{t.accountHolderLabel} {s.paymentAccountHolder}</span>}
+                        {s.paymentAccountNumber && <span style={{ direction: "ltr" }}>{t.accountNumberLabel} {s.paymentAccountNumber}</span>}
+                        {s.paymentPhoneNumber && <span style={{ direction: "ltr" }}>{t.phoneNumberLabel} {s.paymentPhoneNumber}</span>}
                       </div>
                     )}
                   </div>
@@ -930,14 +1221,14 @@ export default function AdminDashboard() {
                   disabled={busyId === s.id}
                   onClick={() => toggleDisabled(s)}
                 >
-                  {s.disabled ? "إعادة تفعيل الحساب" : "إيقاف الحساب"}
+                  {s.disabled ? t.reactivateAccount : t.disableAccount}
                 </button>
                 <button
                   className="seller-btn danger"
                   disabled={busyId === s.id}
                   onClick={() => deleteSeller(s)}
                 >
-                  حذف نهائي
+                  {t.deletePermanently}
                 </button>
               </div>
             </div>
@@ -945,9 +1236,9 @@ export default function AdminDashboard() {
 
         {view === "products" && (
           <>
-            {allProductsLoading && <div className="loading">جاري تحميل كل المنتجات...</div>}
+            {allProductsLoading && <div className="loading">{t.loadingAllProducts}</div>}
             {!allProductsLoading && allProducts.length === 0 && (
-              <div className="empty">ما فيه منتجات بالمنصة لسا</div>
+              <div className="empty">{t.noProductsOnPlatform}</div>
             )}
             {!allProductsLoading &&
               allProducts.map((p) => {
@@ -958,13 +1249,13 @@ export default function AdminDashboard() {
                       <div>
                         <div className="ap-name">{p.name}</div>
                         <div className="ap-sub">
-                          {p.price} ر.ع · {p.category || "عام"} · {p.type === "code" ? "كود/ترخيص" : "ملف"}
+                          {p.price} {curr} · {p.category || t.generalCategory} · {p.type === "code" ? t.codeLicense : t.file}
                         </div>
                         <div className="ap-owner">
-                          التاجر: <b>{owner ? (owner.storeName || owner.email) : p.ownerId}</b>
+                          {t.sellerLabel} <b>{owner ? (owner.storeName || owner.email) : p.ownerId}</b>
                         </div>
                       </div>
-                      {p.suspended && <span className="seller-badge badge-suspended">معلّق</span>}
+                      {p.suspended && <span className="seller-badge badge-suspended">{t.suspended}</span>}
                     </div>
                     <div className="ap-actions">
                       <button
@@ -972,14 +1263,14 @@ export default function AdminDashboard() {
                         disabled={busyProductId === p.id}
                         onClick={() => toggleSuspendProduct(p)}
                       >
-                        {p.suspended ? "إلغاء التعليق" : "تعليق مؤقت"}
+                        {p.suspended ? t.cancelSuspension : t.suspendTemporarily}
                       </button>
                       <button
                         className="seller-btn danger"
                         disabled={busyProductId === p.id}
                         onClick={() => deleteAnyProduct(p)}
                       >
-                        حذف نهائي
+                        {t.deletePermanently}
                       </button>
                     </div>
                   </div>
@@ -992,15 +1283,15 @@ export default function AdminDashboard() {
           <>
             <div className="admin-filters">
               <select value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)}>
-                <option value="all">كل الحالات</option>
-                <option value="confirmed">مؤكد</option>
-                <option value="awaiting_seller_confirmation">بانتظار تأكيد التاجر</option>
-                <option value="draft">بانتظار التحويل</option>
+                <option value="all">{t.allStatuses}</option>
+                <option value="confirmed">{t.confirmed}</option>
+                <option value="awaiting_seller_confirmation">{t.awaitingSellerConfirmation}</option>
+                <option value="draft">{t.draftAwaitingTransfer}</option>
               </select>
             </div>
-            {ordersLoading && <div className="loading">جاري تحميل الطلبات...</div>}
+            {ordersLoading && <div className="loading">{t.loadingOrders}</div>}
             {!ordersLoading && orders.filter((o) => orderStatusFilter === "all" || o.status === orderStatusFilter).length === 0 && (
-              <div className="empty">ما فيه طلبات مطابقة</div>
+              <div className="empty">{t.noMatchingOrders}</div>
             )}
             {!ordersLoading &&
               orders
@@ -1012,12 +1303,12 @@ export default function AdminDashboard() {
                     <div className="ap-row" key={o.id}>
                       <div className="ap-top">
                         <div>
-                          <div className="ap-name">{o.productName || "طلب"}</div>
+                          <div className="ap-name">{o.productName || t.orderFallback}</div>
                           <div className="ap-sub">
-                            {Number(o.price || 0).toFixed(2)} ر.ع · {orderStatusLabel[o.status] || o.status}
+                            {Number(o.price || 0).toFixed(2)} {curr} · {orderStatusLabel[o.status] || o.status}
                           </div>
                           <div className="ap-owner">
-                            التاجر: <b>{owner ? (owner.storeName || owner.email) : (o.ownerId || "غير معروف (محذوف)")}</b>
+                            {t.sellerLabel} <b>{owner ? (owner.storeName || owner.email) : (o.ownerId || t.unknownDeleted)}</b>
                           </div>
                         </div>
                       </div>
@@ -1027,7 +1318,7 @@ export default function AdminDashboard() {
                           disabled={deletingOrderId === o.id}
                           onClick={() => deleteOrder(o)}
                         >
-                          {deletingOrderId === o.id ? "جاري الحذف..." : "حذف نهائي"}
+                          {deletingOrderId === o.id ? t.deletingEllipsis : t.deletePermanently}
                         </button>
                       </div>
                     </div>
@@ -1039,24 +1330,24 @@ export default function AdminDashboard() {
         {view === "invites" && (
           <>
             <form className="invite-panel" onSubmit={createInvite}>
-              <div className="invite-title">دعوة تاجر جديد</div>
-              <div className="invite-sub">اختر نوع متجره ثم أرسل له الرابط. التاجر يسجّل ببريده وكلمة مروره بنفسه ويؤكد بريده بنفسه، والرابط يستخدم مرة واحدة.</div>
+              <div className="invite-title">{t.newInviteTitle}</div>
+              <div className="invite-sub">{t.newInviteSub}</div>
               {inviteError && <div className="invite-message error">{inviteError}</div>}
               {inviteSuccess && <div className="invite-message success">{inviteSuccess}</div>}
-              {latestInviteUrl && <div className="invite-link"><code>{latestInviteUrl}</code><button className="invite-copy" type="button" onClick={copyInviteLink}>نسخ الرابط</button></div>}
-              <div className="invite-field"><label>اسم المتجر</label><input value={inviteStoreName} onChange={(event) => setInviteStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
-              <div className="invite-field"><label>ماذا يبيع؟</label><select value={inviteStoreType} onChange={(event) => setInviteStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-              <button className="invite-create" type="submit" disabled={inviteCreating}>{inviteCreating ? "جاري إنشاء الرابط..." : "إنشاء رابط دعوة"}</button>
+              {latestInviteUrl && <div className="invite-link"><code>{latestInviteUrl}</code><button className="invite-copy" type="button" onClick={copyInviteLink}>{t.copyLink}</button></div>}
+              <div className="invite-field"><label>{t.storeNameLabel}</label><input value={inviteStoreName} onChange={(event) => setInviteStoreName(event.target.value)} placeholder={t.storeNamePlaceholder} required /></div>
+              <div className="invite-field"><label>{t.whatDoesItSell}</label><select value={inviteStoreType} onChange={(event) => setInviteStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+              <button className="invite-create" type="submit" disabled={inviteCreating}>{inviteCreating ? t.creatingLinkEllipsis : t.createInviteLink}</button>
             </form>
 
-            {invitesLoading && <div className="loading">جاري تحميل الدعوات...</div>}
-            {!invitesLoading && invites.length === 0 && <div className="empty">ما فيه دعوات حتى الآن.</div>}
+            {invitesLoading && <div className="loading">{t.loadingInvites}</div>}
+            {!invitesLoading && invites.length === 0 && <div className="empty">{t.noInvitesYet}</div>}
             {!invitesLoading && invites.map((invite) => <div className="invite-row" key={invite.id}>
-              <div className="invite-row-top"><div><div className="invite-name">{invite.storeName}</div><div className="invite-email">{invite.acceptedEmail || "لم يسجّل بعد"}</div></div><span className={`seller-badge badge-${invite.status}`}>{inviteStatusLabel(invite.status)}</span></div>
-              <div className="invite-meta">{STORE_TYPES[invite.storeType] || "منتجات رقمية"} · تنتهي {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString("ar") : "—"}</div>
+              <div className="invite-row-top"><div><div className="invite-name">{invite.storeName}</div><div className="invite-email">{invite.acceptedEmail || t.notRegisteredYet}</div></div><span className={`seller-badge badge-${invite.status}`}>{inviteStatusLabel(invite.status)}</span></div>
+              <div className="invite-meta">{STORE_TYPES[invite.storeType] || t.genericProducts} · {t.expiresLabel(invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString(dateLocale) : "—")}</div>
               <div className="seller-actions">
-                {invite.status === "pending" && <button className="seller-btn warn" type="button" onClick={() => revokeInvite(invite)} disabled={revokingInviteId === invite.id}>{revokingInviteId === invite.id ? "جاري الإيقاف..." : "إيقاف الدعوة"}</button>}
-                <button className="seller-btn danger" type="button" onClick={() => deleteInvite(invite)} disabled={deletingInviteId === invite.id}>{deletingInviteId === invite.id ? "جاري الحذف..." : "حذف الدعوة نهائيًا"}</button>
+                {invite.status === "pending" && <button className="seller-btn warn" type="button" onClick={() => revokeInvite(invite)} disabled={revokingInviteId === invite.id}>{revokingInviteId === invite.id ? t.stoppingEllipsis : t.stopInvite}</button>}
+                <button className="seller-btn danger" type="button" onClick={() => deleteInvite(invite)} disabled={deletingInviteId === invite.id}>{deletingInviteId === invite.id ? t.deletingEllipsis : t.deleteInvitePermanently}</button>
               </div>
             </div>)}
           </>
@@ -1065,35 +1356,35 @@ export default function AdminDashboard() {
         {view === "coupons" && (
           <>
             <form className="invite-panel" onSubmit={createSignupCoupon}>
-              <div className="invite-title">كود خصم جديد لاشتراك التسجيل</div>
-              <div className="invite-sub">التاجر يكتب هذا الكود بصفحة الدفع عند فتح متجره، فينزل عليه مبلغ الخصم من الاشتراك الأساسي ({BASE_MONTHLY_PRICE.toFixed(2)} ر.ع).</div>
+              <div className="invite-title">{t.newSignupCouponTitle}</div>
+              <div className="invite-sub">{t.newSignupCouponSub(BASE_MONTHLY_PRICE.toFixed(2))}</div>
               {couponError && <div className="invite-message error">{couponError}</div>}
-              <div className="invite-field"><label>الكود</label><input value={newCouponCode} onChange={(event) => setNewCouponCode(event.target.value)} placeholder="مثال: WELCOME3" style={{ direction: "ltr", textAlign: "right" }} required /></div>
-              <div className="invite-field"><label>مبلغ الخصم (ر.ع)</label><input type="number" min="0.1" step="0.1" value={newCouponDiscount} onChange={(event) => setNewCouponDiscount(event.target.value)} placeholder="مثال: 2" style={{ direction: "ltr", textAlign: "right" }} required /></div>
-              <div className="invite-field"><label>أقصى عدد مرات استخدام (اختياري)</label><input type="number" min="1" step="1" value={newCouponMaxUses} onChange={(event) => setNewCouponMaxUses(event.target.value)} placeholder="اتركه فاضي لاستخدام غير محدود" style={{ direction: "ltr", textAlign: "right" }} /></div>
-              <button className="invite-create" type="submit" disabled={couponCreating}>{couponCreating ? "جاري الإنشاء..." : "إنشاء الكود"}</button>
+              <div className="invite-field"><label>{t.codeLabel}</label><input value={newCouponCode} onChange={(event) => setNewCouponCode(event.target.value)} placeholder={t.codePlaceholder} style={{ direction: "ltr", textAlign: "right" }} required /></div>
+              <div className="invite-field"><label>{t.discountAmountLabel}</label><input type="number" min="0.1" step="0.1" value={newCouponDiscount} onChange={(event) => setNewCouponDiscount(event.target.value)} placeholder="مثال: 2" style={{ direction: "ltr", textAlign: "right" }} required /></div>
+              <div className="invite-field"><label>{t.maxUsesLabel}</label><input type="number" min="1" step="1" value={newCouponMaxUses} onChange={(event) => setNewCouponMaxUses(event.target.value)} placeholder={t.unlimitedUsesPlaceholder} style={{ direction: "ltr", textAlign: "right" }} /></div>
+              <button className="invite-create" type="submit" disabled={couponCreating}>{couponCreating ? t.creatingEllipsis : t.createCode}</button>
             </form>
 
-            {signupCouponsLoading && <div className="loading">جاري تحميل الأكواد...</div>}
-            {!signupCouponsLoading && signupCoupons.length === 0 && <div className="empty">ما فيه أكواد خصم حتى الآن.</div>}
+            {signupCouponsLoading && <div className="loading">{t.loadingCodes}</div>}
+            {!signupCouponsLoading && signupCoupons.length === 0 && <div className="empty">{t.noSignupCouponsYet}</div>}
             {!signupCouponsLoading && signupCoupons.map((coupon) => (
               <div className="invite-row" key={coupon.id}>
                 <div className="invite-row-top">
                   <div>
                     <div className="invite-name">{coupon.id}</div>
-                    <div className="invite-email">خصم {Number(coupon.discountAmount || 0).toFixed(2)} ر.ع</div>
+                    <div className="invite-email">{t.discountLabel(Number(coupon.discountAmount || 0).toFixed(2))} {curr}</div>
                   </div>
-                  <span className={"seller-badge " + (coupon.active ? "badge-active" : "badge-disabled")}>{coupon.active ? "مفعّل" : "موقوف"}</span>
+                  <span className={"seller-badge " + (coupon.active ? "badge-active" : "badge-disabled")}>{coupon.active ? t.couponActiveBadge : t.couponStopped}</span>
                 </div>
                 <div className="invite-meta">
-                  استُخدم {coupon.usedCount || 0} {coupon.maxUses ? `من ${coupon.maxUses}` : "مرة (بدون حد أقصى)"}
+                  {t.usedCount(coupon.usedCount || 0, coupon.maxUses ? t.ofMax(coupon.maxUses) : t.timesNoLimit)}
                 </div>
                 <div className="seller-actions">
                   <button className="seller-btn" type="button" onClick={() => toggleCouponActive(coupon)} disabled={couponBusyCode === coupon.id}>
-                    {couponBusyCode === coupon.id ? "..." : coupon.active ? "إيقاف الكود" : "تفعيل الكود"}
+                    {couponBusyCode === coupon.id ? "..." : coupon.active ? t.stopCode : t.activateCode}
                   </button>
                   <button className="seller-btn danger" type="button" onClick={() => deleteSignupCoupon(coupon)} disabled={couponBusyCode === coupon.id}>
-                    {couponBusyCode === coupon.id ? "..." : "حذف نهائي"}
+                    {couponBusyCode === coupon.id ? "..." : t.deletePermanently}
                   </button>
                 </div>
               </div>
@@ -1104,22 +1395,22 @@ export default function AdminDashboard() {
         {view === "paymentDebug" && (
           <>
             <div className="invite-sub" style={{ marginBottom: 14 }}>
-              كل مرة ما نقدر نتأكد إن دفعة عند OmPay نجحت، نسجل الرد الخام هنا — يفيد بمعرفة السبب بالضبط بدل التخمين.
+              {t.paymentDebugIntro}
             </div>
-            {paymentDebugLoading && <div className="loading">جاري تحميل السجل...</div>}
+            {paymentDebugLoading && <div className="loading">{t.loadingLog}</div>}
             {!paymentDebugLoading && paymentDebugLogs.length === 0 && (
-              <div className="empty">ما فيه أي حالة دفع لم نتعرف عليها حتى الآن.</div>
+              <div className="empty">{t.noUnrecognizedPayments}</div>
             )}
             {!paymentDebugLoading && paymentDebugLogs.map((log) => (
               <div className="invite-row" key={log.id}>
                 <div className="invite-row-top">
                   <div>
-                    <div className="invite-name">{log.kind || "غير معروف"} · {log.status || "unknown"}</div>
+                    <div className="invite-name">{log.kind || t.unknown} · {log.status || "unknown"}</div>
                     <div className="invite-email">{log.referenceNumber || "—"}</div>
                   </div>
                 </div>
                 <div className="invite-meta">
-                  {log.createdAt?.toDate ? log.createdAt.toDate().toLocaleString("ar") : ""} · uid: {log.uid || "—"}
+                  {log.createdAt?.toDate ? log.createdAt.toDate().toLocaleString(dateLocale) : ""} · uid: {log.uid || "—"}
                 </div>
                 <pre style={{
                   marginTop: 10, padding: 10, background: "#FBFAF7", border: "1px solid #E4E0D3",
