@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { auth, db } from "./firebase.js";
 import { storage } from "./firebase-storage.js";
 import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
@@ -319,6 +319,7 @@ export default function Dashboard() {
   const [verificationSent, setVerificationSent] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);
   const [sellerAccess, setSellerAccess] = useState("checking");
+  const addProductRef = useRef(null);
   const [hasPendingSignupPayment, setHasPendingSignupPayment] = useState(false);
   const [sellerStoreType, setSellerStoreType] = useState("files");
   function getTabFromHash() {
@@ -870,6 +871,26 @@ export default function Dashboard() {
     setEditRequiresActivation(Boolean(p.requiresActivation));
   }
 
+  // تسريع رفع منتجات كثيرة متشابهة (زي حزم PLR) — ننسخ النص والسعر والتصنيف
+  // كنقطة بداية، ونترك الصور والملف فارغين لأنها الجزء المختلف فعليًا بكل منتج.
+  function duplicateProduct(p) {
+    setName(`${p.name} (نسخة)`);
+    setPrice(String(p.price));
+    setDescription(p.description || "");
+    setCategory(p.category || "");
+    setProductType(p.type === "code" ? "code" : "file");
+    setRequiresActivation(Boolean(p.requiresActivation));
+    setProductImages([]);
+    setProductFile(null);
+    setFileInputKey((k) => k + 1);
+    setCodesText("");
+    setError("");
+    if (addProductRef.current) {
+      addProductRef.current.open = true;
+      addProductRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   function cancelEdit() {
     setEditingId(null);
   }
@@ -1100,29 +1121,36 @@ export default function Dashboard() {
   const archivedBundles = bundles.filter((bundle) => bundle.archived);
 
   async function handleProductImageUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setImagesError("");
-    if (!file.type.startsWith("image/")) {
-      setImagesError("اختر ملف صورة صالحًا.");
-      return;
-    }
-    if (productImages.length >= 2) {
+    const remainingSlots = 2 - productImages.length;
+    if (remainingSlots <= 0) {
       setImagesError("حد أقصى صورتين لكل منتج.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setImagesError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
-      return;
+    const filesToUpload = files.slice(0, remainingSlots);
+    if (files.length > filesToUpload.length) {
+      setImagesError("حد أقصى صورتين لكل منتج — رفعنا أول صورتين بس.");
     }
     setImagesUploading(true);
-    try {
-      const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}`);
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-      setProductImages((prev) => [...prev, url]);
-    } catch (err) {
-      setImagesError("تعذر رفع الصورة، حاول مرة ثانية.");
+    for (const file of filesToUpload) {
+      if (!file.type.startsWith("image/")) {
+        setImagesError("اختر ملفات صور صالحة.");
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setImagesError("حجم إحدى الصور أكبر من 5 ميجا، تجاوزناها.");
+        continue;
+      }
+      try {
+        const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        setProductImages((prev) => [...prev, url]);
+      } catch (err) {
+        setImagesError("تعذر رفع إحدى الصور، حاول مرة ثانية.");
+      }
     }
     setImagesUploading(false);
   }
@@ -1940,7 +1968,7 @@ export default function Dashboard() {
                 <button className="dh-btn" type="button" onClick={() => setTab("subscription")}>رقّي اشتراكك الآن</button>
               </div>
             ) : (
-            <details className="dh-section" open={products.length === 0}>
+            <details className="dh-section" open={products.length === 0} ref={addProductRef}>
               <summary><div className="dh-section-summary"><b>أضف منتج جديد</b><span>افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.</span></div></summary>
               <div className="dh-section-body">
               {error && <div className="dh-error">{error}</div>}
@@ -1985,7 +2013,7 @@ export default function Dashboard() {
                     {productImages.length < 2 && (
                       <label className="dh-image-add">
                         {imagesUploading ? "..." : "+"}
-                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleProductImageUpload} disabled={imagesUploading} />
+                        <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleProductImageUpload} disabled={imagesUploading} />
                       </label>
                     )}
                   </div>
@@ -2164,6 +2192,9 @@ export default function Dashboard() {
                       {adCopyProductId === p.id && adCopy && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لن تُنشر من مُونَة</div><p>{adCopy}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" onClick={copyAdDraft} type="button">{copied === "ad-copy" ? "تم النسخ" : "نسخ النص"}</button><button className="dh-ai-btn" onClick={() => { setAdCopy(""); setAdCopyProductId(""); }} type="button">إغلاق</button></div></div>}
                       <div className="dh-item-actions">
                         <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
+                        {!trialLimitReached && (
+                          <button className="dh-item-action" onClick={() => duplicateProduct(p)} type="button">نسخ كمنتج جديد</button>
+                        )}
                         {p.type === "code" && restockingId !== p.id && (
                           <button className="dh-item-action" onClick={() => startRestock(p.id)} type="button">إضافة أكواد</button>
                         )}
