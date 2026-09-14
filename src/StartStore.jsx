@@ -3,11 +3,15 @@ import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { useLang, LangToggle } from "./i18n.jsx";
 
 const CTA_WIDTH = 168;
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
-const STORE_TYPES = { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" };
+const STORE_TYPES = {
+  ar: { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" },
+  en: { books: "Digital books", videos: "Videos & courses", codes: "Codes & licenses", files: "Files & templates" },
+};
 
 const styles = `
   .invite-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F6F3EC;padding:20px;font-family:'Cairo',sans-serif;color:#16233F}
@@ -19,6 +23,7 @@ const styles = `
   .invite-back{display:block;text-align:center;margin-top:16px;font-size:12px;font-weight:800;color:#16233F;text-decoration:none}
   .invite-google{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;background:#fff;color:#16233F;font:700 13px 'Cairo',sans-serif;padding:12px;border:1px solid #E4E0D3;border-radius:100px;cursor:pointer;margin-bottom:16px}
   .invite-google:disabled{opacity:.6}
+  .invite-lang{display:block;margin:0 auto 12px;border:1px solid #E4E0D3;background:#fff;color:#625F55;border-radius:100px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
   .invite-divider{display:flex;align-items:center;gap:10px;color:#B0AC9C;font-size:11px;margin-bottom:16px}
   .invite-divider::before,.invite-divider::after{content:"";flex:1;height:1px;background:#E4E0D3}
   .invite-page button{transition:transform 100ms ease-out}.invite-page button:active{transform:scale(.96)}
@@ -34,6 +39,95 @@ const styles = `
 
 const REQUEST_TIMEOUT_MS = 8000;
 
+const ST_T = {
+  ar: {
+    connectionError: "تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.",
+    genericError: "تعذر تنفيذ العملية الآن.",
+    googleAuthError: "تعذر إكمال الدخول بحساب جوجل على هذا المتصفح. جرّبي «بريدك الإلكتروني وكلمة المرور» بدلها.",
+    googleRedirectError: "تعذر إكمال تسجيل الدخول عبر جوجل.",
+    writeStoreName: "اكتب اسم متجرك.",
+    weakPasswordLength: "اختر كلمة مرور من 6 أحرف أو أكثر.",
+    createAccountTimeout: "تعذر إنشاء الحساب الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.",
+    loginTimeout: "تعذر تسجيل الدخول الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.",
+    weakPassword: "كلمة المرور ضعيفة، اختر كلمة أطول.",
+    invalidEmail: "اكتب بريدك الإلكتروني بشكل صحيح.",
+    accountExists: "هذا البريد عنده حساب بالفعل وكلمة المرور غير صحيحة. لو نسيت كلمة المرور، سجّل الدخول من صفحة \"تسجيل الدخول\" واضغط \"نسيت كلمة المرور؟\"، أو استخدم بريدًا مختلفًا.",
+    createAccountError: "تعذر إنشاء الحساب الآن.",
+    writeStoreNameFirst: "اكتب اسم متجرك أولًا.",
+    googleCreateError: "تعذر إنشاء الحساب عبر جوجل الآن.",
+    couponApplied: (amount) => `تم تطبيق خصم ${amount} ر.ع ✓`,
+    invalidCoupon: "كود الخصم غير صحيح.",
+    couponCheckError: "تعذر التحقق من الكود الآن.",
+    paymentStartError: "تعذر بدء الدفع الآن.",
+    trialStartError: "تعذر بدء التجربة المجانية الآن.",
+    brand: "مُونة",
+    formTitle: "افتح متجرك الرقمي الآن",
+    formText: "اكتب بيانات متجرك وبريدك. الاشتراك 5 ر.ع شهريًا.",
+    storeNameLabel: "اسم المتجر", storeNamePlaceholder: "مثال: متجر هند للتصاميم",
+    whatDoYouSell: "ماذا تبيع؟",
+    creating: "جاري الإنشاء...", continueWithGoogle: "متابعة بحساب جوجل",
+    orWithEmail: "أو بالبريد وكلمة المرور",
+    emailLabel: "بريدك الإلكتروني", choosePassword: "اختر كلمة المرور",
+    continueBtn: "متابعة",
+    readyContinue: "جاهز، اضغط للمتابعة.", oneFieldLeft: "بقي حقل وحد.", fillFirst: "عبّي البريد وكلمة المرور أولًا.",
+    haveStoreLogin: "عندك متجر بالفعل؟ سجّل الدخول",
+    activateStore: "فعّل متجرك",
+    trialIntro: "جرّب مونة مجانًا أولًا — افتح متجرك وأضف منتجك الأول بدون بطاقة ولا التزام. لما تكون جاهز، رقّي اشتراكك من لوحة التاجر.",
+    preparing: "جاري التجهيز...", startTrialBtn: "ابدأ تجربتك المجانية (منتج واحد)",
+    orActivateFull: "أو فعّل الاشتراك الكامل الآن",
+    subscriptionIntro: (price) => `اشتراك متجرك الأساسي ${price} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.`,
+    optionalAddOns: "إضافات اختيارية (تقدر تتخطاها الآن)",
+    perMonth: "ر.ع/شهريًا",
+    couponLabel: "كود خصم (اختياري)", couponPlaceholder: "اكتب الكود هنا", checking: "...", check: "تحقق",
+    monthlyTotal: "المجموع الشهري:",
+    redirectingToPayment: "جاري التحويل لصفحة الدفع...",
+    payWithCard: (total) => `ادفع ${total} ر.ع بالبطاقة`,
+  },
+  en: {
+    connectionError: "Couldn't connect to the server. Make sure you're online and try again.",
+    genericError: "Couldn't complete the operation right now.",
+    googleAuthError: "Couldn't complete Google sign-in on this browser. Try your email and password instead.",
+    googleRedirectError: "Couldn't complete sign-in with Google.",
+    writeStoreName: "Enter your store name.",
+    weakPasswordLength: "Choose a password of 6 characters or more.",
+    createAccountTimeout: "Couldn't create the account right now. Make sure you're online and try again.",
+    loginTimeout: "Couldn't log in right now. Make sure you're online and try again.",
+    weakPassword: "Weak password — choose a longer one.",
+    invalidEmail: "Enter a valid email.",
+    accountExists: "This email already has an account and the password is incorrect. If you forgot your password, log in from the \"Log in\" page and click \"Forgot password?\", or use a different email.",
+    createAccountError: "Couldn't create the account right now.",
+    writeStoreNameFirst: "Enter your store name first.",
+    googleCreateError: "Couldn't create the account with Google right now.",
+    couponApplied: (amount) => `${amount} OMR discount applied ✓`,
+    invalidCoupon: "Invalid discount code.",
+    couponCheckError: "Couldn't check the code right now.",
+    paymentStartError: "Couldn't start the payment right now.",
+    trialStartError: "Couldn't start the free trial right now.",
+    brand: "Monah",
+    formTitle: "Open your digital store now",
+    formText: "Enter your store details and email. Subscription is 5 OMR/month.",
+    storeNameLabel: "Store name", storeNamePlaceholder: "e.g. Hind's Design Store",
+    whatDoYouSell: "What do you sell?",
+    creating: "Creating...", continueWithGoogle: "Continue with Google",
+    orWithEmail: "Or with email and password",
+    emailLabel: "Your email", choosePassword: "Choose a password",
+    continueBtn: "Continue",
+    readyContinue: "Ready, click to continue.", oneFieldLeft: "One field left.", fillFirst: "Fill in your email and password first.",
+    haveStoreLogin: "Already have a store? Log in",
+    activateStore: "Activate your store",
+    trialIntro: "Try Monah for free first — open your store and add your first product, no card, no commitment. When you're ready, upgrade your subscription from the seller dashboard.",
+    preparing: "Preparing...", startTrialBtn: "Start your free trial (one product)",
+    orActivateFull: "Or activate the full subscription now",
+    subscriptionIntro: (price) => `Your base store subscription is ${price} OMR/month. You can add optional add-ons now or later from the seller dashboard.`,
+    optionalAddOns: "Optional add-ons (you can skip these for now)",
+    perMonth: "OMR/month",
+    couponLabel: "Discount code (optional)", couponPlaceholder: "Enter the code here", checking: "...", check: "Check",
+    monthlyTotal: "Monthly total:",
+    redirectingToPayment: "Redirecting to the payment page...",
+    payWithCard: (total) => `Pay ${total} OMR by card`,
+  },
+};
+
 // بعض متصفحات الجوال تعلّق الاتصال بصمت (لا ينجح ولا يفشل) — بدون هذي المهلة،
 // زر "متابعة" يضل يدور للأبد بدون أي رسالة، فيحس المستخدم إن الزر "ما يستجيب".
 function withTimeout(promise, message) {
@@ -43,7 +137,7 @@ function withTimeout(promise, message) {
   ]);
 }
 
-async function signupRequest(action, payload, idToken = "") {
+async function signupRequest(action, payload, idToken = "", t) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response;
@@ -55,16 +149,18 @@ async function signupRequest(action, payload, idToken = "") {
       signal: controller.signal,
     });
   } catch (fetchError) {
-    throw new Error("تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
+    throw new Error(t.connectionError);
   } finally {
     clearTimeout(timeoutId);
   }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "تعذر تنفيذ العملية الآن.");
+  if (!response.ok) throw new Error(data.error || t.genericError);
   return data;
 }
 
 export default function StartStore() {
+  const [lang, setLang] = useLang();
+  const t = ST_T[lang];
   const [step, setStep] = useState("form");
   const [storeName, setStoreName] = useState("");
   const [storeType, setStoreType] = useState("files");
@@ -98,7 +194,7 @@ export default function StartStore() {
           if (sessionStorage.getItem("monah_pending_store_name") !== null) {
             sessionStorage.removeItem("monah_pending_store_name");
             sessionStorage.removeItem("monah_pending_store_type");
-            setError("تعذر إكمال الدخول بحساب جوجل على هذا المتصفح. جرّبي «بريدك الإلكتروني وكلمة المرور» بدلها.");
+            setError(t.googleAuthError);
           }
           return;
         }
@@ -108,41 +204,42 @@ export default function StartStore() {
         sessionStorage.removeItem("monah_pending_store_name");
         sessionStorage.removeItem("monah_pending_store_type");
         const idToken = await result.user.getIdToken(true);
-        await signupRequest("register", { storeName: savedStoreName.trim(), storeType: savedStoreType }, idToken);
+        await signupRequest("register", { storeName: savedStoreName.trim(), storeType: savedStoreType }, idToken, t);
         setStoreName(savedStoreName);
         setStoreType(savedStoreType);
         setStep("payment");
       } catch (redirectError) {
         await signOut(auth).catch(() => {});
-        setError(redirectError.message || "تعذر إكمال تسجيل الدخول عبر جوجل.");
+        setError(redirectError.message || t.googleRedirectError);
       }
       setBusy(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function submitForm(event) {
     event.preventDefault();
     setError("");
-    if (storeName.trim().length < 2) return setError("اكتب اسم متجرك.");
-    if (password.length < 6) return setError("اختر كلمة مرور من 6 أحرف أو أكثر.");
+    if (storeName.trim().length < 2) return setError(t.writeStoreName);
+    if (password.length < 6) return setError(t.weakPasswordLength);
     setBusy(true);
     try {
       let credential;
       try {
-        credential = await withTimeout(createUserWithEmailAndPassword(auth, email, password), "تعذر إنشاء الحساب الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
+        credential = await withTimeout(createUserWithEmailAndPassword(auth, email, password), t.createAccountTimeout);
       } catch (createError) {
         if (createError.code !== "auth/email-already-in-use") throw createError;
-        credential = await withTimeout(signInWithEmailAndPassword(auth, email, password), "تعذر تسجيل الدخول الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
+        credential = await withTimeout(signInWithEmailAndPassword(auth, email, password), t.loginTimeout);
       }
       const idToken = await credential.user.getIdToken(true);
-      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken);
+      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken, t);
       setStep("payment");
     } catch (submitError) {
       await signOut(auth).catch(() => {});
-      if (submitError.code === "auth/weak-password") setError("كلمة المرور ضعيفة، اختر كلمة أطول.");
-      else if (submitError.code === "auth/invalid-email") setError("اكتب بريدك الإلكتروني بشكل صحيح.");
-      else if (submitError.code === "auth/wrong-password" || submitError.code === "auth/invalid-credential") setError("هذا البريد عنده حساب بالفعل وكلمة المرور غير صحيحة. لو نسيت كلمة المرور، سجّل الدخول من صفحة \"تسجيل الدخول\" واضغط \"نسيت كلمة المرور؟\"، أو استخدم بريدًا مختلفًا.");
-      else setError(submitError.message || "تعذر إنشاء الحساب الآن.");
+      if (submitError.code === "auth/weak-password") setError(t.weakPassword);
+      else if (submitError.code === "auth/invalid-email") setError(t.invalidEmail);
+      else if (submitError.code === "auth/wrong-password" || submitError.code === "auth/invalid-credential") setError(t.accountExists);
+      else setError(submitError.message || t.createAccountError);
     }
     setBusy(false);
   }
@@ -159,12 +256,12 @@ export default function StartStore() {
 
   async function submitWithGoogle() {
     setError("");
-    if (storeName.trim().length < 2) return setError("اكتب اسم متجرك أولًا.");
+    if (storeName.trim().length < 2) return setError(t.writeStoreNameFirst);
     setBusy(true);
     try {
       const credential = await signInWithPopup(auth, new GoogleAuthProvider());
       const idToken = await credential.user.getIdToken(true);
-      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken);
+      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken, t);
       setStep("payment");
       setBusy(false);
       return;
@@ -175,7 +272,7 @@ export default function StartStore() {
       }
       if (!POPUP_UNAVAILABLE_CODES.has(popupError.code)) {
         await signOut(auth).catch(() => {});
-        setError(popupError.message || "تعذر إنشاء الحساب عبر جوجل الآن.");
+        setError(popupError.message || t.googleCreateError);
         setBusy(false);
         return;
       }
@@ -185,7 +282,7 @@ export default function StartStore() {
       sessionStorage.setItem("monah_pending_store_type", storeType);
       await signInWithRedirect(auth, new GoogleAuthProvider());
     } catch (submitError) {
-      setError(submitError.message || "تعذر إنشاء الحساب الآن.");
+      setError(submitError.message || t.createAccountError);
       setBusy(false);
     }
   }
@@ -204,17 +301,17 @@ export default function StartStore() {
     setCouponChecking(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const data = await signupRequest("check_signup_coupon", { code }, idToken);
+      const data = await signupRequest("check_signup_coupon", { code }, idToken, t);
       if (data.valid) {
         setCouponDiscount(Number(data.discountAmount) || 0);
-        setCouponMessage(`تم تطبيق خصم ${Number(data.discountAmount).toFixed(2)} ر.ع ✓`);
+        setCouponMessage(t.couponApplied(Number(data.discountAmount).toFixed(2)));
       } else {
         setCouponDiscount(0);
-        setCouponMessage(data.reason || "كود الخصم غير صحيح.");
+        setCouponMessage(data.reason || t.invalidCoupon);
       }
     } catch (requestError) {
       setCouponDiscount(0);
-      setCouponMessage(requestError.message || "تعذر التحقق من الكود الآن.");
+      setCouponMessage(requestError.message || t.couponCheckError);
     }
     setCouponChecking(false);
   }
@@ -224,14 +321,14 @@ export default function StartStore() {
     setBusy(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const data = await signupRequest("create_card_charge", { addOns: selectedAddOns, couponCode: couponCode.trim() }, idToken);
+      const data = await signupRequest("create_card_charge", { addOns: selectedAddOns, couponCode: couponCode.trim() }, idToken, t);
       if (data.activated) {
         window.location.hash = "dashboard";
         return;
       }
       window.location.assign(data.url);
     } catch (requestError) {
-      setError(requestError.message || "تعذر بدء الدفع الآن.");
+      setError(requestError.message || t.paymentStartError);
       setBusy(false);
     }
   }
@@ -241,36 +338,37 @@ export default function StartStore() {
     setBusy(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      await signupRequest("start_trial", {}, idToken);
+      await signupRequest("start_trial", {}, idToken, t);
       window.location.hash = "dashboard";
     } catch (requestError) {
-      setError(requestError.message || "تعذر بدء التجربة المجانية الآن.");
+      setError(requestError.message || t.trialStartError);
       setBusy(false);
     }
   }
 
   return (
-    <div className="invite-page" dir="rtl" lang="ar">
+    <div className="invite-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <style>{styles}</style>
       <main className="invite-card">
-        <a className="invite-brand" href="#" style={{ display: "block", textDecoration: "none", color: "inherit" }}>مُونة</a>
+        <LangToggle lang={lang} onChange={setLang} className="invite-lang" />
+        <a className="invite-brand" href="#" style={{ display: "block", textDecoration: "none", color: "inherit" }}>{t.brand}</a>
 
         {step === "form" && <>
-          <div className="invite-title">افتح متجرك الرقمي الآن</div>
-          <p className="invite-text">اكتب بيانات متجرك وبريدك. الاشتراك 5 ر.ع شهريًا.</p>
+          <div className="invite-title">{t.formTitle}</div>
+          <p className="invite-text">{t.formText}</p>
           {error && <div className="invite-message error">{error}</div>}
-          <div className="invite-field"><label>اسم المتجر</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder="مثال: متجر هند للتصاميم" required /></div>
-          <div className="invite-field"><label>ماذا تبيع؟</label><select value={storeType} onChange={(event) => setStoreType(event.target.value)}>{Object.entries(STORE_TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+          <div className="invite-field"><label>{t.storeNameLabel}</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder={t.storeNamePlaceholder} required /></div>
+          <div className="invite-field"><label>{t.whatDoYouSell}</label><select value={storeType} onChange={(event) => setStoreType(event.target.value)}>{Object.entries(STORE_TYPES[lang]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
 
           <button type="button" className="invite-google" onClick={submitWithGoogle} disabled={busy}>
             <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.9A8.75 8.75 0 0017.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.55-1.84.87-3.06.87-2.36 0-4.36-1.6-5.07-3.75H.9v2.35A9 9 0 009 18z"/><path fill="#FBBC05" d="M3.93 10.68A5.4 5.4 0 013.64 9c0-.58.1-1.15.29-1.68V4.97H.9A9 9 0 000 9c0 1.45.35 2.83.9 4.03l3.03-2.35z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 009 0 9 9 0 00.9 4.97l3.03 2.35C4.64 5.18 6.64 3.58 9 3.58z"/></svg>
-            {busy ? "جاري الإنشاء..." : "متابعة بحساب جوجل"}
+            {busy ? t.creating : t.continueWithGoogle}
           </button>
-          <div className="invite-divider">أو بالبريد وكلمة المرور</div>
+          <div className="invite-divider">{t.orWithEmail}</div>
 
           <form onSubmit={submitForm}>
-            <div className="invite-field"><label>بريدك الإلكتروني</label><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" required /></div>
-            <div className="invite-field"><label>اختر كلمة المرور</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></div>
+            <div className="invite-field"><label>{t.emailLabel}</label><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" required /></div>
+            <div className="invite-field"><label>{t.choosePassword}</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></div>
             <div className="invite-cta-track" ref={ctaTrackRef}>
               <button
                 ref={ctaBtnRef}
@@ -279,59 +377,59 @@ export default function StartStore() {
                 disabled={busy}
                 style={{ "--cta-offset": `${ctaOffsetX}px` }}
               >
-                {busy ? "جاري الإنشاء..." : "متابعة"}
+                {busy ? t.creating : t.continueBtn}
               </button>
             </div>
             <div className={"invite-cta-hint" + (ctaFieldsReady ? " ready" : "")}>
               {ctaFieldsReady
-                ? "جاهز، اضغط للمتابعة."
+                ? t.readyContinue
                 : emailReady || passwordReady
-                  ? "بقي حقل وحد."
-                  : "عبّي البريد وكلمة المرور أولًا."}
+                  ? t.oneFieldLeft
+                  : t.fillFirst}
             </div>
           </form>
-          <a className="invite-back" href="#login">عندك متجر بالفعل؟ سجّل الدخول</a>
+          <a className="invite-back" href="#login">{t.haveStoreLogin}</a>
         </>}
 
         {step === "payment" && <>
-          <div className="invite-title">فعّل متجرك</div>
-          <p className="invite-text">جرّب مونة مجانًا أولًا — افتح متجرك وأضف منتجك الأول بدون بطاقة ولا التزام. لما تكون جاهز، رقّي اشتراكك من لوحة التاجر.</p>
+          <div className="invite-title">{t.activateStore}</div>
+          <p className="invite-text">{t.trialIntro}</p>
           {error && <div className="invite-message error">{error}</div>}
           <button className="invite-btn" type="button" onClick={startTrial} disabled={busy} style={{ background: "#163F2E", marginBottom: 10 }}>
-            {busy ? "جاري التجهيز..." : "ابدأ تجربتك المجانية (منتج واحد)"}
+            {busy ? t.preparing : t.startTrialBtn}
           </button>
-          <div className="invite-divider">أو فعّل الاشتراك الكامل الآن</div>
-          <p className="invite-text" style={{ marginTop: -8 }}>اشتراك متجرك الأساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.</p>
+          <div className="invite-divider">{t.orActivateFull}</div>
+          <p className="invite-text" style={{ marginTop: -8 }}>{t.subscriptionIntro(BASE_MONTHLY_PRICE.toFixed(2))}</p>
           <div className="invite-field">
-            <label>إضافات اختيارية (تقدر تتخطاها الآن)</label>
+            <label>{t.optionalAddOns}</label>
             {ADD_ON_CATALOG.filter((item) => item.key !== "digitalSelling").map((item) => (
               <label key={item.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
                 <input type="checkbox" checked={selectedAddOns.includes(item.key)} onChange={() => toggleAddOn(item.key)} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
                 <span style={{ fontSize: 12.5, lineHeight: 1.7, flex: 1, minWidth: 0 }}>
-                  <b>{item.title}</b> — <span style={{ color: "#625F55" }}>+{item.price.toFixed(2)} ر.ع/شهريًا</span>
-                  <br /><span style={{ color: "#8A8677" }}>{item.desc}</span>
+                  <b>{lang === "en" ? item.titleEn : item.title}</b> — <span style={{ color: "#625F55" }}>+{item.price.toFixed(2)} {t.perMonth}</span>
+                  <br /><span style={{ color: "#8A8677" }}>{lang === "en" ? item.descEn : item.desc}</span>
                 </span>
               </label>
             ))}
           </div>
           <div className="invite-field">
-            <label>كود خصم (اختياري)</label>
+            <label>{t.couponLabel}</label>
             <div style={{ display: "flex", gap: 8 }}>
               <input
                 type="text"
                 value={couponCode}
                 onChange={(event) => { setCouponCode(event.target.value); setCouponMessage(""); setCouponDiscount(0); }}
-                placeholder="اكتب الكود هنا"
+                placeholder={t.couponPlaceholder}
                 style={{ flex: 1, direction: "ltr", textAlign: "right" }}
               />
               <button type="button" className="invite-btn" style={{ width: "auto", padding: "0 16px" }} onClick={checkCoupon} disabled={couponChecking || !couponCode.trim()}>
-                {couponChecking ? "..." : "تحقق"}
+                {couponChecking ? t.checking : t.check}
               </button>
             </div>
             {couponMessage && <div style={{ fontSize: 11.5, marginTop: 6, color: couponDiscount > 0 ? "#37724B" : "#A34839", fontWeight: 700 }}>{couponMessage}</div>}
           </div>
-          <div className="invite-message" style={{ background: "#F7F7F2", color: "#16233F", fontWeight: 700, textAlign: "center" }}>المجموع الشهري: {paymentTotal.toFixed(2)} ر.ع</div>
-          <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? "جاري التحويل لصفحة الدفع..." : `ادفع ${paymentTotal.toFixed(2)} ر.ع بالبطاقة`}</button>
+          <div className="invite-message" style={{ background: "#F7F7F2", color: "#16233F", fontWeight: 700, textAlign: "center" }}>{t.monthlyTotal} {paymentTotal.toFixed(2)} {lang === "ar" ? "ر.ع" : "OMR"}</div>
+          <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? t.redirectingToPayment : t.payWithCard(paymentTotal.toFixed(2))}</button>
         </>}
       </main>
     </div>
