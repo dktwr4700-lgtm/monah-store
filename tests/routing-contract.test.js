@@ -168,7 +168,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
   it("يرتب تبويب المنتجات إلى أقسام قابلة للفتح دون إزالة أدوات التاجر", async () => {
     const dashboard = await source("src/Dashboard.jsx");
-    expect(dashboard).toContain('<details className="dh-section" open={products.length === 0}>');
+    expect(dashboard).toContain('<details className="dh-section" open={products.length === 0} ref={addProductRef}>');
     expect(dashboard).toContain("افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.");
     expect(dashboard).toContain("روابط التتبع");
     expect(dashboard).toContain("حزم المنتجات");
