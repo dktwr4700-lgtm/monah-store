@@ -20,6 +20,18 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(productPage).toContain("navigator.share");
   });
 
+  it("يحمّل صفحة تصفح المنتجات عبر كل التجار ويستثني المنتجات الموقوفة على العميل", async () => {
+    const main = await source("src/main.jsx");
+    const explore = await source("src/Explore.jsx");
+
+    expect(main).toContain('lazy(() => import("./Explore.jsx"))');
+    expect(main).toContain('hash === "explore"');
+    expect(main).toContain("<Explore />");
+    expect(explore).toContain('where("hidden", "==", false)');
+    expect(explore).toContain(".filter((item) => !item.suspended)");
+    expect(explore).toContain('collection(db, "stores")');
+  });
+
   it("يطلب المنتجات المنشورة وغير الموقوفة للزوار", async () => {
     const store = await source("src/StorePage.jsx");
     const productPage = await source("src/ProductPage.jsx");

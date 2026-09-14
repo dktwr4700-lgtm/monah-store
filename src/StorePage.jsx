@@ -216,7 +216,7 @@ export default function StorePage({ sellerId }) {
           <div><b>سعر واضح</b><span>السعر ظاهر قبل التواصل.</span></div>
           <div><b>دعم مباشر</b><span>راسل التاجر إذا احتجت مساعدة.</span></div>
         </section>
-        <footer className="mc-footer">متجر <b>{brandName}</b> · <a href="/" aria-label="زيارة موقع مُونَة">مدعوم من مُونَة</a></footer>
+        <footer className="mc-footer">متجر <b>{brandName}</b> · <a href="/" aria-label="زيارة موقع مُونَة">مدعوم من مُونَة</a> · <a href="#explore">تصفح متاجر أخرى</a></footer>
       </main>
     </div>
   );
