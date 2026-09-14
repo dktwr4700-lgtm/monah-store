@@ -1,6 +1,61 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { db } from "./firebase.js";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { useLang, LangToggle } from "./i18n.jsx";
+
+// نص الواجهة الثابت فقط (أزرار، تسميات، رسائل حالة) — محتوى التاجر نفسه
+// (اسم المتجر، الوصف، أسماء وأوصاف المنتجات، الأسئلة الشائعة) يبقى كما كتبه
+// التاجر بالضبط، ما نترجمه تلقائيًا لأنه محتواه الخاص.
+const STRINGS = {
+  ar: {
+    share: "مشاركة المتجر", products: "المنتجات", purchases: "المشتريات",
+    whatsapp: "واتساب", instagram: "إنستغرام", email: "إيميل",
+    independentStore: "متجر رقمي مستقل", buyerFeatures: "مزايا الشراء",
+    digitalProducts: "منتجات رقمية", organized: "مرتب", organizedSub: "تصفح وفئات واضحة",
+    direct: "مباشر", directSub: "تواصل مع التاجر",
+    sellerPicks: "اختيارات التاجر", sellerPicksSub: "منتجات يرشحها لك", featured: "مميز",
+    genericProduct: "منتج رقمي", genericDesc: "منتج رقمي من هذا المتجر.",
+    preparingStore: "نجهّز لك المتجر", preparingStoreSub: "لحظات ونظهر المنتجات المتاحة.",
+    storeNotFound: "لم نجد هذا المتجر", storeNotFoundSub: "تأكد من الرابط أو ارجع إلى صفحة مُونَة الرئيسية.",
+    backToMonah: "العودة إلى مُونَة",
+    firstDrop: "أول مجموعة رقمية في الطريق.",
+    firstDropSub: "صاحب المتجر يجهّز منتجاته الآن. تابع المتجر أو راسله لمعرفة وقت نزول المنتجات الجديدة.",
+    messageSeller: "راسل التاجر", comingSoon: "المنتجات قريباً",
+    storeProducts: "منتجات المتجر", chooseProduct: "اختر المنتج وابدأ شغلك اليوم.",
+    availableNow: "متاح الآن", searchPlaceholder: "ابحث باسم المنتج", all: "الكل",
+    viewProduct: "عرض المنتج", noMatch: "ما وجدنا منتجاً بهذا الاسم.",
+    noMatchSub: "جرّب كلمة مختلفة أو ارجع لكل المنتجات.", showAll: "عرض الكل",
+    about: "عن", faq: "أسئلة شائعة", purchaseInfo: "معلومات الشراء",
+    organizedView: "عرض منظم", organizedViewSub: "تصفح المنتجات والفئات بسهولة.",
+    clearPrice: "سعر واضح", clearPriceSub: "السعر ظاهر قبل التواصل.",
+    directSupport: "دعم مباشر", directSupportSub: "راسل التاجر إذا احتجت مساعدة.",
+    storeLabel: "متجر", poweredBy: "مدعوم من مُونَة", visitMonah: "زيارة موقع مُونَة",
+  },
+  en: {
+    share: "Share store", products: "Products", purchases: "My purchases",
+    whatsapp: "WhatsApp", instagram: "Instagram", email: "Email",
+    independentStore: "Independent digital store", buyerFeatures: "Why buy here",
+    digitalProducts: "digital products", organized: "Organized", organizedSub: "Clear browsing & categories",
+    direct: "Direct", directSub: "Message the seller directly",
+    sellerPicks: "Seller picks", sellerPicksSub: "Recommended for you", featured: "Featured",
+    genericProduct: "Digital product", genericDesc: "A digital product from this store.",
+    preparingStore: "Getting the store ready", preparingStoreSub: "One moment while we load the products.",
+    storeNotFound: "We couldn't find this store", storeNotFoundSub: "Check the link, or go back to Monah's homepage.",
+    backToMonah: "Back to Monah",
+    firstDrop: "The first products are on the way.",
+    firstDropSub: "The seller is getting products ready. Follow the store or message them to know when new products land.",
+    messageSeller: "Message seller", comingSoon: "Products coming soon",
+    storeProducts: "Store products", chooseProduct: "Pick a product and get started today.",
+    availableNow: "available now", searchPlaceholder: "Search by product name", all: "All",
+    viewProduct: "View product", noMatch: "No products matched that name.",
+    noMatchSub: "Try a different word, or go back to all products.", showAll: "Show all",
+    about: "About", faq: "FAQ", purchaseInfo: "Purchase info",
+    organizedView: "Organized layout", organizedViewSub: "Browse products and categories easily.",
+    clearPrice: "Clear pricing", clearPriceSub: "Prices are visible before you reach out.",
+    directSupport: "Direct support", directSupportSub: "Message the seller if you need help.",
+    storeLabel: "Store", poweredBy: "Powered by Monah", visitMonah: "Visit the Monah website",
+  },
+};
 
 /*
   MONAH CUSTOMER STORE PAGE — DROP-IN REPLACEMENT
@@ -51,6 +106,8 @@ export default function StorePage({ sellerId }) {
   const [status, setStatus] = useState("loading");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("الكل");
+  const [lang, setLang] = useLang();
+  const t = STRINGS[lang];
 
   useEffect(() => {
     async function fetchData() {
@@ -132,15 +189,16 @@ export default function StorePage({ sellerId }) {
   }
 
   return (
-    <div className="mc-page" dir="rtl" lang="ar" style={{ "--mc-brand": brandColor }}>
+    <div className="mc-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang} style={{ "--mc-brand": brandColor }}>
       <style>{styles}</style>
       <header className="mc-top">
         <div className="mc-top-in">
           <div className="mc-wordmark"><span className="mc-store-mark">{logoUrl ? <img src={logoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : brandName.charAt(0)}</span><span>{brandName}</span><span className="mc-gold-dot" /></div>
           <div className="mc-top-actions">
-            <button className="mc-icon-btn" type="button" onClick={shareStore} title="مشاركة المتجر" aria-label="مشاركة المتجر"><ShareIcon /></button>
-            <button className="mc-icon-btn" type="button" onClick={scrollToProducts} title="المنتجات" aria-label="المنتجات"><SearchIcon /></button>
-            <a className="mc-icon-btn" href={`#purchases/${ownerId}`} title="المشتريات"><CartIcon /></a>
+            <LangToggle lang={lang} onChange={setLang} className="mc-icon-btn" style={{ fontSize: 11, fontWeight: 800 }} />
+            <button className="mc-icon-btn" type="button" onClick={shareStore} title={t.share} aria-label={t.share}><ShareIcon /></button>
+            <button className="mc-icon-btn" type="button" onClick={scrollToProducts} title={t.products} aria-label={t.products}><SearchIcon /></button>
+            <a className="mc-icon-btn" href={`#purchases/${ownerId}`} title={t.purchases}><CartIcon /></a>
           </div>
         </div>
       </header>
@@ -149,74 +207,74 @@ export default function StorePage({ sellerId }) {
         <section className="mc-store">
           {coverUrl && <img className="mc-store-cover" src={coverUrl} alt="" />}
           <div className="mc-store-content">
-            <div className="mc-logo">{logoUrl ? <img src={logoUrl} alt={`شعار ${brandName}`} /> : brandName.charAt(0)}</div>
+            <div className="mc-logo">{logoUrl ? <img src={logoUrl} alt={`${brandName} logo`} /> : brandName.charAt(0)}</div>
             <div>
               <div className="mc-store-name">{brandName}</div>
               <div className="mc-store-tagline">{tagline}</div>
-              <div className="mc-store-meta">متجر رقمي مستقل</div>
+              <div className="mc-store-meta">{t.independentStore}</div>
               {(whatsappUrl || instagramUrl || contactEmail) && <div className="mc-store-socials">
-                {whatsappUrl && <a className="mc-social" href={whatsappUrl} target="_blank" rel="noopener noreferrer" title="واتساب"><WhatsappIcon /></a>}
-                {instagramUrl && <a className="mc-social" href={instagramUrl} target="_blank" rel="noopener noreferrer" title="إنستغرام"><InstagramIcon /></a>}
-                {contactEmail && <a className="mc-social" href={`mailto:${contactEmail}`} title="إيميل"><EmailIcon /></a>}
+                {whatsappUrl && <a className="mc-social" href={whatsappUrl} target="_blank" rel="noopener noreferrer" title={t.whatsapp}><WhatsappIcon /></a>}
+                {instagramUrl && <a className="mc-social" href={instagramUrl} target="_blank" rel="noopener noreferrer" title={t.instagram}><InstagramIcon /></a>}
+                {contactEmail && <a className="mc-social" href={`mailto:${contactEmail}`} title={t.email}><EmailIcon /></a>}
               </div>}
             </div>
           </div>
         </section>
 
-        <section className="mc-assurances" aria-label="مزايا الشراء">
-          <div className="mc-assurance"><strong className="mc-mono">{products.length}</strong><span>منتجات رقمية</span></div>
-          <div className="mc-assurance"><strong>مرتب</strong><span>تصفح وفئات واضحة</span></div>
-          <div className="mc-assurance"><strong>مباشر</strong><span>تواصل مع التاجر</span></div>
+        <section className="mc-assurances" aria-label={t.buyerFeatures}>
+          <div className="mc-assurance"><strong className="mc-mono">{products.length}</strong><span>{t.digitalProducts}</span></div>
+          <div className="mc-assurance"><strong>{t.organized}</strong><span>{t.organizedSub}</span></div>
+          <div className="mc-assurance"><strong>{t.direct}</strong><span>{t.directSub}</span></div>
         </section>
 
         {featuredProducts.length > 0 && <section className="mc-featured">
-          <div className="mc-featured-head"><div className="mc-featured-title">اختيارات التاجر</div><div className="mc-featured-note">منتجات يرشحها لك</div></div>
+          <div className="mc-featured-head"><div className="mc-featured-title">{t.sellerPicks}</div><div className="mc-featured-note">{t.sellerPicksSub}</div></div>
           {featuredProducts.map((product) => <a className="mc-featured-card" href={`#product/${product.id}`} key={product.id}>
             <div className="mc-featured-image">{product.images?.[0] ? <img src={product.images[0]} alt="" /> : <FileIcon />}</div>
-            <div><div className="mc-featured-name">{product.name || "منتج رقمي"}</div><div className="mc-featured-price">{Number(product.price || 0).toFixed(2)} ر.ع</div></div>
-            <span className="mc-featured-badge">مميز</span>
+            <div><div className="mc-featured-name">{product.name || t.genericProduct}</div><div className="mc-featured-price">{Number(product.price || 0).toFixed(2)} ر.ع</div></div>
+            <span className="mc-featured-badge">{t.featured}</span>
           </a>)}
         </section>}
 
-        {status === "loading" ? <div className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">نجهّز لك المتجر</div><div className="mc-empty-sub">لحظات ونظهر المنتجات المتاحة.</div></div> : status === "missing" ? <section className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">لم نجد هذا المتجر</div><div className="mc-empty-sub">تأكد من الرابط أو ارجع إلى صفحة مُونَة الرئيسية.</div><a className="mc-empty-cta" href="#">العودة إلى مُونَة</a></section> : <>
+        {status === "loading" ? <div className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">{t.preparingStore}</div><div className="mc-empty-sub">{t.preparingStoreSub}</div></div> : status === "missing" ? <section className="mc-empty"><div className="mc-empty-icon"><FileIcon /></div><div className="mc-empty-title">{t.storeNotFound}</div><div className="mc-empty-sub">{t.storeNotFoundSub}</div><a className="mc-empty-cta" href="#">{t.backToMonah}</a></section> : <>
           {products.length === 0 ? <section className="mc-empty">
             <div className="mc-empty-icon"><FileIcon /></div>
-            <div className="mc-empty-title">أول مجموعة رقمية في الطريق.</div>
-            <div className="mc-empty-sub">صاحب المتجر يجهّز منتجاته الآن. تابع المتجر أو راسله لمعرفة وقت نزول المنتجات الجديدة.</div>
-            {whatsappUrl ? <a className="mc-empty-cta" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><WhatsappIcon /> راسل التاجر</a> : <span className="mc-empty-cta" style={{opacity:.55}}>المنتجات قريباً</span>}
+            <div className="mc-empty-title">{t.firstDrop}</div>
+            <div className="mc-empty-sub">{t.firstDropSub}</div>
+            {whatsappUrl ? <a className="mc-empty-cta" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><WhatsappIcon /> {t.messageSeller}</a> : <span className="mc-empty-cta" style={{opacity:.55}}>{t.comingSoon}</span>}
           </section> : <>
             <section className="mc-catalog-head" id="products">
-              <div><div className="mc-eyebrow"><span className="mc-gold-dot" /> منتجات المتجر</div><h1 className="mc-title">اختر المنتج وابدأ شغلك اليوم.</h1></div>
-              <div className="mc-count">{shownProducts.length} متاح الآن</div>
+              <div><div className="mc-eyebrow"><span className="mc-gold-dot" /> {t.storeProducts}</div><h1 className="mc-title">{t.chooseProduct}</h1></div>
+              <div className="mc-count">{shownProducts.length} {t.availableNow}</div>
             </section>
-            <div className="mc-tools"><div className="mc-search"><SearchIcon /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث باسم المنتج" /></div><button className="mc-filter" onClick={() => setActiveCategory("الكل")}>الكل</button></div>
-            <div className="mc-categories">{categories.map((category) => <button key={category} className={`mc-category ${activeCategory === category ? "active" : ""}`} onClick={() => setActiveCategory(category)}>{category}</button>)}</div>
+            <div className="mc-tools"><div className="mc-search"><SearchIcon /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.searchPlaceholder} /></div><button className="mc-filter" onClick={() => setActiveCategory("الكل")}>{t.all}</button></div>
+            <div className="mc-categories">{categories.map((category) => <button key={category} className={`mc-category ${activeCategory === category ? "active" : ""}`} onClick={() => setActiveCategory(category)}>{category === "الكل" ? t.all : category}</button>)}</div>
             <section className="mc-section">
               {shownProducts.length ? <div className="mc-grid">{shownProducts.map((product) => <a className="mc-product" href={`#product/${product.id}`} key={product.id}>
-                <div className="mc-product-img">{product.images?.[0] ? <img src={product.images[0]} alt={product.name || "منتج رقمي"} /> : <div className="mc-file-card"><b></b><i></i><i></i><i></i><em></em></div>}</div>
-                <div className="mc-product-type"><span className="mc-gold-dot" /> {product.category || "منتج رقمي"}</div>
-                <div className="mc-product-name">{product.name || "منتج رقمي"}{product.featured && <span className="mc-featured-badge" style={{ marginRight: 5 }}>مميز</span>}</div>
-                <div className="mc-product-desc">{product.description || "منتج رقمي من هذا المتجر."}</div>
-                <div className="mc-product-bottom"><span className="mc-price">{Number(product.price || 0).toFixed(2)} ر.ع</span><span className="mc-view">عرض المنتج</span></div>
-              </a>)}</div> : <div className="mc-empty"><div className="mc-empty-title">ما وجدنا منتجاً بهذا الاسم.</div><div className="mc-empty-sub">جرّب كلمة مختلفة أو ارجع لكل المنتجات.</div><button className="mc-filter" onClick={() => {setSearch(""); setActiveCategory("الكل");}}>عرض الكل</button></div>}
+                <div className="mc-product-img">{product.images?.[0] ? <img src={product.images[0]} alt={product.name || t.genericProduct} /> : <div className="mc-file-card"><b></b><i></i><i></i><i></i><em></em></div>}</div>
+                <div className="mc-product-type"><span className="mc-gold-dot" /> {product.category || t.genericProduct}</div>
+                <div className="mc-product-name">{product.name || t.genericProduct}{product.featured && <span className="mc-featured-badge" style={{ marginRight: 5 }}>{t.featured}</span>}</div>
+                <div className="mc-product-desc">{product.description || t.genericDesc}</div>
+                <div className="mc-product-bottom"><span className="mc-price">{Number(product.price || 0).toFixed(2)} ر.ع</span><span className="mc-view">{t.viewProduct}</span></div>
+              </a>)}</div> : <div className="mc-empty"><div className="mc-empty-title">{t.noMatch}</div><div className="mc-empty-sub">{t.noMatchSub}</div><button className="mc-filter" onClick={() => {setSearch(""); setActiveCategory("الكل");}}>{t.showAll}</button></div>}
             </section>
           </>}
         </>}
 
         {(storeAbout || storeFaqs.length > 0) && <section className="mc-about">
-          {storeAbout && <><div className="mc-about-title">عن {brandName}</div><div className="mc-about-text">{storeAbout}</div></>}
+          {storeAbout && <><div className="mc-about-title">{t.about} {brandName}</div><div className="mc-about-text">{storeAbout}</div></>}
           {storeFaqs.length > 0 && <div className="mc-faq">
-            <div className="mc-about-title">أسئلة شائعة</div>
+            <div className="mc-about-title">{t.faq}</div>
             {storeFaqs.map((faq, index) => <details key={`${faq.question}-${index}`}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}
           </div>}
         </section>}
 
-        <section className="mc-reassurance" aria-label="معلومات الشراء">
-          <div><b>عرض منظم</b><span>تصفح المنتجات والفئات بسهولة.</span></div>
-          <div><b>سعر واضح</b><span>السعر ظاهر قبل التواصل.</span></div>
-          <div><b>دعم مباشر</b><span>راسل التاجر إذا احتجت مساعدة.</span></div>
+        <section className="mc-reassurance" aria-label={t.purchaseInfo}>
+          <div><b>{t.organizedView}</b><span>{t.organizedViewSub}</span></div>
+          <div><b>{t.clearPrice}</b><span>{t.clearPriceSub}</span></div>
+          <div><b>{t.directSupport}</b><span>{t.directSupportSub}</span></div>
         </section>
-        <footer className="mc-footer">متجر <b>{brandName}</b> · <a href="/" aria-label="زيارة موقع مُونَة">مدعوم من مُونَة</a></footer>
+        <footer className="mc-footer">{t.storeLabel} <b>{brandName}</b> · <a href="/" aria-label={t.visitMonah}>{t.poweredBy}</a></footer>
       </main>
     </div>
   );

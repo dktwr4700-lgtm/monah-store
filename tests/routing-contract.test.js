@@ -103,7 +103,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const rules = await source("firestore.rules");
     const storageRules = await source("storage.rules");
 
-    expect(productPage).toContain("<ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} />");
+    expect(productPage).toContain("<ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} lang={lang} />");
     expect(orderPanel).toContain('orderRequest("submit_proof"');
     expect(orderPanel).toContain("payment-proofs/${auth.currentUser.uid}/${order.id}/");
     expect(orderPanel).toContain("nextFile.size >= MAX_PROOF_BYTES");
@@ -263,7 +263,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(store).toContain("navigator.share");
     expect(store).toContain("مدعوم من مُونَة");
     expect(product).toContain("مدعوم من مُونَة");
-    expect(product).toContain("text: `شاهد ${name} من ${storeName}`");
+    expect(product).toContain("shareText: (name, storeName) => `شاهد ${name} من ${storeName}`");
     expect(dashboard).toContain("function shareStore()");
     expect(dashboard).toContain("اختر مظهر متجرك");
   });
@@ -359,7 +359,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("أسئلة وأجوبة للزائر");
     expect(store).toContain("اختيارات التاجر");
     expect(store).toContain("أسئلة شائعة");
-    expect(product).toContain("منتجات أخرى من {storeName}");
+    expect(product).toContain("otherFrom: (storeName) => `منتجات أخرى من ${storeName}`");
     expect(product).toContain("أسئلة عن المتجر");
     expect(rules).toContain("'featured', 'sortOrder'");
     expect(rules).toContain("'coverUrl', 'about', 'faqs', 'updatedAt'");
