@@ -163,7 +163,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("أكثر رابط تمت زيارته");
     expect(dashboard).toContain("وليست مبيعات أو معلومات عن الزوار");
     expect(catalog).toContain('key: "salesGrowth"');
-    expect(catalog).toContain('title: "زيادة المبيعات", price: 1');
+    expect(catalog).toContain('title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
   });
 
   it("يرتب تبويب المنتجات إلى أقسام قابلة للفتح دون إزالة أدوات التاجر", async () => {
@@ -288,11 +288,11 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const catalog = await source("src/subscriptionCatalog.js");
 
     expect([...catalog.matchAll(/key: "/g)]).toHaveLength(5);
-    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2');
-    expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", price: 1');
-    expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", price: 1');
-    expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5');
-    expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1');
+    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", titleEn: "Digital selling", price: 2');
+    expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
+    expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", titleEn: "Sales management", price: 1');
+    expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", titleEn: "Extra protection", price: 0.5');
+    expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", titleEn: "AI tools", price: 1');
     expect(catalog).not.toContain('key: "customDomain"');
     expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
     expect(catalog).not.toContain('key: "affiliate"');

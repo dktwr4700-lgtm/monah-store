@@ -572,8 +572,8 @@ export default function App() {
                 <div className="price-soon-label">{st.addOnsLabel}</div>
                 {ADD_ON_CATALOG.map((item) => (
                   <div key={item.key} style={{ marginBottom: 10 }}>
-                    <div>○ <b>{item.title}</b> — {item.price} ر.ع</div>
-                    <div style={{ color: "#8A8677", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{item.desc}</div>
+                    <div>○ <b>{lang === "en" ? item.titleEn : item.title}</b> — {item.price} {lang === "en" ? "OMR" : "ر.ع"}</div>
+                    <div style={{ color: "#8A8677", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{lang === "en" ? item.descEn : item.desc}</div>
                   </div>
                 ))}
               </div>
