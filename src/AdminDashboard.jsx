@@ -104,6 +104,7 @@ function toMillis(value) {
 }
 
 function planLabel(plan) {
+  if (plan === "trial") return "تجربة مجانية";
   if (plan === "basic") return "أساسية";
   if (plan === "pro") return "احترافية";
   if (plan === "full") return "متجر متكامل";
@@ -741,6 +742,7 @@ export default function AdminDashboard() {
         <div className="admin-filters">
           <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}>
             <option value="all">كل الباقات</option>
+            <option value="trial">تجربة مجانية</option>
             <option value="basic">أساسية</option>
             <option value="pro">احترافية</option>
             <option value="full">متجر متكامل</option>
