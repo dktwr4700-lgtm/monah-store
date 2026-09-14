@@ -11,6 +11,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { useLang, LangToggle } from "./i18n.jsx";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -31,20 +32,18 @@ class DebugErrorBoundary extends React.Component {
 }
 
 const STORE_STYLES = [
-  { color: "#16233F", name: "كلاسيكي", hint: "هادئ ورسمي" },
-  { color: "#4B6152", name: "طبيعي", hint: "ناعم وقريب" },
-  { color: "#8B3A3A", name: "جريء", hint: "دافئ ولافت" },
-  { color: "#5B4A8A", name: "إبداعي", hint: "مناسب للمحتوى" },
-  { color: "#B9832F", name: "ذهبي", hint: "أنِق وفاخر" },
+  { color: "#16233F", name: "كلاسيكي", nameEn: "Classic", hint: "هادئ ورسمي", hintEn: "Calm and formal" },
+  { color: "#4B6152", name: "طبيعي", nameEn: "Natural", hint: "ناعم وقريب", hintEn: "Soft and approachable" },
+  { color: "#8B3A3A", name: "جريء", nameEn: "Bold", hint: "دافئ ولافت", hintEn: "Warm and striking" },
+  { color: "#5B4A8A", name: "إبداعي", nameEn: "Creative", hint: "مناسب للمحتوى", hintEn: "Great for content" },
+  { color: "#B9832F", name: "ذهبي", nameEn: "Golden", hint: "أنِق وفاخر", hintEn: "Elegant and premium" },
 ];
 const COLORS = STORE_STYLES.map((style) => style.color);
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const MAX_PRODUCT_FILE_MB = 5120;
 const STORE_TYPE_LABELS = {
-  books: "كتب رقمية",
-  videos: "فيديوهات ودورات",
-  codes: "أكواد وتراخيص",
-  files: "ملفات وقوالب",
+  ar: { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" },
+  en: { books: "Digital books", videos: "Videos & courses", codes: "Codes & licenses", files: "Files & templates" },
 };
 
 const styles = `
@@ -55,6 +54,7 @@ const styles = `
   .dh-brand span{ color:#8A8677; font-weight:600; font-size:11.5px; margin-right:6px; }
   .dh-logout{ border:1px solid #EDEAE0; padding:7px 13px; border-radius:100px; font-size:11px; color:#3D4A66; background:none; font-family:'Cairo',sans-serif; cursor:pointer; }
   .dh-admin-btn{ border:1px solid #B9832F; padding:7px 13px; border-radius:100px; font-size:11px; color:#B9832F; background:none; font-family:'Cairo',sans-serif; cursor:pointer; font-weight:700; margin-left:8px; }
+  .dh-lang{ border:1px solid #EDEAE0; padding:7px 11px; border-radius:100px; font-size:11px; color:#3D4A66; background:none; font-family:'Cairo',sans-serif; cursor:pointer; font-weight:800; margin-left:8px; }
   .dh-verify-banner{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:#FFF8E9; border-bottom:1px solid #EFD9AB; padding:11px 16px; font-size:12px; color:#7A5A17; line-height:1.7; }
   .dh-verify-banner button{ border:0; border-radius:100px; padding:7px 13px; font-size:11px; font-weight:800; background:#0B0B0C; color:#fff; font-family:'Cairo',sans-serif; cursor:pointer; white-space:nowrap; }
   .dh-verify-banner button:disabled{ opacity:.6; cursor:not-allowed; }
@@ -313,7 +313,939 @@ const styles = `
   }
 `;
 
+const DASH_T = {
+  ar: {
+    fileTooLarge: (mb) => `حجم الملف أكبر من ${mb} ميجا. تواصل معنا لو تحتاج رفع ملف أكبر.`,
+    writeNameForDraft: "اكتب اسم المنتج أولًا، ثم اطلب المسودة.",
+    loginRetry: "سجّل دخولك ثم حاول مرة ثانية.",
+    draftError: "تعذر تجهيز المسودة الآن. حاول بعد قليل.",
+    adDraftError: "تعذر تجهيز نص الإعلان الآن. حاول بعد قليل.",
+    copyDraftError: "تعذر نسخ المسودة. انسخها يدويًا.",
+    trialLimitError: "التجربة المجانية تسمح بمنتج واحد فقط. رقّي اشتراكك لإضافة المزيد.",
+    nameAndPriceRequired: "اكتب اسم المنتج وسعرًا صحيحًا أو اكتب 0 للمنتج المجاني.",
+    freeOnlyFiles: "المنتج المجاني حاليًا متاح للملفات فقط.",
+    fillNamePriceFile: "عبّي اسم المنتج والسعر واختر ملف المنتج.",
+    fillNamePriceCodes: "عبّي اسم المنتج والسعر، وألصقي الأكواد (كود بكل سطر).",
+    genericTryAgain: "صار خطأ، حاول مرة ثانية.",
+    editNameAndPriceRequired: "عبّي اسم المنتج وسعرًا صحيحًا أو اكتب 0 للمنتج المجاني.",
+    saveEditError: "تعذر حفظ التعديل، حاول مرة ثانية.",
+    pasteOneCode: "الصقي كود واحد على الأقل.",
+    addCodesError: "تعذر إضافة الأكواد، حاول مرة ثانية.",
+    deleteProductError: "تعذر حذف المنتج، حاول مرة ثانية.",
+    toggleHiddenError: "تعذر تحديث حالة المنتج، حاول مرة ثانية.",
+    toggleFeaturedError: "تعذر تثبيت المنتج الآن، حاول مرة ثانية.",
+    reorderError: "تعذر ترتيب المنتجات الآن، حاول مرة ثانية.",
+    bundleNamePriceRequired: "اكتب اسم الحزمة وسعرًا صحيحًا أكبر من صفر.",
+    bundleTwoProducts: "اختر منتجين على الأقل داخل الحزمة.",
+    saveBundleError: "تعذر حفظ الحزمة، حاول مرة ثانية.",
+    bundleUnarchived: "تم إخراج الحزمة من الأرشيف. ستجدها ضمن الحزم المحفوظة.",
+    bundleArchived: "تم نقل الحزمة للأرشيف. ستجدها ضمن الحزم المؤرشفة.",
+    bundleArchiveError: "تعذر تحديث حالة الحزمة، حاول مرة ثانية.",
+    bundlePublished: "الحزمة صارت منشورة، وعملاؤك يقدرون يطلبونها من رابطها.",
+    bundleUnpublished: "تم إخفاء الحزمة عن الزوار. رابطها ما يفتح لحد تنشرها ثانية.",
+    bundlePublishError: "تعذر تحديث حالة النشر، حاول مرة ثانية.",
+    copyBundleLinkError: "تعذر نسخ الرابط. انسخه يدويًا من شريط العنوان.",
+    bundleDeleted: "تم حذف الحزمة فقط. منتجاتك بقيت كما هي.",
+    deleteBundleError: "تعذر حذف الحزمة، حاول مرة ثانية.",
+    maxTwoImages: "حد أقصى صورتين لكل منتج.",
+    maxTwoImagesPartial: "حد أقصى صورتين لكل منتج — رفعنا أول صورتين بس.",
+    invalidImageFiles: "اختر ملفات صور صالحة.",
+    imageTooLargeSkipped: "حجم إحدى الصور أكبر من 5 ميجا، تجاوزناها.",
+    uploadImageError: "تعذر رفع إحدى الصور، حاول مرة ثانية.",
+    invalidImageFile: "اختر ملف صورة صالحًا.",
+    imageTooLargeSingle: "حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.",
+    uploadPhotoError: "تعذر رفع الصورة، حاول مرة ثانية.",
+    writeStoreNameBeforeSave: "اكتب اسم متجرك قبل الحفظ.",
+    slugMinLength: "اكتب رابطًا من 3 أحرف إنجليزية أو أرقام على الأقل.",
+    invalidContactEmail: "إيميل التواصل غير صحيح، تأكد منه أو اتركه فاضي.",
+    slugTaken: "هذا الرابط مستخدم من متجر ثاني، جربي رابط مختلف.",
+    designSavedToast: "تم حفظ تصميم متجرك ✓",
+    saveDesignError: "تعذر حفظ التصميم، حاول مرة ثانية.",
+    writeCouponCode: "اكتب كود الخصم.",
+    couponPercentRange: "نسبة الخصم لازم تكون بين 1 و 90.",
+    couponCodeExists: "عندك كود بنفس الاسم من قبل، اختر اسم ثاني.",
+    saveSettingError: "تعذر حفظ الإعداد الآن.",
+    savedShort: "تم الحفظ.",
+    writePaymentInstructions: "اكتب تعليمات التحويل بوضوح قبل الحفظ.",
+    savePaymentError: "تعذر حفظ التعليمات الآن.",
+    paymentInstructionsSaved: "تم حفظ تعليمات التحويل. تظهر للمشتري بعد بدء الطلب فقط.",
+    paymentInstructionsSavedToast: "تم حفظ تعليمات التحويل ✓",
+    gatewayKeysRequired: "اكتب مفتاح API وسر API صحيحين من حسابك في OmPay قبل الحفظ.",
+    connectGatewayError: "تعذر ربط بوابة الدفع الآن.",
+    gatewayConnectedMsg: "تم الربط. عملاؤك الآن يقدرون يدفعون بالبطاقة مباشرة لحسابك.",
+    disconnectGatewayError: "تعذر إلغاء الربط الآن.",
+    gatewayDisconnectedMsg: "تم إلغاء الربط. العملاء الآن يحوّلون يدويًا فقط.",
+    genericOperationError: "تعذر تنفيذ العملية الآن.",
+    domainNameMinLength: "اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.",
+    domainAvailableMsg: "متاح! تقدر تكمل الشراء.",
+    domainTakenMsg: "هذا الاسم محجوز.",
+    domainCheckError: "تعذر التحقق الآن.",
+    paymentPrepError: "تعذر تجهيز صفحة الدفع الآن.",
+    couponScopeAll: "على كل منتجاتك",
+    couponScopeProduct: (name) => `على منتج: ${name}`,
+    couponScopeDeleted: "على منتج محذوف",
+    selectProductFirst: "اختر المنتج أولًا.",
+    linkNameLength: "اكتب اسمًا للرابط بين حرفين و60 حرفًا.",
+    trackingLinkCreated: "تم إنشاء رابط التتبع. انسخه وشاركه في المكان الذي اخترته.",
+    createTrackingLinkError: "تعذر إنشاء رابط التتبع، حاول مرة ثانية.",
+    copyLinkErrorAlt: "تعذر نسخ الرابط. انسخه من شريط المتصفح.",
+    deleteTrackingLinkError: "تعذر حذف رابط التتبع، حاول مرة ثانية.",
+    myStore: "متجري",
+    browseProductsText: (name) => `تصفح منتجات ${name}`,
+    shareError: "تعذرت المشاركة الآن، جرب نسخ الرابط.",
+    showBundlesError: "تعذر عرض الحزم المحفوظة الآن.",
+    showCampaignLinksError: "تعذر عرض روابط التتبع الآن.",
+    copySuffix: " (نسخة)",
+    initialFallback: "م",
+    mbUnit: "م.ب",
+    whatsappShareText: (name, url) => `تصفح منتجات ${name}: ${url}`,
+
+    pendingPaymentTitle: "عندك عملية دفع لسه ما تأكدت",
+    pendingPaymentText: "حسابك بدأ فتح متجر ودفع، بس ما تأكدنا من نجاح الدفع بعد. اضغط تحقق قبل لا تجرب تدفع مرة ثانية — تجنبًا لأي خصم مكرر.",
+    checkPaymentStatus: "تحقق من حالة دفعتي",
+    storeSetupIncompleteTitle: "ما أكملت فتح متجرك بعد",
+    storeSetupIncompleteText: "هذا الحساب ما عنده اشتراك مفعّل. لو كنت بدأت تفتح متجرًا وما أكملت الدفع، تقدر تكمل من هنا.",
+    continueStoreSetup: "أكمل فتح متجرك",
+    logoutCta: "تسجيل الخروج",
+
+    yourStore: "متجرك",
+    sellerDashboard: "لوحة التاجر",
+    genericProducts: "منتجات رقمية",
+    adminPanel: "لوحة الأدمن",
+    logoutBtn: "تسجيل خروج",
+    verificationResent: "أرسلنا رابط تأكيد جديد لبريدك. افتح بريدك واضغط الرابط.",
+    emailNotVerified: "بريدك الإلكتروني غير مؤكد بعد. تأكيد بريدك يضمن وصولك لحسابك لو نسيت كلمة المرور.",
+    sendingEllipsis: "جاري الإرسال...",
+    resend: "إعادة الإرسال",
+    sendVerificationLink: "إرسال رابط التأكيد",
+    subscriptionExpired: "انتهى اشتراك متجرك. جدده الآن حتى يرجع يستقبل طلبات.",
+    subscriptionExpiringSoon: (days) => `اشتراك متجرك بينتهي خلال ${days} يوم. جدده الآن بدون انقطاع.`,
+    preparingPayment: "جاري تجهيز الدفع...",
+    renewNow: "جدّد الاشتراك الآن",
+    trialUsedUp: "أنت على التجربة المجانية واستخدمت منتجك الوحيد. رقّي اشتراكك لإضافة منتجات بلا حدود.",
+    trialActive: "أنت على التجربة المجانية — منتج واحد مجانًا بدون بطاقة.",
+    upgradeSubscription: "رقّي اشتراكك",
+    homeTab: "الرئيسية",
+    productsTab: "المنتجات",
+    ordersTab: "الطلبات",
+    couponsTab: "الكوبونات",
+    settingsTab: "الإعدادات",
+
+    yourSpace: "مساحتك الخاصة",
+    yourStoreNamePlaceholder: "اسم متجرك",
+    addSimpleDescription: "أضف وصفًا بسيطًا ليعرف الزائر وش تبيع.",
+    styleMeta: (name) => `مظهر ${name} · متجر بهويتك`,
+    openYourStore: "افتح متجرك",
+    copiedShort: "تم النسخ",
+    shareStoreBtn: "شارك المتجر",
+    editAppearance: "عدّل المظهر",
+    nextStepBadgeStart: "✦ خطوة البداية",
+    nextStepBadgeNext: "✦ خطوتك التالية",
+    nextStepBadgeReady: "✦ جاهز للانطلاق",
+    firstProductTitle: "منتجك الأول أقرب مما تتوقع",
+    firstProductText: "أضف منتجاً، راجعه، ثم شارك الرابط مع جمهورك.",
+    firstProductCta: "+ أضف أول منتج",
+    taglineStepTitle: "عرّف الزوار بمتجرك",
+    taglineStepText: "جملة وصف بسيطة تزيد ثقة العملاء وتوضح لهم وش تبيع.",
+    taglineStepCta: "أضف وصف المتجر",
+    contactStepTitle: "خلّ عملاءك يقدرون يتواصلون معك",
+    contactStepText: "أضف رقم واتساب أو حساب إنستغرام في تصميم متجرك.",
+    contactStepCta: "أضف وسيلة تواصل",
+    describeStepTitle: "منتجاتك تستاهل وصف أوضح",
+    describeStepText: "وصف جيد يرفع ثقة المشتري ويزيد فرص البيع.",
+    describeStepCta: "حسّن وصف منتج",
+    couponStepTitle: "جرب أول كود خصم لك",
+    couponStepText: "كوبونات الخصم تشجع الزوار يسوون قرار الشراء بسرعة أكبر.",
+    couponStepCta: "أنشئ كود خصم",
+    shareStepTitle: "متجرك جاهز، حان وقت المشاركة",
+    shareStepText: "شارك رابط متجرك على واتساب وإنستغرام لتبدأ استقبال الزيارات والمبيعات.",
+    shareStepCta: "نسخ رابط المتجر",
+    stepsOf5: (n) => `${n} من 5 خطوات مكتملة`,
+    stalledOrderSingle: "طلب متوقف منذ أكثر من 30 دقيقة",
+    stalledOrdersMulti: (n) => `${n} طلبات متوقفة منذ أكثر من 30 دقيقة`,
+    stalledOrdersHint: "عملاء بدأوا الطلب وما أكملوا الدفع أو رفع الإثبات.",
+    openFromOrdersTab: "افتحهم من تبويب الطلبات",
+    confirmedSalesLabel: "ر.ع مبيعات مؤكدة",
+    orderSentLabel: "طلب مُرسل",
+    activeProductLabel: "منتج نشط",
+    addProductQuick: "+ أضف منتج",
+    storeDesignQuick: "تصميم المتجر",
+    linkCopiedFull: "تم نسخ الرابط",
+    copyStoreLinkBtn: "نسخ رابط المتجر",
+    shareStoreQuick: "مشاركة المتجر",
+    shareCenterTitle: "مركز مشاركة المتجر",
+    shareCenterSub: "انشر رابط متجرك في المكان الذي فيه عملاؤك.",
+    shareBtn: "مشاركة",
+    whatsapp: "واتساب",
+    copyLinkBtn: "نسخ الرابط",
+    storeCodeTitle: "رمز متجرك",
+    storeCodeSub: "خله عندك في المعرض أو المطبوعات، والعميل يفتحه بكاميرا جواله.",
+    productHealthTitle: "حالة منتجاتك",
+    productHealthSub: "تعرف مباشرة ما الذي يراه الزائر وما يحتاج منك مراجعة.",
+    manageProducts: "إدارة المنتجات",
+    publishedProductsLabel: "منتجات منشورة",
+    hiddenDraftsLabel: "مسودات أو مخفية",
+    addFirstProduct: "أضف أول منتج",
+    hidden: "مخفي",
+    published: "منشور",
+    featuredTag: "مميز",
+    publicStoreLinkLabel: "رابط متجرك العام",
+    copiedTiny: "تم",
+    copyTiny: "نسخ",
+    lastOrdersTitle: "آخر الطلبات",
+    emptyOrdersHint: "أضف منتجك الأول، ثم شارك رابطه على واتساب أو إنستغرام لتبدأ استقبال المبيعات.",
+
+    trialLimitTitle: "وصلت لحد التجربة المجانية",
+    trialLimitHint: "التجربة المجانية تسمح بمنتج واحد. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي ميزات مونة.",
+    upgradeNow: "رقّي اشتراكك الآن",
+    addNewProduct: "أضف منتج جديد",
+    openFormHint: "افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.",
+    productNameLabel: "اسم المنتج",
+    priceLabel: "السعر (ر.ع)",
+    freeFileHint: "اكتب 0 إذا تريد تجعل هذا الملف مجانيًا للزوار.",
+    categoryLabel: "التصنيف (مثل: قوالب، أيقونات، عروض تقديمية)",
+    categoryLabelShort: "التصنيف",
+    shortDescLabel: "وصف مختصر (اختياري)",
+    shortDescLabelShort: "وصف مختصر",
+    preparingDraft: "جاري تجهيز المسودة...",
+    writeDescriptionDraft: "اكتب لي مسودة وصف",
+    aiToolsUpsellPrefix: "✨ فعّل إضافة \"أدوات الذكاء\" (١ ر.ع شهريًا) من تبويب",
+    aiToolsUpsellSuffix: "عشان يكتب لك الذكاء الاصطناعي مسودة وصف.",
+    subscriptionLinkLabel: "اشتراك متجرك",
+    draftOnlyEditable: "مسودة فقط — عدّلها أو استخدمها إذا ناسبتك",
+    useThisDraft: "استخدم هذه المسودة",
+    cancel: "إلغاء",
+    productImagesLabel: "صور المنتج (حتى صورتين، اختياري)",
+    productTypeLabel: "نوع المنتج",
+    fileType: "ملف",
+    codeType: "كود / ترخيص",
+    productFileLabel: "ملف المنتج",
+    fileSecureHint: (mb) => `الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف ${mb} ميجابايت.`,
+    interactiveFileLabel: "ملف تفاعلي (مثل الألعاب) — يشتغل مباشرة داخل الموقع بزر \"العب الآن\" بدل ما يُنزَّل، عشان يشتغل مضمون على أي جهاز وما ينسخه أحد غير المشتري",
+    interactiveFileLabelShort: "ملف تفاعلي (مثل الألعاب) — يشتغل مباشرة داخل الموقع بزر \"العب الآن\" بدل ما يُنزَّل",
+    pasteCodesLabel: "الصقي الأكواد (كود بكل سطر)",
+    eachCustomerCodeHint: "كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.",
+    previewProduct: "معاينة المنتج",
+    saveAsDraft: "حفظ كمسودة",
+    uploadingFileMsg: "جاري رفع الملف...",
+    publishingMsg: "جاري النشر...",
+    publishProduct: "نشر المنتج",
+    draftHintBottom: "\"حفظ كمسودة\" يحفظ المنتج مخفيًا عن الزوار — تقدر تنشره بعدين من قائمة منتجاتك.",
+    yourProductsTitle: "منتجاتك",
+    productCountUnit: "منتج",
+    searchByName: "ابحث باسم المنتج",
+    allFilter: "الكل",
+    visibleFilter: "منشور",
+    hiddenFilter: "مخفي",
+    noProductsYet: "ما أضفت أي منتج بعد.",
+    noMatchFilter: "ما فيه منتج يطابق البحث أو الفلتر.",
+    editNoteChangeFile: "لتغيير الملف نفسه، احذفي هذا المنتج وأضيفيه من جديد مؤقتًا.",
+    savingEllipsis: "جاري الحفظ...",
+    save: "حفظ",
+    stockLabel: "مخزون:",
+    codeUnit: "كود",
+    outOfStock: " — نفذ المخزون",
+    pasteNewCodesLabel: "الصقي الأكواد الجديدة (كود بكل سطر)",
+    addingEllipsis: "جاري الإضافة...",
+    addCodes: "إضافة الأكواد",
+    productLinkLabel: "رابط المنتج",
+    copyLink: "نسخ الرابط",
+    preparingAd: "جاري تجهيز الإعلان...",
+    writeAdDraft: "اكتب لي مسودة إعلان",
+    adDraftOnly: "مسودة فقط — لن تُنشر من مُونَة",
+    copiedText: "تم النسخ",
+    copyTextBtn: "نسخ النص",
+    close: "إغلاق",
+    edit: "تعديل",
+    duplicateAsNew: "نسخ كمنتج جديد",
+    addCodesBtn: "إضافة أكواد",
+    deletingEllipsis: "جاري الحذف...",
+    show: "إظهار",
+    unhide: "إخفاء",
+    unfeature: "إلغاء التثبيت",
+    feature: "تثبيت",
+    confirmDeleteQuestion: "تأكيد الحذف؟",
+    delete: "حذف",
+    moveUp: "↑ قدّمه",
+    moveDown: "↓ أخّره",
+    editDraftOnlyNoAutoSave: "مسودة فقط — لا تُحفظ إلا إذا ضغطت حفظ المنتج",
+
+    trackingLinksTitle: "روابط التتبع",
+    trackingLinksSummary: (visits, count) => `${visits} زيارة من ${count} روابط`,
+    trackingLinksEmpty: "أنشئ رابطًا مختلفًا لكل مكان نشر.",
+    trackingLinksHint: "أنشئ رابطًا مختلفًا لكل مكان تنشر فيه، مثل واتساب أو إنستغرام. نعرض عدد فتحات الرابط فقط، بدون جمع معلومات شخصية عن الزوار.",
+    visitsSummaryTitle: "ملخص الزيارات",
+    totalVisits: "إجمالي الزيارات",
+    yourCreatedLinks: "روابطك المنشأة",
+    mostVisitedLink: (label) => `أكثر رابط تمت زيارته: ${label}`,
+    visitUnit: "زيارة",
+    trackingLinksNote: "هذه الأرقام لفتحات روابط التتبع فقط، وليست مبيعات أو معلومات عن الزوار.",
+    publishProductFirst: "انشر منتجًا أولًا حتى تنشئ له رابط تتبع.",
+    productLabel: "المنتج",
+    choosePublishedProduct: "اختر منتجًا منشورًا",
+    publishLocationLabel: "اسم مكان النشر",
+    publishLocationPlaceholder: "مثال: إنستغرام",
+    creatingEllipsis: "جاري الإنشاء...",
+    createTrackingLink: "إنشاء رابط تتبع",
+    productUnavailable: "منتج غير متاح",
+    trackingLinkLabel: "رابط التتبع",
+    deleteLinkBtn: "حذف الرابط",
+
+    bundlesTitle: "حزم المنتجات",
+    bundlesSummary: (n) => `${n} حزم محفوظة`,
+    bundlesEmpty: "جهّز الحزمة الآن، وانشرها لعملائك متى ما جهزت.",
+    bundlesHint: "جهّز عرضًا من منتجين أو أكثر بسعر واحد. تُحفظ الحزمة كمسودة أول ما تنشئها، وما يقدر عملاؤك يطلبونها إلا بعد ما تضغط \"نشر الحزمة\".",
+    bundleSavedDraft: "تم حفظ الحزمة كمسودة. اضغط \"نشر الحزمة\" تحت لما تجهز.",
+    needTwoProducts: "تحتاج منتجين على الأقل قبل تجهيز حزمة.",
+    bundleNameLabel: "اسم الحزمة",
+    bundleNamePlaceholder: "مثال: حزمة قوالب البداية",
+    bundlePriceLabel: "سعر الحزمة المتوقع (ر.ع)",
+    bundleDescPlaceholder: "وش الذي يحصل عليه العميل داخل الحزمة؟",
+    chooseBundleProducts: "اختر منتجات الحزمة",
+    saveBundleAsDraft: "حفظ الحزمة كمسودة",
+    savedBundlesTitle: "الحزم المحفوظة",
+    draftStatus: "مسودة",
+    publishedStatus: "منشورة",
+    productsUnit: "منتجات",
+    willNotShowUntilPublished: "لن تظهر للزوار أو تسمح بالطلب حتى تنشرها.",
+    publishedCanOrder: "منشورة، وعملاؤك يقدرون يطلبونها من رابطها.",
+    confirmDeleteBundleQuestion: "نعم، احذف الحزمة",
+    updatingEllipsis: "جاري التحديث...",
+    publishBundle: "نشر الحزمة",
+    unpublish: "إلغاء النشر",
+    copyBundleLink: "نسخ رابط الحزمة",
+    archiveBundle: "أرشفة الحزمة",
+    archivingEllipsis: "جاري الأرشفة...",
+    deletePermanently: "حذف نهائيًا",
+    archivedBundlesTitle: "الحزم المؤرشفة",
+    archiveTag: "أرشيف",
+    savedForYouOnly: "محفوظة عندك فقط. منتجات الحزمة لم تتغير.",
+    unarchiving: "جاري الإخراج...",
+    unarchiveBundle: "إخراج من الأرشيف",
+
+    autoWelcomeCouponHint: "كوبون الترحيب التلقائي للعملاء الجدد يتفعّل ويتغيّر من",
+    settingsWord: "الإعدادات",
+    addNewCouponTitle: "أضف كود خصم جديد",
+    couponCodeLabel: "كود الخصم",
+    couponCodePlaceholder: "مثال: EID20",
+    couponCodeHint: "أحرف إنجليزية وأرقام، بدون مسافات. العميل يكتب هذا الكود وقت الشراء.",
+    discountPercentLabel: "نسبة الخصم (%)",
+    appliesTo: "ينطبق على",
+    allYourProducts: "كل منتجاتك",
+    createCode: "إنشاء الكود",
+    yourCurrentCodesTitle: "أكوادك الحالية",
+    noCouponsYet: "ما أضفت أي كود خصم بعد.",
+    discountLabel: (percent) => `خصم ${percent}٪`,
+    deleteCode: "حذف الكود",
+
+    transferInstructions: "تعليمات التحويل",
+    transferInstructionsSub: "تظهر للعميل وقت الطلب",
+    yourPaymentGateway: "بوابة الدفع الخاصة بك",
+    gatewayConnectedSub: "مربوطة · العملاء يدفعون مباشرة لحسابك",
+    gatewayNotConnectedSub: "غير مربوطة · حاليًا تحويل يدوي فقط",
+    autoWelcomeCoupon: "كوبون الترحيب التلقائي",
+    activePercentLabel: (percent) => `مفعّل · خصم ${percent}٪`,
+    stoppedNow: "متوقف حاليًا",
+    storeIdentity: "هوية المتجر",
+    storeIdentitySub: "الاسم، الشعار، اللون، الأسئلة الشائعة",
+    yourLinkAndDomain: "رابط متجرك ودومينك الخاص",
+    freeLinkActive: "الرابط المجاني مفعّل · دومين خاص اختياري",
+    subscriptionAndPlan: "الاشتراك والباقة",
+    basicPlanLabel: (price) => `باقة أساسية · ${price} ر.ع شهريًا`,
+
+    backToSettings: "‹ الإعدادات",
+    transferInstructionsForCustomers: "تعليمات التحويل لعملائك",
+    transferInstructionsHint: "اكتب ملاحظة عامة للمشتري، ثم بيانات الحساب البنكي بشكل منظم أسفلها حتى يقدر ينسخها بسهولة. لا تضع كلمة مرور أو رمز تحقق.",
+    generalNoteLabel: "ملاحظة عامة",
+    generalNotePlaceholder: "مثال: حوّل المبلغ بنفس اسمك الظاهر في تطبيق البنك، ثم ارفع إثبات التحويل هنا.",
+    bankNameLabel: "اسم البنك",
+    bankNamePlaceholder: "بنك مسقط",
+    accountHolderLabel: "اسم صاحب الحساب",
+    accountHolderPlaceholder: "كما يظهر في حسابك البنكي",
+    accountNumberLabel: "رقم الحساب",
+    accountNumberPlaceholder: "مثال: 0123456789",
+    phoneNumberLabel: "رقم الجوال (للتحويل عبر الهاتف)",
+    phoneNumberHint: "اختياري — يظهر للمشتري مع رقم الحساب حتى ينسخه بسهولة.",
+    notifyEmailLabel: "إيميل إشعارات الطلبات",
+    notifyEmailPlaceholder: "مثال: store@outlook.com",
+    notifyEmailHint: "نرسل لك إيميل تلقائي على هذا العنوان كل ما عميل يرفع إثبات تحويل. اتركه فاضي لاستخدام إيميل تسجيل دخولك بدلًا منه.",
+    spamWarning: "⚠️ أول إيميل يوصلك ممكن يوصل مجلد \"الرسائل غير المرغوب فيها/Spam\" بدل الرئيسي — افتحيه واضغطي \"ليس بريدًا مزعجًا\" عشان الإيميلات الجاية توصل صح تلقائيًا.",
+    saveTransferInstructions: "حفظ تعليمات التحويل",
+
+    yourPaymentGatewayTitle: "بوابة الدفع الخاصة بك",
+    gatewayIntro: "اربط حساب OmPay الخاص فيك (لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.",
+    gatewayUpsellPrefix: "مهم: ربط البوابة وحده ما يكفي — لازم تفعّل إضافة \"البيع الرقمي\" (٢ ر.ع شهريًا) من تبويب",
+    gatewayUpsellSuffix: "حتى تشتغل الميزة فعليًا لعملائك.",
+    gatewayConnectedNowWorking: "بوابتك مربوطة الآن وشغالة.",
+    cancelingEllipsis: "جاري الإلغاء...",
+    cancelLinking: "إلغاء الربط",
+    apiKeyLabel: "مفتاح API (OMPAY-API-Key)",
+    apiKeyPlaceholder: "من حسابك في OmPay",
+    apiSecretLabel: "سر API (OMPAY-API-Secret)",
+    linkingEllipsis: "جاري الربط...",
+    linkGateway: "اربط بوابة الدفع",
+
+    freeOptionTitle: "الخيار المجاني — رابط متجرك",
+    freeOptionText: "هذا الرابط شغال دائمًا ومجانًا، وتقدر تغيّر جزءه الأخير من تبويب \"هوية المتجر\".",
+    paidOptionTitle: "الخيار المدفوع — رابط فرعي مخصص باسم متجرك",
+    paidOptionText: "عنوان أقصر وأنظف من الرابط المجاني، يُضاف كسطر إضافي على اشتراكك الشهري وليس دفعة منفصلة.",
+    monthlySuffix: "/ شهريًا",
+    domainClarification: "مهم توضيحه: هذا رابط فرعي تابع لمنصة مونة (مثل",
+    domainClarificationSuffix: ")، وليس دومينًا مستقلًا بالكامل — اسم مونة يبقى ظاهر في آخر الرابط دائمًا.",
+    currentDomainLabel: "دومينك الحالي",
+    domainValidUntil: (date) => `ساري حتى ${date}، يتجدد مع اشتراكك الشهري.`,
+    chooseDomainName: "اختر اسم دومينك",
+    checkingEllipsis: "جاري التحقق...",
+    checkAvailability: "تحقق من التوفر",
+    payAndActivateLink: (price) => `ادفع ${price} ر.ع وفعّل الرابط`,
+
+    autoWelcomeCouponTitle: "كوبون ترحيبي تلقائي للعملاء",
+    autoWelcomeCouponHint2: "لو فعّلته، كل عميل يكمل أول طلب منه ياخذ كود خصم شخصي تلقائي لطلبه الجاي من متجرك، بدون أي جهد منك. تقدر توقفه أي وقت.",
+    enableAutoWelcomeCoupon: "فعّل كوبون الترحيب التلقائي",
+    saveSetting: "حفظ الإعداد",
+
+    viewStore: "عرض المتجر ↗",
+    storeCoverAlt: "غلاف المتجر",
+    storeLogoAlt: "شعار المتجر",
+    designSavedMsg: "تم حفظ تصميم متجرك.",
+    storeCoverLabel: "غلاف المتجر (اختياري)",
+    noCover: "بدون غلاف",
+    uploadingEllipsis: "جاري الرفع...",
+    uploadCoverPhoto: "رفع صورة غلاف",
+    coverHint: "صورة عريضة تظهر أعلى صفحة متجرك، فوق الشعار.",
+    storeLogoLabel: "شعار المتجر",
+    uploadNewLogo: "رفع شعار جديد",
+    storeNameLabel: "اسم المتجر",
+    taglineFieldLabel: "عرّف الزوار بمتجرك في جملة واحدة",
+    taglinePlaceholder: "مثال: قوالب وتصاميم تساعدك تنجز شغلك بشكل أسرع",
+    chooseStoreLink: "اختر رابط متجرك",
+    slugPlaceholder: "hind",
+    slugWillAppear: (slugOrName) => `سيظهر متجرك على: monah-app.com/#store/${slugOrName}`,
+    yourNamePlaceholder: "اسمك",
+    whatsappFieldLabel: "رقم واتساب (اختياري)",
+    instagramFieldLabel: "حساب إنستغرام (اختياري)",
+    supportEmailLabel: "إيميل خدمة العملاء (اختياري)",
+    supportEmailHint: "يظهر للعميل بجانب رقم الواتساب كطريقة تواصل ثانية، لو حاب متجرك يستخدم إيميل مخصص لخدمة العملاء.",
+    storeAboutLabel: "نبذة عن المتجر (اختياري)",
+    storeAboutPlaceholder: "عرّف الزوار عن منتجاتك أو أسلوب عملك.",
+    faqLabel: "أسئلة وأجوبة للزائر (اختياري)",
+    faqHint: "أضف حتى 5 أسئلة تساعد العميل قبل ما يتواصل معك.",
+    questionPlaceholder: "السؤال",
+    answerPlaceholder: "الإجابة",
+    questionNumber: (n) => `سؤال ${n}`,
+    remove: "إزالة",
+    addQuestion: "+ أضف سؤالًا",
+    chooseStoreStyle: "اختر مظهر متجرك",
+    storeStyleHint: "خلّ متجرك بالأصلي أو اختر مظهرًا يناسب علامتك. الشعار والاسم والغلاف يبقون باسمك أنت.",
+    storeStyleFallback: "مظهر المتجر",
+    paymentLabel: "الدفع",
+    paymentHint: "عميلك يقدر يدفع ببطاقته مباشرة، أو يحوّل يدويًا ويرفع إثبات التحويل. تعليمات التحويل تُدار من الإعدادات، ولا تظهر في صفحة متجرك العامة لحمايتها.",
+    unsavedChanges: "عندك تغييرات غير محفوظة",
+    allSaved: "كل شي محفوظ",
+    saveAndPublish: "حفظ ونشر التغييرات",
+    genericProductsFallback: "منتجات رقمية عبر Monah",
+
+    yourStoreSubscription: "اشتراك متجرك",
+    subscriptionHint: (price) => `متجر أساسي ${price} ر.ع شهريًا، ثم إضافات تختارها وتُحتسب معه.`,
+    freeTrialBadge: "تجربة مجانية",
+    activeBadge: "مفعّل",
+    trialSubscriptionHint: "أنت على التجربة المجانية — منتج واحد فقط، بدون حد زمني. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي الميزات (الإضافات، الدومين الخاص، وغيرها).",
+    baseStoreLabel: "المتجر الأساسي",
+    baseStoreDesc: "الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.",
+    subscriptionActiveUntil: (date, daysPart) => `الاشتراك ساري حتى ${date}${daysPart}.`,
+    daysRemaining: (n) => ` (${n} يوم متبقي)`,
+    expiredSuffix: " — منتهي",
+    renewalDateUnavailable: "تاريخ التجديد غير متوفر.",
+    upgradeAmount: "مبلغ الترقية",
+    nextRenewalAmount: "مبلغ التجديد القادم",
+    baseAndActiveAddOns: (n) => `الأساسي + إضافاتك المفعّلة (${n})`,
+    payAndUpgrade: (price) => `ادفع ${price} ر.ع ورقّي اشتراكك`,
+    payAndRenew: (price) => `ادفع ${price} ر.ع وجدّد الاشتراك`,
+    notActive: "غير مفعّل",
+    connectGatewayFirstPrefix: "اربط",
+    yourPaymentGatewayLink: "بوابة الدفع الخاصة بك",
+    connectGatewayFirstSuffix: "أولًا لتقدر تفعّلها",
+    addOnsSelectedCount: (n) => `${n} إضافة مختارة`,
+    payAndActivateAddOns: (price) => `ادفع ${price} ر.ع وفعّل الإضافات`,
+    addOnBillingNote: "لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.",
+
+    previewTitle: "معاينة — هكذا يشوفها العميل",
+    generalCategory: "عام",
+    productNamePlaceholder: "اسم المنتج",
+    priceWord: "السعر",
+    noExtraDescription: "ما فيه وصف إضافي لهذا المنتج.",
+    sellingOptionsOnActivation: "خيارات البيع عند التفعيل",
+    previewOnlyNote: "هذي معاينة فقط — المنتج ما انحفظ بعد، وتظهر خيارات البيع الإلكتروني عند تشغيلها",
+  },
+  en: {
+    fileTooLarge: (mb) => `The file is larger than ${mb} MB. Contact us if you need to upload a larger file.`,
+    writeNameForDraft: "Write the product name first, then request the draft.",
+    loginRetry: "Log in, then try again.",
+    draftError: "Couldn't prepare the draft right now. Try again shortly.",
+    adDraftError: "Couldn't prepare the ad text right now. Try again shortly.",
+    copyDraftError: "Couldn't copy the draft. Copy it manually.",
+    trialLimitError: "The free trial allows one product only. Upgrade your subscription to add more.",
+    nameAndPriceRequired: "Write the product name and a valid price, or write 0 for a free product.",
+    freeOnlyFiles: "Free products are currently available for files only.",
+    fillNamePriceFile: "Fill in the product name and price, and choose the product file.",
+    fillNamePriceCodes: "Fill in the product name and price, and paste the codes (one per line).",
+    genericTryAgain: "Something went wrong, try again.",
+    editNameAndPriceRequired: "Fill in the product name and a valid price, or write 0 for a free product.",
+    saveEditError: "Couldn't save the edit, try again.",
+    pasteOneCode: "Paste at least one code.",
+    addCodesError: "Couldn't add the codes, try again.",
+    deleteProductError: "Couldn't delete the product, try again.",
+    toggleHiddenError: "Couldn't update the product's status, try again.",
+    toggleFeaturedError: "Couldn't pin the product right now, try again.",
+    reorderError: "Couldn't reorder the products right now, try again.",
+    bundleNamePriceRequired: "Write the bundle name and a valid price greater than zero.",
+    bundleTwoProducts: "Choose at least two products for the bundle.",
+    saveBundleError: "Couldn't save the bundle, try again.",
+    bundleUnarchived: "The bundle was taken out of the archive. You'll find it under your saved bundles.",
+    bundleArchived: "The bundle was moved to the archive. You'll find it under your archived bundles.",
+    bundleArchiveError: "Couldn't update the bundle's status, try again.",
+    bundlePublished: "The bundle is now published, and your customers can order it from its link.",
+    bundleUnpublished: "The bundle is now hidden from visitors. Its link won't open until you publish it again.",
+    bundlePublishError: "Couldn't update the publish status, try again.",
+    copyBundleLinkError: "Couldn't copy the link. Copy it manually from the address bar.",
+    bundleDeleted: "Only the bundle was deleted. Your products stayed as they were.",
+    deleteBundleError: "Couldn't delete the bundle, try again.",
+    maxTwoImages: "Maximum two images per product.",
+    maxTwoImagesPartial: "Maximum two images per product — we uploaded the first two only.",
+    invalidImageFiles: "Choose valid image files.",
+    imageTooLargeSkipped: "One of the images is larger than 5 MB, we skipped it.",
+    uploadImageError: "Couldn't upload one of the images, try again.",
+    invalidImageFile: "Choose a valid image file.",
+    imageTooLargeSingle: "The image is larger than 5 MB, choose a smaller image.",
+    uploadPhotoError: "Couldn't upload the image, try again.",
+    writeStoreNameBeforeSave: "Write your store name before saving.",
+    slugMinLength: "Write a link of at least 3 English letters or digits.",
+    invalidContactEmail: "The contact email isn't valid — check it or leave it empty.",
+    slugTaken: "This link is used by another store, try a different link.",
+    designSavedToast: "Your store design was saved ✓",
+    saveDesignError: "Couldn't save the design, try again.",
+    writeCouponCode: "Write the discount code.",
+    couponPercentRange: "The discount percentage must be between 1 and 90.",
+    couponCodeExists: "You already have a code with this name, choose a different name.",
+    saveSettingError: "Couldn't save the setting right now.",
+    savedShort: "Saved.",
+    writePaymentInstructions: "Write the transfer instructions clearly before saving.",
+    savePaymentError: "Couldn't save the instructions right now.",
+    paymentInstructionsSaved: "Transfer instructions saved. They appear to the buyer only after they start an order.",
+    paymentInstructionsSavedToast: "Transfer instructions saved ✓",
+    gatewayKeysRequired: "Write a valid API key and API secret from your OmPay account before saving.",
+    connectGatewayError: "Couldn't connect the payment gateway right now.",
+    gatewayConnectedMsg: "Connected. Your customers can now pay by card directly to your account.",
+    disconnectGatewayError: "Couldn't disconnect right now.",
+    gatewayDisconnectedMsg: "Disconnected. Customers now transfer manually only.",
+    genericOperationError: "Couldn't complete the operation right now.",
+    domainNameMinLength: "Write a name of at least 3 English letters or digits.",
+    domainAvailableMsg: "Available! You can complete the purchase.",
+    domainTakenMsg: "This name is taken.",
+    domainCheckError: "Couldn't check right now.",
+    paymentPrepError: "Couldn't prepare the payment page right now.",
+    couponScopeAll: "On all your products",
+    couponScopeProduct: (name) => `On product: ${name}`,
+    couponScopeDeleted: "On a deleted product",
+    selectProductFirst: "Choose the product first.",
+    linkNameLength: "Write a link name between 2 and 60 characters.",
+    trackingLinkCreated: "The tracking link was created. Copy it and share it wherever you chose.",
+    createTrackingLinkError: "Couldn't create the tracking link, try again.",
+    copyLinkErrorAlt: "Couldn't copy the link. Copy it from the browser bar.",
+    deleteTrackingLinkError: "Couldn't delete the tracking link, try again.",
+    myStore: "My store",
+    browseProductsText: (name) => `Browse ${name}'s products`,
+    shareError: "Couldn't share right now, try copying the link.",
+    showBundlesError: "Couldn't show your saved bundles right now.",
+    showCampaignLinksError: "Couldn't show your tracking links right now.",
+    copySuffix: " (copy)",
+    initialFallback: "M",
+    mbUnit: "MB",
+    whatsappShareText: (name, url) => `Browse ${name}'s products: ${url}`,
+
+    pendingPaymentTitle: "You have an unconfirmed payment",
+    pendingPaymentText: "Your account started opening a store and paying, but we haven't confirmed the payment succeeded yet. Click check before trying to pay again — to avoid a duplicate charge.",
+    checkPaymentStatus: "Check my payment status",
+    storeSetupIncompleteTitle: "You haven't finished opening your store yet",
+    storeSetupIncompleteText: "This account doesn't have an active subscription. If you started opening a store and didn't complete payment, you can continue from here.",
+    continueStoreSetup: "Continue opening your store",
+    logoutCta: "Log out",
+
+    yourStore: "Your store",
+    sellerDashboard: "Seller dashboard",
+    genericProducts: "Digital products",
+    adminPanel: "Admin panel",
+    logoutBtn: "Log out",
+    verificationResent: "We sent a new confirmation link to your email. Open your email and click the link.",
+    emailNotVerified: "Your email isn't confirmed yet. Confirming your email ensures you can access your account if you forget your password.",
+    sendingEllipsis: "Sending...",
+    resend: "Resend",
+    sendVerificationLink: "Send confirmation link",
+    subscriptionExpired: "Your store's subscription has ended. Renew it now so it can receive orders again.",
+    subscriptionExpiringSoon: (days) => `Your store's subscription ends in ${days} days. Renew now without interruption.`,
+    preparingPayment: "Preparing payment...",
+    renewNow: "Renew subscription now",
+    trialUsedUp: "You're on the free trial and used your only product. Upgrade your subscription to add unlimited products.",
+    trialActive: "You're on the free trial — one product free, no card.",
+    upgradeSubscription: "Upgrade your subscription",
+    homeTab: "Home",
+    productsTab: "Products",
+    ordersTab: "Orders",
+    couponsTab: "Coupons",
+    settingsTab: "Settings",
+
+    yourSpace: "Your own space",
+    yourStoreNamePlaceholder: "Your store name",
+    addSimpleDescription: "Add a simple description so visitors know what you sell.",
+    styleMeta: (name) => `${name} style · Store with your identity`,
+    openYourStore: "Open your store",
+    copiedShort: "Copied",
+    shareStoreBtn: "Share store",
+    editAppearance: "Edit appearance",
+    nextStepBadgeStart: "✦ Getting started",
+    nextStepBadgeNext: "✦ Your next step",
+    nextStepBadgeReady: "✦ Ready to launch",
+    firstProductTitle: "Your first product is closer than you think",
+    firstProductText: "Add a product, review it, then share the link with your audience.",
+    firstProductCta: "+ Add your first product",
+    taglineStepTitle: "Introduce your store to visitors",
+    taglineStepText: "A simple description line builds customer trust and clarifies what you sell.",
+    taglineStepCta: "Add store description",
+    contactStepTitle: "Let your customers reach you",
+    contactStepText: "Add a WhatsApp number or Instagram account in your store design.",
+    contactStepCta: "Add a contact method",
+    describeStepTitle: "Your products deserve a clearer description",
+    describeStepText: "A good description builds buyer trust and increases sales chances.",
+    describeStepCta: "Improve a product's description",
+    couponStepTitle: "Try your first discount code",
+    couponStepText: "Discount coupons encourage visitors to decide to buy faster.",
+    couponStepCta: "Create a discount code",
+    shareStepTitle: "Your store is ready, time to share it",
+    shareStepText: "Share your store link on WhatsApp and Instagram to start getting visits and sales.",
+    shareStepCta: "Copy store link",
+    stepsOf5: (n) => `${n} of 5 steps completed`,
+    stalledOrderSingle: "1 order stalled for over 30 minutes",
+    stalledOrdersMulti: (n) => `${n} orders stalled for over 30 minutes`,
+    stalledOrdersHint: "Customers started an order but didn't complete payment or upload proof.",
+    openFromOrdersTab: "Open them from the Orders tab",
+    confirmedSalesLabel: "OMR confirmed sales",
+    orderSentLabel: "order sent",
+    activeProductLabel: "active product",
+    addProductQuick: "+ Add product",
+    storeDesignQuick: "Store design",
+    linkCopiedFull: "Link copied",
+    copyStoreLinkBtn: "Copy store link",
+    shareStoreQuick: "Share store",
+    shareCenterTitle: "Store sharing center",
+    shareCenterSub: "Publish your store link wherever your customers are.",
+    shareBtn: "Share",
+    whatsapp: "WhatsApp",
+    copyLinkBtn: "Copy link",
+    storeCodeTitle: "Your store code",
+    storeCodeSub: "Keep it in your gallery or printed materials — customers scan it with their phone camera.",
+    productHealthTitle: "Your products' status",
+    productHealthSub: "See directly what visitors see and what needs your review.",
+    manageProducts: "Manage products",
+    publishedProductsLabel: "published products",
+    hiddenDraftsLabel: "drafts or hidden",
+    addFirstProduct: "Add your first product",
+    hidden: "Hidden",
+    published: "Published",
+    featuredTag: "Featured",
+    publicStoreLinkLabel: "Your public store link",
+    copiedTiny: "Copied",
+    copyTiny: "Copy",
+    lastOrdersTitle: "Latest orders",
+    emptyOrdersHint: "Add your first product, then share its link on WhatsApp or Instagram to start getting sales.",
+
+    trialLimitTitle: "You've reached the free trial limit",
+    trialLimitHint: "The free trial allows one product. Upgrade your subscription to add unlimited products and unlock the rest of Monah's features.",
+    upgradeNow: "Upgrade your subscription now",
+    addNewProduct: "Add a new product",
+    openFormHint: "Only open the form when you're ready to add a product.",
+    productNameLabel: "Product name",
+    priceLabel: "Price (OMR)",
+    freeFileHint: "Write 0 if you want to make this file free for visitors.",
+    categoryLabel: "Category (e.g. templates, icons, presentations)",
+    categoryLabelShort: "Category",
+    shortDescLabel: "Short description (optional)",
+    shortDescLabelShort: "Short description",
+    preparingDraft: "Preparing the draft...",
+    writeDescriptionDraft: "Write me a description draft",
+    aiToolsUpsellPrefix: "✨ Activate the \"AI Tools\" add-on (1 OMR/month) from the",
+    aiToolsUpsellSuffix: "tab so AI can write you a description draft.",
+    subscriptionLinkLabel: "your store subscription",
+    draftOnlyEditable: "Draft only — edit it or use it if it suits you",
+    useThisDraft: "Use this draft",
+    cancel: "Cancel",
+    productImagesLabel: "Product images (up to two, optional)",
+    productTypeLabel: "Product type",
+    fileType: "File",
+    codeType: "Code / license",
+    productFileLabel: "Product file",
+    fileSecureHint: (mb) => `The file is uploaded and stored securely. For a paid product, it opens for the customer after you confirm receiving the transfer from the Orders tab. Maximum file size ${mb} MB.`,
+    interactiveFileLabel: "Interactive file (like games) — runs directly inside the site with a \"Play now\" button instead of downloading, so it's guaranteed to work on any device and can't be copied by anyone but the buyer",
+    interactiveFileLabelShort: "Interactive file (like games) — runs directly inside the site with a \"Play now\" button instead of downloading",
+    pasteCodesLabel: "Paste the codes (one per line)",
+    eachCustomerCodeHint: "Each customer automatically gets a different code. Number of lines = number of available codes.",
+    previewProduct: "Preview product",
+    saveAsDraft: "Save as draft",
+    uploadingFileMsg: "Uploading the file...",
+    publishingMsg: "Publishing...",
+    publishProduct: "Publish product",
+    draftHintBottom: "\"Save as draft\" saves the product hidden from visitors — you can publish it later from your products list.",
+    yourProductsTitle: "Your products",
+    productCountUnit: "products",
+    searchByName: "Search by product name",
+    allFilter: "All",
+    visibleFilter: "Published",
+    hiddenFilter: "Hidden",
+    noProductsYet: "You haven't added any products yet.",
+    noMatchFilter: "No product matches the search or filter.",
+    editNoteChangeFile: "To change the file itself, delete this product and add it again temporarily.",
+    savingEllipsis: "Saving...",
+    save: "Save",
+    stockLabel: "Stock:",
+    codeUnit: "codes",
+    outOfStock: " — out of stock",
+    pasteNewCodesLabel: "Paste the new codes (one per line)",
+    addingEllipsis: "Adding...",
+    addCodes: "Add codes",
+    productLinkLabel: "Product link",
+    copyLink: "Copy link",
+    preparingAd: "Preparing the ad...",
+    writeAdDraft: "Write me an ad draft",
+    adDraftOnly: "Draft only — won't be published by Monah",
+    copiedText: "Copied",
+    copyTextBtn: "Copy text",
+    close: "Close",
+    edit: "Edit",
+    duplicateAsNew: "Duplicate as new product",
+    addCodesBtn: "Add codes",
+    deletingEllipsis: "Deleting...",
+    show: "Show",
+    unhide: "Hide",
+    unfeature: "Unpin",
+    feature: "Pin",
+    confirmDeleteQuestion: "Confirm delete?",
+    delete: "Delete",
+    moveUp: "↑ Move up",
+    moveDown: "↓ Move down",
+    editDraftOnlyNoAutoSave: "Draft only — won't be saved unless you click save product",
+
+    trackingLinksTitle: "Tracking links",
+    trackingLinksSummary: (visits, count) => `${visits} visits from ${count} links`,
+    trackingLinksEmpty: "Create a different link for each place you publish.",
+    trackingLinksHint: "Create a different link for each place you publish, like WhatsApp or Instagram. We only show the number of link opens, without collecting personal visitor information.",
+    visitsSummaryTitle: "Visits summary",
+    totalVisits: "Total visits",
+    yourCreatedLinks: "Your created links",
+    mostVisitedLink: (label) => `Most visited link: ${label}`,
+    visitUnit: "visits",
+    trackingLinksNote: "These numbers are for tracking link opens only, not sales or visitor information.",
+    publishProductFirst: "Publish a product first to create a tracking link for it.",
+    productLabel: "Product",
+    choosePublishedProduct: "Choose a published product",
+    publishLocationLabel: "Publishing location name",
+    publishLocationPlaceholder: "e.g. Instagram",
+    creatingEllipsis: "Creating...",
+    createTrackingLink: "Create tracking link",
+    productUnavailable: "Product unavailable",
+    trackingLinkLabel: "Tracking link",
+    deleteLinkBtn: "Delete link",
+
+    bundlesTitle: "Product bundles",
+    bundlesSummary: (n) => `${n} saved bundles`,
+    bundlesEmpty: "Prepare the bundle now, and publish it to your customers whenever it's ready.",
+    bundlesHint: "Prepare an offer of two or more products at one price. The bundle is saved as a draft as soon as you create it, and customers can't order it until you click \"Publish bundle\".",
+    bundleSavedDraft: "The bundle was saved as a draft. Click \"Publish bundle\" below when ready.",
+    needTwoProducts: "You need at least two products before preparing a bundle.",
+    bundleNameLabel: "Bundle name",
+    bundleNamePlaceholder: "e.g. Starter template bundle",
+    bundlePriceLabel: "Expected bundle price (OMR)",
+    bundleDescPlaceholder: "What does the customer get inside the bundle?",
+    chooseBundleProducts: "Choose the bundle's products",
+    saveBundleAsDraft: "Save bundle as draft",
+    savedBundlesTitle: "Saved bundles",
+    draftStatus: "Draft",
+    publishedStatus: "Published",
+    productsUnit: "products",
+    willNotShowUntilPublished: "Won't appear to visitors or allow ordering until you publish it.",
+    publishedCanOrder: "Published, and your customers can order it from its link.",
+    confirmDeleteBundleQuestion: "Yes, delete the bundle",
+    updatingEllipsis: "Updating...",
+    publishBundle: "Publish bundle",
+    unpublish: "Unpublish",
+    copyBundleLink: "Copy bundle link",
+    archiveBundle: "Archive bundle",
+    archivingEllipsis: "Archiving...",
+    deletePermanently: "Delete permanently",
+    archivedBundlesTitle: "Archived bundles",
+    archiveTag: "Archived",
+    savedForYouOnly: "Saved for you only. The bundle's products haven't changed.",
+    unarchiving: "Unarchiving...",
+    unarchiveBundle: "Take out of archive",
+
+    autoWelcomeCouponHint: "The automatic welcome coupon for new customers is activated and changed from",
+    settingsWord: "Settings",
+    addNewCouponTitle: "Add a new discount code",
+    couponCodeLabel: "Discount code",
+    couponCodePlaceholder: "e.g. EID20",
+    couponCodeHint: "English letters and digits, no spaces. The customer types this code at checkout.",
+    discountPercentLabel: "Discount percentage (%)",
+    appliesTo: "Applies to",
+    allYourProducts: "All your products",
+    createCode: "Create code",
+    yourCurrentCodesTitle: "Your current codes",
+    noCouponsYet: "You haven't added any discount code yet.",
+    discountLabel: (percent) => `${percent}% off`,
+    deleteCode: "Delete code",
+
+    transferInstructions: "Transfer instructions",
+    transferInstructionsSub: "Shown to the customer at checkout",
+    yourPaymentGateway: "Your payment gateway",
+    gatewayConnectedSub: "Connected · Customers pay directly to your account",
+    gatewayNotConnectedSub: "Not connected · Manual transfer only for now",
+    autoWelcomeCoupon: "Automatic welcome coupon",
+    activePercentLabel: (percent) => `Active · ${percent}% off`,
+    stoppedNow: "Currently stopped",
+    storeIdentity: "Store identity",
+    storeIdentitySub: "Name, logo, color, FAQs",
+    yourLinkAndDomain: "Your store link and custom domain",
+    freeLinkActive: "Free link active · Optional custom domain",
+    subscriptionAndPlan: "Subscription and plan",
+    basicPlanLabel: (price) => `Basic plan · ${price} OMR/month`,
+
+    backToSettings: "‹ Settings",
+    transferInstructionsForCustomers: "Transfer instructions for your customers",
+    transferInstructionsHint: "Write a general note for the buyer, then your bank account details organized below so they can copy them easily. Don't include a password or verification code.",
+    generalNoteLabel: "General note",
+    generalNotePlaceholder: "e.g. Transfer the amount using the same name shown in your banking app, then upload proof of transfer here.",
+    bankNameLabel: "Bank name",
+    bankNamePlaceholder: "Bank Muscat",
+    accountHolderLabel: "Account holder name",
+    accountHolderPlaceholder: "As it appears on your bank account",
+    accountNumberLabel: "Account number",
+    accountNumberPlaceholder: "e.g. 0123456789",
+    phoneNumberLabel: "Phone number (for transfer via phone)",
+    phoneNumberHint: "Optional — shown to the buyer alongside the account number so they can copy it easily.",
+    notifyEmailLabel: "Order notification email",
+    notifyEmailPlaceholder: "e.g. store@outlook.com",
+    notifyEmailHint: "We send you an automatic email to this address whenever a customer uploads a transfer proof. Leave it empty to use your login email instead.",
+    spamWarning: "⚠️ The first email you receive might land in your \"Spam/Junk\" folder instead of the inbox — open it and click \"Not spam\" so future emails arrive correctly automatically.",
+    saveTransferInstructions: "Save transfer instructions",
+
+    yourPaymentGatewayTitle: "Your payment gateway",
+    gatewayIntro: "Connect your own OmPay account (you need an active merchant account with them in your name) so your customers pay by card directly to your account — Monah never touches this money. Without connecting, manual transfer remains the only option.",
+    gatewayUpsellPrefix: "Important: connecting the gateway alone isn't enough — you need to activate the \"Digital selling\" add-on (2 OMR/month) from the",
+    gatewayUpsellSuffix: "tab for the feature to actually work for your customers.",
+    gatewayConnectedNowWorking: "Your gateway is connected now and working.",
+    cancelingEllipsis: "Canceling...",
+    cancelLinking: "Disconnect",
+    apiKeyLabel: "API key (OMPAY-API-Key)",
+    apiKeyPlaceholder: "From your OmPay account",
+    apiSecretLabel: "API secret (OMPAY-API-Secret)",
+    linkingEllipsis: "Connecting...",
+    linkGateway: "Connect payment gateway",
+
+    freeOptionTitle: "Free option — your store link",
+    freeOptionText: "This link always works for free, and you can change its last part from the \"Store identity\" tab.",
+    paidOptionTitle: "Paid option — custom subdomain with your store name",
+    paidOptionText: "A shorter, cleaner address than the free link, added as an extra line to your monthly subscription, not a separate charge.",
+    monthlySuffix: "/ month",
+    domainClarification: "Worth clarifying: this is a subdomain of the Monah platform (like",
+    domainClarificationSuffix: "), not a fully independent domain — the Monah name always stays visible at the end of the link.",
+    currentDomainLabel: "Your current domain",
+    domainValidUntil: (date) => `Valid until ${date}, renews with your monthly subscription.`,
+    chooseDomainName: "Choose your domain name",
+    checkingEllipsis: "Checking...",
+    checkAvailability: "Check availability",
+    payAndActivateLink: (price) => `Pay ${price} OMR and activate the link`,
+
+    autoWelcomeCouponTitle: "Automatic welcome coupon for customers",
+    autoWelcomeCouponHint2: "If enabled, every customer who completes their first order gets an automatic personal discount code for their next order from your store, with no effort from you. You can turn it off anytime.",
+    enableAutoWelcomeCoupon: "Enable the automatic welcome coupon",
+    saveSetting: "Save setting",
+
+    viewStore: "View store ↗",
+    storeCoverAlt: "Store cover",
+    storeLogoAlt: "Store logo",
+    designSavedMsg: "Your store design was saved.",
+    storeCoverLabel: "Store cover (optional)",
+    noCover: "No cover",
+    uploadingEllipsis: "Uploading...",
+    uploadCoverPhoto: "Upload cover photo",
+    coverHint: "A wide image shown at the top of your store page, above the logo.",
+    storeLogoLabel: "Store logo",
+    uploadNewLogo: "Upload new logo",
+    storeNameLabel: "Store name",
+    taglineFieldLabel: "Introduce your store to visitors in one sentence",
+    taglinePlaceholder: "e.g. Templates and designs that help you get your work done faster",
+    chooseStoreLink: "Choose your store link",
+    slugPlaceholder: "hind",
+    slugWillAppear: (slugOrName) => `Your store will appear at: monah-app.com/#store/${slugOrName}`,
+    yourNamePlaceholder: "your-name",
+    whatsappFieldLabel: "WhatsApp number (optional)",
+    instagramFieldLabel: "Instagram account (optional)",
+    supportEmailLabel: "Customer service email (optional)",
+    supportEmailHint: "Shown to the customer next to the WhatsApp number as a second contact method, if you'd like your store to use a dedicated customer service email.",
+    storeAboutLabel: "About the store (optional)",
+    storeAboutPlaceholder: "Tell visitors about your products or way of working.",
+    faqLabel: "Visitor FAQs (optional)",
+    faqHint: "Add up to 5 questions that help the customer before they contact you.",
+    questionPlaceholder: "Question",
+    answerPlaceholder: "Answer",
+    questionNumber: (n) => `Question ${n}`,
+    remove: "Remove",
+    addQuestion: "+ Add a question",
+    chooseStoreStyle: "Choose your store's style",
+    storeStyleHint: "Keep your store as-is or choose a style that suits your brand. The logo, name, and cover stay in your own name.",
+    storeStyleFallback: "Store style",
+    paymentLabel: "Payment",
+    paymentHint: "Your customer can pay by card directly, or transfer manually and upload proof of transfer. Transfer instructions are managed from Settings, and don't appear on your public store page to protect them.",
+    unsavedChanges: "You have unsaved changes",
+    allSaved: "Everything is saved",
+    saveAndPublish: "Save and publish changes",
+    genericProductsFallback: "Digital products via Monah",
+
+    yourStoreSubscription: "Your store subscription",
+    subscriptionHint: (price) => `Basic store ${price} OMR/month, plus add-ons you choose that are billed with it.`,
+    freeTrialBadge: "Free trial",
+    activeBadge: "Active",
+    trialSubscriptionHint: "You're on the free trial — one product only, no time limit. Upgrade your subscription to add unlimited products and unlock the rest of the features (add-ons, custom domain, and more).",
+    baseStoreLabel: "Base store",
+    baseStoreDesc: "Identity, products, sharing, QR, free products, and visit tracking.",
+    subscriptionActiveUntil: (date, daysPart) => `Subscription active until ${date}${daysPart}.`,
+    daysRemaining: (n) => ` (${n} days left)`,
+    expiredSuffix: " — expired",
+    renewalDateUnavailable: "Renewal date unavailable.",
+    upgradeAmount: "Upgrade amount",
+    nextRenewalAmount: "Next renewal amount",
+    baseAndActiveAddOns: (n) => `Base + your active add-ons (${n})`,
+    payAndUpgrade: (price) => `Pay ${price} OMR and upgrade your subscription`,
+    payAndRenew: (price) => `Pay ${price} OMR and renew subscription`,
+    notActive: "Not active",
+    connectGatewayFirstPrefix: "Connect",
+    yourPaymentGatewayLink: "your payment gateway",
+    connectGatewayFirstSuffix: "first to activate it",
+    addOnsSelectedCount: (n) => `${n} add-ons selected`,
+    payAndActivateAddOns: (price) => `Pay ${price} OMR and activate the add-ons`,
+    addOnBillingNote: "When you activate an add-on, you pay its full price now, then it's automatically included in your next monthly renewal amount.",
+
+    previewTitle: "Preview — this is what the customer sees",
+    generalCategory: "General",
+    productNamePlaceholder: "Product name",
+    priceWord: "Price",
+    noExtraDescription: "No extra description for this product.",
+    sellingOptionsOnActivation: "Selling options once activated",
+    previewOnlyNote: "This is a preview only — the product hasn't been saved yet, and online selling options appear once turned on",
+  },
+};
+
 export default function Dashboard() {
+  const [lang, setLang] = useLang();
+  const t = DASH_T[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
   const [verificationSent, setVerificationSent] = useState(false);
@@ -604,7 +1536,7 @@ export default function Dashboard() {
     const q = query(collection(db, "bundles"), where("ownerId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setBundles(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
-    }, () => setBundleError("تعذر عرض الحزم المحفوظة الآن."));
+    }, () => setBundleError(t.showBundlesError));
     return () => unsub();
   }, [user]);
 
@@ -615,7 +1547,7 @@ export default function Dashboard() {
       const links = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
       links.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setCampaignLinks(links);
-    }, () => setCampaignError("تعذر عرض روابط التتبع الآن."));
+    }, () => setCampaignError(t.showCampaignLinksError));
     return () => unsub();
   }, [user]);
   useEffect(() => {
@@ -675,7 +1607,7 @@ export default function Dashboard() {
     if (!file) return;
     setError("");
     if (file.size > MAX_PRODUCT_FILE_MB * 1024 * 1024) {
-      setError(`حجم الملف أكبر من ${MAX_PRODUCT_FILE_MB} ميجا. تواصل معنا لو تحتاج رفع ملف أكبر.`);
+      setError(t.fileTooLarge(MAX_PRODUCT_FILE_MB));
       setProductFile(null);
       return;
     }
@@ -689,12 +1621,12 @@ export default function Dashboard() {
     const productNotes = isNewProduct ? description : editDescription;
     const type = isNewProduct ? productType : product?.type;
     if (!productName?.trim()) {
-      setDescriptionDraftError("اكتب اسم المنتج أولًا، ثم اطلب المسودة.");
+      setDescriptionDraftError(t.writeNameForDraft);
       return;
     }
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      setDescriptionDraftError("سجّل دخولك ثم حاول مرة ثانية.");
+      setDescriptionDraftError(t.loginRetry);
       return;
     }
     setDescriptionDraftError("");
@@ -717,7 +1649,7 @@ export default function Dashboard() {
       setDescriptionDraft(data.description);
       setDescriptionDraftTarget(target);
     } catch (draftError) {
-      setDescriptionDraftError(draftError.message && draftError.message !== "draft unavailable" ? draftError.message : "تعذر تجهيز المسودة الآن. حاول بعد قليل.");
+      setDescriptionDraftError(draftError.message && draftError.message !== "draft unavailable" ? draftError.message : t.draftError);
     }
     setDescriptionDraftLoading("");
   }
@@ -733,7 +1665,7 @@ export default function Dashboard() {
   async function generateAdCopy(product) {
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      setAdCopyError("سجّل دخولك ثم حاول مرة ثانية.");
+      setAdCopyError(t.loginRetry);
       return;
     }
     setAdCopyError("");
@@ -750,14 +1682,14 @@ export default function Dashboard() {
       setAdCopy(data.copy);
       setAdCopyProductId(product.id);
     } catch (adError) {
-      setAdCopyError("تعذر تجهيز نص الإعلان الآن. حاول بعد قليل.");
+      setAdCopyError(t.adDraftError);
     }
     setAdCopyLoadingId("");
   }
 
   function copyAdDraft() {
     if (!adCopy) return;
-    navigator.clipboard.writeText(adCopy).then(() => setCopied("ad-copy")).catch(() => setAdCopyError("تعذر نسخ المسودة. انسخها يدويًا."));
+    navigator.clipboard.writeText(adCopy).then(() => setCopied("ad-copy")).catch(() => setAdCopyError(t.copyDraftError));
   }
 
   async function handleAddProduct(e, publish) {
@@ -765,30 +1697,30 @@ export default function Dashboard() {
     setError("");
 
     if (trialLimitReached) {
-      setError("التجربة المجانية تسمح بمنتج واحد فقط. رقّي اشتراكك لإضافة المزيد.");
+      setError(t.trialLimitError);
       return;
     }
 
     const cleanName = name.trim();
     const numericPrice = Number(price);
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
-      setError("اكتب اسم المنتج وسعرًا صحيحًا أو اكتب 0 للمنتج المجاني.");
+      setError(t.nameAndPriceRequired);
       return;
     }
     if (numericPrice === 0 && productType !== "file") {
-      setError("المنتج المجاني حاليًا متاح للملفات فقط.");
+      setError(t.freeOnlyFiles);
       return;
     }
 
     if (productType === "file") {
       if (!productFile) {
-        setError("عبّي اسم المنتج والسعر واختر ملف المنتج.");
+        setError(t.fillNamePriceFile);
         return;
       }
     } else {
       const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
       if (!name || !price || codesList.length === 0) {
-        setError("عبّي اسم المنتج والسعر، وألصقي الأكواد (كود بكل سطر).");
+        setError(t.fillNamePriceCodes);
         return;
       }
     }
@@ -856,7 +1788,7 @@ export default function Dashboard() {
         setTrialProductClaimed(true);
       }
     } catch (err) {
-      setError("صار خطأ، حاول مرة ثانية.");
+      setError(t.genericTryAgain);
       setUploadingFile(false);
     }
     setSaving(false);
@@ -874,7 +1806,7 @@ export default function Dashboard() {
   // تسريع رفع منتجات كثيرة متشابهة (زي حزم PLR) — ننسخ النص والسعر والتصنيف
   // كنقطة بداية، ونترك الصور والملف فارغين لأنها الجزء المختلف فعليًا بكل منتج.
   function duplicateProduct(p) {
-    setName(`${p.name} (نسخة)`);
+    setName(`${p.name}${t.copySuffix}`);
     setPrice(String(p.price));
     setDescription(p.description || "");
     setCategory(p.category || "");
@@ -900,11 +1832,11 @@ export default function Dashboard() {
     const numericPrice = Number(editPrice);
     const product = products.find((item) => item.id === productId);
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
-      setError("عبّي اسم المنتج وسعرًا صحيحًا أو اكتب 0 للمنتج المجاني.");
+      setError(t.editNameAndPriceRequired);
       return;
     }
     if (numericPrice === 0 && product?.type !== "file") {
-      setError("المنتج المجاني حاليًا متاح للملفات فقط.");
+      setError(t.freeOnlyFiles);
       return;
     }
     setEditSaving(true);
@@ -918,7 +1850,7 @@ export default function Dashboard() {
       });
       setEditingId(null);
     } catch (err) {
-      setError("تعذر حفظ التعديل، حاول مرة ثانية.");
+      setError(t.saveEditError);
     }
     setEditSaving(false);
   }
@@ -938,7 +1870,7 @@ export default function Dashboard() {
   async function saveRestock(productId) {
     const codesList = restockText.split("\n").map((c) => c.trim()).filter(Boolean);
     if (codesList.length === 0) {
-      setRestockError("الصقي كود واحد على الأقل.");
+      setRestockError(t.pasteOneCode);
       return;
     }
     setRestockError("");
@@ -954,7 +1886,7 @@ export default function Dashboard() {
       setRestockingId(null);
       setRestockText("");
     } catch (err) {
-      setRestockError("تعذر إضافة الأكواد، حاول مرة ثانية.");
+      setRestockError(t.addCodesError);
     }
     setRestockSaving(false);
   }
@@ -965,7 +1897,7 @@ export default function Dashboard() {
       await deleteDoc(doc(db, "products", productId));
       setConfirmDeleteId(null);
     } catch (err) {
-      setError("تعذر حذف المنتج، حاول مرة ثانية.");
+      setError(t.deleteProductError);
     }
     setDeletingId(null);
   }
@@ -975,7 +1907,7 @@ export default function Dashboard() {
     try {
       await updateDoc(doc(db, "products", productId), { hidden: !currentlyHidden });
     } catch (err) {
-      setError("تعذر تحديث حالة المنتج، حاول مرة ثانية.");
+      setError(t.toggleHiddenError);
     }
     setTogglingHiddenId(null);
   }
@@ -985,7 +1917,7 @@ export default function Dashboard() {
     try {
       await updateDoc(doc(db, "products", productId), { featured: !currentlyFeatured });
     } catch (err) {
-      setError("تعذر تثبيت المنتج الآن، حاول مرة ثانية.");
+      setError(t.toggleFeaturedError);
     }
     setTogglingHiddenId(null);
   }
@@ -1003,7 +1935,7 @@ export default function Dashboard() {
       batch.update(doc(db, "products", target.id), { sortOrder: current.sortOrder || Date.now() + index });
       await batch.commit();
     } catch (err) {
-      setError("تعذر ترتيب المنتجات الآن، حاول مرة ثانية.");
+      setError(t.reorderError);
     }
   }
 
@@ -1020,11 +1952,11 @@ export default function Dashboard() {
     setBundleError("");
     setBundleActionNotice("");
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice <= 0) {
-      setBundleError("اكتب اسم الحزمة وسعرًا صحيحًا أكبر من صفر.");
+      setBundleError(t.bundleNamePriceRequired);
       return;
     }
     if (bundleProductIds.length < 2) {
-      setBundleError("اختر منتجين على الأقل داخل الحزمة.");
+      setBundleError(t.bundleTwoProducts);
       return;
     }
     setBundleSaving(true);
@@ -1046,7 +1978,7 @@ export default function Dashboard() {
       setBundleProductIds([]);
       setBundleSaved(true);
     } catch (err) {
-      setBundleError("تعذر حفظ الحزمة، حاول مرة ثانية.");
+      setBundleError(t.saveBundleError);
     }
     setBundleSaving(false);
   }
@@ -1059,10 +1991,10 @@ export default function Dashboard() {
     try {
       await updateDoc(doc(db, "bundles", bundle.id), { archived: !bundle.archived });
       setBundleActionNotice(bundle.archived
-        ? "تم إخراج الحزمة من الأرشيف. ستجدها ضمن الحزم المحفوظة."
-        : "تم نقل الحزمة للأرشيف. ستجدها ضمن الحزم المؤرشفة.");
+        ? t.bundleUnarchived
+        : t.bundleArchived);
     } catch (err) {
-      setBundleError("تعذر تحديث حالة الحزمة، حاول مرة ثانية.");
+      setBundleError(t.bundleArchiveError);
     }
     setTogglingBundleId(null);
   }
@@ -1075,10 +2007,10 @@ export default function Dashboard() {
     try {
       await updateDoc(doc(db, "bundles", bundle.id), { hidden: !bundle.hidden });
       setBundleActionNotice(bundle.hidden
-        ? "الحزمة صارت منشورة، وعملاؤك يقدرون يطلبونها من رابطها."
-        : "تم إخفاء الحزمة عن الزوار. رابطها ما يفتح لحد تنشرها ثانية.");
+        ? t.bundlePublished
+        : t.bundleUnpublished);
     } catch (err) {
-      setBundleError("تعذر تحديث حالة النشر، حاول مرة ثانية.");
+      setBundleError(t.bundlePublishError);
     }
     setPublishingBundleId(null);
   }
@@ -1089,7 +2021,7 @@ export default function Dashboard() {
       setCopiedBundleId(bundleId);
       window.setTimeout(() => setCopiedBundleId(null), 1600);
     } catch {
-      setBundleError("تعذر نسخ الرابط. انسخه يدويًا من شريط العنوان.");
+      setBundleError(t.copyBundleLinkError);
     }
   }
 
@@ -1101,9 +2033,9 @@ export default function Dashboard() {
     try {
       await deleteDoc(doc(db, "bundles", bundleId));
       setConfirmBundleDeleteId(null);
-      setBundleActionNotice("تم حذف الحزمة فقط. منتجاتك بقيت كما هي.");
+      setBundleActionNotice(t.bundleDeleted);
     } catch (err) {
-      setBundleError("تعذر حذف الحزمة، حاول مرة ثانية.");
+      setBundleError(t.deleteBundleError);
     }
     setDeletingBundleId(null);
   }
@@ -1126,21 +2058,21 @@ export default function Dashboard() {
     setImagesError("");
     const remainingSlots = 2 - productImages.length;
     if (remainingSlots <= 0) {
-      setImagesError("حد أقصى صورتين لكل منتج.");
+      setImagesError(t.maxTwoImages);
       return;
     }
     const filesToUpload = files.slice(0, remainingSlots);
     if (files.length > filesToUpload.length) {
-      setImagesError("حد أقصى صورتين لكل منتج — رفعنا أول صورتين بس.");
+      setImagesError(t.maxTwoImagesPartial);
     }
     setImagesUploading(true);
     for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) {
-        setImagesError("اختر ملفات صور صالحة.");
+        setImagesError(t.invalidImageFiles);
         continue;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setImagesError("حجم إحدى الصور أكبر من 5 ميجا، تجاوزناها.");
+        setImagesError(t.imageTooLargeSkipped);
         continue;
       }
       try {
@@ -1149,7 +2081,7 @@ export default function Dashboard() {
         const url = await getDownloadURL(fileRef);
         setProductImages((prev) => [...prev, url]);
       } catch (err) {
-        setImagesError("تعذر رفع إحدى الصور، حاول مرة ثانية.");
+        setImagesError(t.uploadImageError);
       }
     }
     setImagesUploading(false);
@@ -1164,11 +2096,11 @@ export default function Dashboard() {
     if (!file) return;
     setLogoError("");
     if (!file.type.startsWith("image/")) {
-      setLogoError("اختر ملف صورة صالحًا.");
+      setLogoError(t.invalidImageFile);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setLogoError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      setLogoError(t.imageTooLargeSingle);
       return;
     }
     setLogoUploading(true);
@@ -1178,7 +2110,7 @@ export default function Dashboard() {
       const url = await getDownloadURL(fileRef);
       setLogoUrl(url);
     } catch (err) {
-      setLogoError("تعذر رفع الصورة، حاول مرة ثانية.");
+      setLogoError(t.uploadPhotoError);
     }
     setLogoUploading(false);
   }
@@ -1188,11 +2120,11 @@ export default function Dashboard() {
     if (!file) return;
     setCoverError("");
     if (!file.type.startsWith("image/")) {
-      setCoverError("اختر ملف صورة صالحًا.");
+      setCoverError(t.invalidImageFile);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setCoverError("حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.");
+      setCoverError(t.imageTooLargeSingle);
       return;
     }
     setCoverUploading(true);
@@ -1203,7 +2135,7 @@ export default function Dashboard() {
       setCoverUrl(url);
       setDesignDirty(true);
     } catch (err) {
-      setCoverError("تعذر رفع الصورة، حاول مرة ثانية.");
+      setCoverError(t.uploadPhotoError);
     }
     setCoverUploading(false);
   }
@@ -1224,18 +2156,18 @@ export default function Dashboard() {
       const cleanStoreName = storeName.trim();
       const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
       if (!cleanStoreName) {
-        setError("اكتب اسم متجرك قبل الحفظ.");
+        setError(t.writeStoreNameBeforeSave);
         setDesignSaving(false);
         return;
       }
       if (!cleanSlug || cleanSlug.length < 3) {
-        setSlugError("اكتب رابطًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+        setSlugError(t.slugMinLength);
         setDesignSaving(false);
         return;
       }
       const cleanContactEmail = contactEmail.trim();
       if (cleanContactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanContactEmail)) {
-        setError("إيميل التواصل غير صحيح، تأكد منه أو اتركه فاضي.");
+        setError(t.invalidContactEmail);
         setDesignSaving(false);
         return;
       }
@@ -1244,7 +2176,7 @@ export default function Dashboard() {
         const snap = await getDocs(q);
         const takenByOther = snap.docs.some((d) => d.id !== user.uid);
         if (takenByOther) {
-          setSlugError("هذا الرابط مستخدم من متجر ثاني، جربي رابط مختلف.");
+          setSlugError(t.slugTaken);
           setDesignSaving(false);
           return;
         }
@@ -1273,9 +2205,9 @@ export default function Dashboard() {
       setDesignSaved(true);
       setDesignDirty(false);
       setTimeout(() => setDesignSaved(false), 2000);
-      flashToast("تم حفظ تصميم متجرك ✓");
+      flashToast(t.designSavedToast);
     } catch (err) {
-      setError("تعذر حفظ التصميم، حاول مرة ثانية.");
+      setError(t.saveDesignError);
     }
     setDesignSaving(false);
   }
@@ -1287,16 +2219,16 @@ export default function Dashboard() {
     const percentNum = Number(couponPercent);
 
     if (!cleanCode) {
-      setCouponError("اكتب كود الخصم.");
+      setCouponError(t.writeCouponCode);
       return;
     }
     if (!percentNum || percentNum <= 0 || percentNum > 90) {
-      setCouponError("نسبة الخصم لازم تكون بين 1 و 90.");
+      setCouponError(t.couponPercentRange);
       return;
     }
     const exists = coupons.some((c) => c.code === cleanCode);
     if (exists) {
-      setCouponError("عندك كود بنفس الاسم من قبل، اختر اسم ثاني.");
+      setCouponError(t.couponCodeExists);
       return;
     }
 
@@ -1314,7 +2246,7 @@ export default function Dashboard() {
       setCouponPercent("");
       setCouponScope("all");
     } catch (err) {
-      setCouponError("صار خطأ، حاول مرة ثانية.");
+      setCouponError(t.genericTryAgain);
     }
     setCouponSaving(false);
   }
@@ -1334,19 +2266,19 @@ export default function Dashboard() {
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "تعذر حفظ الإعداد الآن.");
+      if (!response.ok) throw new Error(data.error || t.saveSettingError);
       setRepeatCouponEnabled(data.enabled);
       setRepeatCouponPercent(data.discountPercent);
-      setRepeatCouponMessage("تم الحفظ.");
+      setRepeatCouponMessage(t.savedShort);
     } catch (err) {
-      setRepeatCouponMessage(err.message || "تعذر حفظ الإعداد الآن.");
+      setRepeatCouponMessage(err.message || t.saveSettingError);
     }
     setRepeatCouponSaving(false);
   }
 
   async function savePaymentInstructions() {
     if (paymentInstructions.trim().length < 6) {
-      setPaymentMessage("اكتب تعليمات التحويل بوضوح قبل الحفظ.");
+      setPaymentMessage(t.writePaymentInstructions);
       return;
     }
     setSavingPayment(true);
@@ -1367,24 +2299,24 @@ export default function Dashboard() {
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "تعذر حفظ التعليمات الآن.");
+      if (!response.ok) throw new Error(data.error || t.savePaymentError);
       setPaymentInstructions(data.paymentInstructions);
       setPaymentBankName(data.paymentBankName || "");
       setPaymentAccountHolder(data.paymentAccountHolder || "");
       setPaymentAccountNumber(data.paymentAccountNumber || "");
       setPaymentPhoneNumber(data.paymentPhoneNumber || "");
       setNotifyEmail(data.notifyEmail || "");
-      setPaymentMessage("تم حفظ تعليمات التحويل. تظهر للمشتري بعد بدء الطلب فقط.");
-      flashToast("تم حفظ تعليمات التحويل ✓");
+      setPaymentMessage(t.paymentInstructionsSaved);
+      flashToast(t.paymentInstructionsSavedToast);
     } catch (err) {
-      setPaymentMessage(err.message || "تعذر حفظ التعليمات الآن.");
+      setPaymentMessage(err.message || t.savePaymentError);
     }
     setSavingPayment(false);
   }
 
   async function saveGateway() {
     if (ompayApiKeyInput.trim().length < 10 || ompayApiSecretInput.trim().length < 10) {
-      setGatewayMessage("اكتب مفتاح API وسر API صحيحين من حسابك في OmPay قبل الحفظ.");
+      setGatewayMessage(t.gatewayKeysRequired);
       return;
     }
     setSavingGateway(true);
@@ -1397,13 +2329,13 @@ export default function Dashboard() {
         body: JSON.stringify({ action: "save_payment_gateway", provider: "ompay", ompayApiKey: ompayApiKeyInput.trim(), ompayApiSecret: ompayApiSecretInput.trim() }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "تعذر ربط بوابة الدفع الآن.");
+      if (!response.ok) throw new Error(data.error || t.connectGatewayError);
       setGatewayConnected(true);
       setOmpayApiKeyInput("");
       setOmpayApiSecretInput("");
-      setGatewayMessage("تم الربط. عملاؤك الآن يقدرون يدفعون بالبطاقة مباشرة لحسابك.");
+      setGatewayMessage(t.gatewayConnectedMsg);
     } catch (err) {
-      setGatewayMessage(err.message || "تعذر ربط بوابة الدفع الآن.");
+      setGatewayMessage(err.message || t.connectGatewayError);
     }
     setSavingGateway(false);
   }
@@ -1419,11 +2351,11 @@ export default function Dashboard() {
         body: JSON.stringify({ action: "save_payment_gateway", disconnect: true }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "تعذر إلغاء الربط الآن.");
+      if (!response.ok) throw new Error(data.error || t.disconnectGatewayError);
       setGatewayConnected(false);
-      setGatewayMessage("تم إلغاء الربط. العملاء الآن يحوّلون يدويًا فقط.");
+      setGatewayMessage(t.gatewayDisconnectedMsg);
     } catch (err) {
-      setGatewayMessage(err.message || "تعذر إلغاء الربط الآن.");
+      setGatewayMessage(err.message || t.disconnectGatewayError);
     }
     setSavingGateway(false);
   }
@@ -1436,7 +2368,7 @@ export default function Dashboard() {
       body: JSON.stringify({ action, ...extra }),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "تعذر تنفيذ العملية الآن.");
+    if (!response.ok) throw new Error(data.error || t.genericOperationError);
     return data;
   }
 
@@ -1444,7 +2376,7 @@ export default function Dashboard() {
     const cleanSlug = domainSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
     if (cleanSlug.length < 3) {
       setDomainAvailable(false);
-      setDomainMessage("اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+      setDomainMessage(t.domainNameMinLength);
       return;
     }
     setDomainChecking(true);
@@ -1452,10 +2384,10 @@ export default function Dashboard() {
     try {
       const data = await domainSignupRequest("check_domain_slug", { slug: cleanSlug });
       setDomainAvailable(data.available);
-      setDomainMessage(data.available ? "متاح! تقدر تكمل الشراء." : (data.reason || "هذا الاسم محجوز."));
+      setDomainMessage(data.available ? t.domainAvailableMsg : (data.reason || t.domainTakenMsg));
     } catch (err) {
       setDomainAvailable(null);
-      setDomainMessage(err.message || "تعذر التحقق الآن.");
+      setDomainMessage(err.message || t.domainCheckError);
     }
     setDomainChecking(false);
   }
@@ -1463,7 +2395,7 @@ export default function Dashboard() {
   async function buyDomain() {
     const cleanSlug = domainSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
     if (cleanSlug.length < 3) {
-      setDomainMessage("اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.");
+      setDomainMessage(t.domainNameMinLength);
       return;
     }
     setDomainBuying(true);
@@ -1478,7 +2410,7 @@ export default function Dashboard() {
       }
       window.location.assign(data.url);
     } catch (err) {
-      setDomainMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
+      setDomainMessage(err.message || t.paymentPrepError);
       setDomainBuying(false);
     }
   }
@@ -1499,7 +2431,7 @@ export default function Dashboard() {
       }
       window.location.assign(data.url);
     } catch (err) {
-      setAddOnMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
+      setAddOnMessage(err.message || t.paymentPrepError);
       setAddOnBuying(false);
     }
   }
@@ -1515,7 +2447,7 @@ export default function Dashboard() {
       }
       window.location.assign(data.url);
     } catch (err) {
-      setRenewalMessage(err.message || "تعذر تجهيز صفحة الدفع الآن.");
+      setRenewalMessage(err.message || t.paymentPrepError);
       setRenewalBuying(false);
     }
   }
@@ -1531,9 +2463,9 @@ export default function Dashboard() {
   }
 
   function couponScopeLabel(c) {
-    if (!c.productId) return "على كل منتجاتك";
+    if (!c.productId) return t.couponScopeAll;
     const p = products.find((pr) => pr.id === c.productId);
-    return p ? `على منتج: ${p.name}` : "على منتج محذوف";
+    return p ? t.couponScopeProduct(p.name) : t.couponScopeDeleted;
   }
 
   function handleLogout() {
@@ -1570,11 +2502,11 @@ export default function Dashboard() {
     setCampaignError("");
     setCampaignNotice("");
     if (!campaignProductId) {
-      setCampaignError("اختر المنتج أولًا.");
+      setCampaignError(t.selectProductFirst);
       return;
     }
     if (cleanLabel.length < 2 || cleanLabel.length > 60) {
-      setCampaignError("اكتب اسمًا للرابط بين حرفين و60 حرفًا.");
+      setCampaignError(t.linkNameLength);
       return;
     }
     setCampaignSaving(true);
@@ -1587,9 +2519,9 @@ export default function Dashboard() {
         createdAt: serverTimestamp(),
       });
       setCampaignLabel("");
-      setCampaignNotice("تم إنشاء رابط التتبع. انسخه وشاركه في المكان الذي اخترته.");
+      setCampaignNotice(t.trackingLinkCreated);
     } catch (error) {
-      setCampaignError("تعذر إنشاء رابط التتبع، حاول مرة ثانية.");
+      setCampaignError(t.createTrackingLinkError);
     }
     setCampaignSaving(false);
   }
@@ -1599,7 +2531,7 @@ export default function Dashboard() {
       setCopied(`campaign${linkId}`);
       window.setTimeout(() => setCopied(""), 1500);
     } catch (error) {
-      setCampaignError("تعذر نسخ الرابط. انسخه من شريط المتصفح.");
+      setCampaignError(t.copyLinkErrorAlt);
     }
   }
   async function deleteCampaignLink(linkId) {
@@ -1608,12 +2540,12 @@ export default function Dashboard() {
     try {
       await deleteDoc(doc(db, "campaignLinks", linkId));
     } catch (error) {
-      setCampaignError("تعذر حذف رابط التتبع، حاول مرة ثانية.");
+      setCampaignError(t.deleteTrackingLinkError);
     }
     setDeletingCampaignId(null);
   }
   async function shareStore() {
-    const shareData = { title: storeName || "متجري", text: `تصفح منتجات ${storeName || "متجري"}`, url: storeUrl };
+    const shareData = { title: storeName || t.myStore, text: t.browseProductsText(storeName || t.myStore), url: storeUrl };
     try {
       if (navigator.share) {
         await navigator.share(shareData);
@@ -1623,7 +2555,7 @@ export default function Dashboard() {
       setCopied("share-store");
       setTimeout(() => setCopied(""), 1500);
     } catch (err) {
-      if (err?.name !== "AbortError") setError("تعذرت المشاركة الآن، جرب نسخ الرابط.");
+      if (err?.name !== "AbortError") setError(t.shareError);
     }
   }
 
@@ -1646,22 +2578,23 @@ export default function Dashboard() {
   if (checking || !user || sellerAccess === "checking") return null;
 
   if (sellerAccess !== "active") {
-    return <div className="dh-page" dir="rtl" lang="ar"><style>{styles}</style><main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}><section style={{ maxWidth: 380, textAlign: "center", border: "1px solid #EDEAE0", borderRadius: 18, padding: 24 }}>
+    return <div className="dh-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}><style>{styles}</style><main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}><section style={{ maxWidth: 380, textAlign: "center", border: "1px solid #EDEAE0", borderRadius: 18, padding: 24 }}>
+      <LangToggle lang={lang} onChange={setLang} className="dh-lang" style={{ display: "block", margin: "0 auto 14px" }} />
       {hasPendingSignupPayment ? (<>
-        <strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>عندك عملية دفع لسه ما تأكدت</strong>
-        <p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>حسابك بدأ فتح متجر ودفع، بس ما تأكدنا من نجاح الدفع بعد. اضغط تحقق قبل لا تجرب تدفع مرة ثانية — تجنبًا لأي خصم مكرر.</p>
-        <a className="dh-btn" href="#store-pay-result/x" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>تحقق من حالة دفعتي</a>
+        <strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>{t.pendingPaymentTitle}</strong>
+        <p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>{t.pendingPaymentText}</p>
+        <a className="dh-btn" href="#store-pay-result/x" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>{t.checkPaymentStatus}</a>
       </>) : (<>
-        <strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>ما أكملت فتح متجرك بعد</strong>
-        <p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>هذا الحساب ما عنده اشتراك مفعّل. لو كنت بدأت تفتح متجرًا وما أكملت الدفع، تقدر تكمل من هنا.</p>
-        <a className="dh-btn" href="#start-store" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>أكمل فتح متجرك</a>
+        <strong style={{ display: "block", fontFamily: "Almarai, sans-serif", marginBottom: 8 }}>{t.storeSetupIncompleteTitle}</strong>
+        <p style={{ color: "#625F55", fontSize: 13, lineHeight: 1.8, margin: "0 0 16px" }}>{t.storeSetupIncompleteText}</p>
+        <a className="dh-btn" href="#start-store" style={{ display: "block", marginBottom: 10, textDecoration: "none" }}>{t.continueStoreSetup}</a>
       </>)}
-      <button className="dh-logout" onClick={handleLogout}>تسجيل الخروج</button>
+      <button className="dh-logout" onClick={handleLogout}>{t.logoutCta}</button>
     </section></main></div>;
   }
 
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
-  const initial = (storeName || "م").charAt(0);
+  const initial = (storeName || t.initialFallback).charAt(0);
   const isTrial = sellerPlan === "trial";
   const trialLimitReached = isTrial && (trialProductClaimed || products.length >= 1);
   const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
@@ -1669,7 +2602,7 @@ export default function Dashboard() {
   const campaignVisitTotal = campaignLinks.reduce((total, link) => total + (Number(link.visits) || 0), 0);
   const topCampaignLink = campaignLinks.reduce((top, link) => !top || (Number(link.visits) || 0) > (Number(top.visits) || 0) ? link : top, null);
   const selectedStoreStyle = STORE_STYLES.find((style) => style.color === storeColor) || STORE_STYLES[0];
-  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`تصفح منتجات ${storeName || "متجري"}: ${storeUrl}`)}`;
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(t.whatsappShareText(storeName || t.myStore, storeUrl))}`;
 
   // يحدد أهم خطوة ناقصة بمتجر التاجر حاليًا — تُستخدم ببطاقة "خطوتك التالية"
   function getNextStep() {
@@ -1683,10 +2616,10 @@ export default function Dashboard() {
     if (!hasProduct) {
       return {
         key: "add-product",
-        badge: "✦ خطوة البداية",
-        title: "منتجك الأول أقرب مما تتوقع",
-        text: "أضف منتجاً، راجعه، ثم شارك الرابط مع جمهورك.",
-        cta: "+ أضف أول منتج",
+        badge: t.nextStepBadgeStart,
+        title: t.firstProductTitle,
+        text: t.firstProductText,
+        cta: t.firstProductCta,
         onClick: () => setTab("products"),
         progress: stepsDone,
       };
@@ -1694,10 +2627,10 @@ export default function Dashboard() {
     if (!hasTagline) {
       return {
         key: "add-tagline",
-        badge: "✦ خطوتك التالية",
-        title: "عرّف الزوار بمتجرك",
-        text: "جملة وصف بسيطة تزيد ثقة العملاء وتوضح لهم وش تبيع.",
-        cta: "أضف وصف المتجر",
+        badge: t.nextStepBadgeNext,
+        title: t.taglineStepTitle,
+        text: t.taglineStepText,
+        cta: t.taglineStepCta,
         onClick: () => setTab("design"),
         progress: stepsDone,
       };
@@ -1705,10 +2638,10 @@ export default function Dashboard() {
     if (!hasContact) {
       return {
         key: "add-contact",
-        badge: "✦ خطوتك التالية",
-        title: "خلّ عملاءك يقدرون يتواصلون معك",
-        text: "أضف رقم واتساب أو حساب إنستغرام في تصميم متجرك.",
-        cta: "أضف وسيلة تواصل",
+        badge: t.nextStepBadgeNext,
+        title: t.contactStepTitle,
+        text: t.contactStepText,
+        cta: t.contactStepCta,
         onClick: () => setTab("design"),
         progress: stepsDone,
       };
@@ -1716,10 +2649,10 @@ export default function Dashboard() {
     if (!allDescribed) {
       return {
         key: "describe-product",
-        badge: "✦ خطوتك التالية",
-        title: "منتجاتك تستاهل وصف أوضح",
-        text: "وصف جيد يرفع ثقة المشتري ويزيد فرص البيع.",
-        cta: "حسّن وصف منتج",
+        badge: t.nextStepBadgeNext,
+        title: t.describeStepTitle,
+        text: t.describeStepText,
+        cta: t.describeStepCta,
         onClick: () => setTab("products"),
         progress: stepsDone,
       };
@@ -1727,20 +2660,20 @@ export default function Dashboard() {
     if (!hasCoupon) {
       return {
         key: "add-coupon",
-        badge: "✦ خطوتك التالية",
-        title: "جرب أول كود خصم لك",
-        text: "كوبونات الخصم تشجع الزوار يسوون قرار الشراء بسرعة أكبر.",
-        cta: "أنشئ كود خصم",
+        badge: t.nextStepBadgeNext,
+        title: t.couponStepTitle,
+        text: t.couponStepText,
+        cta: t.couponStepCta,
         onClick: () => setTab("coupons"),
         progress: stepsDone,
       };
     }
     return {
       key: "share-store",
-      badge: "✦ جاهز للانطلاق",
-      title: "متجرك جاهز، حان وقت المشاركة",
-      text: "شارك رابط متجرك على واتساب وإنستغرام لتبدأ استقبال الزيارات والمبيعات.",
-      cta: "نسخ رابط المتجر",
+      badge: t.nextStepBadgeReady,
+      title: t.shareStepTitle,
+      text: t.shareStepText,
+      cta: t.shareStepCta,
       onClick: () => copyLink(slug || user.uid, "store"),
       progress: stepsDone,
     };
@@ -1781,46 +2714,47 @@ export default function Dashboard() {
 
   return (
     <DebugErrorBoundary>
-    <div className="dh-page" dir="rtl" lang="ar">
+    <div className="dh-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <style>{styles}</style>
       {toast && <div className="dh-toast" role="status">{toast}</div>}
       <div className="dh-header">
-        <div className="dh-brand">{storeName || "متجرك"} <span>· لوحة التاجر · {STORE_TYPE_LABELS[sellerStoreType] || "منتجات رقمية"}</span></div>
+        <div className="dh-brand">{storeName || t.yourStore} <span>· {t.sellerDashboard} · {STORE_TYPE_LABELS[lang][sellerStoreType] || t.genericProducts}</span></div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {user.email === ADMIN_EMAIL && (
-            <a href="#admin" className="dh-admin-btn">لوحة الأدمن</a>
+            <a href="#admin" className="dh-admin-btn">{t.adminPanel}</a>
           )}
-          <button className="dh-logout" onClick={handleLogout}>تسجيل خروج</button>
+          <LangToggle lang={lang} onChange={setLang} className="dh-lang" />
+          <button className="dh-logout" onClick={handleLogout}>{t.logoutBtn}</button>
         </div>
       </div>
 
       {!user.emailVerified && (
         <div className="dh-verify-banner">
-          <span>{verificationSent ? "أرسلنا رابط تأكيد جديد لبريدك. افتح بريدك واضغط الرابط." : "بريدك الإلكتروني غير مؤكد بعد. تأكيد بريدك يضمن وصولك لحسابك لو نسيت كلمة المرور."}</span>
-          <button type="button" onClick={resendVerificationEmail} disabled={sendingVerification}>{sendingVerification ? "جاري الإرسال..." : verificationSent ? "إعادة الإرسال" : "إرسال رابط التأكيد"}</button>
+          <span>{verificationSent ? t.verificationResent : t.emailNotVerified}</span>
+          <button type="button" onClick={resendVerificationEmail} disabled={sendingVerification}>{sendingVerification ? t.sendingEllipsis : verificationSent ? t.resend : t.sendVerificationLink}</button>
         </div>
       )}
 
       {subscriptionDaysLeft !== null && subscriptionDaysLeft <= 5 && (
         <div className="dh-verify-banner" style={{ background: subscriptionDaysLeft < 0 ? "#F6E9E5" : "#FFF8E9", borderBottomColor: subscriptionDaysLeft < 0 ? "#E3C3B8" : "#EFD9AB", color: subscriptionDaysLeft < 0 ? "#A34839" : "#7A5A17" }}>
-          <span>{subscriptionDaysLeft < 0 ? "انتهى اشتراك متجرك. جدده الآن حتى يرجع يستقبل طلبات." : `اشتراك متجرك بينتهي خلال ${subscriptionDaysLeft} يوم. جدده الآن بدون انقطاع.`}</span>
-          <button type="button" onClick={renewSubscription} disabled={renewalBuying}>{renewalBuying ? "جاري تجهيز الدفع..." : "جدّد الاشتراك الآن"}</button>
+          <span>{subscriptionDaysLeft < 0 ? t.subscriptionExpired : t.subscriptionExpiringSoon(subscriptionDaysLeft)}</span>
+          <button type="button" onClick={renewSubscription} disabled={renewalBuying}>{renewalBuying ? t.preparingPayment : t.renewNow}</button>
         </div>
       )}
 
       {isTrial && (
         <div className="dh-verify-banner" style={{ background: "#FFF8E9", borderBottomColor: "#EFD9AB", color: "#7A5A17" }}>
-          <span>{trialLimitReached ? "أنت على التجربة المجانية واستخدمت منتجك الوحيد. رقّي اشتراكك لإضافة منتجات بلا حدود." : "أنت على التجربة المجانية — منتج واحد مجانًا بدون بطاقة."}</span>
-          <button type="button" onClick={() => setTab("subscription")}>رقّي اشتراكك</button>
+          <span>{trialLimitReached ? t.trialUsedUp : t.trialActive}</span>
+          <button type="button" onClick={() => setTab("subscription")}>{t.upgradeSubscription}</button>
         </div>
       )}
 
       <div className="dh-tabs">
-        <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>الرئيسية</button>
-        <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>المنتجات</button>
-        <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>الطلبات</button>
-        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>الكوبونات</button>
-        <button className={"dh-tab" + (isSettingsGroup ? " active" : "")} onClick={() => setTab("settings")}>الإعدادات</button>
+        <button className={"dh-tab" + (tab === "overview" ? " active" : "")} onClick={() => setTab("overview")}>{t.homeTab}</button>
+        <button className={"dh-tab" + (tab === "products" ? " active" : "")} onClick={() => setTab("products")}>{t.productsTab}</button>
+        <button className={"dh-tab" + (tab === "orders" ? " active" : "")} onClick={() => setTab("orders")}>{t.ordersTab}</button>
+        <button className={"dh-tab" + (tab === "coupons" ? " active" : "")} onClick={() => setTab("coupons")}>{t.couponsTab}</button>
+        <button className={"dh-tab" + (isSettingsGroup ? " active" : "")} onClick={() => setTab("settings")}>{t.settingsTab}</button>
       </div>
 
       <div className="dh-wrap">
@@ -1828,19 +2762,19 @@ export default function Dashboard() {
         {tab === "overview" && (
           <>
             <section className="dh-studio" style={{ "--studio-color": storeColor }}>
-              <div className="dh-studio-kicker">مساحتك الخاصة</div>
+              <div className="dh-studio-kicker">{t.yourSpace}</div>
               <div className="dh-studio-head">
                 <div className="dh-studio-logo">{logoUrl ? <img src={logoUrl} alt="" /> : initial}</div>
                 <div>
-                  <div className="dh-studio-name">{storeName || "اسم متجرك"}</div>
-                  <div className="dh-studio-tag">{tagline || "أضف وصفًا بسيطًا ليعرف الزائر وش تبيع."}</div>
-                  <div className="dh-studio-meta">مظهر {selectedStoreStyle.name} · متجر بهويتك</div>
+                  <div className="dh-studio-name">{storeName || t.yourStoreNamePlaceholder}</div>
+                  <div className="dh-studio-tag">{tagline || t.addSimpleDescription}</div>
+                  <div className="dh-studio-meta">{t.styleMeta(lang === "en" ? selectedStoreStyle.nameEn : selectedStoreStyle.name)}</div>
                 </div>
               </div>
               <div className="dh-studio-actions">
-                <a className="dh-studio-action primary" href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer"><span>↗</span>افتح متجرك</a>
-                <button className="dh-studio-action" onClick={shareStore}><span>⌁</span>{copied === "share-store" ? "تم النسخ" : "شارك المتجر"}</button>
-                <button className="dh-studio-action" onClick={() => setTab("design")}><span>✦</span>عدّل المظهر</button>
+                <a className="dh-studio-action primary" href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer"><span>↗</span>{t.openYourStore}</a>
+                <button className="dh-studio-action" onClick={shareStore}><span>⌁</span>{copied === "share-store" ? t.copiedShort : t.shareStoreBtn}</button>
+                <button className="dh-studio-action" onClick={() => setTab("design")}><span>✦</span>{t.editAppearance}</button>
               </div>
             </section>
 
@@ -1849,63 +2783,63 @@ export default function Dashboard() {
               <div className="dh-next-title">{nextStep.title}</div>
               <div className="dh-next-text">{nextStep.text}</div>
               <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: `${(nextStep.progress / 5) * 100}%` }} /></div>
-              <div className="dh-next-step">{nextStep.progress} من 5 خطوات مكتملة</div>
+              <div className="dh-next-step">{t.stepsOf5(nextStep.progress)}</div>
               <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
             </div>
 
             {stalledOrders.length > 0 && (
               <div className="dh-flag">
-                <b>{stalledOrders.length === 1 ? "طلب متوقف منذ أكثر من 30 دقيقة" : `${stalledOrders.length} طلبات متوقفة منذ أكثر من 30 دقيقة`}</b>
-                <span>عملاء بدأوا الطلب وما أكملوا الدفع أو رفع الإثبات.</span>
-                <button type="button" onClick={() => setTab("orders")}>افتحهم من تبويب الطلبات</button>
+                <b>{stalledOrders.length === 1 ? t.stalledOrderSingle : t.stalledOrdersMulti(stalledOrders.length)}</b>
+                <span>{t.stalledOrdersHint}</span>
+                <button type="button" onClick={() => setTab("orders")}>{t.openFromOrdersTab}</button>
               </div>
             )}
 
             <div className="dh-figures">
-              <div className="dh-figure-main"><b className="mono">{sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>ر.ع مبيعات مؤكدة</span></div>
+              <div className="dh-figure-main"><b className="mono">{sellerOrders.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + (Number(o.price) || 0), 0).toFixed(2)}</b><span>{t.confirmedSalesLabel}</span></div>
               <div className="dh-figure-side">
-                <div><b className="mono">{sellerOrders.filter((o) => o.status !== "draft").length}</b><span>طلب مُرسل</span></div>
-                <div><b className="mono">{products.length}</b><span>منتج نشط</span></div>
+                <div><b className="mono">{sellerOrders.filter((o) => o.status !== "draft").length}</b><span>{t.orderSentLabel}</span></div>
+                <div><b className="mono">{products.length}</b><span>{t.activeProductLabel}</span></div>
               </div>
             </div>
 
             <div className="dh-quicklinks">
-              <button type="button" onClick={() => setTab("products")}>+ أضف منتج</button>
+              <button type="button" onClick={() => setTab("products")}>{t.addProductQuick}</button>
               <span>·</span>
-              <button type="button" onClick={() => setTab("design")}>تصميم المتجر</button>
+              <button type="button" onClick={() => setTab("design")}>{t.storeDesignQuick}</button>
               <span>·</span>
               <button type="button" onClick={() => copyLink(slug || user.uid, "store")}>
-                {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط" : "نسخ رابط المتجر"}
+                {copied === "store" + (slug || user.uid) ? t.linkCopiedFull : t.copyStoreLinkBtn}
               </button>
               <span>·</span>
               <button type="button" onClick={shareStore}>
-                {copied === "share-store" ? "تم نسخ الرابط" : "مشاركة المتجر"}
+                {copied === "share-store" ? t.linkCopiedFull : t.shareStoreQuick}
               </button>
             </div>
 
             <section className="dh-share-card">
               <div className="dh-share-head">
                 <div>
-                  <div className="dh-share-title">مركز مشاركة المتجر</div>
-                  <div className="dh-share-sub">انشر رابط متجرك في المكان الذي فيه عملاؤك.</div>
+                  <div className="dh-share-title">{t.shareCenterTitle}</div>
+                  <div className="dh-share-sub">{t.shareCenterSub}</div>
                 </div>
                 <span style={{ fontSize: 18 }}>↗</span>
               </div>
               <div className="dh-share-actions">
-                <button className="dh-share-btn primary" onClick={shareStore}>مشاركة</button>
-                <a className="dh-share-btn" href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">واتساب</a>
-                <button className="dh-share-btn" onClick={() => copyLink(slug || user.uid, "store")}>{copied === "store" + (slug || user.uid) ? "تم النسخ" : "نسخ الرابط"}</button>
+                <button className="dh-share-btn primary" onClick={shareStore}>{t.shareBtn}</button>
+                <a className="dh-share-btn" href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">{t.whatsapp}</a>
+                <button className="dh-share-btn" onClick={() => copyLink(slug || user.uid, "store")}>{copied === "store" + (slug || user.uid) ? t.copiedShort : t.copyLinkBtn}</button>
               </div>
             </section>
 
             <section className="dh-qr">
               <div className="dh-qr-code"><QRCodeSVG value={storeUrl} size={70} bgColor="#ffffff" fgColor={storeColor} level="M" /></div>
               <div>
-                <div className="dh-qr-title">رمز متجرك</div>
-                <div className="dh-qr-sub">خله عندك في المعرض أو المطبوعات، والعميل يفتحه بكاميرا جواله.</div>
+                <div className="dh-qr-title">{t.storeCodeTitle}</div>
+                <div className="dh-qr-sub">{t.storeCodeSub}</div>
                 <div className="dh-qr-actions">
-                  <button className="dh-mini-btn" onClick={() => copyLink(slug || user.uid, "store")}>نسخ الرابط</button>
-                  <button className="dh-mini-btn" onClick={shareStore}>مشاركة</button>
+                  <button className="dh-mini-btn" onClick={() => copyLink(slug || user.uid, "store")}>{t.copyLinkBtn}</button>
+                  <button className="dh-mini-btn" onClick={shareStore}>{t.shareBtn}</button>
                 </div>
               </div>
             </section>
@@ -1913,44 +2847,44 @@ export default function Dashboard() {
             <section className="dh-product-health">
               <div className="dh-share-head">
                 <div>
-                  <div className="dh-share-title">حالة منتجاتك</div>
-                  <div className="dh-share-sub">تعرف مباشرة ما الذي يراه الزائر وما يحتاج منك مراجعة.</div>
+                  <div className="dh-share-title">{t.productHealthTitle}</div>
+                  <div className="dh-share-sub">{t.productHealthSub}</div>
                 </div>
-                <button className="dh-health-manage" onClick={() => setTab("products")}>إدارة المنتجات</button>
+                <button className="dh-health-manage" onClick={() => setTab("products")}>{t.manageProducts}</button>
               </div>
               <div className="dh-health-summary">
-                <div className="dh-health-number"><b>{publishedProducts.length}</b><span>منتجات منشورة</span></div>
-                <div className="dh-health-number"><b>{hiddenProducts.length}</b><span>مسودات أو مخفية</span></div>
+                <div className="dh-health-number"><b>{publishedProducts.length}</b><span>{t.publishedProductsLabel}</span></div>
+                <div className="dh-health-number"><b>{hiddenProducts.length}</b><span>{t.hiddenDraftsLabel}</span></div>
               </div>
               {products.length === 0 ? (
-                <button className="dh-share-btn primary" style={{ width: "100%" }} onClick={() => setTab("products")}>أضف أول منتج</button>
+                <button className="dh-share-btn primary" style={{ width: "100%" }} onClick={() => setTab("products")}>{t.addFirstProduct}</button>
               ) : products.slice(0, 3).map((product) => (
                 <div className="dh-health-row" key={product.id}>
                   <span className="dh-health-name">{product.name}</span>
-                  <span className={`dh-health-state ${product.hidden || product.suspended ? "hidden" : "live"}`}>{product.hidden || product.suspended ? "مخفي" : "منشور"}</span>
+                  <span className={`dh-health-state ${product.hidden || product.suspended ? "hidden" : "live"}`}>{product.hidden || product.suspended ? t.hidden : t.published}</span>
                 </div>
               ))}
             </section>
 
             <div className="dh-store-link">
-              <div className="dh-store-label">رابط متجرك العام</div>
+              <div className="dh-store-label">{t.publicStoreLinkLabel}</div>
               <div className="dh-store-row">
                 <span className="dh-store-url">{storeUrl}</span>
                 <button className="dh-copy" onClick={() => copyLink(slug || user.uid, "store")}>
-                  {copied === "store" + (slug || user.uid) ? "تم" : "نسخ"}
+                  {copied === "store" + (slug || user.uid) ? t.copiedTiny : t.copyTiny}
                 </button>
               </div>
             </div>
             <div className="dh-card">
-              <div className="dh-title">آخر الطلبات</div>
+              <div className="dh-title">{t.lastOrdersTitle}</div>
               {sellerOrders.length === 0 && (
-                <div className="empty-note">أضف منتجك الأول، ثم شارك رابطه على واتساب أو إنستغرام لتبدأ استقبال المبيعات.</div>
+                <div className="empty-note">{t.emptyOrdersHint}</div>
               )}
               {sellerOrders.filter((o) => o.status !== "draft").slice(0, 5).map((o) => (
                 <div className="dh-item" key={o.id}>
                   <div className="dh-item-top">
                     <span className="dh-item-name">{o.productName}</span>
-                    <span className="dh-item-price">{Number(o.price).toFixed(2)} ر.ع</span>
+                    <span className="dh-item-price">{Number(o.price).toFixed(2)} {curr}</span>
                   </div>
                   <div className="dh-item-stock">{o.buyerPhone}</div>
                 </div>
@@ -1963,46 +2897,46 @@ export default function Dashboard() {
           <>
             {trialLimitReached ? (
               <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F", textAlign: "center" }}>
-                <div className="dh-title" style={{ marginBottom: 6 }}>وصلت لحد التجربة المجانية</div>
-                <div className="dh-hint" style={{ marginBottom: 14 }}>التجربة المجانية تسمح بمنتج واحد. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي ميزات مونة.</div>
-                <button className="dh-btn" type="button" onClick={() => setTab("subscription")}>رقّي اشتراكك الآن</button>
+                <div className="dh-title" style={{ marginBottom: 6 }}>{t.trialLimitTitle}</div>
+                <div className="dh-hint" style={{ marginBottom: 14 }}>{t.trialLimitHint}</div>
+                <button className="dh-btn" type="button" onClick={() => setTab("subscription")}>{t.upgradeNow}</button>
               </div>
             ) : (
             <details className="dh-section" open={products.length === 0} ref={addProductRef}>
-              <summary><div className="dh-section-summary"><b>أضف منتج جديد</b><span>افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.</span></div></summary>
+              <summary><div className="dh-section-summary"><b>{t.addNewProduct}</b><span>{t.openFormHint}</span></div></summary>
               <div className="dh-section-body">
               {error && <div className="dh-error">{error}</div>}
               <form onSubmit={(e) => e.preventDefault()}>
                 <div className="dh-field">
-                  <label>اسم المنتج</label>
+                  <label>{t.productNameLabel}</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="dh-field">
-                  <label>السعر (ر.ع)</label>
+                  <label>{t.priceLabel}</label>
                   <input type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
-                  <div className="dh-hint">اكتب 0 إذا تريد تجعل هذا الملف مجانيًا للزوار.</div>
+                  <div className="dh-hint">{t.freeFileHint}</div>
                 </div>
                 <div className="dh-field">
-                  <label>التصنيف (مثل: قوالب، أيقونات، عروض تقديمية)</label>
-                  <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="عام" />
+                  <label>{t.categoryLabel}</label>
+                  <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t.generalCategory} />
                 </div>
                 <div className="dh-field">
-                  <label>وصف مختصر (اختياري)</label>
+                  <label>{t.shortDescLabel}</label>
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
                   {activeAddOns.includes("aiTools") ? (
                     <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft("new")} disabled={descriptionDraftLoading === "new"} style={{ marginTop: 8 }}>
-                      {descriptionDraftLoading === "new" ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                      {descriptionDraftLoading === "new" ? t.preparingDraft : t.writeDescriptionDraft}
                     </button>
                   ) : (
                     <div className="dh-hint" style={{ marginTop: 8, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
-                      ✨ فعّل إضافة "أدوات الذكاء" (١ ر.ع شهريًا) من تبويب <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>اشتراك متجرك</button> عشان يكتب لك الذكاء الاصطناعي مسودة وصف.
+                      ✨ {t.aiToolsUpsellPrefix} <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t.subscriptionLinkLabel}</button> {t.aiToolsUpsellSuffix}
                     </div>
                   )}
                   {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
-                  {descriptionDraftTarget === "new" && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — عدّلها أو استخدمها إذا ناسبتك</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft("new")}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
+                  {descriptionDraftTarget === "new" && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">{t.draftOnlyEditable}</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft("new")}>{t.useThisDraft}</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>{t.cancel}</button></div></div>}
                 </div>
                 <div className="dh-field">
-                  <label>صور المنتج (حتى صورتين، اختياري)</label>
+                  <label>{t.productImagesLabel}</label>
                   <div className="dh-images-row">
                     {productImages.map((url) => (
                       <div className="dh-image-thumb-wrap" key={url}>
@@ -2020,59 +2954,59 @@ export default function Dashboard() {
                   {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
                 </div>
                 <div className="dh-field">
-                  <label>نوع المنتج</label>
+                  <label>{t.productTypeLabel}</label>
                   <div className="dh-type-toggle">
                     <button
                       type="button"
                       className={"dh-type-btn" + (productType === "file" ? " active" : "")}
                       onClick={() => setProductType("file")}
                     >
-                      ملف
+                      {t.fileType}
                     </button>
                     <button
                       type="button"
                       className={"dh-type-btn" + (productType === "code" ? " active" : "")}
                       onClick={() => setProductType("code")}
                     >
-                      كود / ترخيص
+                      {t.codeType}
                     </button>
                   </div>
                 </div>
                 {productType === "file" ? (
                   <div className="dh-field">
-                    <label>ملف المنتج</label>
+                    <label>{t.productFileLabel}</label>
                     <input key={fileInputKey} type="file" onChange={handleFilePick} />
                     {productFile && (
                       <div className="dh-file-picked">
-                        ✓ {productFile.name} ({(productFile.size / 1024 / 1024).toFixed(1)} م.ب)
+                        ✓ {productFile.name} ({(productFile.size / 1024 / 1024).toFixed(1)} {t.mbUnit})
                       </div>
                     )}
-                    <div className="dh-hint">الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف {MAX_PRODUCT_FILE_MB} ميجابايت.</div>
+                    <div className="dh-hint">{t.fileSecureHint(MAX_PRODUCT_FILE_MB)}</div>
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10, fontSize: 12.5, cursor: "pointer" }}>
                       <input type="checkbox" checked={requiresActivation} onChange={(e) => setRequiresActivation(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
-                      <span style={{ flex: 1, minWidth: 0 }}>ملف تفاعلي (مثل الألعاب) — يشتغل مباشرة داخل الموقع بزر "العب الآن" بدل ما يُنزَّل، عشان يشتغل مضمون على أي جهاز وما ينسخه أحد غير المشتري</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>{t.interactiveFileLabel}</span>
                     </label>
                   </div>
                 ) : (
                   <div className="dh-field">
-                    <label>الصقي الأكواد (كود بكل سطر)</label>
+                    <label>{t.pasteCodesLabel}</label>
                     <textarea rows="5" value={codesText} onChange={(e) => setCodesText(e.target.value)} placeholder={"CODE-001\nCODE-002\nCODE-003"} style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }} />
-                    <div className="dh-hint">كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.</div>
+                    <div className="dh-hint">{t.eachCustomerCodeHint}</div>
                   </div>
                 )}
                 <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || price === ""} style={{ width: "100%", marginBottom: 8 }}>
-                  معاينة المنتج
+                  {t.previewProduct}
                 </button>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="dh-item-action" type="button" onClick={(e) => handleAddProduct(e, false)} disabled={saving} style={{ flex: 1 }}>
-                    {saving ? "..." : "حفظ كمسودة"}
+                    {saving ? "..." : t.saveAsDraft}
                   </button>
                   <button className="dh-btn" type="button" onClick={(e) => handleAddProduct(e, true)} disabled={saving} style={{ flex: 1 }}>
-                    {saving ? (uploadingFile ? "جاري رفع الملف..." : "جاري النشر...") : "نشر المنتج"}
+                    {saving ? (uploadingFile ? t.uploadingFileMsg : t.publishingMsg) : t.publishProduct}
                   </button>
                 </div>
                 <div className="dh-hint" style={{ marginTop: 8, textAlign: "center" }}>
-                  "حفظ كمسودة" يحفظ المنتج مخفيًا عن الزوار — تقدر تنشره بعدين من قائمة منتجاتك.
+                  {t.draftHintBottom}
                 </div>
               </form>
               </div>
@@ -2081,140 +3015,140 @@ export default function Dashboard() {
 
             <div className="dh-card">
               <div className="dh-title-row">
-                <div className="dh-title">منتجاتك</div>
-                <div className="dh-title-count mono">{products.length} منتج</div>
+                <div className="dh-title">{t.yourProductsTitle}</div>
+                <div className="dh-title-count mono">{products.length} {t.productCountUnit}</div>
               </div>
 
               {products.length > 0 && (
                 <>
                   <div className="dh-field">
-                    <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="ابحث باسم المنتج" />
+                    <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder={t.searchByName} />
                   </div>
                   <div className="dh-type-toggle" style={{ marginBottom: 14 }}>
                     <button type="button" className={"dh-type-btn" + (productFilter === "all" ? " active" : "")} onClick={() => setProductFilter("all")}>
-                      الكل ({products.length})
+                      {t.allFilter} ({products.length})
                     </button>
                     <button type="button" className={"dh-type-btn" + (productFilter === "visible" ? " active" : "")} onClick={() => setProductFilter("visible")}>
-                      منشور ({products.filter((p) => !p.hidden).length})
+                      {t.visibleFilter} ({products.filter((p) => !p.hidden).length})
                     </button>
                     <button type="button" className={"dh-type-btn" + (productFilter === "hidden" ? " active" : "")} onClick={() => setProductFilter("hidden")}>
-                      مخفي ({products.filter((p) => p.hidden).length})
+                      {t.hiddenFilter} ({products.filter((p) => p.hidden).length})
                     </button>
                   </div>
                 </>
               )}
 
-              {products.length === 0 && <div className="empty-note">ما أضفت أي منتج بعد.</div>}
-              {products.length > 0 && filteredProducts.length === 0 && <div className="empty-note">ما فيه منتج يطابق البحث أو الفلتر.</div>}
+              {products.length === 0 && <div className="empty-note">{t.noProductsYet}</div>}
+              {products.length > 0 && filteredProducts.length === 0 && <div className="empty-note">{t.noMatchFilter}</div>}
               {orderedProducts.map((p) => (
                 <div className="dh-item" key={p.id}>
                   {editingId === p.id ? (
                     <div className="dh-edit-form">
                       <div className="dh-field">
-                        <label>اسم المنتج</label>
+                        <label>{t.productNameLabel}</label>
                         <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
                       </div>
                       <div className="dh-field">
-                        <label>السعر (ر.ع)</label>
+                        <label>{t.priceLabel}</label>
                         <input type="number" min="0" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
                       </div>
                       <div className="dh-field">
-                        <label>التصنيف</label>
+                        <label>{t.categoryLabelShort}</label>
                         <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
                       </div>
                       <div className="dh-field">
-                        <label>وصف مختصر</label>
+                        <label>{t.shortDescLabelShort}</label>
                         <textarea rows="2" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
                         {activeAddOns.includes("aiTools") ? (
                           <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft(p.id, p)} disabled={descriptionDraftLoading === p.id} style={{ marginTop: 8 }}>
-                            {descriptionDraftLoading === p.id ? "جاري تجهيز المسودة..." : "اكتب لي مسودة وصف"}
+                            {descriptionDraftLoading === p.id ? t.preparingDraft : t.writeDescriptionDraft}
                           </button>
                         ) : (
                           <div className="dh-hint" style={{ marginTop: 8, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
-                            ✨ فعّل إضافة "أدوات الذكاء" (١ ر.ع شهريًا) من تبويب <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>اشتراك متجرك</button> عشان يكتب لك الذكاء الاصطناعي مسودة وصف.
+                            ✨ {t.aiToolsUpsellPrefix} <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t.subscriptionLinkLabel}</button> {t.aiToolsUpsellSuffix}
                           </div>
                         )}
                         {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
-                        {descriptionDraftTarget === p.id && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لا تُحفظ إلا إذا ضغطت حفظ المنتج</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft(p.id)}>استخدم هذه المسودة</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>إلغاء</button></div></div>}
+                        {descriptionDraftTarget === p.id && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">{t.editDraftOnlyNoAutoSave}</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft(p.id)}>{t.useThisDraft}</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>{t.cancel}</button></div></div>}
                       </div>
                       {p.type !== "code" && (
                         <div className="dh-hint" style={{ marginBottom: 10 }}>
-                          لتغيير الملف نفسه، احذفي هذا المنتج وأضيفيه من جديد مؤقتًا.
+                          {t.editNoteChangeFile}
                         </div>
                       )}
                       {p.type === "file" && (
                         <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10, fontSize: 12.5, cursor: "pointer" }}>
                           <input type="checkbox" checked={editRequiresActivation} onChange={(e) => setEditRequiresActivation(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
-                          <span style={{ flex: 1, minWidth: 0 }}>ملف تفاعلي (مثل الألعاب) — يشتغل مباشرة داخل الموقع بزر "العب الآن" بدل ما يُنزَّل</span>
+                          <span style={{ flex: 1, minWidth: 0 }}>{t.interactiveFileLabelShort}</span>
                         </label>
                       )}
                       <div className="dh-edit-actions">
-                        <button className="dh-item-action" onClick={cancelEdit} type="button">إلغاء</button>
+                        <button className="dh-item-action" onClick={cancelEdit} type="button">{t.cancel}</button>
                         <button className="dh-item-action primary" onClick={() => saveEdit(p.id)} disabled={editSaving} type="button">
-                          {editSaving ? "جاري الحفظ..." : "حفظ"}
+                          {editSaving ? t.savingEllipsis : t.save}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className="dh-item-top">
-                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">مميز</span>}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> (مخفي)</span>}</span>
-                        <span className="dh-item-price">{p.price} ر.ع</span>
+                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">{t.featuredTag}</span>}{p.hidden && <span style={{ color: "#B0AC9C", fontWeight: 400 }}> ({t.hidden})</span>}</span>
+                        <span className="dh-item-price">{p.price} {curr}</span>
                       </div>
                       {p.type === "code" && (
                         <div className="dh-item-stock">
-                          مخزون: {p.codesCount || 0} كود{Number(p.codesCount || 0) === 0 && " — نفذ المخزون"}
+                          {t.stockLabel} {p.codesCount || 0} {t.codeUnit}{Number(p.codesCount || 0) === 0 && t.outOfStock}
                         </div>
                       )}
                       {p.type === "code" && restockingId === p.id && (
                         <div className="dh-field" style={{ marginTop: 8 }}>
-                          <label>الصقي الأكواد الجديدة (كود بكل سطر)</label>
+                          <label>{t.pasteNewCodesLabel}</label>
                           <textarea rows="4" value={restockText} onChange={(e) => setRestockText(e.target.value)} placeholder={"CODE-004\nCODE-005"} style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }} />
                           {restockError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{restockError}</div>}
                           <div className="dh-edit-actions" style={{ marginTop: 8 }}>
-                            <button className="dh-item-action" onClick={cancelRestock} type="button">إلغاء</button>
+                            <button className="dh-item-action" onClick={cancelRestock} type="button">{t.cancel}</button>
                             <button className="dh-item-action primary" onClick={() => saveRestock(p.id)} disabled={restockSaving} type="button">
-                              {restockSaving ? "جاري الإضافة..." : "إضافة الأكواد"}
+                              {restockSaving ? t.addingEllipsis : t.addCodes}
                             </button>
                           </div>
                         </div>
                       )}
                       <div className="dh-item-link">
-                        <span className="dh-item-link-text"><span className="dh-item-link-label">رابط المنتج</span><span className="dh-item-link-code">{`#product/${p.id}`}</span></span>
+                        <span className="dh-item-link-text"><span className="dh-item-link-label">{t.productLinkLabel}</span><span className="dh-item-link-code">{`#product/${p.id}`}</span></span>
                         <button className="dh-item-link-btn" onClick={() => copyLink(p.id, "product")}>
-                          {copied === "product" + p.id ? "تم" : "نسخ الرابط"}
+                          {copied === "product" + p.id ? t.copiedTiny : t.copyLink}
                         </button>
                       </div>
                       <button className="dh-ai-btn" onClick={() => generateAdCopy(p)} disabled={adCopyLoadingId === p.id} type="button" style={{ width: "100%", marginTop: 9 }}>
-                        {adCopyLoadingId === p.id ? "جاري تجهيز الإعلان..." : "اكتب لي مسودة إعلان"}
+                        {adCopyLoadingId === p.id ? t.preparingAd : t.writeAdDraft}
                       </button>
                       {adCopyError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{adCopyError}</div>}
-                      {adCopyProductId === p.id && adCopy && <div className="dh-ai-draft"><div className="dh-ai-draft-title">مسودة فقط — لن تُنشر من مُونَة</div><p>{adCopy}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" onClick={copyAdDraft} type="button">{copied === "ad-copy" ? "تم النسخ" : "نسخ النص"}</button><button className="dh-ai-btn" onClick={() => { setAdCopy(""); setAdCopyProductId(""); }} type="button">إغلاق</button></div></div>}
+                      {adCopyProductId === p.id && adCopy && <div className="dh-ai-draft"><div className="dh-ai-draft-title">{t.adDraftOnly}</div><p>{adCopy}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" onClick={copyAdDraft} type="button">{copied === "ad-copy" ? t.copiedText : t.copyTextBtn}</button><button className="dh-ai-btn" onClick={() => { setAdCopy(""); setAdCopyProductId(""); }} type="button">{t.close}</button></div></div>}
                       <div className="dh-item-actions">
-                        <button className="dh-item-action" onClick={() => startEdit(p)} type="button">تعديل</button>
+                        <button className="dh-item-action" onClick={() => startEdit(p)} type="button">{t.edit}</button>
                         {!trialLimitReached && (
-                          <button className="dh-item-action" onClick={() => duplicateProduct(p)} type="button">نسخ كمنتج جديد</button>
+                          <button className="dh-item-action" onClick={() => duplicateProduct(p)} type="button">{t.duplicateAsNew}</button>
                         )}
                         {p.type === "code" && restockingId !== p.id && (
-                          <button className="dh-item-action" onClick={() => startRestock(p.id)} type="button">إضافة أكواد</button>
+                          <button className="dh-item-action" onClick={() => startRestock(p.id)} type="button">{t.addCodesBtn}</button>
                         )}
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
-                          {togglingHiddenId === p.id ? "..." : (p.hidden ? "إظهار" : "إخفاء")}
+                          {togglingHiddenId === p.id ? "..." : (p.hidden ? t.show : t.unhide)}
                         </button>
                         <button className="dh-item-action" onClick={() => toggleFeatured(p.id, !!p.featured)} disabled={togglingHiddenId === p.id} type="button">
-                          {p.featured ? "إلغاء التثبيت" : "تثبيت"}
+                          {p.featured ? t.unfeature : t.feature}
                         </button>
                         {confirmDeleteId === p.id ? (
                           <button className="dh-item-action danger" onClick={() => confirmDelete(p.id)} disabled={deletingId === p.id} type="button">
-                            {deletingId === p.id ? "جاري الحذف..." : "تأكيد الحذف؟"}
+                            {deletingId === p.id ? t.deletingEllipsis : t.confirmDeleteQuestion}
                           </button>
                         ) : (
-                          <button className="dh-item-action danger" onClick={() => setConfirmDeleteId(p.id)} type="button">حذف</button>
+                          <button className="dh-item-action danger" onClick={() => setConfirmDeleteId(p.id)} type="button">{t.delete}</button>
                         )}
                       </div>
                       <div className="dh-sort-actions">
-                        <button className="dh-sort-btn" onClick={() => moveProduct(p.id, -1)} type="button">↑ قدّمه</button>
-                        <button className="dh-sort-btn" onClick={() => moveProduct(p.id, 1)} type="button">↓ أخّره</button>
+                        <button className="dh-sort-btn" onClick={() => moveProduct(p.id, -1)} type="button">{t.moveUp}</button>
+                        <button className="dh-sort-btn" onClick={() => moveProduct(p.id, 1)} type="button">{t.moveDown}</button>
                       </div>
                     </>
                   )}
@@ -2223,90 +3157,90 @@ export default function Dashboard() {
             </div>
 
             <details className="dh-section">
-              <summary><div className="dh-section-summary"><b>روابط التتبع</b><span>{campaignLinks.length > 0 ? `${campaignVisitTotal} زيارة من ${campaignLinks.length} روابط` : "أنشئ رابطًا مختلفًا لكل مكان نشر."}</span></div></summary>
+              <summary><div className="dh-section-summary"><b>{t.trackingLinksTitle}</b><span>{campaignLinks.length > 0 ? t.trackingLinksSummary(campaignVisitTotal, campaignLinks.length) : t.trackingLinksEmpty}</span></div></summary>
               <div className="dh-section-body">
-              <div className="dh-hint" style={{ marginBottom: 14 }}>أنشئ رابطًا مختلفًا لكل مكان تنشر فيه، مثل واتساب أو إنستغرام. نعرض عدد فتحات الرابط فقط، بدون جمع معلومات شخصية عن الزوار.</div>
-              {campaignLinks.length > 0 && <div className="dh-product-health" style={{ marginBottom: 14 }}><div className="dh-title" style={{ fontSize: 12 }}>ملخص الزيارات</div><div className="dh-health-summary"><div className="dh-health-number"><b>{campaignVisitTotal}</b><span>إجمالي الزيارات</span></div><div className="dh-health-number"><b>{campaignLinks.length}</b><span>روابطك المنشأة</span></div></div>{topCampaignLink && <div className="dh-health-row"><span className="dh-health-name">أكثر رابط تمت زيارته: {topCampaignLink.label}</span><span className="dh-health-state live">{Number(topCampaignLink.visits) || 0} زيارة</span></div>}<div className="dh-hint">هذه الأرقام لفتحات روابط التتبع فقط، وليست مبيعات أو معلومات عن الزوار.</div></div>}
+              <div className="dh-hint" style={{ marginBottom: 14 }}>{t.trackingLinksHint}</div>
+              {campaignLinks.length > 0 && <div className="dh-product-health" style={{ marginBottom: 14 }}><div className="dh-title" style={{ fontSize: 12 }}>{t.visitsSummaryTitle}</div><div className="dh-health-summary"><div className="dh-health-number"><b>{campaignVisitTotal}</b><span>{t.totalVisits}</span></div><div className="dh-health-number"><b>{campaignLinks.length}</b><span>{t.yourCreatedLinks}</span></div></div>{topCampaignLink && <div className="dh-health-row"><span className="dh-health-name">{t.mostVisitedLink(topCampaignLink.label)}</span><span className="dh-health-state live">{Number(topCampaignLink.visits) || 0} {t.visitUnit}</span></div>}<div className="dh-hint">{t.trackingLinksNote}</div></div>}
               {campaignError && <div className="dh-error">{campaignError}</div>}
               {campaignNotice && <div className="dh-success">{campaignNotice}</div>}
-              {publishedProducts.length === 0 ? <div className="empty-note">انشر منتجًا أولًا حتى تنشئ له رابط تتبع.</div> : <>
-                <div className="dh-field"><label>المنتج</label><select value={campaignProductId} onChange={(event) => setCampaignProductId(event.target.value)}><option value="">اختر منتجًا منشورًا</option>{publishedProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></div>
-                <div className="dh-field"><label>اسم مكان النشر</label><input value={campaignLabel} onChange={(event) => setCampaignLabel(event.target.value)} placeholder="مثال: إنستغرام" maxLength="60" /></div>
-                <button type="button" className="dh-item-action primary" style={{ width: "100%" }} onClick={createCampaignLink} disabled={campaignSaving}>{campaignSaving ? "جاري الإنشاء..." : "إنشاء رابط تتبع"}</button>
+              {publishedProducts.length === 0 ? <div className="empty-note">{t.publishProductFirst}</div> : <>
+                <div className="dh-field"><label>{t.productLabel}</label><select value={campaignProductId} onChange={(event) => setCampaignProductId(event.target.value)}><option value="">{t.choosePublishedProduct}</option>{publishedProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></div>
+                <div className="dh-field"><label>{t.publishLocationLabel}</label><input value={campaignLabel} onChange={(event) => setCampaignLabel(event.target.value)} placeholder={t.publishLocationPlaceholder} maxLength="60" /></div>
+                <button type="button" className="dh-item-action primary" style={{ width: "100%" }} onClick={createCampaignLink} disabled={campaignSaving}>{campaignSaving ? t.creatingEllipsis : t.createTrackingLink}</button>
               </>}
-              {campaignLinks.length > 0 && <div style={{ marginTop: 16 }}>{campaignLinks.map((link) => <div className="dh-item" key={link.id}><div className="dh-item-top"><span className="dh-item-name">{link.label}</span><span className="dh-item-price">{Number(link.visits) || 0} زيارة</span></div><div className="dh-hint">{products.find((product) => product.id === link.productId)?.name || "منتج غير متاح"}</div><div className="dh-item-link"><span className="dh-item-link-text"><span className="dh-item-link-label">رابط التتبع</span><span className="dh-item-link-code">{trackedLinkUrl(link.id)}</span></span><button className="dh-item-link-btn" type="button" onClick={() => copyCampaignLink(link.id)}>{copied === `campaign${link.id}` ? "تم النسخ" : "نسخ الرابط"}</button></div><div className="dh-item-actions"><button className="dh-item-action danger" type="button" onClick={() => deleteCampaignLink(link.id)} disabled={deletingCampaignId === link.id}>{deletingCampaignId === link.id ? "جاري الحذف..." : "حذف الرابط"}</button></div></div>)}</div>}
+              {campaignLinks.length > 0 && <div style={{ marginTop: 16 }}>{campaignLinks.map((link) => <div className="dh-item" key={link.id}><div className="dh-item-top"><span className="dh-item-name">{link.label}</span><span className="dh-item-price">{Number(link.visits) || 0} {t.visitUnit}</span></div><div className="dh-hint">{products.find((product) => product.id === link.productId)?.name || t.productUnavailable}</div><div className="dh-item-link"><span className="dh-item-link-text"><span className="dh-item-link-label">{t.trackingLinkLabel}</span><span className="dh-item-link-code">{trackedLinkUrl(link.id)}</span></span><button className="dh-item-link-btn" type="button" onClick={() => copyCampaignLink(link.id)}>{copied === `campaign${link.id}` ? t.copiedText : t.copyLink}</button></div><div className="dh-item-actions"><button className="dh-item-action danger" type="button" onClick={() => deleteCampaignLink(link.id)} disabled={deletingCampaignId === link.id}>{deletingCampaignId === link.id ? t.deletingEllipsis : t.deleteLinkBtn}</button></div></div>)}</div>}
               </div>
             </details>
 
             <details className="dh-section">
-              <summary><div className="dh-section-summary"><b>حزم المنتجات</b><span>{activeBundles.length > 0 ? `${activeBundles.length} حزم محفوظة` : "جهّز الحزمة الآن، وانشرها لعملائك متى ما جهزت."}</span></div></summary>
+              <summary><div className="dh-section-summary"><b>{t.bundlesTitle}</b><span>{activeBundles.length > 0 ? t.bundlesSummary(activeBundles.length) : t.bundlesEmpty}</span></div></summary>
               <div className="dh-section-body">
               <div className="dh-hint" style={{ marginBottom: 14 }}>
-                جهّز عرضًا من منتجين أو أكثر بسعر واحد. تُحفظ الحزمة كمسودة أول ما تنشئها، وما يقدر عملاؤك يطلبونها إلا بعد ما تضغط "نشر الحزمة".
+                {t.bundlesHint}
               </div>
-              {bundleSaved && <div className="dh-success" role="status">تم حفظ الحزمة كمسودة. اضغط "نشر الحزمة" تحت لما تجهز.</div>}
+              {bundleSaved && <div className="dh-success" role="status">{t.bundleSavedDraft}</div>}
               {bundleActionNotice && <div className="dh-success" role="status">{bundleActionNotice}</div>}
               {bundleError && <div className="dh-error">{bundleError}</div>}
               {products.length < 2 ? (
-                <div className="empty-note">تحتاج منتجين على الأقل قبل تجهيز حزمة.</div>
+                <div className="empty-note">{t.needTwoProducts}</div>
               ) : (
                 <>
                   <div className="dh-field">
-                    <label>اسم الحزمة</label>
-                    <input value={bundleName} onChange={(event) => setBundleName(event.target.value)} placeholder="مثال: حزمة قوالب البداية" maxLength="120" />
+                    <label>{t.bundleNameLabel}</label>
+                    <input value={bundleName} onChange={(event) => setBundleName(event.target.value)} placeholder={t.bundleNamePlaceholder} maxLength="120" />
                   </div>
                   <div className="dh-field">
-                    <label>سعر الحزمة المتوقع (ر.ع)</label>
+                    <label>{t.bundlePriceLabel}</label>
                     <input type="number" min="0.01" step="0.01" value={bundlePrice} onChange={(event) => setBundlePrice(event.target.value)} />
                   </div>
                   <div className="dh-field">
-                    <label>وصف مختصر (اختياري)</label>
-                    <textarea rows="2" value={bundleDescription} onChange={(event) => setBundleDescription(event.target.value)} placeholder="وش الذي يحصل عليه العميل داخل الحزمة؟" maxLength="500" />
+                    <label>{t.shortDescLabel}</label>
+                    <textarea rows="2" value={bundleDescription} onChange={(event) => setBundleDescription(event.target.value)} placeholder={t.bundleDescPlaceholder} maxLength="500" />
                   </div>
                   <div className="dh-field">
-                    <label>اختر منتجات الحزمة</label>
+                    <label>{t.chooseBundleProducts}</label>
                     <div style={{ display: "grid", gap: 8 }}>
                       {products.map((product) => (
                         <label key={product.id} className="dh-item-action" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
-                          <span>{product.name} · {Number(product.price).toFixed(2)} ر.ع</span>
+                          <span>{product.name} · {Number(product.price).toFixed(2)} {curr}</span>
                           <input type="checkbox" checked={bundleProductIds.includes(product.id)} onChange={() => toggleBundleProduct(product.id)} />
                         </label>
                       ))}
                     </div>
                   </div>
                   <button type="button" className="dh-item-action primary" onClick={handleCreateBundle} disabled={bundleSaving} style={{ width: "100%" }}>
-                    {bundleSaving ? "جاري الحفظ..." : "حفظ الحزمة كمسودة"}
+                    {bundleSaving ? t.savingEllipsis : t.saveBundleAsDraft}
                   </button>
                 </>
               )}
               {activeBundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
-                <div className="dh-title" style={{ fontSize: 12 }}>الحزم المحفوظة</div>
+                <div className="dh-title" style={{ fontSize: 12 }}>{t.savedBundlesTitle}</div>
                 {activeBundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
-                  <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag" style={bundle.hidden ? {} : { background: "#EAF0EB", color: "#37724B" }}>{bundle.hidden ? "مسودة" : "منشورة"}</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} ر.ع</span></div>
-                  <div className="dh-hint">{bundle.productIds?.length || 0} منتجات · {bundle.hidden ? "لن تظهر للزوار أو تسمح بالطلب حتى تنشرها." : "منشورة، وعملاؤك يقدرون يطلبونها من رابطها."}</div>
+                  <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag" style={bundle.hidden ? {} : { background: "#EAF0EB", color: "#37724B" }}>{bundle.hidden ? t.draftStatus : t.publishedStatus}</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} {curr}</span></div>
+                  <div className="dh-hint">{bundle.productIds?.length || 0} {t.productsUnit} · {bundle.hidden ? t.willNotShowUntilPublished : t.publishedCanOrder}</div>
                   {!bundle.hidden && <div className="dh-hint" style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace", fontSize: 10.5 }}>{`${window.location.origin}/#bundle/${bundle.id}`}</div>}
                   {confirmBundleDeleteId === bundle.id ? <div className="dh-item-actions">
-                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(null)}>إلغاء</button>
-                    <button className="dh-item-action danger" type="button" onClick={() => confirmDeleteBundle(bundle.id)} disabled={deletingBundleId === bundle.id}>{deletingBundleId === bundle.id ? "جاري الحذف..." : "نعم، احذف الحزمة"}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(null)}>{t.cancel}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => confirmDeleteBundle(bundle.id)} disabled={deletingBundleId === bundle.id}>{deletingBundleId === bundle.id ? t.deletingEllipsis : t.confirmDeleteBundleQuestion}</button>
                   </div> : <div className="dh-item-actions">
-                    <button className="dh-item-action primary" type="button" onClick={() => toggleBundlePublished(bundle)} disabled={publishingBundleId === bundle.id}>{publishingBundleId === bundle.id ? "جاري التحديث..." : bundle.hidden ? "نشر الحزمة" : "إلغاء النشر"}</button>
-                    {!bundle.hidden && <button className="dh-item-action" type="button" onClick={() => copyBundleLink(bundle.id)}>{copiedBundleId === bundle.id ? "تم نسخ الرابط" : "نسخ رابط الحزمة"}</button>}
-                    <button className="dh-item-action" type="button" onClick={() => toggleBundleArchived(bundle)} disabled={togglingBundleId === bundle.id}>{togglingBundleId === bundle.id ? "جاري الأرشفة..." : "أرشفة الحزمة"}</button>
-                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(bundle.id)}>حذف نهائيًا</button>
+                    <button className="dh-item-action primary" type="button" onClick={() => toggleBundlePublished(bundle)} disabled={publishingBundleId === bundle.id}>{publishingBundleId === bundle.id ? t.updatingEllipsis : bundle.hidden ? t.publishBundle : t.unpublish}</button>
+                    {!bundle.hidden && <button className="dh-item-action" type="button" onClick={() => copyBundleLink(bundle.id)}>{copiedBundleId === bundle.id ? t.linkCopiedFull : t.copyBundleLink}</button>}
+                    <button className="dh-item-action" type="button" onClick={() => toggleBundleArchived(bundle)} disabled={togglingBundleId === bundle.id}>{togglingBundleId === bundle.id ? t.archivingEllipsis : t.archiveBundle}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(bundle.id)}>{t.deletePermanently}</button>
                   </div>}
                 </div>)}
               </div>}
               {archivedBundles.length > 0 && <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
-                <div className="dh-title" style={{ fontSize: 12 }}>الحزم المؤرشفة</div>
+                <div className="dh-title" style={{ fontSize: 12 }}>{t.archivedBundlesTitle}</div>
                 {archivedBundles.map((bundle) => <div className="dh-item" key={bundle.id} style={{ margin: 0 }}>
-                  <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag">أرشيف</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} ر.ع</span></div>
-                  <div className="dh-hint">محفوظة عندك فقط. منتجات الحزمة لم تتغير.</div>
+                  <div className="dh-item-top"><span className="dh-item-name">{bundle.name}<span className="dh-featured-tag">{t.archiveTag}</span></span><span className="dh-item-price">{Number(bundle.price).toFixed(2)} {curr}</span></div>
+                  <div className="dh-hint">{t.savedForYouOnly}</div>
                   {confirmBundleDeleteId === bundle.id ? <div className="dh-item-actions">
-                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(null)}>إلغاء</button>
-                    <button className="dh-item-action danger" type="button" onClick={() => confirmDeleteBundle(bundle.id)} disabled={deletingBundleId === bundle.id}>{deletingBundleId === bundle.id ? "جاري الحذف..." : "نعم، احذف الحزمة"}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(null)}>{t.cancel}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => confirmDeleteBundle(bundle.id)} disabled={deletingBundleId === bundle.id}>{deletingBundleId === bundle.id ? t.deletingEllipsis : t.confirmDeleteBundleQuestion}</button>
                   </div> : <div className="dh-item-actions">
-                    <button className="dh-item-action" type="button" onClick={() => toggleBundleArchived(bundle)} disabled={togglingBundleId === bundle.id}>{togglingBundleId === bundle.id ? "جاري الإخراج..." : "إخراج من الأرشيف"}</button>
-                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(bundle.id)}>حذف نهائيًا</button>
+                    <button className="dh-item-action" type="button" onClick={() => toggleBundleArchived(bundle)} disabled={togglingBundleId === bundle.id}>{togglingBundleId === bundle.id ? t.unarchiving : t.unarchiveBundle}</button>
+                    <button className="dh-item-action danger" type="button" onClick={() => setConfirmBundleDeleteId(bundle.id)}>{t.deletePermanently}</button>
                   </div>}
                 </div>)}
               </div>}
@@ -2318,53 +3252,53 @@ export default function Dashboard() {
         {tab === "coupons" && (
           <>
             <p className="dh-hint" style={{ marginBottom: 16, lineHeight: 1.9 }}>
-              كوبون الترحيب التلقائي للعملاء الجدد يتفعّل ويتغيّر من <button type="button" onClick={() => setTab("loyalty")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>الإعدادات</button>.
+              {t.autoWelcomeCouponHint} <button type="button" onClick={() => setTab("loyalty")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t.settingsWord}</button>.
             </p>
             <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 16 }}>أضف كود خصم جديد</div>
+              <div className="dh-title" style={{ marginBottom: 16 }}>{t.addNewCouponTitle}</div>
               {couponError && <div className="dh-error">{couponError}</div>}
               <form onSubmit={handleAddCoupon}>
                 <div className="dh-field">
-                  <label>كود الخصم</label>
+                  <label>{t.couponCodeLabel}</label>
                   <input
                     type="text"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="مثال: EID20"
+                    placeholder={t.couponCodePlaceholder}
                     style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }}
                   />
-                  <div className="dh-hint">أحرف إنجليزية وأرقام، بدون مسافات. العميل يكتب هذا الكود وقت الشراء.</div>
+                  <div className="dh-hint">{t.couponCodeHint}</div>
                 </div>
                 <div className="dh-field">
-                  <label>نسبة الخصم (%)</label>
+                  <label>{t.discountPercentLabel}</label>
                   <input type="number" value={couponPercent} onChange={(e) => setCouponPercent(e.target.value)} placeholder="20" />
                 </div>
                 <div className="dh-field">
-                  <label>ينطبق على</label>
+                  <label>{t.appliesTo}</label>
                   <select value={couponScope} onChange={(e) => setCouponScope(e.target.value)}>
-                    <option value="all">كل منتجاتك</option>
+                    <option value="all">{t.allYourProducts}</option>
                     {products.map((p) => (
                       <option value={p.id} key={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </div>
                 <button className="dh-btn" type="submit" disabled={couponSaving}>
-                  {couponSaving ? "جاري الحفظ..." : "إنشاء الكود"}
+                  {couponSaving ? t.savingEllipsis : t.createCode}
                 </button>
               </form>
             </div>
 
             <div className="dh-card">
               <div className="dh-title-row">
-                <div className="dh-title">أكوادك الحالية</div>
+                <div className="dh-title">{t.yourCurrentCodesTitle}</div>
                 <div className="dh-title-count mono">{coupons.length}</div>
               </div>
-              {coupons.length === 0 && <div className="empty-note">ما أضفت أي كود خصم بعد.</div>}
+              {coupons.length === 0 && <div className="empty-note">{t.noCouponsYet}</div>}
               {coupons.map((c) => (
                 <div className="cp-item" key={c.id}>
                   <div className="cp-item-top">
                     <span className="cp-code">{c.code}</span>
-                    <span className="cp-percent">خصم {c.discountPercent}٪</span>
+                    <span className="cp-percent">{t.discountLabel(c.discountPercent)}</span>
                   </div>
                   <div className="cp-scope">{couponScopeLabel(c)}</div>
                   <div className="dh-item-actions">
@@ -2373,7 +3307,7 @@ export default function Dashboard() {
                       disabled={deletingCouponId === c.id}
                       onClick={() => deleteCoupon(c.id)}
                     >
-                      {deletingCouponId === c.id ? "جاري الحذف..." : "حذف الكود"}
+                      {deletingCouponId === c.id ? t.deletingEllipsis : t.deleteCode}
                     </button>
                   </div>
                 </div>
@@ -2387,27 +3321,27 @@ export default function Dashboard() {
         {tab === "settings" && (
           <>
             <button className="dh-settings-row" type="button" onClick={() => setTab("payment")}>
-              <div><b>تعليمات التحويل</b><span>تظهر للعميل وقت الطلب</span></div>
+              <div><b>{t.transferInstructions}</b><span>{t.transferInstructionsSub}</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("gateway")}>
-              <div><b>بوابة الدفع الخاصة بك</b><span>{gatewayConnected ? "مربوطة · العملاء يدفعون مباشرة لحسابك" : "غير مربوطة · حاليًا تحويل يدوي فقط"}</span></div>
+              <div><b>{t.yourPaymentGateway}</b><span>{gatewayConnected ? t.gatewayConnectedSub : t.gatewayNotConnectedSub}</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("loyalty")}>
-              <div><b>كوبون الترحيب التلقائي</b><span>{repeatCouponEnabled ? `مفعّل · خصم ${repeatCouponPercent}٪` : "متوقف حاليًا"}</span></div>
+              <div><b>{t.autoWelcomeCoupon}</b><span>{repeatCouponEnabled ? t.activePercentLabel(repeatCouponPercent) : t.stoppedNow}</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("design")}>
-              <div><b>هوية المتجر</b><span>الاسم، الشعار، اللون، الأسئلة الشائعة</span></div>
+              <div><b>{t.storeIdentity}</b><span>{t.storeIdentitySub}</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("domain")}>
-              <div><b>رابط متجرك ودومينك الخاص</b><span>{customDomainSlug ? `${customDomainSlug}.monah-app.com` : "الرابط المجاني مفعّل · دومين خاص اختياري"}</span></div>
+              <div><b>{t.yourLinkAndDomain}</b><span>{customDomainSlug ? `${customDomainSlug}.monah-app.com` : t.freeLinkActive}</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("subscription")}>
-              <div><b>الاشتراك والباقة</b><span>باقة أساسية · {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا</span></div>
+              <div><b>{t.subscriptionAndPlan}</b><span>{t.basicPlanLabel(BASE_MONTHLY_PRICE.toFixed(2))}</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
           </>
@@ -2415,119 +3349,119 @@ export default function Dashboard() {
 
         {tab === "payment" && (
           <>
-            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
             <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 10 }}>تعليمات التحويل لعملائك</div>
-              <p className="dh-hint" style={{ marginBottom: 12 }}>اكتب ملاحظة عامة للمشتري، ثم بيانات الحساب البنكي بشكل منظم أسفلها حتى يقدر ينسخها بسهولة. لا تضع كلمة مرور أو رمز تحقق.</p>
+              <div className="dh-title" style={{ marginBottom: 10 }}>{t.transferInstructionsForCustomers}</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>{t.transferInstructionsHint}</p>
               <div className="dh-field">
-                <label>ملاحظة عامة</label>
-                <textarea rows="4" value={paymentInstructions} onChange={(e) => setPaymentInstructions(e.target.value)} placeholder="مثال: حوّل المبلغ بنفس اسمك الظاهر في تطبيق البنك، ثم ارفع إثبات التحويل هنا." maxLength={800} />
+                <label>{t.generalNoteLabel}</label>
+                <textarea rows="4" value={paymentInstructions} onChange={(e) => setPaymentInstructions(e.target.value)} placeholder={t.generalNotePlaceholder} maxLength={800} />
               </div>
               <div className="dh-field">
-                <label>اسم البنك</label>
-                <input type="text" value={paymentBankName} onChange={(e) => setPaymentBankName(e.target.value)} placeholder="بنك مسقط" maxLength={80} />
+                <label>{t.bankNameLabel}</label>
+                <input type="text" value={paymentBankName} onChange={(e) => setPaymentBankName(e.target.value)} placeholder={t.bankNamePlaceholder} maxLength={80} />
               </div>
               <div className="dh-field">
-                <label>اسم صاحب الحساب</label>
-                <input type="text" value={paymentAccountHolder} onChange={(e) => setPaymentAccountHolder(e.target.value)} placeholder="كما يظهر في حسابك البنكي" maxLength={80} />
+                <label>{t.accountHolderLabel}</label>
+                <input type="text" value={paymentAccountHolder} onChange={(e) => setPaymentAccountHolder(e.target.value)} placeholder={t.accountHolderPlaceholder} maxLength={80} />
               </div>
               <div className="dh-field">
-                <label>رقم الحساب</label>
-                <input type="text" value={paymentAccountNumber} onChange={(e) => setPaymentAccountNumber(e.target.value)} placeholder="مثال: 0123456789" style={{ direction: "ltr", textAlign: "right" }} maxLength={40} />
+                <label>{t.accountNumberLabel}</label>
+                <input type="text" value={paymentAccountNumber} onChange={(e) => setPaymentAccountNumber(e.target.value)} placeholder={t.accountNumberPlaceholder} style={{ direction: "ltr", textAlign: "right" }} maxLength={40} />
               </div>
               <div className="dh-field">
-                <label>رقم الجوال (للتحويل عبر الهاتف)</label>
+                <label>{t.phoneNumberLabel}</label>
                 <input type="text" value={paymentPhoneNumber} onChange={(e) => setPaymentPhoneNumber(e.target.value)} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} maxLength={20} />
-                <div className="dh-hint">اختياري — يظهر للمشتري مع رقم الحساب حتى ينسخه بسهولة.</div>
+                <div className="dh-hint">{t.phoneNumberHint}</div>
               </div>
               <div className="dh-field">
-                <label>إيميل إشعارات الطلبات</label>
-                <input type="email" value={notifyEmail} onChange={(e) => setNotifyEmail(e.target.value)} placeholder="مثال: store@outlook.com" style={{ direction: "ltr", textAlign: "right" }} maxLength={160} />
-                <div className="dh-hint">نرسل لك إيميل تلقائي على هذا العنوان كل ما عميل يرفع إثبات تحويل. اتركه فاضي لاستخدام إيميل تسجيل دخولك بدلًا منه.</div>
-                <div className="dh-hint">⚠️ أول إيميل يوصلك ممكن يوصل مجلد "الرسائل غير المرغوب فيها/Spam" بدل الرئيسي — افتحيه واضغطي "ليس بريدًا مزعجًا" عشان الإيميلات الجاية توصل صح تلقائيًا.</div>
+                <label>{t.notifyEmailLabel}</label>
+                <input type="email" value={notifyEmail} onChange={(e) => setNotifyEmail(e.target.value)} placeholder={t.notifyEmailPlaceholder} style={{ direction: "ltr", textAlign: "right" }} maxLength={160} />
+                <div className="dh-hint">{t.notifyEmailHint}</div>
+                <div className="dh-hint">{t.spamWarning}</div>
               </div>
-              <button className="dh-btn" type="button" disabled={savingPayment} onClick={savePaymentInstructions}>{savingPayment ? "جاري الحفظ..." : "حفظ تعليمات التحويل"}</button>
-              {paymentMessage && <div className={paymentMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{paymentMessage}</div>}
+              <button className="dh-btn" type="button" disabled={savingPayment} onClick={savePaymentInstructions}>{savingPayment ? t.savingEllipsis : t.saveTransferInstructions}</button>
+              {paymentMessage && <div className={paymentMessage === t.paymentInstructionsSaved ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{paymentMessage}</div>}
             </div>
           </>
         )}
 
         {tab === "gateway" && (
           <>
-            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
             <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 10 }}>بوابة الدفع الخاصة بك</div>
+              <div className="dh-title" style={{ marginBottom: 10 }}>{t.yourPaymentGatewayTitle}</div>
               <p className="dh-hint" style={{ marginBottom: 12 }}>
-                اربط حساب OmPay الخاص فيك (لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.
+                {t.gatewayIntro}
               </p>
               {!activeAddOns.includes("digitalSelling") && (
                 <div className="dh-hint" style={{ marginBottom: 12, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
-                  مهم: ربط البوابة وحده ما يكفي — لازم تفعّل إضافة "البيع الرقمي" (٢ ر.ع شهريًا) من تبويب <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>اشتراك متجرك</button> حتى تشتغل الميزة فعليًا لعملائك.
+                  {t.gatewayUpsellPrefix} <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t.subscriptionLinkLabel}</button> {t.gatewayUpsellSuffix}
                 </div>
               )}
               {gatewayConnected ? (
                 <>
-                  <div className="dh-hint" style={{ marginBottom: 12 }}>بوابتك مربوطة الآن وشغالة.</div>
-                  <button className="dh-btn" type="button" disabled={savingGateway} onClick={disconnectGateway}>{savingGateway ? "جاري الإلغاء..." : "إلغاء الربط"}</button>
+                  <div className="dh-hint" style={{ marginBottom: 12 }}>{t.gatewayConnectedNowWorking}</div>
+                  <button className="dh-btn" type="button" disabled={savingGateway} onClick={disconnectGateway}>{savingGateway ? t.cancelingEllipsis : t.cancelLinking}</button>
                 </>
               ) : (
                 <>
                   <div className="dh-field">
-                    <label>مفتاح API (OMPAY-API-Key)</label>
-                    <input type="password" value={ompayApiKeyInput} onChange={(e) => setOmpayApiKeyInput(e.target.value)} placeholder="من حسابك في OmPay" autoComplete="off" />
+                    <label>{t.apiKeyLabel}</label>
+                    <input type="password" value={ompayApiKeyInput} onChange={(e) => setOmpayApiKeyInput(e.target.value)} placeholder={t.apiKeyPlaceholder} autoComplete="off" />
                   </div>
                   <div className="dh-field">
-                    <label>سر API (OMPAY-API-Secret)</label>
-                    <input type="password" value={ompayApiSecretInput} onChange={(e) => setOmpayApiSecretInput(e.target.value)} placeholder="من حسابك في OmPay" autoComplete="off" />
+                    <label>{t.apiSecretLabel}</label>
+                    <input type="password" value={ompayApiSecretInput} onChange={(e) => setOmpayApiSecretInput(e.target.value)} placeholder={t.apiKeyPlaceholder} autoComplete="off" />
                   </div>
-                  <button className="dh-btn" type="button" disabled={savingGateway} onClick={saveGateway}>{savingGateway ? "جاري الربط..." : "اربط بوابة الدفع"}</button>
+                  <button className="dh-btn" type="button" disabled={savingGateway} onClick={saveGateway}>{savingGateway ? t.linkingEllipsis : t.linkGateway}</button>
                 </>
               )}
-              {gatewayMessage && <div className={gatewayMessage.startsWith("تم") ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{gatewayMessage}</div>}
+              {gatewayMessage && <div className={(gatewayMessage === t.gatewayConnectedMsg || gatewayMessage === t.gatewayDisconnectedMsg) ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{gatewayMessage}</div>}
             </div>
           </>
         )}
 
         {tab === "domain" && (
           <>
-            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
 
             <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 10 }}>الخيار المجاني — رابط متجرك</div>
-              <p className="dh-hint" style={{ marginBottom: 12 }}>هذا الرابط شغال دائمًا ومجانًا، وتقدر تغيّر جزءه الأخير من تبويب "هوية المتجر".</p>
-              <div className="dh-store-label">رابط متجرك العام</div>
+              <div className="dh-title" style={{ marginBottom: 10 }}>{t.freeOptionTitle}</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>{t.freeOptionText}</p>
+              <div className="dh-store-label">{t.publicStoreLinkLabel}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span className="dh-store-url">{storeUrl}</span>
               </div>
               <button className="dh-btn" type="button" style={{ marginTop: 12 }} onClick={() => copyLink(slug || user.uid, "store")}>
-                {copied === "store" + (slug || user.uid) ? "تم نسخ الرابط" : "نسخ الرابط"}
+                {copied === "store" + (slug || user.uid) ? t.linkCopiedFull : t.copyLinkBtn}
               </button>
             </div>
 
             <div className="dh-card" style={{ borderTop: "3px solid #163F2E" }}>
               <div className="dh-title-row">
                 <div>
-                  <div className="dh-title">الخيار المدفوع — رابط فرعي مخصص باسم متجرك</div>
-                  <div className="dh-hint" style={{ marginTop: 5 }}>عنوان أقصر وأنظف من الرابط المجاني، يُضاف كسطر إضافي على اشتراكك الشهري وليس دفعة منفصلة.</div>
+                  <div className="dh-title">{t.paidOptionTitle}</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>{t.paidOptionText}</div>
                 </div>
-                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>+{CUSTOM_DOMAIN_MONTHLY_PRICE.toFixed(2)} ر.ع / شهريًا</b>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>+{CUSTOM_DOMAIN_MONTHLY_PRICE.toFixed(2)} {curr} {t.monthlySuffix}</b>
               </div>
               <div className="dh-hint" style={{ marginTop: 8, background: "#F7F7F2", borderRadius: 10, padding: "9px 12px" }}>
-                مهم توضيحه: هذا رابط فرعي تابع لمنصة مونة (مثل <code>اسمك.monah-app.com</code>)، وليس دومينًا مستقلًا بالكامل — اسم مونة يبقى ظاهر في آخر الرابط دائمًا.
+                {t.domainClarification} <code>{lang === "ar" ? "اسمك" : "yourname"}.monah-app.com</code>{t.domainClarificationSuffix}
               </div>
 
               {customDomainSlug ? (
                 <>
-                  <div className="dh-store-label" style={{ marginTop: 12 }}>دومينك الحالي</div>
+                  <div className="dh-store-label" style={{ marginTop: 12 }}>{t.currentDomainLabel}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span className="dh-store-url" style={{ direction: "ltr" }}>{`https://${customDomainSlug}.monah-app.com`}</span>
                   </div>
-                  {customDomainExpiresAt && <div className="dh-hint" style={{ marginTop: 8 }}>ساري حتى {customDomainExpiresAt}، يتجدد مع اشتراكك الشهري.</div>}
+                  {customDomainExpiresAt && <div className="dh-hint" style={{ marginTop: 8 }}>{t.domainValidUntil(customDomainExpiresAt)}</div>}
                 </>
               ) : (
                 <>
                   <div className="dh-field" style={{ marginTop: 12 }}>
-                    <label>اختر اسم دومينك</label>
+                    <label>{t.chooseDomainName}</label>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input
                         type="text"
@@ -2541,10 +3475,10 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <button className="dh-btn" type="button" disabled={domainChecking} onClick={checkDomainSlug}>
-                      {domainChecking ? "جاري التحقق..." : "تحقق من التوفر"}
+                      {domainChecking ? t.checkingEllipsis : t.checkAvailability}
                     </button>
                     <button className="dh-btn" type="button" disabled={domainAvailable !== true || domainBuying} onClick={buyDomain}>
-                      {domainBuying ? "جاري تجهيز الدفع..." : `ادفع ${CUSTOM_DOMAIN_MONTHLY_PRICE.toFixed(2)} ر.ع وفعّل الرابط`}
+                      {domainBuying ? t.preparingPayment : t.payAndActivateLink(CUSTOM_DOMAIN_MONTHLY_PRICE.toFixed(2))}
                     </button>
                   </div>
                   {domainMessage && <div className={domainAvailable ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{domainMessage}</div>}
@@ -2556,130 +3490,130 @@ export default function Dashboard() {
 
         {tab === "loyalty" && (
           <>
-            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
             <div className="dh-card">
-              <div className="dh-title" style={{ marginBottom: 10 }}>كوبون ترحيبي تلقائي للعملاء</div>
-              <p className="dh-hint" style={{ marginBottom: 12 }}>لو فعّلته، كل عميل يكمل أول طلب منه ياخذ كود خصم شخصي تلقائي لطلبه الجاي من متجرك، بدون أي جهد منك. تقدر توقفه أي وقت.</p>
+              <div className="dh-title" style={{ marginBottom: 10 }}>{t.autoWelcomeCouponTitle}</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>{t.autoWelcomeCouponHint2}</p>
               <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={repeatCouponEnabled} onChange={(e) => setRepeatCouponEnabled(e.target.checked)} />
-                <span>فعّل كوبون الترحيب التلقائي</span>
+                <span>{t.enableAutoWelcomeCoupon}</span>
               </label>
               {repeatCouponEnabled && (
                 <div className="dh-field">
-                  <label>نسبة الخصم (%)</label>
+                  <label>{t.discountPercentLabel}</label>
                   <input type="number" min="1" max="90" value={repeatCouponPercent} onChange={(e) => setRepeatCouponPercent(e.target.value)} />
                 </div>
               )}
               <button className="dh-btn" type="button" disabled={repeatCouponSaving} onClick={saveRepeatCouponSettings}>
-                {repeatCouponSaving ? "جاري الحفظ..." : "حفظ الإعداد"}
+                {repeatCouponSaving ? t.savingEllipsis : t.saveSetting}
               </button>
-              {repeatCouponMessage && <div className={repeatCouponMessage === "تم الحفظ." ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{repeatCouponMessage}</div>}
+              {repeatCouponMessage && <div className={repeatCouponMessage === t.savedShort ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{repeatCouponMessage}</div>}
             </div>
           </>
         )}
 
         {tab === "design" && (
           <>
-            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
             <div className="ds-preview">
               <div className="ds-preview-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>{`monah-app.com/#store/${slug || user.uid.slice(0, 8) + "..."}`}</span>
                 <a className="ds-view-btn" style={{ padding: "4px 10px", fontSize: 10 }} href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer">
-                  عرض المتجر ↗
+                  {t.viewStore}
                 </a>
               </div>
               {coverUrl && (
                 <div className="ds-cover-preview">
-                  <img src={coverUrl} alt="غلاف المتجر" />
+                  <img src={coverUrl} alt={t.storeCoverAlt} />
                 </div>
               )}
               <div className="ds-preview-body">
                 {logoUrl
-                  ? <img src={logoUrl} alt="شعار المتجر" className="ds-preview-logo-img" />
+                  ? <img src={logoUrl} alt={t.storeLogoAlt} className="ds-preview-logo-img" />
                   : <div className="ds-preview-logo" style={{ background: storeColor }}>{initial}</div>}
-                <div className="ds-preview-name" style={{ color: storeColor }}>{storeName || "اسم متجرك"}</div>
-                <div className="ds-preview-tag">{tagline || "منتجات رقمية عبر Monah"}</div>
+                <div className="ds-preview-name" style={{ color: storeColor }}>{storeName || t.yourStoreNamePlaceholder}</div>
+                <div className="ds-preview-tag">{tagline || t.genericProductsFallback}</div>
               </div>
             </div>
 
             <div className="dh-card">
-              {designSaved && <div className="dh-success">تم حفظ تصميم متجرك.</div>}
+              {designSaved && <div className="dh-success">{t.designSavedMsg}</div>}
               {error && <div className="dh-error">{error}</div>}
 
               <div className="dh-field">
-                <label>غلاف المتجر (اختياري)</label>
+                <label>{t.storeCoverLabel}</label>
                 <div className="ds-cover-row">
                   {coverUrl
                     ? <img src={coverUrl} alt="" className="ds-cover-thumb" />
-                    : <div className="ds-cover-placeholder">بدون غلاف</div>}
+                    : <div className="ds-cover-placeholder">{t.noCover}</div>}
                   <label className="dh-logo-btn">
-                    {coverUploading ? "جاري الرفع..." : "رفع صورة غلاف"}
+                    {coverUploading ? t.uploadingEllipsis : t.uploadCoverPhoto}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} disabled={coverUploading} />
                   </label>
                 </div>
-                <div className="dh-hint">صورة عريضة تظهر أعلى صفحة متجرك، فوق الشعار.</div>
+                <div className="dh-hint">{t.coverHint}</div>
                 {coverError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{coverError}</div>}
               </div>
 
               <div className="dh-field">
-                <label>شعار المتجر</label>
+                <label>{t.storeLogoLabel}</label>
                 <div className="dh-logo-row">
                   {logoUrl
                     ? <img src={logoUrl} alt="" className="dh-logo-thumb" />
                     : <div className="dh-logo-placeholder">{initial}</div>}
                   <label className="dh-logo-btn">
-                    {logoUploading ? "جاري الرفع..." : "رفع شعار جديد"}
+                    {logoUploading ? t.uploadingEllipsis : t.uploadNewLogo}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { handleLogoUpload(e); setDesignDirty(true); }} disabled={logoUploading} />
                   </label>
                 </div>
                 {logoError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{logoError}</div>}
               </div>
               <div className="dh-field">
-                <label>اسم المتجر</label>
+                <label>{t.storeNameLabel}</label>
                 <input type="text" value={storeName} onChange={(e) => { setStoreName(e.target.value); setDesignDirty(true); }} />
               </div>
               <div className="dh-field">
-                <label>عرّف الزوار بمتجرك في جملة واحدة</label>
-                <input type="text" value={tagline} onChange={(e) => { setTagline(e.target.value); setDesignDirty(true); }} placeholder="مثال: قوالب وتصاميم تساعدك تنجز شغلك بشكل أسرع" />
+                <label>{t.taglineFieldLabel}</label>
+                <input type="text" value={tagline} onChange={(e) => { setTagline(e.target.value); setDesignDirty(true); }} placeholder={t.taglinePlaceholder} />
               </div>
               <div className="dh-field">
-                <label>اختر رابط متجرك</label>
+                <label>{t.chooseStoreLink}</label>
                 <input type="text" value={slug} onChange={(e) => { setSlug(e.target.value); setSlugError(""); setDesignDirty(true); }} placeholder="hind" style={{ direction: "ltr", textAlign: "right" }} />
                 {slugError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{slugError}</div>}
-                <div className="dh-hint">سيظهر متجرك على: monah-app.com/#store/{slug || "اسمك"}</div>
+                <div className="dh-hint">{t.slugWillAppear(slug || t.yourNamePlaceholder)}</div>
               </div>
               <div className="dh-field">
-                <label>رقم واتساب (اختياري)</label>
+                <label>{t.whatsappFieldLabel}</label>
                 <input type="text" value={whatsapp} onChange={(e) => { setWhatsapp(e.target.value); setDesignDirty(true); }} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} />
               </div>
               <div className="dh-field">
-                <label>حساب إنستغرام (اختياري)</label>
+                <label>{t.instagramFieldLabel}</label>
                 <input type="text" value={instagram} onChange={(e) => { setInstagram(e.target.value); setDesignDirty(true); }} placeholder="username" style={{ direction: "ltr", textAlign: "right" }} />
               </div>
               <div className="dh-field">
-                <label>إيميل خدمة العملاء (اختياري)</label>
+                <label>{t.supportEmailLabel}</label>
                 <input type="email" value={contactEmail} onChange={(e) => { setContactEmail(e.target.value); setDesignDirty(true); }} placeholder="support@yourbrand.com" style={{ direction: "ltr", textAlign: "right" }} />
-                <div className="dh-hint">يظهر للعميل بجانب رقم الواتساب كطريقة تواصل ثانية، لو حاب متجرك يستخدم إيميل مخصص لخدمة العملاء.</div>
+                <div className="dh-hint">{t.supportEmailHint}</div>
               </div>
               <div className="dh-field">
-                <label>نبذة عن المتجر (اختياري)</label>
-                <textarea rows="3" value={storeAbout} onChange={(e) => { setStoreAbout(e.target.value); setDesignDirty(true); }} placeholder="عرّف الزوار عن منتجاتك أو أسلوب عملك." />
+                <label>{t.storeAboutLabel}</label>
+                <textarea rows="3" value={storeAbout} onChange={(e) => { setStoreAbout(e.target.value); setDesignDirty(true); }} placeholder={t.storeAboutPlaceholder} />
               </div>
               <div className="dh-field">
-                <label>أسئلة وأجوبة للزائر (اختياري)</label>
-                <div className="dh-hint">أضف حتى 5 أسئلة تساعد العميل قبل ما يتواصل معك.</div>
+                <label>{t.faqLabel}</label>
+                <div className="dh-hint">{t.faqHint}</div>
                 {storeFaqs.map((faq, index) => (
                   <div className="ds-faq" key={index}>
-                    <input value={faq.question || ""} onChange={(e) => updateFaq(index, "question", e.target.value)} placeholder="السؤال" />
-                    <textarea rows="2" value={faq.answer || ""} onChange={(e) => updateFaq(index, "answer", e.target.value)} placeholder="الإجابة" style={{ marginTop: 7 }} />
-                    <div className="ds-faq-actions"><span className="dh-hint">سؤال {index + 1}</span><button type="button" className="ds-remove" onClick={() => removeFaq(index)}>إزالة</button></div>
+                    <input value={faq.question || ""} onChange={(e) => updateFaq(index, "question", e.target.value)} placeholder={t.questionPlaceholder} />
+                    <textarea rows="2" value={faq.answer || ""} onChange={(e) => updateFaq(index, "answer", e.target.value)} placeholder={t.answerPlaceholder} style={{ marginTop: 7 }} />
+                    <div className="ds-faq-actions"><span className="dh-hint">{t.questionNumber(index + 1)}</span><button type="button" className="ds-remove" onClick={() => removeFaq(index)}>{t.remove}</button></div>
                   </div>
                 ))}
-                {storeFaqs.length < 5 && <button type="button" className="ds-add" onClick={addFaq}>+ أضف سؤالًا</button>}
+                {storeFaqs.length < 5 && <button type="button" className="ds-add" onClick={addFaq}>{t.addQuestion}</button>}
               </div>
               <div className="dh-field">
-                <label>اختر مظهر متجرك</label>
-                <div className="dh-hint">خلّ متجرك بالأصلي أو اختر مظهرًا يناسب علامتك. الشعار والاسم والغلاف يبقون باسمك أنت.</div>
+                <label>{t.chooseStoreStyle}</label>
+                <div className="dh-hint">{t.storeStyleHint}</div>
                 <div className="ds-swatches">
                   {STORE_STYLES.map((style) => (
                     <div
@@ -2687,25 +3621,25 @@ export default function Dashboard() {
                       className={"ds-swatch" + (storeColor === style.color ? " selected" : "")}
                       style={{ background: style.color }}
                       onClick={() => { setStoreColor(style.color); setDesignDirty(true); }}
-                      title={`${style.name} — ${style.hint}`}
+                      title={`${lang === "en" ? style.nameEn : style.name} — ${lang === "en" ? style.hintEn : style.hint}`}
                     />
                   ))}
                 </div>
-                <div className="dh-hint">{STORE_STYLES.find((style) => style.color === storeColor)?.name || "مظهر المتجر"} · {STORE_STYLES.find((style) => style.color === storeColor)?.hint || ""}</div>
+                <div className="dh-hint">{(lang === "en" ? STORE_STYLES.find((style) => style.color === storeColor)?.nameEn : STORE_STYLES.find((style) => style.color === storeColor)?.name) || t.storeStyleFallback} · {(lang === "en" ? STORE_STYLES.find((style) => style.color === storeColor)?.hintEn : STORE_STYLES.find((style) => style.color === storeColor)?.hint) || ""}</div>
               </div>
 
               <div className="dh-field">
-                <label>الدفع</label>
-                <div className="dh-hint">عميلك يقدر يدفع ببطاقته مباشرة، أو يحوّل يدويًا ويرفع إثبات التحويل. تعليمات التحويل تُدار من الإعدادات، ولا تظهر في صفحة متجرك العامة لحمايتها.</div>
+                <label>{t.paymentLabel}</label>
+                <div className="dh-hint">{t.paymentHint}</div>
               </div>
             </div>
 
             <div className="ds-save-bar">
               <span className={"ds-save-status" + (designDirty ? " unsaved" : "")}>
-                {designDirty ? "عندك تغييرات غير محفوظة" : "كل شي محفوظ"}
+                {designDirty ? t.unsavedChanges : t.allSaved}
               </span>
               <button className="ds-save-btn" onClick={handleSaveDesign} disabled={designSaving}>
-                {designSaving ? "جاري الحفظ..." : "حفظ ونشر التغييرات"}
+                {designSaving ? t.savingEllipsis : t.saveAndPublish}
               </button>
             </div>
           </>
@@ -2718,54 +3652,54 @@ export default function Dashboard() {
           const daysLeft = subscriptionDaysLeft;
           return (
           <>
-            <button className="dh-back" type="button" onClick={() => setTab("settings")}>‹ الإعدادات</button>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
             <div className="dh-card" style={{ borderTop: "3px solid #163F2E" }}>
               <div className="dh-title-row">
                 <div>
-                  <div className="dh-title">اشتراك متجرك</div>
-                  <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا، ثم إضافات تختارها وتُحتسب معه.</div>
+                  <div className="dh-title">{t.yourStoreSubscription}</div>
+                  <div className="dh-hint" style={{ marginTop: 5 }}>{t.subscriptionHint(BASE_MONTHLY_PRICE.toFixed(2))}</div>
                 </div>
                 {isTrial ? (
-                  <span className="dh-subscription-ready" style={{ background: "#FFF8E9", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>تجربة مجانية</span>
+                  <span className="dh-subscription-ready" style={{ background: "#FFF8E9", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>{t.freeTrialBadge}</span>
                 ) : (
-                  <span className="dh-subscription-ready" style={{ background: "#EAF0EB", color: "#37724B", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>مفعّل</span>
+                  <span className="dh-subscription-ready" style={{ background: "#EAF0EB", color: "#37724B", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>{t.activeBadge}</span>
                 )}
               </div>
               {isTrial && (
                 <div className="dh-hint" style={{ background: "#FFF8E9", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
-                  أنت على التجربة المجانية — منتج واحد فقط، بدون حد زمني. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي الميزات (الإضافات، الدومين الخاص، وغيرها).
+                  {t.trialSubscriptionHint}
                 </div>
               )}
               <div className="dh-subscription-base" style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                  <b style={{ display: "block", color: "#0B0B0C", fontSize: 13 }}>المتجر الأساسي</b>
-                  <span className="dh-hint">الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.</span>
+                  <b style={{ display: "block", color: "#0B0B0C", fontSize: 13 }}>{t.baseStoreLabel}</b>
+                  <span className="dh-hint">{t.baseStoreDesc}</span>
                 </div>
-                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} {curr}</b>
               </div>
               {!isTrial && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
                   <span className="dh-hint">
-                    {subscriptionExpiresAt ? `الاشتراك ساري حتى ${subscriptionExpiresAt}${daysLeft !== null ? (daysLeft >= 0 ? ` (${daysLeft} يوم متبقي)` : " — منتهي") : ""}.` : "تاريخ التجديد غير متوفر."}
+                    {subscriptionExpiresAt ? t.subscriptionActiveUntil(subscriptionExpiresAt, daysLeft !== null ? (daysLeft >= 0 ? t.daysRemaining(daysLeft) : t.expiredSuffix) : "") : t.renewalDateUnavailable}
                   </span>
                 </div>
               )}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10, background: "#F7F7F2", borderRadius: 12, padding: "10px 12px" }}>
                 <div>
-                  <b style={{ display: "block", fontSize: 12.5 }}>{isTrial ? "مبلغ الترقية" : "مبلغ التجديد القادم"}</b>
-                  <span className="dh-hint">الأساسي + إضافاتك المفعّلة ({activeAddOns.length})</span>
+                  <b style={{ display: "block", fontSize: 12.5 }}>{isTrial ? t.upgradeAmount : t.nextRenewalAmount}</b>
+                  <span className="dh-hint">{t.baseAndActiveAddOns(activeAddOns.length)}</span>
                 </div>
-                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{monthlyTotal.toFixed(2)} ر.ع</b>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{monthlyTotal.toFixed(2)} {curr}</b>
               </div>
               <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={renewalBuying} onClick={renewSubscription}>
-                {renewalBuying ? "جاري تجهيز الدفع..." : (isTrial ? `ادفع ${monthlyTotal.toFixed(2)} ر.ع ورقّي اشتراكك` : `ادفع ${monthlyTotal.toFixed(2)} ر.ع وجدّد الاشتراك`)}
+                {renewalBuying ? t.preparingPayment : (isTrial ? t.payAndUpgrade(monthlyTotal.toFixed(2)) : t.payAndRenew(monthlyTotal.toFixed(2)))}
               </button>
               {renewalMessage && <div className="dh-error" style={{ marginTop: 8 }}>{renewalMessage}</div>}
             </div>
 
             {Array.from(new Set(ADD_ON_CATALOG.map((item) => item.group))).map((group) => (
               <div className="dh-card" key={group}>
-                <div className="dh-title" style={{ marginBottom: 8 }}>{group}</div>
+                <div className="dh-title" style={{ marginBottom: 8 }}>{lang === "en" ? ADD_ON_CATALOG.find((item) => item.group === group)?.groupEn : group}</div>
                 {ADD_ON_CATALOG.filter((item) => item.group === group).map((item) => {
                   const isActive = activeAddOns.includes(item.key);
                   const gatewayLocked = item.key === "digitalSelling" && !isActive && !gatewayConnected;
@@ -2783,19 +3717,19 @@ export default function Dashboard() {
                             />
                           )}
                           <div>
-                            <div className="dh-item-name">{item.title}</div>
-                            <div className="dh-hint" style={{ marginTop: 3 }}>{item.desc}</div>
+                            <div className="dh-item-name">{lang === "en" ? item.titleEn : item.title}</div>
+                            <div className="dh-hint" style={{ marginTop: 3 }}>{lang === "en" ? item.descEn : item.desc}</div>
                           </div>
                         </div>
-                        <b className="dh-item-price">+{item.price.toFixed(2)} ر.ع</b>
+                        <b className="dh-item-price">+{item.price.toFixed(2)} {curr}</b>
                       </div>
                       {gatewayLocked ? (
                         <span style={{ display: "inline-block", marginTop: 6, background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>
-                          اربط <button type="button" onClick={(e) => { e.preventDefault(); setTab("gateway"); }} style={{ background: "none", border: 0, padding: 0, margin: 0, color: "inherit", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>بوابة الدفع الخاصة بك</button> أولًا لتقدر تفعّلها
+                          {t.connectGatewayFirstPrefix} <button type="button" onClick={(e) => { e.preventDefault(); setTab("gateway"); }} style={{ background: "none", border: 0, padding: 0, margin: 0, color: "inherit", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t.yourPaymentGatewayLink}</button> {t.connectGatewayFirstSuffix}
                         </span>
                       ) : (
                         <span style={{ display: "inline-block", marginTop: 6, background: isActive ? "#EAF0EB" : "#F3EBDD", color: isActive ? "#37724B" : "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>
-                          {isActive ? "مفعّل" : "غير مفعّل"}
+                          {isActive ? t.activeBadge : t.notActive}
                         </span>
                       )}
                     </label>
@@ -2807,16 +3741,16 @@ export default function Dashboard() {
             {addOnSelection.length > 0 && (
               <div className="dh-card" style={{ position: "sticky", bottom: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <span className="dh-hint">{addOnSelection.length} إضافة مختارة</span>
-                  <b className="mono" style={{ color: "#163F2E" }}>{selectionTotal.toFixed(2)} ر.ع</b>
+                  <span className="dh-hint">{t.addOnsSelectedCount(addOnSelection.length)}</span>
+                  <b className="mono" style={{ color: "#163F2E" }}>{selectionTotal.toFixed(2)} {curr}</b>
                 </div>
                 <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={addOnBuying} onClick={buyAddOns}>
-                  {addOnBuying ? "جاري تجهيز الدفع..." : `ادفع ${selectionTotal.toFixed(2)} ر.ع وفعّل الإضافات`}
+                  {addOnBuying ? t.preparingPayment : t.payAndActivateAddOns(selectionTotal.toFixed(2))}
                 </button>
                 {addOnMessage && <div className="dh-error" style={{ marginTop: 8 }}>{addOnMessage}</div>}
               </div>
             )}
-            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.</div>
+            <div className="dh-hint" style={{ textAlign: "center", lineHeight: 1.9, padding: "0 10px 14px" }}>{t.addOnBillingNote}</div>
           </>
           );
         })()}
@@ -2827,7 +3761,7 @@ export default function Dashboard() {
         <div className="pv-overlay" onClick={() => setPreviewOpen(false)}>
           <div className="pv-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="pv-close">
-              <span className="pv-close-label">معاينة — هكذا يشوفها العميل</span>
+              <span className="pv-close-label">{t.previewTitle}</span>
               <button className="pv-close-btn" onClick={() => setPreviewOpen(false)}>✕</button>
             </div>
             <div className="pv-body">
@@ -2836,17 +3770,17 @@ export default function Dashboard() {
                   ? <img src={productImages[0]} alt="" />
                   : <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/><path d="M14 2v6h6" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/></svg>}
               </div>
-              <div className="pv-cat">{category || "عام"}</div>
-              <div className="pv-name">{name || "اسم المنتج"}</div>
+              <div className="pv-cat">{category || t.generalCategory}</div>
+              <div className="pv-name">{name || t.productNamePlaceholder}</div>
               <div className="pv-card">
                 <div className="pv-price-row">
-                  <span style={{ color: "#8A8677", fontSize: 11.5 }}>السعر</span>
-                  <b className="mono" style={{ fontSize: 20 }}>{price ? Number(price).toFixed(2) : "0.00"} ر.ع</b>
+                  <span style={{ color: "#8A8677", fontSize: 11.5 }}>{t.priceWord}</span>
+                  <b className="mono" style={{ fontSize: 20 }}>{price ? Number(price).toFixed(2) : "0.00"} {curr}</b>
                 </div>
-                <div className="pv-desc">{description || "ما فيه وصف إضافي لهذا المنتج."}</div>
+                <div className="pv-desc">{description || t.noExtraDescription}</div>
               </div>
-              <div className="pv-btn">خيارات البيع عند التفعيل</div>
-              <div className="pv-note">هذي معاينة فقط — المنتج ما انحفظ بعد، وتظهر خيارات البيع الإلكتروني عند تشغيلها</div>
+              <div className="pv-btn">{t.sellingOptionsOnActivation}</div>
+              <div className="pv-note">{t.previewOnlyNote}</div>
             </div>
           </div>
         </div>

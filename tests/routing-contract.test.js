@@ -277,7 +277,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(landing).toContain("متجرك الأساسي");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
-    expect(dashboard).toContain("متجر أساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا، ثم إضافات تختارها وتُحتسب معه.");
+    expect(dashboard).toContain("subscriptionHint(BASE_MONTHLY_PRICE.toFixed(2))");
+    expect(dashboard).toContain("متجر أساسي ${price} ر.ع شهريًا، ثم إضافات تختارها وتُحتسب معه.");
     expect(dashboard).toContain("BASE_MONTHLY_PRICE.toFixed(2)");
     expect(dashboard).not.toContain("PACKAGES.map");
     expect(catalog).toContain("export const BASE_MONTHLY_PRICE = 5");
@@ -288,11 +289,11 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const catalog = await source("src/subscriptionCatalog.js");
 
     expect([...catalog.matchAll(/key: "/g)]).toHaveLength(5);
-    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", titleEn: "Digital selling", price: 2');
-    expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
-    expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", titleEn: "Sales management", price: 1');
-    expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", titleEn: "Extra protection", price: 0.5');
-    expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", titleEn: "AI tools", price: 1');
+    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", groupEn: "Digital selling", title: "البيع الرقمي", titleEn: "Digital selling", price: 2');
+    expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", groupEn: "Sales growth", title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
+    expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", groupEn: "Sales management", title: "إدارة المبيعات", titleEn: "Sales management", price: 1');
+    expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", groupEn: "Extra protection", title: "حماية إضافية", titleEn: "Extra protection", price: 0.5');
+    expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", groupEn: "AI tools", title: "أدوات الذكاء", titleEn: "AI tools", price: 1');
     expect(catalog).not.toContain('key: "customDomain"');
     expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
     expect(catalog).not.toContain('key: "affiliate"');
@@ -342,7 +343,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("مساحتك الخاصة");
     expect(dashboard).toContain("مركز مشاركة المتجر");
     expect(dashboard).toContain("حالة منتجاتك");
-    expect(dashboard).toContain("مظهر {selectedStoreStyle.name}");
+    expect(dashboard).toContain("styleMeta(lang === \"en\" ? selectedStoreStyle.nameEn : selectedStoreStyle.name)");
+    expect(dashboard).toContain("مظهر ${name} · متجر بهويتك");
     expect(dashboard).toContain("واتساب");
   });
 
@@ -424,7 +426,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).not.toContain("ادفع واستلم الآن");
     expect(dashboard).not.toContain("ثواني");
     expect(dashboard).not.toContain('>الخصومات</button>');
-    expect(dashboard).toContain('>الطلبات</button>');
+    expect(dashboard).toContain('>{t.ordersTab}</button>');
     expect(legal).not.toContain("ثواني");
     expect(catalog).not.toContain("ثواني");
     expect(customerAssistant).not.toContain("دفع تلقائي فوري عبر المنصة");
