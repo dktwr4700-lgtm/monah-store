@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { useLang, LangToggle } from "./i18n.jsx";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
@@ -211,52 +212,52 @@ const styles = `
 `;
 
 const FEATURES = [
-  { title: "التسليم الرقمي", desc: "يفتح تلقائيًا للعميل بعد ما يرفع إثبات التحويل ويؤكد التاجر استلام المبلغ من لوحة الطلبات.", icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
-  { title: "رابط لكل منتج", desc: "كل منتج له رابط خاص فيه، تشاركه بأي مكان تحب.", icon: <path d="M12 3v18M3 12h18" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/> },
-  { title: "متابعة المتجر", desc: "تابع منتجاتك وطلباتك من لوحة التاجر. لوحة المبيعات والتقارير المتقدمة تظهر عند تفعيل الدفع الإلكتروني لاحقًا.", icon: <><rect x="3" y="4" width="18" height="14" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 9h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
-  { title: "إعداد بدقائق", desc: "بدون خبرة تقنية، وبدون كمبيوتر أو استضافة خارجية.", icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
+  { title: { ar: "التسليم الرقمي", en: "Digital delivery" }, desc: { ar: "يفتح تلقائيًا للعميل بعد ما يرفع إثبات التحويل ويؤكد التاجر استلام المبلغ من لوحة الطلبات.", en: "Unlocks automatically for the buyer once they upload proof of transfer and the seller confirms payment from the orders panel." }, icon: <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="#4B6152" strokeWidth="2" strokeLinejoin="round" fill="none"/> },
+  { title: { ar: "رابط لكل منتج", en: "A link for every product" }, desc: { ar: "كل منتج له رابط خاص فيه، تشاركه بأي مكان تحب.", en: "Every product gets its own link you can share anywhere." }, icon: <path d="M12 3v18M3 12h18" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/> },
+  { title: { ar: "متابعة المتجر", en: "Track your store" }, desc: { ar: "تابع منتجاتك وطلباتك من لوحة التاجر. لوحة المبيعات والتقارير المتقدمة تظهر عند تفعيل الدفع الإلكتروني لاحقًا.", en: "Track your products and orders from the seller dashboard. Advanced sales reports appear once you enable card payments." }, icon: <><rect x="3" y="4" width="18" height="14" rx="2" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M3 9h18" stroke="#4B6152" strokeWidth="2" fill="none"/></> },
+  { title: { ar: "إعداد بدقائق", en: "Set up in minutes" }, desc: { ar: "بدون خبرة تقنية، وبدون كمبيوتر أو استضافة خارجية.", en: "No technical experience needed — no computer or external hosting required." }, icon: <><circle cx="12" cy="12" r="9" stroke="#4B6152" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#4B6152" strokeWidth="2" strokeLinecap="round" fill="none"/></> },
 ];
 
 const PROTECTION = [
-  { title: "روابط تحميل مقيّدة", desc: "رابط التنزيل يفتح للعميل فقط بعد تأكيد التاجر استلام المبلغ، ولا يبقى صالحًا للمشاركة بصورة دائمة.", icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
-  { title: "حفظ الملفات بشكل محمي", desc: "ملف المنتج لا يظهر للزائر في المتجر العام. وصول العميل يتاح فقط بعد تأكيد التاجر استلام المبلغ.", icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
-  { title: "حماية وصول العميل", desc: "إتاحة الرابط للمشتري تُدار تلقائيًا بعد تأكيد التاجر استلام المبلغ من لوحة الطلبات.", icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: { ar: "روابط تحميل مقيّدة", en: "Restricted download links" }, desc: { ar: "رابط التنزيل يفتح للعميل فقط بعد تأكيد التاجر استلام المبلغ، ولا يبقى صالحًا للمشاركة بصورة دائمة.", en: "The download link only unlocks after the seller confirms payment, and it doesn't stay valid for sharing indefinitely." }, icon: <><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M12 7v5l3 3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: { ar: "حفظ الملفات بشكل محمي", en: "Securely stored files" }, desc: { ar: "ملف المنتج لا يظهر للزائر في المتجر العام. وصول العميل يتاح فقط بعد تأكيد التاجر استلام المبلغ.", en: "The product file never appears to visitors on the public store. Access is only granted after the seller confirms payment." }, icon: <><rect x="5" y="11" width="14" height="9" rx="2" stroke="#B9832F" strokeWidth="2" fill="none"/><path d="M8 11V8a4 4 0 1 8 0v3" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
+  { title: { ar: "حماية وصول العميل", en: "Protected buyer access" }, desc: { ar: "إتاحة الرابط للمشتري تُدار تلقائيًا بعد تأكيد التاجر استلام المبلغ من لوحة الطلبات.", en: "Access is granted to the buyer automatically once the seller confirms payment from the orders panel." }, icon: <><path d="M9 12l2 2 4-4" stroke="#B9832F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="#B9832F" strokeWidth="2" fill="none"/></> },
 ];
 
 const WHY = [
-  { n: "01", title: "احتفظ بسعر بيعك كاملًا", desc: "لا توجد عمولة إضافية على المبيعات. تفاصيل الاشتراك تظهر بوضوح قبل أي تفعيل." },
-  { n: "02", title: "يدعم كل أنواع الملفات", desc: "PDF، ZIP، صور، فيديوهات، أكواد، وأي ملف رقمي تبيعه." },
-  { n: "03", title: "بدون خبرة تقنية", desc: "ما تحتاج كمبيوتر ولا استضافة خارجية، كل شي من متجرك مباشرة." },
+  { n: "01", title: { ar: "احتفظ بسعر بيعك كاملًا", en: "Keep your full sale price" }, desc: { ar: "لا توجد عمولة إضافية على المبيعات. تفاصيل الاشتراك تظهر بوضوح قبل أي تفعيل.", en: "No extra commission on sales. Subscription details are shown clearly before you activate anything." } },
+  { n: "02", title: { ar: "يدعم كل أنواع الملفات", en: "Supports every file type" }, desc: { ar: "PDF، ZIP، صور، فيديوهات، أكواد، وأي ملف رقمي تبيعه.", en: "PDF, ZIP, images, videos, codes — any digital file you sell." } },
+  { n: "03", title: { ar: "بدون خبرة تقنية", en: "No technical experience needed" }, desc: { ar: "ما تحتاج كمبيوتر ولا استضافة خارجية، كل شي من متجرك مباشرة.", en: "No computer or external hosting needed — everything runs from your store directly." } },
 ];
 
 const COMPARE = [
-  { label: "العمولة على المبيعات", monah: "٪٠", other: "نسبة من كل عملية بيع" },
-  { label: "رسوم الاشتراك", monah: "٥ ر.ع شهريًا", other: "غالبًا متغيّرة" },
+  { label: { ar: "العمولة على المبيعات", en: "Commission on sales" }, monah: { ar: "٪٠", en: "0%" }, other: { ar: "نسبة من كل عملية بيع", en: "A cut of every sale" } },
+  { label: { ar: "رسوم الاشتراك", en: "Subscription fee" }, monah: { ar: "٥ ر.ع شهريًا", en: "5 OMR / month" }, other: { ar: "غالبًا متغيّرة", en: "Often variable" } },
 ];
 
 const USECASES = [
-  { title: "ملفات وتصاميم", desc: "PDF، قوالب، صور", color: "#0E3B2C" },
-  { title: "أكواد وتراخيص", desc: "سكربتات، مفاتيح تفعيل", color: "#B9832F" },
-  { title: "دورات وملفات تعليمية", desc: "فيديو، ملخصات", color: "#4B6152" },
-  { title: "برستات ومحتوى", desc: "قوالب سوشيال ميديا", color: "#8A8677" },
+  { title: { ar: "ملفات وتصاميم", en: "Files & designs" }, desc: { ar: "PDF، قوالب، صور", en: "PDF, templates, images" }, color: "#0E3B2C" },
+  { title: { ar: "أكواد وتراخيص", en: "Codes & licenses" }, desc: { ar: "سكربتات، مفاتيح تفعيل", en: "Scripts, activation keys" }, color: "#B9832F" },
+  { title: { ar: "دورات وملفات تعليمية", en: "Courses & learning materials" }, desc: { ar: "فيديو، ملخصات", en: "Video, summaries" }, color: "#4B6152" },
+  { title: { ar: "برستات ومحتوى", en: "Presets & content" }, desc: { ar: "قوالب سوشيال ميديا", en: "Social media templates" }, color: "#8A8677" },
 ];
 
 const START_STORE_URL = "#start-store";
 
 const STEPS = [
-  { n: "01", title: "تفتح متجرك وتفعّل اشتراكك", desc: "تسجّل بياناتك وتختار كلمة مرورك بنفسك، وتدفع اشتراكك الشهري بالبطاقة أو تحويل يدوي." },
-  { n: "02", title: "ترفع منتجاتك الرقمية", desc: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه." },
-  { n: "03", title: "تشارك الرابط وتستلم الطلبات", desc: "العميل يطلب المنتج ويرفع إثبات التحويل، وأنت تؤكد الاستلام فيفتح التنزيل له تلقائيًا." },
+  { n: "01", title: { ar: "تفتح متجرك وتفعّل اشتراكك", en: "Open your store and activate your subscription" }, desc: { ar: "تسجّل بياناتك وتختار كلمة مرورك بنفسك، وتدفع اشتراكك الشهري بالبطاقة أو تحويل يدوي.", en: "Register your details, choose your own password, and pay your monthly subscription by card or manual transfer." } },
+  { n: "02", title: { ar: "ترفع منتجاتك الرقمية", en: "Upload your digital products" }, desc: { ar: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه.", en: "Files, designs, codes — anything digital you sell." } },
+  { n: "03", title: { ar: "تشارك الرابط وتستلم الطلبات", en: "Share your link and receive orders" }, desc: { ar: "العميل يطلب المنتج ويرفع إثبات التحويل، وأنت تؤكد الاستلام فيفتح التنزيل له تلقائيًا.", en: "The buyer orders the product and uploads proof of transfer; once you confirm, the download unlocks for them automatically." } },
 ];
 
 const FAQS = [
-  { q: "هل أحتاج خبرة تقنية؟", a: "أبدًا. ترفع ملفك وتحدد السعر، تشارك رابط منتجك، والعميل يطلبه ويرفع إثبات التحويل — وأنت تؤكد الاستلام ليوصله الملف." },
-  { q: "وش أنواع الملفات المسموحة؟", a: "أي ملف رقمي: PDF، تصاميم، أكواد، فيديوهات، وغيرها." },
-  { q: "فيه عمولة على مبيعاتي؟", a: "لا توجد عمولة إضافية على المبيعات. وتظهر تفاصيل الاشتراك والسعر قبل أي تفعيل." },
-  { q: "أقدر أربط دومين خاص فيني؟", a: "هذي ميزة قادمة قريبًا للباقة المتكاملة، لسا قيد التطوير." },
-  { q: "وش يصير لو ألغيت اشتراكي؟", a: "تظهر سياسة الإلغاء بوضوح عند تفعيل الاشتراك، قبل أن توافق على أي تفعيل." },
-  { q: "أقدر أغيّر باقتي بعدين؟", a: "تقدر تجهز منتجاتك وحزمك داخل لوحة التاجر. خيارات الإضافات تظهر مع تفاصيلها قبل التفعيل." },
-  { q: "وش الفرق بين الاشتراك الشهري والسنوي؟", a: "الاشتراك المرن يعتمد على المتجر الأساسي والإضافات التي تختارها. أي خيارات إضافية تظهر بتفاصيلها قبل التفعيل." },
+  { q: { ar: "هل أحتاج خبرة تقنية؟", en: "Do I need technical experience?" }, a: { ar: "أبدًا. ترفع ملفك وتحدد السعر، تشارك رابط منتجك، والعميل يطلبه ويرفع إثبات التحويل — وأنت تؤكد الاستلام ليوصله الملف.", en: "Not at all. You upload your file, set a price, and share your product link. The buyer orders it and uploads proof of transfer — you confirm receipt and the file reaches them." } },
+  { q: { ar: "وش أنواع الملفات المسموحة؟", en: "What file types are allowed?" }, a: { ar: "أي ملف رقمي: PDF، تصاميم، أكواد، فيديوهات، وغيرها.", en: "Any digital file: PDF, designs, codes, videos, and more." } },
+  { q: { ar: "فيه عمولة على مبيعاتي؟", en: "Is there a commission on my sales?" }, a: { ar: "لا توجد عمولة إضافية على المبيعات. وتظهر تفاصيل الاشتراك والسعر قبل أي تفعيل.", en: "There's no extra commission on sales. Subscription and pricing details are shown before you activate anything." } },
+  { q: { ar: "أقدر أربط دومين خاص فيني؟", en: "Can I connect my own domain?" }, a: { ar: "هذي ميزة قادمة قريبًا للباقة المتكاملة، لسا قيد التطوير.", en: "This is a feature coming soon for the full plan — still in development." } },
+  { q: { ar: "وش يصير لو ألغيت اشتراكي؟", en: "What happens if I cancel my subscription?" }, a: { ar: "تظهر سياسة الإلغاء بوضوح عند تفعيل الاشتراك، قبل أن توافق على أي تفعيل.", en: "The cancellation policy is shown clearly when you activate your subscription, before you agree to anything." } },
+  { q: { ar: "أقدر أغيّر باقتي بعدين؟", en: "Can I change my plan later?" }, a: { ar: "تقدر تجهز منتجاتك وحزمك داخل لوحة التاجر. خيارات الإضافات تظهر مع تفاصيلها قبل التفعيل.", en: "You can set up your products and bundles from the seller dashboard. Add-on options are shown with their details before activation." } },
+  { q: { ar: "وش الفرق بين الاشتراك الشهري والسنوي؟", en: "What's the difference between monthly and yearly billing?" }, a: { ar: "الاشتراك المرن يعتمد على المتجر الأساسي والإضافات التي تختارها. أي خيارات إضافية تظهر بتفاصيلها قبل التفعيل.", en: "The flexible subscription is based on the base store plus any add-ons you choose. Extra options are shown with details before activation." } },
 ];
 
 function FaqItem({ q, a, id }) {
@@ -273,7 +274,96 @@ function FaqItem({ q, a, id }) {
   );
 }
 
+const NAV_T = {
+  ar: { login: "تسجيل الدخول", openStore: "افتح متجرك الحين" },
+  en: { login: "Log in", openStore: "Open your store" },
+};
+const HERO_T = {
+  ar: {
+    h1a: "بيع منتجك الرقمي", h1b: "من رابط واحد",
+    p: "ارفع ملفك، شارك رابط منتجك على واتساب أو إنستغرام، والعميل يطلبه ويرفع إثبات التحويل — تؤكد الاستلام فيفتح التنزيل له تلقائيًا.",
+    ctaOpen: "افتح متجرك الحين ←", ctaHow: "شاهد كيف تعمل",
+    receiptTag: "#٠٠١٤", receiptHead: "وصل بيع رقمي", receiptTime: "١٤:٠٦", receiptStore: "متجر هند للتصاميم",
+    receiptItem: "رزمة قوالب سيرة ذاتية", receiptItemSub: "ملف PDF قابل للتعديل", receiptPrice: "٥.٠٠",
+    receiptCommission: "العمولة على البيع", receiptCommissionValue: "٪٠",
+    receiptTotalLabel: "الإجمالي المستلم", receiptTotal: "٥.٠٠ ر.ع",
+    stampText: "تم تأكيد", stampText2: "الاستلام",
+    ledgerCommission: "العمولة على مبيعاتك", ledgerCommissionValue: "٪٠ — دائمًا",
+    ledgerUnlock: "وقت فتح رابط التحميل", ledgerUnlockValue: "فور تأكيدك استلام المبلغ",
+    ledgerProtection: "حماية روابط التنزيل", ledgerProtectionValue: "مفعّلة على كل منتج",
+  },
+  en: {
+    h1a: "Sell your digital product", h1b: "from a single link",
+    p: "Upload your file, share your product link on WhatsApp or Instagram — the buyer orders it and uploads proof of transfer. You confirm receipt, and the download unlocks for them automatically.",
+    ctaOpen: "Open your store now →", ctaHow: "See how it works",
+    receiptTag: "#0014", receiptHead: "Digital sale receipt", receiptTime: "14:06", receiptStore: "Hind's Design Store",
+    receiptItem: "Resume templates pack", receiptItemSub: "Editable PDF file", receiptPrice: "5.00",
+    receiptCommission: "Commission on sale", receiptCommissionValue: "0%",
+    receiptTotalLabel: "Total received", receiptTotal: "5.00 OMR",
+    stampText: "Payment confirmed", stampText2: "",
+    ledgerCommission: "Commission on your sales", ledgerCommissionValue: "0% — always",
+    ledgerUnlock: "Time to unlock the download link", ledgerUnlockValue: "Right after you confirm payment",
+    ledgerProtection: "Download link protection", ledgerProtectionValue: "Enabled on every product",
+  },
+};
+const SECTIONS_T = {
+  ar: {
+    whyEyebrow: "لماذا Monah", whyTitle: "منصة مبنية لصالحك أنت",
+    howEyebrow: "البداية", howTitle: "كيف تشتغل المنصة",
+    forWhomEyebrow: "لمين المنصة", forWhomTitle: "اختر نوع منتجك",
+    featuresEyebrow: "المميزات", featuresTitle: "كل شي تحتاجه لبيع منتجك",
+    protectionEyebrow: "الحماية", protectionTitle: "حمايتك من الألف للياء", protectionSub: "منتجك الرقمي يستحق الحماية، وإحنا نتكفل فيها",
+    compareEyebrow: "المقارنة", compareTitle: "وش الفرق؟", compareSub: "مقارنة بسيطة بين Monah والمنصات التقليدية",
+    compareMonah: "Monah", compareOther: "منصات تقليدية",
+    pricingEyebrow: "الاشتراك", pricingTitle: "ابدأ بسيط، وكبّر متجرك متى احتجت",
+    pricingSub: "متجر أساسي يشتغل من أول يوم بسعر واضح، وإضافات تفتح لك مبيعات أسرع وأذكى وقت ما تحتاجها — بدون التزام بأكثر من اللي تختاره.",
+    priceBadge: "اشتراك مرن", priceName: "متجرك الأساسي",
+    priceDesc: "صفحة متجر بهويتك، إدارة المنتجات، والمشاركة والتتبع والمنتجات المجانية.",
+    priceUnit: "ر.ع / شهريًا بعد التفعيل",
+    priceFeature1: "✓ لوحة تاجر عربية سهلة", priceFeature2: "✓ صفحة متجر وروابط مشاركة",
+    priceFeature3: "✓ تخصيص الاسم والشعار والهوية", priceFeature4: "✓ منتج مجاني وروابط تتبع الزيارات",
+    addOnsLabel: "إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:",
+    openStore: "افتح متجرك الحين",
+    pricingNote: "الاشتراك الأساسي ٥ ر.ع شهريًا يُفعّل فور الدفع بالبطاقة. أي إضافة تختارها تُضاف لمبلغ اشتراكك الشهري تلقائيًا.",
+    faqEyebrow: "أسئلة", faqTitle: "أسئلة شائعة",
+    finalKicker: "خطوتك القادمة", finalTitle: "خلّ منتجك جاهزًا للمشاركة",
+    finalP: "افتح متجرك الآن، ثم رتّب صفحته وخذ رابطك الخاص في مكان واحد وبشكل واضح.",
+    finalCta: "افتح متجرك الحين ←", orbitCard: "متجرك الرقمي",
+    footContact: "تواصل", footWhatsapp: "واتساب:", footEmail: "إيميل:",
+    footLinks: "روابط", footPrivacy: "سياسة الخصوصية", footTerms: "الشروط والأحكام",
+  },
+  en: {
+    whyEyebrow: "Why Monah", whyTitle: "A platform built for you",
+    howEyebrow: "Getting started", howTitle: "How the platform works",
+    forWhomEyebrow: "Who it's for", forWhomTitle: "Choose your product type",
+    featuresEyebrow: "Features", featuresTitle: "Everything you need to sell your product",
+    protectionEyebrow: "Protection", protectionTitle: "Your protection from A to Z", protectionSub: "Your digital product deserves protection — we've got it covered",
+    compareEyebrow: "Comparison", compareTitle: "What's the difference?", compareSub: "A simple comparison between Monah and traditional platforms",
+    compareMonah: "Monah", compareOther: "Traditional platforms",
+    pricingEyebrow: "Subscription", pricingTitle: "Start simple, grow your store whenever you need",
+    pricingSub: "A base store that works from day one at a clear price, with add-ons that unlock faster, smarter sales whenever you need them — no commitment beyond what you choose.",
+    priceBadge: "Flexible subscription", priceName: "Your base store",
+    priceDesc: "A store page with your identity, product management, sharing, tracking, and free products.",
+    priceUnit: "OMR / month after activation",
+    priceFeature1: "✓ Easy Arabic seller dashboard", priceFeature2: "✓ A store page with sharing links",
+    priceFeature3: "✓ Customize your name, logo, and identity", priceFeature4: "✓ A free product and visit-tracking links",
+    addOnsLabel: "Optional add-ons that grow your sales, chosen at signup or later from the seller dashboard:",
+    openStore: "Open your store now",
+    pricingNote: "The base subscription (5 OMR/month) activates instantly on card payment. Any add-on you choose is added to your monthly subscription automatically.",
+    faqEyebrow: "FAQ", faqTitle: "Frequently asked questions",
+    finalKicker: "Your next step", finalTitle: "Get your product ready to share",
+    finalP: "Open your store now, set up its page, and get your own link in one clear place.",
+    finalCta: "Open your store now →", orbitCard: "Your digital store",
+    footContact: "Contact", footWhatsapp: "WhatsApp:", footEmail: "Email:",
+    footLinks: "Links", footPrivacy: "Privacy policy", footTerms: "Terms & conditions",
+  },
+};
+
 export default function App() {
+  const [lang, setLang] = useLang();
+  const nt = NAV_T[lang];
+  const ht = HERO_T[lang];
+  const st = SECTIONS_T[lang];
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }),
@@ -284,7 +374,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="monah-app" dir="rtl" lang="ar">
+    <div className="monah-app" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <style>{styles}</style>
 
       <div className="wrap">
@@ -294,8 +384,9 @@ export default function App() {
             <span>Monah</span>
           </div>
           <div className="nav-btns">
-            <a className="nav-link" href="#login">تسجيل الدخول</a>
-            <a className="nav-cta" href={START_STORE_URL}>افتح متجرك الحين</a>
+            <LangToggle lang={lang} onChange={setLang} className="nav-link" style={{ background: "none", border: "1px solid rgba(19,33,27,.14)", borderRadius: 100, padding: "7px 12px", cursor: "pointer", font: "inherit" }} />
+            <a className="nav-link" href="#login">{nt.login}</a>
+            <a className="nav-cta" href={START_STORE_URL}>{nt.openStore}</a>
           </div>
         </div>
       </div>
@@ -303,73 +394,73 @@ export default function App() {
       <div className="wrap">
         <div className="hero">
           <div className="hero-copy">
-            <h1>بيع منتجك الرقمي<br/>من رابط واحد</h1>
-            <p>ارفع ملفك، شارك رابط منتجك على واتساب أو إنستغرام، والعميل يطلبه ويرفع إثبات التحويل — تؤكد الاستلام فيفتح التنزيل له تلقائيًا.</p>
+            <h1>{ht.h1a}<br/>{ht.h1b}</h1>
+            <p>{ht.p}</p>
             <div className="hero-cta-row">
-              <a className="pill-black" href={START_STORE_URL}>افتح متجرك الحين ←</a>
-              <a className="hero-ghost" href="#how">شاهد كيف تعمل</a>
+              <a className="pill-black" href={START_STORE_URL}>{ht.ctaOpen}</a>
+              <a className="hero-ghost" href="#how">{ht.ctaHow}</a>
             </div>
           </div>
 
           <div className="receipt-stage">
             <div className="receipt-copy2" aria-hidden="true" />
             <div className="receipt">
-              <div className="receipt-tag mono">#٠٠١٤</div>
+              <div className="receipt-tag mono">{ht.receiptTag}</div>
               <div className="receipt-head">
-                <b>وصل بيع رقمي</b>
-                <span className="mono">١٤:٠٦</span>
+                <b>{ht.receiptHead}</b>
+                <span className="mono">{ht.receiptTime}</span>
               </div>
-              <div className="receipt-sub">متجر هند للتصاميم</div>
+              <div className="receipt-sub">{ht.receiptStore}</div>
               <div className="receipt-rule" />
               <div className="receipt-line">
-                <div className="label">رزمة قوالب سيرة ذاتية<small>ملف PDF قابل للتعديل</small></div>
-                <div className="value mono">٥.٠٠</div>
+                <div className="label">{ht.receiptItem}<small>{ht.receiptItemSub}</small></div>
+                <div className="value mono">{ht.receiptPrice}</div>
               </div>
               <div className="receipt-line">
-                <div className="label">العمولة على البيع</div>
-                <div className="value mono">٪٠</div>
+                <div className="label">{ht.receiptCommission}</div>
+                <div className="value mono">{ht.receiptCommissionValue}</div>
               </div>
               <div className="receipt-rule" />
               <div className="receipt-total">
-                <b>الإجمالي المستلم</b>
-                <span className="amount mono">٥.٠٠ ر.ع</span>
+                <b>{ht.receiptTotalLabel}</b>
+                <span className="amount mono">{ht.receiptTotal}</span>
               </div>
             </div>
             <div className="stamp-impact" aria-hidden="true" />
             <div className="stamp" aria-hidden="true">
-              <div className="stamp-text">تم تأكيد<br/>الاستلام<small>Monah</small></div>
+              <div className="stamp-text">{ht.stampText}<br/>{ht.stampText2}<small>Monah</small></div>
             </div>
           </div>
         </div>
 
         <div className="ledger">
           <div className="ledger-row">
-            <span className="k">العمولة على مبيعاتك</span>
+            <span className="k">{ht.ledgerCommission}</span>
             <span className="fill" />
-            <span className="v strong">٪٠ — دائمًا</span>
+            <span className="v strong">{ht.ledgerCommissionValue}</span>
           </div>
           <div className="ledger-row">
-            <span className="k">وقت فتح رابط التحميل</span>
+            <span className="k">{ht.ledgerUnlock}</span>
             <span className="fill" />
-            <span className="v">فور تأكيدك استلام المبلغ</span>
+            <span className="v">{ht.ledgerUnlockValue}</span>
           </div>
           <div className="ledger-row">
-            <span className="k">حماية روابط التنزيل</span>
+            <span className="k">{ht.ledgerProtection}</span>
             <span className="fill" />
-            <span className="v strong">مفعّلة على كل منتج</span>
+            <span className="v strong">{ht.ledgerProtectionValue}</span>
           </div>
         </div>
       </div>
 
       <section className="section">
         <div className="wrap">
-          <div className="section-eyebrow reveal">لماذا Monah</div>
-          <h2 className="section-title reveal">منصة مبنية لصالحك أنت</h2>
+          <div className="section-eyebrow reveal">{st.whyEyebrow}</div>
+          <h2 className="section-title reveal">{st.whyTitle}</h2>
           <div className="n-list">
             {WHY.map((w) => (
-              <div className="n-row reveal" key={w.title}>
+              <div className="n-row reveal" key={w.n}>
                 <div className="n-figure mono">{w.n}</div>
-                <div className="n-text"><b>{w.title}</b><span>{w.desc}</span></div>
+                <div className="n-text"><b>{w.title[lang]}</b><span>{w.desc[lang]}</span></div>
               </div>
             ))}
           </div>
@@ -378,13 +469,13 @@ export default function App() {
 
       <section className="section" id="how" style={{ background: "#FBFAF7" }}>
         <div className="wrap">
-          <div className="section-eyebrow reveal">البداية</div>
-          <h2 className="section-title reveal">كيف تشتغل المنصة</h2>
+          <div className="section-eyebrow reveal">{st.howEyebrow}</div>
+          <h2 className="section-title reveal">{st.howTitle}</h2>
           <div className="n-list">
             {STEPS.map((s) => (
               <div className="n-row reveal" key={s.n}>
                 <div className="n-figure mono">{s.n}</div>
-                <div className="n-text"><b>{s.title}</b><span>{s.desc}</span></div>
+                <div className="n-text"><b>{s.title[lang]}</b><span>{s.desc[lang]}</span></div>
               </div>
             ))}
           </div>
@@ -393,14 +484,14 @@ export default function App() {
 
       <section className="section">
         <div className="wrap">
-          <div className="section-eyebrow reveal">لمين المنصة</div>
-          <h2 className="section-title reveal">اختر نوع منتجك</h2>
+          <div className="section-eyebrow reveal">{st.forWhomEyebrow}</div>
+          <h2 className="section-title reveal">{st.forWhomTitle}</h2>
           <div className="style-list">
             {USECASES.map((u) => (
-              <div className="style-row reveal" key={u.title}>
+              <div className="style-row reveal" key={u.title.ar}>
                 <div className="left">
                   <div className="style-swatch" style={{ background: u.color }} />
-                  <div><b>{u.title}</b><span>{u.desc}</span></div>
+                  <div><b>{u.title[lang]}</b><span>{u.desc[lang]}</span></div>
                 </div>
               </div>
             ))}
@@ -410,14 +501,14 @@ export default function App() {
 
       <section className="section" style={{ background: "#FBFAF7" }}>
         <div className="wrap">
-          <div className="section-eyebrow reveal">المميزات</div>
-          <h2 className="section-title reveal">كل شي تحتاجه لبيع منتجك</h2>
+          <div className="section-eyebrow reveal">{st.featuresEyebrow}</div>
+          <h2 className="section-title reveal">{st.featuresTitle}</h2>
           <div className="features">
             {FEATURES.map((f) => (
-              <div className="feature reveal" key={f.title}>
+              <div className="feature reveal" key={f.title.ar}>
                 <div className="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24">{f.icon}</svg></div>
-                <b>{f.title}</b>
-                <span>{f.desc}</span>
+                <b>{f.title[lang]}</b>
+                <span>{f.desc[lang]}</span>
               </div>
             ))}
           </div>
@@ -426,15 +517,15 @@ export default function App() {
 
       <section className="section">
         <div className="wrap">
-          <div className="section-eyebrow reveal">الحماية</div>
-          <h2 className="section-title reveal">حمايتك من الألف للياء</h2>
-          <div className="section-sub reveal">منتجك الرقمي يستحق الحماية، وإحنا نتكفل فيها</div>
+          <div className="section-eyebrow reveal">{st.protectionEyebrow}</div>
+          <h2 className="section-title reveal">{st.protectionTitle}</h2>
+          <div className="section-sub reveal">{st.protectionSub}</div>
           <div className="protection">
             {PROTECTION.map((p) => (
-              <div className="protection-item reveal" key={p.title}>
+              <div className="protection-item reveal" key={p.title.ar}>
                 <div className="protection-icon"><svg width="18" height="18" viewBox="0 0 24 24">{p.icon}</svg></div>
-                <b>{p.title}</b>
-                <span>{p.desc}</span>
+                <b>{p.title[lang]}</b>
+                <span>{p.desc[lang]}</span>
               </div>
             ))}
           </div>
@@ -443,16 +534,16 @@ export default function App() {
 
       <section className="section" style={{ background: "#FBFAF7" }}>
         <div className="wrap">
-          <div className="section-eyebrow reveal">المقارنة</div>
-          <h2 className="section-title reveal">وش الفرق؟</h2>
-          <div className="section-sub reveal">مقارنة بسيطة بين Monah والمنصات التقليدية</div>
+          <div className="section-eyebrow reveal">{st.compareEyebrow}</div>
+          <h2 className="section-title reveal">{st.compareTitle}</h2>
+          <div className="section-sub reveal">{st.compareSub}</div>
           <div className="compare reveal">
-            <div className="compare-row"><span></span><span style={{ textAlign: "center" }}>Monah</span><span style={{ textAlign: "center" }}>منصات تقليدية</span></div>
+            <div className="compare-row"><span></span><span style={{ textAlign: "center" }}>{st.compareMonah}</span><span style={{ textAlign: "center" }}>{st.compareOther}</span></div>
             {COMPARE.map((c) => (
-              <div className="compare-row" key={c.label}>
-                <div className="compare-label">{c.label}</div>
-                <div className="compare-monah">✓ {c.monah}</div>
-                <div className="compare-other">{c.other}</div>
+              <div className="compare-row" key={c.label.ar}>
+                <div className="compare-label">{c.label[lang]}</div>
+                <div className="compare-monah">✓ {c.monah[lang]}</div>
+                <div className="compare-other">{c.other[lang]}</div>
               </div>
             ))}
           </div>
@@ -461,44 +552,44 @@ export default function App() {
 
       <section className="section" id="pricing" style={{ background: "#FBFAF7" }}>
         <div className="wrap">
-          <div className="section-eyebrow reveal">الاشتراك</div>
-          <h2 className="section-title reveal">ابدأ بسيط، وكبّر متجرك متى احتجت</h2>
-          <div className="section-sub reveal">متجر أساسي يشتغل من أول يوم بسعر واضح، وإضافات تفتح لك مبيعات أسرع وأذكى وقت ما تحتاجها — بدون التزام بأكثر من اللي تختاره.</div>
+          <div className="section-eyebrow reveal">{st.pricingEyebrow}</div>
+          <h2 className="section-title reveal">{st.pricingTitle}</h2>
+          <div className="section-sub reveal">{st.pricingSub}</div>
 
           <div className="pricing">
             <div className="price-card reveal popular">
-              <div className="price-badge">اشتراك مرن</div>
-              <div className="price-name">متجرك الأساسي</div>
-              <div className="price-desc">صفحة متجر بهويتك، إدارة المنتجات، والمشاركة والتتبع والمنتجات المجانية.</div>
-              <div className="price-value mono">{BASE_MONTHLY_PRICE}<span>ر.ع / شهريًا بعد التفعيل</span></div>
+              <div className="price-badge">{st.priceBadge}</div>
+              <div className="price-name">{st.priceName}</div>
+              <div className="price-desc">{st.priceDesc}</div>
+              <div className="price-value mono">{BASE_MONTHLY_PRICE}<span>{st.priceUnit}</span></div>
               <div className="price-features">
-                <div>✓ لوحة تاجر عربية سهلة</div>
-                <div>✓ صفحة متجر وروابط مشاركة</div>
-                <div>✓ تخصيص الاسم والشعار والهوية</div>
-                <div>✓ منتج مجاني وروابط تتبع الزيارات</div>
+                <div>{st.priceFeature1}</div>
+                <div>{st.priceFeature2}</div>
+                <div>{st.priceFeature3}</div>
+                <div>{st.priceFeature4}</div>
               </div>
               <div className="price-soon">
-                <div className="price-soon-label">إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:</div>
+                <div className="price-soon-label">{st.addOnsLabel}</div>
                 {ADD_ON_CATALOG.map((item) => (
                   <div key={item.key} style={{ marginBottom: 10 }}>
-                    <div>○ <b>{item.title}</b> — {item.price} ر.ع</div>
-                    <div style={{ color: "#8A8677", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{item.desc}</div>
+                    <div>○ <b>{lang === "en" ? item.titleEn : item.title}</b> — {item.price} {lang === "en" ? "OMR" : "ر.ع"}</div>
+                    <div style={{ color: "#8A8677", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{lang === "en" ? item.descEn : item.desc}</div>
                   </div>
                 ))}
               </div>
-              <a className="price-btn" href={START_STORE_URL}>افتح متجرك الحين</a>
+              <a className="price-btn" href={START_STORE_URL}>{st.openStore}</a>
             </div>
           </div>
-          <div className="pricing-note">الاشتراك الأساسي ٥ ر.ع شهريًا يُفعّل فور الدفع بالبطاقة. أي إضافة تختارها تُضاف لمبلغ اشتراكك الشهري تلقائيًا.</div>
+          <div className="pricing-note">{st.pricingNote}</div>
         </div>
       </section>
 
       <section className="section">
         <div className="wrap">
-          <div className="section-eyebrow reveal">أسئلة</div>
-          <h2 className="section-title reveal">أسئلة شائعة</h2>
+          <div className="section-eyebrow reveal">{st.faqEyebrow}</div>
+          <h2 className="section-title reveal">{st.faqTitle}</h2>
           <div className="faq reveal">
-            {FAQS.map((f, i) => <FaqItem key={f.q} id={i} q={f.q} a={f.a} />)}
+            {FAQS.map((f, i) => <FaqItem key={f.q.ar} id={i} q={f.q[lang]} a={f.a[lang]} />)}
           </div>
         </div>
       </section>
@@ -507,15 +598,15 @@ export default function App() {
         <div className="wrap">
           <div className="final-cta-inner">
             <div className="final-copy">
-              <div className="final-kicker">خطوتك القادمة</div>
-              <h3>خلّ منتجك جاهزًا للمشاركة</h3>
-              <p>افتح متجرك الآن، ثم رتّب صفحته وخذ رابطك الخاص في مكان واحد وبشكل واضح.</p>
-              <a className="pill-black" href={START_STORE_URL}>افتح متجرك الحين ←</a>
+              <div className="final-kicker">{st.finalKicker}</div>
+              <h3>{st.finalTitle}</h3>
+              <p>{st.finalP}</p>
+              <a className="pill-black" href={START_STORE_URL}>{st.finalCta}</a>
             </div>
             <div className="final-orbit" aria-hidden="true">
               <div className="orbit-plane" />
               <div className="orbit-plane" />
-              <div className="orbit-card">Monah<small>متجرك الرقمي</small></div>
+              <div className="orbit-card">Monah<small>{st.orbitCard}</small></div>
             </div>
           </div>
         </div>
@@ -523,8 +614,8 @@ export default function App() {
 
       <div className="foot-black">
         <div className="foot-top">
-          <div><b>تواصل</b><div className="foot-contact">واتساب: <a href="https://wa.me/96876630905" target="_blank" rel="noopener noreferrer">76630905</a></div><div className="foot-contact" style={{ marginTop: 4 }}>إيميل: <a href="mailto:monahapp@outlook.sa">monahapp@outlook.sa</a></div></div>
-          <div><b>روابط</b><a href="#privacy">سياسة الخصوصية</a><a href="#terms">الشروط والأحكام</a></div>
+          <div><b>{st.footContact}</b><div className="foot-contact">{st.footWhatsapp} <a href="https://wa.me/96876630905" target="_blank" rel="noopener noreferrer">76630905</a></div><div className="foot-contact" style={{ marginTop: 4 }}>{st.footEmail} <a href="mailto:monahapp@outlook.sa">monahapp@outlook.sa</a></div></div>
+          <div><b>{st.footLinks}</b><a href="#privacy">{st.footPrivacy}</a><a href="#terms">{st.footTerms}</a></div>
         </div>
         <div className="foot-wordmark">Monah</div>
       </div>

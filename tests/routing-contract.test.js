@@ -103,7 +103,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const rules = await source("firestore.rules");
     const storageRules = await source("storage.rules");
 
-    expect(productPage).toContain("<ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} />");
+    expect(productPage).toContain("<ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} lang={lang} />");
     expect(orderPanel).toContain('orderRequest("submit_proof"');
     expect(orderPanel).toContain("payment-proofs/${auth.currentUser.uid}/${order.id}/");
     expect(orderPanel).toContain("nextFile.size >= MAX_PROOF_BYTES");
@@ -163,7 +163,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("أكثر رابط تمت زيارته");
     expect(dashboard).toContain("وليست مبيعات أو معلومات عن الزوار");
     expect(catalog).toContain('key: "salesGrowth"');
-    expect(catalog).toContain('title: "زيادة المبيعات", price: 1');
+    expect(catalog).toContain('title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
   });
 
   it("يرتب تبويب المنتجات إلى أقسام قابلة للفتح دون إزالة أدوات التاجر", async () => {
@@ -263,7 +263,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(store).toContain("navigator.share");
     expect(store).toContain("مدعوم من مُونَة");
     expect(product).toContain("مدعوم من مُونَة");
-    expect(product).toContain("text: `شاهد ${name} من ${storeName}`");
+    expect(product).toContain("shareText: (name, storeName) => `شاهد ${name} من ${storeName}`");
     expect(dashboard).toContain("function shareStore()");
     expect(dashboard).toContain("اختر مظهر متجرك");
   });
@@ -288,11 +288,11 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const catalog = await source("src/subscriptionCatalog.js");
 
     expect([...catalog.matchAll(/key: "/g)]).toHaveLength(5);
-    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", price: 2');
-    expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", price: 1');
-    expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", price: 1');
-    expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", price: 0.5');
-    expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", price: 1');
+    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", title: "البيع الرقمي", titleEn: "Digital selling", price: 2');
+    expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
+    expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", title: "إدارة المبيعات", titleEn: "Sales management", price: 1');
+    expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", title: "حماية إضافية", titleEn: "Extra protection", price: 0.5');
+    expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", title: "أدوات الذكاء", titleEn: "AI tools", price: 1');
     expect(catalog).not.toContain('key: "customDomain"');
     expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
     expect(catalog).not.toContain('key: "affiliate"');
@@ -359,7 +359,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("أسئلة وأجوبة للزائر");
     expect(store).toContain("اختيارات التاجر");
     expect(store).toContain("أسئلة شائعة");
-    expect(product).toContain("منتجات أخرى من {storeName}");
+    expect(product).toContain("otherFrom: (storeName) => `منتجات أخرى من ${storeName}`");
     expect(product).toContain("أسئلة عن المتجر");
     expect(rules).toContain("'featured', 'sortOrder'");
     expect(rules).toContain("'coverUrl', 'about', 'faqs', 'updatedAt'");

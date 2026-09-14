@@ -2,6 +2,48 @@ import React, { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase.js";
 import ProductOrderPanel from "./ProductOrderPanel.jsx";
+import { useLang, LangToggle } from "./i18n.jsx";
+
+const PP_T = {
+  ar: {
+    preparing: "نجهّز تفاصيل المنتج", preparingSub: "لحظات ونظهر لك المعلومات المتاحة.",
+    unavailable: "هذا المنتج غير متاح حاليًا", unavailableSub: "تم إيقاف عرض هذا المنتج مؤقتًا. يمكنك الرجوع إلى المتجر لرؤية المنتجات المتاحة.",
+    notFound: "لم نجد هذا المنتج", notFoundSub: "قد يكون الرابط غير صحيح أو أن صاحب المتجر أزال المنتج.",
+    backHome: "العودة إلى الصفحة الرئيسية", backToStore: "→ العودة إلى المتجر",
+    genericProduct: "منتج رقمي", storeOwner: "صاحب المتجر",
+    linkCopied: "تم نسخ الرابط", shareFailed: "تعذرت المشاركة، انسخ الرابط من المتصفح",
+    shareText: (name, storeName) => `شاهد ${name} من ${storeName}`,
+    productImageAlt: (name) => `صورة ${name}`, productImages: "صور المنتج", showImage: (n) => `عرض الصورة ${n}`,
+    fromStore: "من متجر", displayedPrice: "السعر المعروض", free: "مجاني",
+    noDescription: "لا يوجد وصف إضافي لهذا المنتج حاليًا.",
+    getFree: "احصل على المنتج مجانًا", shareLink: "مشاركة رابط المنتج",
+    freeNote: "هذا المنتج مجاني. يبدأ تنزيل الملف بعد الضغط على الزر.",
+    paidNote: "التحويل يُراجع يدويًا من التاجر، ولا يفتح التنزيل إلا بعد تأكيده.",
+    productInfo: "معلومات المنتج", codeLicense: "كود / ترخيص", digitalFile: "ملف رقمي", productType: "نوع المنتج",
+    imagesCount: (n) => `${n} صورة`, previewReady: "معاينة جاهزة", productView: "عرض المنتج", category: "التصنيف",
+    otherFrom: (storeName) => `منتجات أخرى من ${storeName}`, storeFaq: "أسئلة عن المتجر",
+    poweredBy: "مدعوم من مُونَة",
+  },
+  en: {
+    preparing: "Getting product details ready", preparingSub: "One moment while we load the available info.",
+    unavailable: "This product isn't available right now", unavailableSub: "This product's listing was temporarily paused. Go back to the store to see available products.",
+    notFound: "We couldn't find this product", notFoundSub: "The link may be wrong, or the seller removed the product.",
+    backHome: "Back to homepage", backToStore: "← Back to store",
+    genericProduct: "Digital product", storeOwner: "the store owner",
+    linkCopied: "Link copied", shareFailed: "Couldn't share — copy the link from your browser",
+    shareText: (name, storeName) => `Check out ${name} from ${storeName}`,
+    productImageAlt: (name) => `${name} image`, productImages: "Product images", showImage: (n) => `Show image ${n}`,
+    fromStore: "From", displayedPrice: "Listed price", free: "Free",
+    noDescription: "No additional description for this product yet.",
+    getFree: "Get this product for free", shareLink: "Share product link",
+    freeNote: "This product is free. The download starts once you click the button.",
+    paidNote: "The transfer is reviewed manually by the seller, and the download only unlocks after they confirm it.",
+    productInfo: "Product info", codeLicense: "Code / license", digitalFile: "Digital file", productType: "Product type",
+    imagesCount: (n) => `${n} images`, previewReady: "Preview ready", productView: "Product view", category: "Category",
+    otherFrom: (storeName) => `More products from ${storeName}`, storeFaq: "Store FAQ",
+    poweredBy: "Powered by Monah",
+  },
+};
 
 const styles = `
   .pp-page{--pp-brand:#163f2e;min-height:100vh;background:#f7f6f1;color:#111;font-family:'Cairo',sans-serif;direction:rtl}.pp-shell{max-width:880px;margin:auto;padding:20px}.pp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.pp-back{display:inline-flex;align-items:center;gap:7px;border:1px solid #e7e3d8;border-radius:999px;padding:9px 13px;background:#fff;color:#111;text-decoration:none;font-size:12px;font-weight:700}.pp-brand{display:flex;align-items:center;gap:8px;font-family:'Almarai',sans-serif;font-size:14px;font-weight:800;color:var(--pp-brand)}.pp-brand-mark{width:30px;height:30px;border-radius:9px;background:var(--pp-brand);color:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:13px}.pp-brand-mark img{width:100%;height:100%;object-fit:cover}.pp-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}.pp-media{background:#eaf0eb;border-radius:22px;min-height:290px;overflow:hidden;position:relative}.pp-media img{width:100%;height:100%;min-height:290px;object-fit:cover;display:block}.pp-placeholder{min-height:290px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4b6152;gap:12px}.pp-file{width:98px;height:126px;border-radius:16px;background:#fffdf8;box-shadow:0 15px 30px rgba(11,11,12,.12);padding:17px;transform:rotate(-5deg)}.pp-file b,.pp-file i{display:block;border-radius:99px}.pp-file b{height:8px;width:62%;background:#b9832f}.pp-file i{height:5px;background:#e8e4d9;margin-top:12px}.pp-file i:nth-child(3){width:78%}.pp-file i:nth-child(4){width:92%}.pp-file em{display:block;height:28px;border-radius:8px;background:#eaf0eb;margin-top:17px}.pp-thumbs{display:flex;gap:8px;margin-top:10px}.pp-thumb{width:58px;height:48px;border-radius:10px;border:2px solid transparent;object-fit:cover;cursor:pointer;background:#fff}.pp-thumb.active{border-color:var(--pp-brand)}.pp-card{background:#fff;border:1px solid #e7e3d8;border-radius:22px;padding:24px}.pp-category{display:inline-flex;background:#edf3ee;color:var(--pp-brand);border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:800}.pp-title{font-family:'Almarai',sans-serif;font-size:24px;line-height:1.55;margin:13px 0 9px}.pp-store{font-size:12px;color:#777;line-height:1.7}.pp-price-row{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #eee9df;border-bottom:1px solid #eee9df;margin:20px 0;padding:16px 0}.pp-price-label{font-size:12px;color:#777}.pp-price{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--pp-brand)}.pp-description{font-size:13px;line-height:2;color:#4d4b46;white-space:pre-line}.pp-contact{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;border:0;border-radius:999px;padding:14px 17px;background:var(--pp-brand);color:#fff;text-decoration:none;font-family:inherit;font-size:13px;font-weight:800}.pp-contact.disabled{background:#d7d4cb;color:#777;cursor:not-allowed}.pp-actions{display:flex;gap:8px;margin-top:9px}.pp-share{flex:1;border:1px solid #d8d4c8;border-radius:999px;padding:10px 14px;background:#fff;color:var(--pp-brand);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}.pp-note{font-size:10.5px;line-height:1.7;color:#89857a;text-align:center;margin:10px 8px 0}.pp-info{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:22px;border:1px solid #e7e3d8;border-radius:16px;overflow:hidden;background:#e7e3d8}.pp-info div{background:#fff;padding:13px 8px;text-align:center}.pp-info b{font-size:11px;display:block}.pp-info span{font-size:9.5px;color:#777;display:block;margin-top:4px}.pp-powered{text-align:center;font-size:10.5px;color:#89857a;margin:22px 0 3px}.pp-powered a{color:var(--pp-brand);font-weight:800;text-decoration:none}.pp-state{min-height:72vh;display:flex;align-items:center;justify-content:center;padding:20px}.pp-state-card{max-width:430px;width:100%;text-align:center;background:#fff;border:1px solid #e7e3d8;border-radius:24px;padding:35px 25px}.pp-state-mark{width:58px;height:58px;background:#eaf0eb;color:#163f2e;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 15px;font-size:23px}.pp-state h1{font-family:'Almarai',sans-serif;font-size:17px;margin:0 0 9px}.pp-state p{font-size:12.5px;line-height:1.9;color:#777;margin:0 0 18px}.pp-state a{display:inline-flex;background:#111;color:#fff;text-decoration:none;border-radius:999px;padding:11px 16px;font-size:12px;font-weight:800}.pp-page :focus-visible{outline:2px solid #b9832f;outline-offset:3px}@media(max-width:680px){.pp-shell{padding:16px}.pp-grid{grid-template-columns:1fr;gap:15px}.pp-media,.pp-media img,.pp-placeholder{min-height:230px}.pp-card{padding:20px}.pp-title{font-size:20px}.pp-top{margin-bottom:16px}}
@@ -15,15 +57,17 @@ function storeUrl(store, ownerId) {
   return `#store/${store?.slug || ownerId}`;
 }
 
-function LoadingState() {
-  return <div className="pp-state"><div className="pp-state-card"><div className="pp-state-mark">…</div><h1>نجهّز تفاصيل المنتج</h1><p>لحظات ونظهر لك المعلومات المتاحة.</p></div></div>;
+function LoadingState({ t }) {
+  return <div className="pp-state"><div className="pp-state-card"><div className="pp-state-mark">…</div><h1>{t.preparing}</h1><p>{t.preparingSub}</p></div></div>;
 }
 
-function MissingState({ unavailable }) {
-  return <div className="pp-state"><div className="pp-state-card"><div className="pp-state-mark">{unavailable ? "−" : "؟"}</div><h1>{unavailable ? "هذا المنتج غير متاح حاليًا" : "لم نجد هذا المنتج"}</h1><p>{unavailable ? "تم إيقاف عرض هذا المنتج مؤقتًا. يمكنك الرجوع إلى المتجر لرؤية المنتجات المتاحة." : "قد يكون الرابط غير صحيح أو أن صاحب المتجر أزال المنتج."}</p><a href="#">العودة إلى الصفحة الرئيسية</a></div></div>;
+function MissingState({ unavailable, t }) {
+  return <div className="pp-state"><div className="pp-state-card"><div className="pp-state-mark">{unavailable ? "−" : "؟"}</div><h1>{unavailable ? t.unavailable : t.notFound}</h1><p>{unavailable ? t.unavailableSub : t.notFoundSub}</p><a href="#">{t.backHome}</a></div></div>;
 }
 
 export default function ProductPage({ productId }) {
+  const [lang, setLang] = useLang();
+  const t = PP_T[lang];
   const [status, setStatus] = useState("loading");
   const [product, setProduct] = useState(null);
   const [store, setStore] = useState(null);
@@ -82,67 +126,71 @@ export default function ProductPage({ productId }) {
   }, [productId]);
 
   const images = useMemo(() => Array.isArray(product?.images) ? product.images.filter(Boolean) : [], [product]);
-  if (status === "loading") return <div className="pp-page" dir="rtl" lang="ar"><style>{styles}</style><LoadingState /></div>;
-  if (status === "missing" || status === "unavailable") return <div className="pp-page" dir="rtl" lang="ar"><style>{styles}</style><MissingState unavailable={status === "unavailable"} /></div>;
+  const pageDir = lang === "ar" ? "rtl" : "ltr";
+  if (status === "loading") return <div className="pp-page" dir={pageDir} lang={lang}><style>{styles}</style><LoadingState t={t} /></div>;
+  if (status === "missing" || status === "unavailable") return <div className="pp-page" dir={pageDir} lang={lang}><style>{styles}</style><MissingState unavailable={status === "unavailable"} t={t} /></div>;
 
-  const name = product?.name || "منتج رقمي";
-  const category = product?.category || "منتج رقمي";
+  const name = product?.name || t.genericProduct;
+  const category = product?.category || t.genericProduct;
   const isCode = product?.type === "code";
   const isFreeFile = Number(product?.price) === 0 && product?.type === "file";
-  const storeName = store?.name || "صاحب المتجر";
+  const storeName = store?.name || t.storeOwner;
   const storeColor = store?.color || "#163f2e";
   const storeLogo = store?.logoUrl;
   const storeFaqs = Array.isArray(store?.faqs) ? store.faqs.filter((faq) => faq?.question && faq?.answer) : [];
 
   async function shareProduct() {
-    const shareData = { title: name, text: `شاهد ${name} من ${storeName}`, url: window.location.href };
+    const shareData = { title: name, text: t.shareText(name, storeName), url: window.location.href };
     try {
       if (navigator.share) {
         await navigator.share(shareData);
         return;
       }
       await navigator.clipboard.writeText(window.location.href);
-      setShareStatus("تم نسخ الرابط");
+      setShareStatus(t.linkCopied);
       window.setTimeout(() => setShareStatus(""), 1800);
     } catch (error) {
-      if (error?.name !== "AbortError") setShareStatus("تعذرت المشاركة، انسخ الرابط من المتصفح");
+      if (error?.name !== "AbortError") setShareStatus(t.shareFailed);
     }
   }
 
   return (
-    <div className="pp-page" dir="rtl" lang="ar" style={{ "--pp-brand": storeColor }}>
+    <div className="pp-page" dir={pageDir} lang={lang} style={{ "--pp-brand": storeColor }}>
       <style>{styles}{extraStyles}</style>
       <main className="pp-shell">
         <header className="pp-top">
-          <a className="pp-back" href={storeUrl(store, product.ownerId)}>→ العودة إلى المتجر</a>
-          <span className="pp-brand"><span className="pp-brand-mark">{storeLogo ? <img src={storeLogo} alt="" /> : storeName.charAt(0)}</span>{storeName}</span>
+          <a className="pp-back" href={storeUrl(store, product.ownerId)}>{t.backToStore}</a>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="pp-brand"><span className="pp-brand-mark">{storeLogo ? <img src={storeLogo} alt="" /> : storeName.charAt(0)}</span>{storeName}</span>
+            <LangToggle lang={lang} onChange={setLang} className="pp-back" style={{ padding: "9px 13px" }} />
+          </div>
         </header>
         <div className="pp-grid">
           <section>
             <div className="pp-media">
-              {images.length ? <img src={images[activeImage]} alt={`صورة ${name}`} /> : <div className="pp-placeholder"><div className="pp-file"><b></b><i></i><i></i><i></i><em></em></div><span>منتج رقمي</span></div>}
+              {images.length ? <img src={images[activeImage]} alt={t.productImageAlt(name)} /> : <div className="pp-placeholder"><div className="pp-file"><b></b><i></i><i></i><i></i><em></em></div><span>{t.genericProduct}</span></div>}
             </div>
-            {images.length > 1 && <div className="pp-thumbs" aria-label="صور المنتج">{images.map((image, index) => <button key={image} type="button" className={`pp-thumb ${activeImage === index ? "active" : ""}`} onClick={() => setActiveImage(index)} aria-label={`عرض الصورة ${index + 1}`}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} /></button>)}</div>}
+            {images.length > 1 && <div className="pp-thumbs" aria-label={t.productImages}>{images.map((image, index) => <button key={image} type="button" className={`pp-thumb ${activeImage === index ? "active" : ""}`} onClick={() => setActiveImage(index)} aria-label={t.showImage(index + 1)}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} /></button>)}</div>}
           </section>
           <section className="pp-card">
             <span className="pp-category">{category}</span>
             <h1 className="pp-title">{name}</h1>
-            <div className="pp-store">من متجر <strong>{storeName}</strong></div>
-            <div className="pp-price-row"><span className="pp-price-label">السعر المعروض</span><span className="pp-price">{isFreeFile ? "مجاني" : `${Number(product?.price || 0).toFixed(2)} ر.ع`}</span></div>
-            <div className="pp-description">{product?.description || "لا يوجد وصف إضافي لهذا المنتج حاليًا."}</div>
-            {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">احصل على المنتج مجانًا</a> : <ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} />}
-            <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || "مشاركة رابط المنتج"}</button></div>
-            <p className="pp-note">{isFreeFile ? "هذا المنتج مجاني. يبدأ تنزيل الملف بعد الضغط على الزر." : "التحويل يُراجع يدويًا من التاجر، ولا يفتح التنزيل إلا بعد تأكيده."}</p>
+            <div className="pp-store">{t.fromStore} <strong>{storeName}</strong></div>
+            <div className="pp-price-row"><span className="pp-price-label">{t.displayedPrice}</span><span className="pp-price">{isFreeFile ? t.free : `${Number(product?.price || 0).toFixed(2)} ر.ع`}</span></div>
+            <div className="pp-description">{product?.description || t.noDescription}</div>
+            {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">{t.getFree}</a> : <ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} lang={lang} />}
+            <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || t.shareLink}</button></div>
+            <p className="pp-note">{isFreeFile ? t.freeNote : t.paidNote}</p>
           </section>
         </div>
-        <section className="pp-info" aria-label="معلومات المنتج">
-          <div><b>{isCode ? "كود / ترخيص" : "ملف رقمي"}</b><span>نوع المنتج</span></div>
-          <div><b>{images.length ? `${images.length} صورة` : "معاينة جاهزة"}</b><span>عرض المنتج</span></div>
-          <div><b>{category}</b><span>التصنيف</span></div>
+        <section className="pp-info" aria-label={t.productInfo}>
+          <div><b>{isCode ? t.codeLicense : t.digitalFile}</b><span>{t.productType}</span></div>
+          <div><b>{images.length ? t.imagesCount(images.length) : t.previewReady}</b><span>{t.productView}</span></div>
+          <div><b>{category}</b><span>{t.category}</span></div>
         </section>
-        {relatedProducts.length > 0 && <section className="pp-section"><div className="pp-section-title">منتجات أخرى من {storeName}</div><div className="pp-related">{relatedProducts.map((item) => <a className="pp-related-card" href={`#product/${item.id}`} key={item.id}><div className="pp-related-name">{item.name || "منتج رقمي"}</div><div className="pp-related-price">{Number(item.price || 0).toFixed(2)} ر.ع</div></a>)}</div></section>}
-        {storeFaqs.length > 0 && <section className="pp-section pp-faq"><div className="pp-section-title">أسئلة عن المتجر</div>{storeFaqs.map((faq, index) => <details key={`${faq.question}-${index}`}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</section>}
-        <footer className="pp-powered"><a href="/">مدعوم من مُونَة</a></footer>
+        {relatedProducts.length > 0 && <section className="pp-section"><div className="pp-section-title">{t.otherFrom(storeName)}</div><div className="pp-related">{relatedProducts.map((item) => <a className="pp-related-card" href={`#product/${item.id}`} key={item.id}><div className="pp-related-name">{item.name || t.genericProduct}</div><div className="pp-related-price">{Number(item.price || 0).toFixed(2)} ر.ع</div></a>)}</div></section>}
+        {storeFaqs.length > 0 && <section className="pp-section pp-faq"><div className="pp-section-title">{t.storeFaq}</div>{storeFaqs.map((faq, index) => <details key={`${faq.question}-${index}`}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</section>}
+        <footer className="pp-powered"><a href="/">{t.poweredBy}</a></footer>
       </main>
     </div>
   );
