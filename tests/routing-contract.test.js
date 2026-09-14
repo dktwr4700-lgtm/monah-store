@@ -472,8 +472,8 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(dashboard).toContain("ما أكملت فتح متجرك بعد");
     expect(admin).toContain("دعوات التجار");
     expect(admin).toContain("إنشاء رابط دعوة");
-    expect(invitePage).toContain('inviteRequest("inspect", { token })');
-    expect(invitePage).toContain('inviteRequest("activate", { token }, idToken)');
+    expect(invitePage).toContain('inviteRequest("inspect", { token }, "", t)');
+    expect(invitePage).toContain('inviteRequest("activate", { token }, idToken, t)');
     expect(inviteApi).toContain("randomBytes(32)");
     expect(inviteApi).toContain('createHash("sha256")');
     expect(inviteApi).toContain("const INVITE_TTL_MS = 72 * 60 * 60 * 1000");
