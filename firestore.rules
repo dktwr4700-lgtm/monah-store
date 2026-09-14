@@ -12,6 +12,13 @@ service cloud.firestore {
     function productIsPublic() {
       return resource.data.hidden == false && resource.data.get('suspended', false) == false;
     }
+    // يمنع تاجر التجربة المجانية من إضافة منتج ثانٍ بعد ما يستخدم منتجه المجاني
+    // الوحيد (حتى لو حذفه بعدين) — العلم trialProductClaimed أحادي الاتجاه، يُفعّل
+    // فقط بعد نجاح إضافة أول منتج (انظر قاعدة sellers).
+    function sellerTrialLimitReached() {
+      let seller = get(/databases/$(database)/documents/sellers/$(request.auth.uid)).data;
+      return seller.get('plan', 'basic') == 'trial' && seller.get('trialProductClaimed', false) == true;
+    }
     function bundleIsPublic() {
       return resource.data.hidden == false && resource.data.get('suspended', false) == false;
     }
@@ -21,6 +28,7 @@ service cloud.firestore {
     match /products/{productId} {
       allow get, list: if productIsPublic() || ownsExistingProduct() || isAdmin();
       allow create: if signedIn()
+        && !sellerTrialLimitReached()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.hidden == true
         && request.resource.data.suspended == false
@@ -103,9 +111,20 @@ service cloud.firestore {
       allow list: if isAdmin();
       // إنشاء حسابات التجار يتم في الخادم بعد التحقق من رابط الدعوة فقط.
       allow create: if false;
+      // التاجر يقدر يعدّل اسم متجره، أو يعلّم أنه استخدم منتج التجربة المجانية —
+      // بشرط أن يكون الانتقال باتجاه واحد فقط (من غير مفعّل إلى مفعّل) وهو على
+      // خطة التجربة، حتى ما يقدر يعيد تصفير العداد ويحصل على منتجات مجانية إضافية.
       allow update: if isAdmin() || (
         owns(sellerId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['storeName'])
+        && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['storeName'])
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trialProductClaimed'])
+            && resource.data.plan == 'trial'
+            && resource.data.trialProductClaimed != true
+            && request.resource.data.trialProductClaimed == true
+          )
+        )
       );
       allow delete: if isAdmin();
     }

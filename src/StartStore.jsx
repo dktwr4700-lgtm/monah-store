@@ -236,6 +236,19 @@ export default function StartStore() {
     }
   }
 
+  async function startTrial() {
+    setError("");
+    setBusy(true);
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      await signupRequest("start_trial", {}, idToken);
+      window.location.hash = "dashboard";
+    } catch (requestError) {
+      setError(requestError.message || "تعذر بدء التجربة المجانية الآن.");
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="invite-page" dir="rtl" lang="ar">
       <style>{styles}</style>
@@ -281,9 +294,14 @@ export default function StartStore() {
         </>}
 
         {step === "payment" && <>
-          <div className="invite-title">فعّل اشتراكك</div>
-          <p className="invite-text">اشتراك متجرك الأساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.</p>
+          <div className="invite-title">فعّل متجرك</div>
+          <p className="invite-text">جرّب مونة مجانًا أولًا — افتح متجرك وأضف منتجك الأول بدون بطاقة ولا التزام. لما تكون جاهز، رقّي اشتراكك من لوحة التاجر.</p>
           {error && <div className="invite-message error">{error}</div>}
+          <button className="invite-btn" type="button" onClick={startTrial} disabled={busy} style={{ background: "#163F2E", marginBottom: 10 }}>
+            {busy ? "جاري التجهيز..." : "ابدأ تجربتك المجانية (منتج واحد)"}
+          </button>
+          <div className="invite-divider">أو فعّل الاشتراك الكامل الآن</div>
+          <p className="invite-text" style={{ marginTop: -8 }}>اشتراك متجرك الأساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.</p>
           <div className="invite-field">
             <label>إضافات اختيارية (تقدر تتخطاها الآن)</label>
             {ADD_ON_CATALOG.filter((item) => item.key !== "digitalSelling").map((item) => (

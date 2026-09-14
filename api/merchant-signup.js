@@ -139,6 +139,39 @@ async function activateSeller(uid, request) {
   });
 }
 
+// التجربة المجانية تفعّل حساب التاجر فورًا بدون دفع — منتج واحد فقط وبدون تاريخ
+// انتهاء، لتقليل حاجز التسجيل الأول. الترقية للاشتراك الكامل تمر عبر نفس مسار
+// التجديد (createRenewalCharge/verifyRenewalCharge) لاحقًا.
+async function activateTrialSeller(uid, request) {
+  const sellerRef = db.collection("sellers").doc(uid);
+  const requestRef = db.collection("merchantSignups").doc(uid);
+  await db.runTransaction(async (transaction) => {
+    const sellerSnap = await transaction.get(sellerRef);
+    if (sellerSnap.exists) return;
+    transaction.set(sellerRef, {
+      storeName: request.storeName,
+      email: request.email,
+      storeType: request.storeType,
+      createdAt: FieldValue.serverTimestamp(),
+      plan: "trial",
+      trialProductClaimed: false,
+      activeAddOns: [],
+    });
+    transaction.update(requestRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
+  });
+}
+
+async function startTrial(req, res) {
+  const account = await authenticatedAccount(req);
+  const sellerSnap = await db.collection("sellers").doc(account.uid).get();
+  if (sellerSnap.exists) return res.status(200).json({ activated: true });
+  const requestRef = db.collection("merchantSignups").doc(account.uid);
+  const requestSnap = await requestRef.get();
+  if (!requestSnap.exists) throw new SignupError(404, "ما فيه طلب تسجيل لهذا الحساب.");
+  await activateTrialSeller(account.uid, requestSnap.data());
+  return res.status(200).json({ activated: true });
+}
+
 async function register(req, res) {
   const account = await authenticatedAccount(req);
   const storeName = cleanText(req.body?.storeName, 80);
@@ -414,7 +447,7 @@ async function createRenewalCharge(req, res) {
   if (seller.pendingRenewalReferenceNumber
     && await priorChargeSucceeded(seller.pendingRenewalReferenceNumber, "renew", account.uid)) {
     const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
-    await sellerRef.update({ subscriptionExpiresAt, pendingRenewalReferenceNumber: FieldValue.delete() });
+    await sellerRef.update({ subscriptionExpiresAt, plan: "basic", pendingRenewalReferenceNumber: FieldValue.delete() });
     return res.status(200).json({ activated: true, subscriptionExpiresAt });
   }
 
@@ -454,7 +487,7 @@ async function verifyRenewalCharge(req, res) {
   }
 
   const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
-  await sellerRef.update({ subscriptionExpiresAt, pendingRenewalReferenceNumber: FieldValue.delete() });
+  await sellerRef.update({ subscriptionExpiresAt, plan: "basic", pendingRenewalReferenceNumber: FieldValue.delete() });
   return res.status(200).json({ paid: true, subscriptionExpiresAt });
 }
 
@@ -467,6 +500,7 @@ export default async function handler(req, res) {
   try {
     const action = cleanText(req.body?.action, 40);
     if (action === "register") return await register(req, res);
+    if (action === "start_trial") return await startTrial(req, res);
     if (action === "status") return await status(req, res);
     if (action === "check_signup_coupon") return await checkSignupCoupon(req, res);
     if (action === "create_card_charge") return await createCardCharge(req, res);

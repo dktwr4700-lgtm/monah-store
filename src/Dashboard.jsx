@@ -347,6 +347,7 @@ export default function Dashboard() {
   const [productType, setProductType] = useState("file");
   const [requiresActivation, setRequiresActivation] = useState(false);
   const [sellerPlan, setSellerPlan] = useState("basic");
+  const [trialProductClaimed, setTrialProductClaimed] = useState(false);
   const [codesText, setCodesText] = useState("");
   const [productImages, setProductImages] = useState([]);
   const [imagesUploading, setImagesUploading] = useState(false);
@@ -496,6 +497,7 @@ export default function Dashboard() {
     let cancelled = false;
     function applySellerData(data) {
       setSellerPlan(data.plan || "basic");
+      setTrialProductClaimed(Boolean(data.trialProductClaimed));
       setSellerStoreType(data.storeType || "files");
       setPaymentInstructions(data.paymentInstructions || "");
       setGatewayConnected(data.paymentGateway?.provider === "ompay");
@@ -761,6 +763,11 @@ export default function Dashboard() {
     e.preventDefault();
     setError("");
 
+    if (trialLimitReached) {
+      setError("التجربة المجانية تسمح بمنتج واحد فقط. رقّي اشتراكك لإضافة المزيد.");
+      return;
+    }
+
     const cleanName = name.trim();
     const numericPrice = Number(price);
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
@@ -842,6 +849,11 @@ export default function Dashboard() {
       setProductType("file");
       setRequiresActivation(false);
       setProductImages([]);
+
+      if (isTrial && !trialProductClaimed) {
+        await updateDoc(doc(db, "sellers", user.uid), { trialProductClaimed: true }).catch(() => {});
+        setTrialProductClaimed(true);
+      }
     } catch (err) {
       setError("صار خطأ، حاول مرة ثانية.");
       setUploadingFile(false);
@@ -1622,6 +1634,8 @@ export default function Dashboard() {
 
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
   const initial = (storeName || "م").charAt(0);
+  const isTrial = sellerPlan === "trial";
+  const trialLimitReached = isTrial && (trialProductClaimed || products.length >= 1);
   const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
   const hiddenProducts = products.filter((product) => product.hidden || product.suspended);
   const campaignVisitTotal = campaignLinks.reduce((total, link) => total + (Number(link.visits) || 0), 0);
@@ -1763,6 +1777,13 @@ export default function Dashboard() {
         <div className="dh-verify-banner" style={{ background: subscriptionDaysLeft < 0 ? "#F6E9E5" : "#FFF8E9", borderBottomColor: subscriptionDaysLeft < 0 ? "#E3C3B8" : "#EFD9AB", color: subscriptionDaysLeft < 0 ? "#A34839" : "#7A5A17" }}>
           <span>{subscriptionDaysLeft < 0 ? "انتهى اشتراك متجرك. جدده الآن حتى يرجع يستقبل طلبات." : `اشتراك متجرك بينتهي خلال ${subscriptionDaysLeft} يوم. جدده الآن بدون انقطاع.`}</span>
           <button type="button" onClick={renewSubscription} disabled={renewalBuying}>{renewalBuying ? "جاري تجهيز الدفع..." : "جدّد الاشتراك الآن"}</button>
+        </div>
+      )}
+
+      {isTrial && (
+        <div className="dh-verify-banner" style={{ background: "#FFF8E9", borderBottomColor: "#EFD9AB", color: "#7A5A17" }}>
+          <span>{trialLimitReached ? "أنت على التجربة المجانية واستخدمت منتجك الوحيد. رقّي اشتراكك لإضافة منتجات بلا حدود." : "أنت على التجربة المجانية — منتج واحد مجانًا بدون بطاقة."}</span>
+          <button type="button" onClick={() => setTab("subscription")}>رقّي اشتراكك</button>
         </div>
       )}
 
@@ -1912,6 +1933,13 @@ export default function Dashboard() {
 
         {tab === "products" && (
           <>
+            {trialLimitReached ? (
+              <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F", textAlign: "center" }}>
+                <div className="dh-title" style={{ marginBottom: 6 }}>وصلت لحد التجربة المجانية</div>
+                <div className="dh-hint" style={{ marginBottom: 14 }}>التجربة المجانية تسمح بمنتج واحد. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي ميزات مونة.</div>
+                <button className="dh-btn" type="button" onClick={() => setTab("subscription")}>رقّي اشتراكك الآن</button>
+              </div>
+            ) : (
             <details className="dh-section" open={products.length === 0}>
               <summary><div className="dh-section-summary"><b>أضف منتج جديد</b><span>افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.</span></div></summary>
               <div className="dh-section-body">
@@ -2021,6 +2049,7 @@ export default function Dashboard() {
               </form>
               </div>
             </details>
+            )}
 
             <div className="dh-card">
               <div className="dh-title-row">
@@ -2665,8 +2694,17 @@ export default function Dashboard() {
                   <div className="dh-title">اشتراك متجرك</div>
                   <div className="dh-hint" style={{ marginTop: 5 }}>متجر أساسي {BASE_MONTHLY_PRICE.toFixed(2)} ر.ع شهريًا، ثم إضافات تختارها وتُحتسب معه.</div>
                 </div>
-                <span className="dh-subscription-ready" style={{ background: "#EAF0EB", color: "#37724B", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>مفعّل</span>
+                {isTrial ? (
+                  <span className="dh-subscription-ready" style={{ background: "#FFF8E9", color: "#9C6D1F", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>تجربة مجانية</span>
+                ) : (
+                  <span className="dh-subscription-ready" style={{ background: "#EAF0EB", color: "#37724B", borderRadius: 100, padding: "5px 9px", fontSize: 10, fontWeight: 800 }}>مفعّل</span>
+                )}
               </div>
+              {isTrial && (
+                <div className="dh-hint" style={{ background: "#FFF8E9", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
+                  أنت على التجربة المجانية — منتج واحد فقط، بدون حد زمني. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي الميزات (الإضافات، الدومين الخاص، وغيرها).
+                </div>
+              )}
               <div className="dh-subscription-base" style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
                   <b style={{ display: "block", color: "#0B0B0C", fontSize: 13 }}>المتجر الأساسي</b>
@@ -2674,20 +2712,22 @@ export default function Dashboard() {
                 </div>
                 <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} ر.ع</b>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
-                <span className="dh-hint">
-                  {subscriptionExpiresAt ? `الاشتراك ساري حتى ${subscriptionExpiresAt}${daysLeft !== null ? (daysLeft >= 0 ? ` (${daysLeft} يوم متبقي)` : " — منتهي") : ""}.` : "تاريخ التجديد غير متوفر."}
-                </span>
-              </div>
+              {!isTrial && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
+                  <span className="dh-hint">
+                    {subscriptionExpiresAt ? `الاشتراك ساري حتى ${subscriptionExpiresAt}${daysLeft !== null ? (daysLeft >= 0 ? ` (${daysLeft} يوم متبقي)` : " — منتهي") : ""}.` : "تاريخ التجديد غير متوفر."}
+                  </span>
+                </div>
+              )}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10, background: "#F7F7F2", borderRadius: 12, padding: "10px 12px" }}>
                 <div>
-                  <b style={{ display: "block", fontSize: 12.5 }}>مبلغ التجديد القادم</b>
+                  <b style={{ display: "block", fontSize: 12.5 }}>{isTrial ? "مبلغ الترقية" : "مبلغ التجديد القادم"}</b>
                   <span className="dh-hint">الأساسي + إضافاتك المفعّلة ({activeAddOns.length})</span>
                 </div>
                 <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{monthlyTotal.toFixed(2)} ر.ع</b>
               </div>
               <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={renewalBuying} onClick={renewSubscription}>
-                {renewalBuying ? "جاري تجهيز الدفع..." : `ادفع ${monthlyTotal.toFixed(2)} ر.ع وجدّد الاشتراك`}
+                {renewalBuying ? "جاري تجهيز الدفع..." : (isTrial ? `ادفع ${monthlyTotal.toFixed(2)} ر.ع ورقّي اشتراكك` : `ادفع ${monthlyTotal.toFixed(2)} ر.ع وجدّد الاشتراك`)}
               </button>
               {renewalMessage && <div className="dh-error" style={{ marginTop: 8 }}>{renewalMessage}</div>}
             </div>
