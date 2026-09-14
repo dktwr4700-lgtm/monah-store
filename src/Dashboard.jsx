@@ -3316,7 +3316,7 @@ export default function Dashboard() {
           </>
         )}
 
-        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} storeName={storeName} />}
+        {tab === "orders" && <Orders ownerId={user.uid} onAddProduct={() => setTab("products")} storeName={storeName} lang={lang} />}
 
         {tab === "settings" && (
           <>
