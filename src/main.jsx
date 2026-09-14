@@ -17,7 +17,6 @@ const Deliver = lazy(() => import("./Deliver.jsx"));
 const PayResult = lazy(() => import("./PayResult.jsx"));
 const StartStore = lazy(() => import("./StartStore.jsx"));
 const StorePayResult = lazy(() => import("./StorePayResult.jsx"));
-const Explore = lazy(() => import("./Explore.jsx"));
 
 const LAZY_PAGE_IMPORTS = [
   () => import("./Register.jsx"),
@@ -35,7 +34,6 @@ const LAZY_PAGE_IMPORTS = [
   () => import("./PayResult.jsx"),
   () => import("./StartStore.jsx"),
   () => import("./StorePayResult.jsx"),
-  () => import("./Explore.jsx"),
 ];
 
 // كل صفحة غير الرئيسية محمّلة كقطعة منفصلة (code-split)، فأول دخول لها يطلب ملفها
@@ -87,7 +85,6 @@ function Root() {
   else if (hash === "start-store") page = <StartStore />;
   else if (hash.startsWith("store-pay-result/")) page = <StorePayResult param={hashSegment(hash, 1)} />;
   else if (hash.startsWith("store/")) page = <StorePage sellerId={hashSegment(hash, 1)} />;
-  else if (hash === "explore") page = <Explore />;
   return <Suspense fallback={<PageLoading />}>{page}</Suspense>;
 }
 

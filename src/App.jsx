@@ -294,7 +294,6 @@ export default function App() {
             <span>Monah</span>
           </div>
           <div className="nav-btns">
-            <a className="nav-link" href="#explore">تصفح المنتجات</a>
             <a className="nav-link" href="#login">تسجيل الدخول</a>
             <a className="nav-cta" href={START_STORE_URL}>افتح متجرك الحين</a>
           </div>
