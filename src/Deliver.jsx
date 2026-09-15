@@ -91,6 +91,7 @@ function DeliveryItem({ item, downloadingId, copiedId, onDownload, onPlay, onCop
 export default function Deliver({ orderId, token }) {
   const [lang, setLang] = useLang();
   const t = DLV_T[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
   const [state, setState] = useState("loading");
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
@@ -170,7 +171,7 @@ export default function Deliver({ orderId, token }) {
         {state === "ready" && order && (
           <article className="dlv-card">
             <div className="dlv-name">{order.productName}</div>
-            <div className="dlv-price">{Number(order.price || 0).toFixed(2)} ر.ع</div>
+            <div className="dlv-price">{Number(order.price || 0).toFixed(2)} {curr}</div>
 
             {order.type === "bundle" ? (
               order.items.map((item) => (

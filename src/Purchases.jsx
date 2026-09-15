@@ -109,6 +109,7 @@ function DeliveryItem({ item, downloadingId, copiedId, onDownload, onPlay, onCop
 export default function Purchases({ ownerId }) {
   const [lang, setLang] = useLang();
   const t = BUY_T[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
   const [state, setState] = useState("loading");
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
@@ -247,7 +248,7 @@ export default function Purchases({ ownerId }) {
                 <div className="buy-name">{order.productName}</div>
                 <span className={`buy-status ${order.status === "confirmed" ? "confirmed" : order.status === "awaiting_seller_confirmation" ? "awaiting" : "draft"}`}>{labelFor(order.status, t)}</span>
               </div>
-              <div className="buy-price">{Number(order.price || 0).toFixed(2)} ر.ع</div>
+              <div className="buy-price">{Number(order.price || 0).toFixed(2)} {curr}</div>
             </div>
             <div className="buy-date">{dateFor(order.createdAt, lang, t)}</div>
 

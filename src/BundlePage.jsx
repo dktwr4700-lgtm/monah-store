@@ -70,6 +70,7 @@ function MissingState({ t }) {
 export default function BundlePage({ bundleId }) {
   const [lang, setLang] = useLang();
   const t = BP_T[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
   const [status, setStatus] = useState("loading");
   const [bundle, setBundle] = useState(null);
   const [items, setItems] = useState([]);
@@ -139,7 +140,7 @@ export default function BundlePage({ bundleId }) {
           <span className="bp-badge">{t.bundleBadge}</span>
           <h1 className="bp-title">{bundle.name}</h1>
           <div className="bp-store">{t.fromStore} <strong>{storeName}</strong></div>
-          <div className="bp-price-row"><span className="bp-price-label">{t.bundlePrice}</span><span className="bp-price">{Number(bundle.price || 0).toFixed(2)} ر.ع</span></div>
+          <div className="bp-price-row"><span className="bp-price-label">{t.bundlePrice}</span><span className="bp-price">{Number(bundle.price || 0).toFixed(2)} {curr}</span></div>
           <div className="bp-description">{bundle.description || t.noDescription}</div>
           <div className="bp-items">
             <div className="bp-items-title">{t.includes(items.length)}</div>

@@ -68,6 +68,7 @@ function MissingState({ unavailable, t }) {
 export default function ProductPage({ productId }) {
   const [lang, setLang] = useLang();
   const t = PP_T[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
   const [status, setStatus] = useState("loading");
   const [product, setProduct] = useState(null);
   const [store, setStore] = useState(null);
@@ -176,7 +177,7 @@ export default function ProductPage({ productId }) {
             <span className="pp-category">{category}</span>
             <h1 className="pp-title">{name}</h1>
             <div className="pp-store">{t.fromStore} <strong>{storeName}</strong></div>
-            <div className="pp-price-row"><span className="pp-price-label">{t.displayedPrice}</span><span className="pp-price">{isFreeFile ? t.free : `${Number(product?.price || 0).toFixed(2)} ر.ع`}</span></div>
+            <div className="pp-price-row"><span className="pp-price-label">{t.displayedPrice}</span><span className="pp-price">{isFreeFile ? t.free : `${Number(product?.price || 0).toFixed(2)} ${curr}`}</span></div>
             <div className="pp-description">{product?.description || t.noDescription}</div>
             {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">{t.getFree}</a> : <ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} lang={lang} />}
             <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || t.shareLink}</button></div>
@@ -188,7 +189,7 @@ export default function ProductPage({ productId }) {
           <div><b>{images.length ? t.imagesCount(images.length) : t.previewReady}</b><span>{t.productView}</span></div>
           <div><b>{category}</b><span>{t.category}</span></div>
         </section>
-        {relatedProducts.length > 0 && <section className="pp-section"><div className="pp-section-title">{t.otherFrom(storeName)}</div><div className="pp-related">{relatedProducts.map((item) => <a className="pp-related-card" href={`#product/${item.id}`} key={item.id}><div className="pp-related-name">{item.name || t.genericProduct}</div><div className="pp-related-price">{Number(item.price || 0).toFixed(2)} ر.ع</div></a>)}</div></section>}
+        {relatedProducts.length > 0 && <section className="pp-section"><div className="pp-section-title">{t.otherFrom(storeName)}</div><div className="pp-related">{relatedProducts.map((item) => <a className="pp-related-card" href={`#product/${item.id}`} key={item.id}><div className="pp-related-name">{item.name || t.genericProduct}</div><div className="pp-related-price">{Number(item.price || 0).toFixed(2)} {curr}</div></a>)}</div></section>}
         {storeFaqs.length > 0 && <section className="pp-section pp-faq"><div className="pp-section-title">{t.storeFaq}</div>{storeFaqs.map((faq, index) => <details key={`${faq.question}-${index}`}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</section>}
         <footer className="pp-powered"><a href="/">{t.poweredBy}</a></footer>
       </main>
