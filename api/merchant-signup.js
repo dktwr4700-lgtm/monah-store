@@ -18,6 +18,10 @@ const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const CUSTOM_DOMAIN_PRICE = CUSTOM_DOMAIN_MONTHLY_PRICE;
 const DOMAIN_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
 const RESERVED_DOMAIN_SLUGS = new Set(["www", "api", "admin", "app", "store", "mail", "monah", "dashboard", "assets", "static"]);
+// التجربة المجانية موقوفة عن تسجيلات جديدة — التجار المفعّلين مسبقًا (plan
+// "trial" بجدول sellers) ما يتأثرون، لأن startTrial يتحقق أولًا من وجود
+// الحساب قبل ما يوصل لهذا الفحص.
+const FREE_TRIAL_SIGNUPS_ENABLED = false;
 
 class SignupError extends Error {
   constructor(code, message) {
@@ -165,6 +169,9 @@ async function startTrial(req, res) {
   const account = await authenticatedAccount(req);
   const sellerSnap = await db.collection("sellers").doc(account.uid).get();
   if (sellerSnap.exists) return res.status(200).json({ activated: true });
+  if (!FREE_TRIAL_SIGNUPS_ENABLED) {
+    throw new SignupError(403, "التجربة المجانية غير متاحة حاليًا. اختر الاشتراك الكامل لتفعيل متجرك.");
+  }
   const requestRef = db.collection("merchantSignups").doc(account.uid);
   const requestSnap = await requestRef.get();
   if (!requestSnap.exists) throw new SignupError(404, "ما فيه طلب تسجيل لهذا الحساب.");

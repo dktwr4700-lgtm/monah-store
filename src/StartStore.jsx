@@ -59,7 +59,6 @@ const ST_T = {
     invalidCoupon: "كود الخصم غير صحيح.",
     couponCheckError: "تعذر التحقق من الكود الآن.",
     paymentStartError: "تعذر بدء الدفع الآن.",
-    trialStartError: "تعذر بدء التجربة المجانية الآن.",
     brand: "مُونة",
     formTitle: "افتح متجرك الرقمي الآن",
     formText: "اكتب بيانات متجرك وبريدك. الاشتراك 5 ر.ع شهريًا.",
@@ -72,9 +71,6 @@ const ST_T = {
     readyContinue: "جاهز، اضغط للمتابعة.", oneFieldLeft: "بقي حقل وحد.", fillFirst: "عبّي البريد وكلمة المرور أولًا.",
     haveStoreLogin: "عندك متجر بالفعل؟ سجّل الدخول",
     activateStore: "فعّل متجرك",
-    trialIntro: "جرّب مونة مجانًا أولًا — افتح متجرك وأضف منتجك الأول بدون بطاقة ولا التزام. لما تكون جاهز، رقّي اشتراكك من لوحة التاجر.",
-    preparing: "جاري التجهيز...", startTrialBtn: "ابدأ تجربتك المجانية (منتج واحد)",
-    orActivateFull: "أو فعّل الاشتراك الكامل الآن",
     subscriptionIntro: (price) => `اشتراك متجرك الأساسي ${price} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.`,
     optionalAddOns: "إضافات اختيارية (تقدر تتخطاها الآن)",
     perMonth: "ر.ع/شهريًا",
@@ -102,7 +98,6 @@ const ST_T = {
     invalidCoupon: "Invalid discount code.",
     couponCheckError: "Couldn't check the code right now.",
     paymentStartError: "Couldn't start the payment right now.",
-    trialStartError: "Couldn't start the free trial right now.",
     brand: "Monah",
     formTitle: "Open your digital store now",
     formText: "Enter your store details and email. Subscription is 5 OMR/month.",
@@ -115,9 +110,6 @@ const ST_T = {
     readyContinue: "Ready, click to continue.", oneFieldLeft: "One field left.", fillFirst: "Fill in your email and password first.",
     haveStoreLogin: "Already have a store? Log in",
     activateStore: "Activate your store",
-    trialIntro: "Try Monah for free first — open your store and add your first product, no card, no commitment. When you're ready, upgrade your subscription from the seller dashboard.",
-    preparing: "Preparing...", startTrialBtn: "Start your free trial (one product)",
-    orActivateFull: "Or activate the full subscription now",
     subscriptionIntro: (price) => `Your base store subscription is ${price} OMR/month. You can add optional add-ons now or later from the seller dashboard.`,
     optionalAddOns: "Optional add-ons (you can skip these for now)",
     perMonth: "OMR/month",
@@ -333,19 +325,6 @@ export default function StartStore() {
     }
   }
 
-  async function startTrial() {
-    setError("");
-    setBusy(true);
-    try {
-      const idToken = await auth.currentUser.getIdToken();
-      await signupRequest("start_trial", {}, idToken, t);
-      window.location.hash = "dashboard";
-    } catch (requestError) {
-      setError(requestError.message || t.trialStartError);
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="invite-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <style>{styles}</style>
@@ -393,13 +372,8 @@ export default function StartStore() {
 
         {step === "payment" && <>
           <div className="invite-title">{t.activateStore}</div>
-          <p className="invite-text">{t.trialIntro}</p>
           {error && <div className="invite-message error">{error}</div>}
-          <button className="invite-btn" type="button" onClick={startTrial} disabled={busy} style={{ background: "#163F2E", marginBottom: 10 }}>
-            {busy ? t.preparing : t.startTrialBtn}
-          </button>
-          <div className="invite-divider">{t.orActivateFull}</div>
-          <p className="invite-text" style={{ marginTop: -8 }}>{t.subscriptionIntro(BASE_MONTHLY_PRICE.toFixed(2))}</p>
+          <p className="invite-text">{t.subscriptionIntro(BASE_MONTHLY_PRICE.toFixed(2))}</p>
           <div className="invite-field">
             <label>{t.optionalAddOns}</label>
             {ADD_ON_CATALOG.filter((item) => item.key !== "digitalSelling").map((item) => (
