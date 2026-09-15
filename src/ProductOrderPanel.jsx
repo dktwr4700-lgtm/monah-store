@@ -100,6 +100,7 @@ function notifySellerLink(sellerWhatsapp, itemName) {
 
 export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lang = "ar" }) {
   const t = PPO_T[lang] || PPO_T.ar;
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
   const isBundle = Boolean(bundle);
   const item = isBundle ? bundle : product;
   const notifyLink = notifySellerLink(sellerWhatsapp, item?.name);
@@ -240,7 +241,7 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lan
             {order.couponCode ? (
               <div className="ppo-success">{t.couponApplied(order.couponCode, order.price.toFixed(2), order.originalPrice.toFixed(2))}</div>
             ) : (
-              <div className="ppo-copy">{t.amountDue} <b>{order.price.toFixed(2)} ر.ع</b></div>
+              <div className="ppo-copy">{t.amountDue} <b>{order.price.toFixed(2)} {curr}</b></div>
             )}
             {error && <div className="ppo-error">{error}</div>}
             {order.cardPaymentAvailable && <>

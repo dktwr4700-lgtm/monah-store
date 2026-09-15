@@ -58,6 +58,7 @@ function dateFor(iso, lang) {
 export default function Receipt({ orderId, token }) {
   const [lang, setLang] = useLang();
   const t = RCPT_T[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
   const [state, setState] = useState("loading");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -109,11 +110,11 @@ export default function Receipt({ orderId, token }) {
             <div className="rcpt-row"><span>{t.buyerWhatsapp}</span><span dir="ltr">{data.buyerPhone}</span></div>
             <div className="rcpt-row"><span>{t.confirmedDate}</span><span>{dateFor(data.confirmedAt, lang)}</span></div>
             {data.couponCode && <div className="rcpt-row"><span>{t.coupon}</span><span>{data.couponCode}</span></div>}
-            {data.originalPrice != null && <div className="rcpt-row"><span>{t.priceBeforeDiscount}</span><span>{data.originalPrice.toFixed(2)} ر.ع</span></div>}
+            {data.originalPrice != null && <div className="rcpt-row"><span>{t.priceBeforeDiscount}</span><span>{data.originalPrice.toFixed(2)} {curr}</span></div>}
 
             <div className="rcpt-total">
               <span>{t.total}</span>
-              <b className="mono">{data.price.toFixed(2)} ر.ع</b>
+              <b className="mono">{data.price.toFixed(2)} {curr}</b>
             </div>
 
             <button type="button" className="rcpt-print" onClick={() => window.print()}>{t.printOrSave}</button>

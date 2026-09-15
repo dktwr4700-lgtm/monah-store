@@ -108,6 +108,7 @@ export default function StorePage({ sellerId }) {
   const [activeCategory, setActiveCategory] = useState("الكل");
   const [lang, setLang] = useLang();
   const t = STRINGS[lang];
+  const curr = lang === "ar" ? "ر.ع" : "OMR";
 
   useEffect(() => {
     async function fetchData() {
@@ -231,7 +232,7 @@ export default function StorePage({ sellerId }) {
           <div className="mc-featured-head"><div className="mc-featured-title">{t.sellerPicks}</div><div className="mc-featured-note">{t.sellerPicksSub}</div></div>
           {featuredProducts.map((product) => <a className="mc-featured-card" href={`#product/${product.id}`} key={product.id}>
             <div className="mc-featured-image">{product.images?.[0] ? <img src={product.images[0]} alt="" /> : <FileIcon />}</div>
-            <div><div className="mc-featured-name">{product.name || t.genericProduct}</div><div className="mc-featured-price">{Number(product.price || 0).toFixed(2)} ر.ع</div></div>
+            <div><div className="mc-featured-name">{product.name || t.genericProduct}</div><div className="mc-featured-price">{Number(product.price || 0).toFixed(2)} {curr}</div></div>
             <span className="mc-featured-badge">{t.featured}</span>
           </a>)}
         </section>}
@@ -255,7 +256,7 @@ export default function StorePage({ sellerId }) {
                 <div className="mc-product-type"><span className="mc-gold-dot" /> {product.category || t.genericProduct}</div>
                 <div className="mc-product-name">{product.name || t.genericProduct}{product.featured && <span className="mc-featured-badge" style={{ marginRight: 5 }}>{t.featured}</span>}</div>
                 <div className="mc-product-desc">{product.description || t.genericDesc}</div>
-                <div className="mc-product-bottom"><span className="mc-price">{Number(product.price || 0).toFixed(2)} ر.ع</span><span className="mc-view">{t.viewProduct}</span></div>
+                <div className="mc-product-bottom"><span className="mc-price">{Number(product.price || 0).toFixed(2)} {curr}</span><span className="mc-view">{t.viewProduct}</span></div>
               </a>)}</div> : <div className="mc-empty"><div className="mc-empty-title">{t.noMatch}</div><div className="mc-empty-sub">{t.noMatchSub}</div><button className="mc-filter" onClick={() => {setSearch(""); setActiveCategory("الكل");}}>{t.showAll}</button></div>}
             </section>
           </>}
