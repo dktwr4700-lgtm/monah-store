@@ -2,6 +2,32 @@ import React, { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where, documentId } from "firebase/firestore";
 import { db } from "./firebase.js";
 import ProductOrderPanel from "./ProductOrderPanel.jsx";
+import { useLang, LangToggle } from "./i18n.jsx";
+
+const BP_T = {
+  ar: {
+    preparing: "نجهّز تفاصيل الحزمة", preparingSub: "لحظات ونظهر لك المعلومات المتاحة.",
+    notFound: "لم نجد هذه الحزمة", notFoundSub: "قد يكون الرابط غير صحيح أو أن صاحب المتجر أخفى هذه الحزمة.",
+    backHome: "العودة إلى الصفحة الرئيسية", backToStore: "→ العودة إلى المتجر",
+    storeOwner: "صاحب المتجر", genericProduct: "منتج رقمي",
+    bundleBadge: "حزمة منتجات", fromStore: "من متجر", bundlePrice: "سعر الحزمة كاملة",
+    noDescription: "لا يوجد وصف إضافي لهذه الحزمة حاليًا.",
+    includes: (n) => `تشمل ${n} منتجات`,
+    note: "التحويل يُراجع يدويًا من التاجر، ولا يفتح تنزيل أي منتج من الحزمة إلا بعد تأكيده.",
+    poweredBy: "مدعوم من مُونَة",
+  },
+  en: {
+    preparing: "Getting bundle details ready", preparingSub: "One moment while we load the available info.",
+    notFound: "We couldn't find this bundle", notFoundSub: "The link may be wrong, or the seller hid this bundle.",
+    backHome: "Back to homepage", backToStore: "← Back to store",
+    storeOwner: "the store owner", genericProduct: "Digital product",
+    bundleBadge: "Product bundle", fromStore: "From", bundlePrice: "Full bundle price",
+    noDescription: "No additional description for this bundle yet.",
+    includes: (n) => `Includes ${n} products`,
+    note: "The transfer is reviewed manually by the seller, and no product in the bundle unlocks until they confirm it.",
+    poweredBy: "Powered by Monah",
+  },
+};
 
 const styles = `
   .bp-page{--pp-brand:#163f2e;min-height:100vh;background:#f7f6f1;color:#111;font-family:'Cairo',sans-serif;direction:rtl}
@@ -33,15 +59,17 @@ const styles = `
   @media(max-width:680px){.bp-shell{padding:16px}.bp-card{padding:20px}.bp-title{font-size:19px}}
 `;
 
-function LoadingState() {
-  return <div className="bp-state"><div className="bp-state-card"><div className="bp-state-mark">…</div><h1>نجهّز تفاصيل الحزمة</h1><p>لحظات ونظهر لك المعلومات المتاحة.</p></div></div>;
+function LoadingState({ t }) {
+  return <div className="bp-state"><div className="bp-state-card"><div className="bp-state-mark">…</div><h1>{t.preparing}</h1><p>{t.preparingSub}</p></div></div>;
 }
 
-function MissingState() {
-  return <div className="bp-state"><div className="bp-state-card"><div className="bp-state-mark">؟</div><h1>لم نجد هذه الحزمة</h1><p>قد يكون الرابط غير صحيح أو أن صاحب المتجر أخفى هذه الحزمة.</p><a href="#">العودة إلى الصفحة الرئيسية</a></div></div>;
+function MissingState({ t }) {
+  return <div className="bp-state"><div className="bp-state-card"><div className="bp-state-mark">؟</div><h1>{t.notFound}</h1><p>{t.notFoundSub}</p><a href="#">{t.backHome}</a></div></div>;
 }
 
 export default function BundlePage({ bundleId }) {
+  const [lang, setLang] = useLang();
+  const t = BP_T[lang];
   const [status, setStatus] = useState("loading");
   const [bundle, setBundle] = useState(null);
   const [items, setItems] = useState([]);
@@ -66,7 +94,7 @@ export default function BundlePage({ bundleId }) {
               where("suspended", "==", false)
             ))
           : { docs: [] };
-        const itemsData = itemsSnap.docs.map((item) => ({ id: item.id, name: item.data().name || "منتج رقمي" }));
+        const itemsData = itemsSnap.docs.map((item) => ({ id: item.id, name: item.data().name || t.genericProduct }));
 
         let storeData = null;
         if (bundleData.ownerId) {
@@ -88,35 +116,39 @@ export default function BundlePage({ bundleId }) {
     return () => { cancelled = true; };
   }, [bundleId]);
 
-  if (status === "loading") return <div className="bp-page" dir="rtl" lang="ar"><style>{styles}</style><LoadingState /></div>;
-  if (status === "missing") return <div className="bp-page" dir="rtl" lang="ar"><style>{styles}</style><MissingState /></div>;
+  const pageDir = lang === "ar" ? "rtl" : "ltr";
+  if (status === "loading") return <div className="bp-page" dir={pageDir} lang={lang}><style>{styles}</style><LoadingState t={t} /></div>;
+  if (status === "missing") return <div className="bp-page" dir={pageDir} lang={lang}><style>{styles}</style><MissingState t={t} /></div>;
 
-  const storeName = store?.name || "صاحب المتجر";
+  const storeName = store?.name || t.storeOwner;
   const storeColor = store?.color || "#163f2e";
   const storeLogo = store?.logoUrl;
 
   return (
-    <div className="bp-page" dir="rtl" lang="ar" style={{ "--pp-brand": storeColor }}>
+    <div className="bp-page" dir={pageDir} lang={lang} style={{ "--pp-brand": storeColor }}>
       <style>{styles}</style>
       <main className="bp-shell">
         <header className="bp-top">
-          <a className="bp-back" href={`#store/${store?.slug || bundle.ownerId}`}>→ العودة إلى المتجر</a>
-          <span className="bp-brand"><span className="bp-brand-mark">{storeLogo ? <img src={storeLogo} alt="" /> : storeName.charAt(0)}</span>{storeName}</span>
+          <a className="bp-back" href={`#store/${store?.slug || bundle.ownerId}`}>{t.backToStore}</a>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="bp-brand"><span className="bp-brand-mark">{storeLogo ? <img src={storeLogo} alt="" /> : storeName.charAt(0)}</span>{storeName}</span>
+            <LangToggle lang={lang} onChange={setLang} className="bp-back" style={{ padding: "9px 13px" }} />
+          </div>
         </header>
         <section className="bp-card">
-          <span className="bp-badge">حزمة منتجات</span>
+          <span className="bp-badge">{t.bundleBadge}</span>
           <h1 className="bp-title">{bundle.name}</h1>
-          <div className="bp-store">من متجر <strong>{storeName}</strong></div>
-          <div className="bp-price-row"><span className="bp-price-label">سعر الحزمة كاملة</span><span className="bp-price">{Number(bundle.price || 0).toFixed(2)} ر.ع</span></div>
-          <div className="bp-description">{bundle.description || "لا يوجد وصف إضافي لهذه الحزمة حاليًا."}</div>
+          <div className="bp-store">{t.fromStore} <strong>{storeName}</strong></div>
+          <div className="bp-price-row"><span className="bp-price-label">{t.bundlePrice}</span><span className="bp-price">{Number(bundle.price || 0).toFixed(2)} ر.ع</span></div>
+          <div className="bp-description">{bundle.description || t.noDescription}</div>
           <div className="bp-items">
-            <div className="bp-items-title">تشمل {items.length} منتجات</div>
+            <div className="bp-items-title">{t.includes(items.length)}</div>
             {items.map((item) => <div className="bp-item" key={item.id}><span>✓</span>{item.name}</div>)}
           </div>
-          <ProductOrderPanel bundle={bundle} sellerWhatsapp={store?.whatsapp} />
-          <p className="bp-note">التحويل يُراجع يدويًا من التاجر، ولا يفتح تنزيل أي منتج من الحزمة إلا بعد تأكيده.</p>
+          <ProductOrderPanel bundle={bundle} sellerWhatsapp={store?.whatsapp} lang={lang} />
+          <p className="bp-note">{t.note}</p>
         </section>
-        <footer className="bp-note" style={{ marginTop: 22 }}><a href="/" style={{ color: "var(--pp-brand)", fontWeight: 800, textDecoration: "none" }}>مدعوم من مُونَة</a></footer>
+        <footer className="bp-note" style={{ marginTop: 22 }}><a href="/" style={{ color: "var(--pp-brand)", fontWeight: 800, textDecoration: "none" }}>{t.poweredBy}</a></footer>
       </main>
     </div>
   );

@@ -1,6 +1,32 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useLang } from "./i18n.jsx";
+
+const CA_T = {
+  ar: {
+    noReply: "ما وصل رد",
+    connectionError: "صار خطأ بالاتصال، حاول مرة ثانية",
+    askButton: "عندك سؤال عن المنتج؟",
+    panelTitle: "اسأل عن المنتج 💬",
+    emptyStateText: "عندك سؤال عن هذا المنتج قبل ما تشتري؟ اسأل هنا وبجاوبك من تفاصيل المنتج مباشرة.",
+    replyingEllipsis: "جاري الرد...",
+    questionPlaceholder: "مثال: هل الملف يفتح على آيفون؟",
+    send: "إرسال",
+  },
+  en: {
+    noReply: "No reply received",
+    connectionError: "A connection error occurred, try again",
+    askButton: "Have a question about the product?",
+    panelTitle: "Ask about the product 💬",
+    emptyStateText: "Have a question about this product before you buy? Ask here and I'll answer directly from the product details.",
+    replyingEllipsis: "Replying...",
+    questionPlaceholder: "e.g. Does the file open on iPhone?",
+    send: "Send",
+  },
+};
 
 export default function CustomerAssistant({ productData }) {
+  const [lang] = useLang();
+  const t = CA_T[lang];
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
@@ -142,10 +168,10 @@ export default function CustomerAssistant({ productData }) {
       const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: data.reply || data.error || "ما وصل رد" },
+        { role: "assistant", text: data.reply || data.error || t.noReply },
       ]);
     } catch (err) {
-      setMessages((prev) => [...prev, { role: "assistant", text: "صار خطأ بالاتصال، حاول مرة ثانية" }]);
+      setMessages((prev) => [...prev, { role: "assistant", text: t.connectionError }]);
     }
     setLoading(false);
   }
@@ -155,7 +181,7 @@ export default function CustomerAssistant({ productData }) {
   }
 
   return (
-    <div style={{ direction: "rtl", fontFamily: "'Cairo', sans-serif" }}>
+    <div style={{ direction: lang === "ar" ? "rtl" : "ltr", fontFamily: "'Cairo', sans-serif" }} lang={lang}>
       {!open && (
         <button
           onClick={openPanel}
@@ -184,7 +210,7 @@ export default function CustomerAssistant({ productData }) {
           onPointerUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
           onPointerLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
-          <span>💬</span> عندك سؤال عن المنتج؟
+          <span>💬</span> {t.askButton}
         </button>
       )}
 
@@ -217,7 +243,7 @@ export default function CustomerAssistant({ productData }) {
               alignItems: "center",
             }}
           >
-            <span style={{ fontWeight: 700, fontSize: 14, color: "#0B0B0C" }}>اسأل عن المنتج 💬</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: "#0B0B0C" }}>{t.panelTitle}</span>
             <button
               onClick={() => closePanel()}
               style={{ background: "none", border: "none", color: "#8A8677", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
@@ -229,7 +255,7 @@ export default function CustomerAssistant({ productData }) {
           <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, touchAction: "pan-y" }}>
             {messages.length === 0 && (
               <p style={{ color: "#8A8677", fontSize: 13, textAlign: "center", marginTop: 24, lineHeight: 1.8 }}>
-                عندك سؤال عن هذا المنتج قبل ما تشتري؟ اسأل هنا وبجاوبك من تفاصيل المنتج مباشرة.
+                {t.emptyStateText}
               </p>
             )}
             {messages.map((m, i) => (
@@ -249,7 +275,7 @@ export default function CustomerAssistant({ productData }) {
                 </div>
               </div>
             ))}
-            {loading && <div style={{ textAlign: "end", color: "#8A8677", fontSize: 12.5 }}>جاري الرد...</div>}
+            {loading && <div style={{ textAlign: "end", color: "#8A8677", fontSize: 12.5 }}>{t.replyingEllipsis}</div>}
           </div>
 
           <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #EDEAE0" }}>
@@ -257,7 +283,7 @@ export default function CustomerAssistant({ productData }) {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-              placeholder="مثال: هل الملف يفتح على آيفون؟"
+              placeholder={t.questionPlaceholder}
               style={{
                 flex: 1,
                 padding: "10px 12px",
@@ -285,7 +311,7 @@ export default function CustomerAssistant({ productData }) {
               onPointerDown={(e) => { e.currentTarget.style.transform = "scale(0.94)"; }}
               onPointerUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
             >
-              إرسال
+              {t.send}
             </button>
           </div>
         </div>

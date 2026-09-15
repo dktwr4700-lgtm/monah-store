@@ -2,6 +2,46 @@ import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
 import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
+import { useLang, LangToggle } from "./i18n.jsx";
+
+const LOGIN_T = {
+  ar: {
+    login: "تسجيل الدخول", loggingIn: "جاري الدخول...", continueWithGoogle: "متابعة بحساب جوجل", or: "أو",
+    email: "البريد الإلكتروني", password: "كلمة المرور",
+    sending: "جاري الإرسال...", forgotPassword: "نسيت كلمة المرور؟",
+    ready: "جاهز، اضغط للدخول.", fillFirst: "عبّي البريد وكلمة المرور أولًا.",
+    noAccount: "ما عندك حساب؟", openStore: "افتح متجرك الحين",
+    googleTimeoutError: "تعذر إكمال الدخول بحساب جوجل على هذا المتصفح. جرّبي «بريدك الإلكتروني وكلمة المرور» بدلها.",
+    googleGenericError: "تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.",
+    loginTimeoutError: "تعذر تسجيل الدخول الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.",
+    userNotFound: "ما فيه حساب بهذا البريد. تأكد من الإيميل أو أنشئ حساب جديد.",
+    wrongPassword: "كلمة المرور غير صحيحة. تقدر تضغط \"نسيت كلمة المرور؟\" تحت.",
+    invalidCredential: "البريد أو كلمة المرور غير صحيحة. تأكد منهما، أو اضغط \"نسيت كلمة المرور؟\" تحت.",
+    genericLoginError: "تعذر تسجيل الدخول الآن. حاول مرة ثانية.",
+    wrongCredentials: "البريد أو كلمة المرور غير صحيحة.",
+    enterEmailFirst: "اكتب بريدك الإلكتروني أول بخانة البريد فوق، وبعدين اضغط \"نسيت كلمة المرور؟\".",
+    resetSent: "أرسلنا لك رابط تغيير كلمة المرور على بريدك. تأكد من صندوق الوارد (أو الرسائل غير المرغوبة).",
+    resetFailed: "تعذّر إرسال رابط الاستعادة. تأكد إن البريد صحيح وحاول مرة ثانية.",
+  },
+  en: {
+    login: "Log in", loggingIn: "Logging in...", continueWithGoogle: "Continue with Google", or: "or",
+    email: "Email", password: "Password",
+    sending: "Sending...", forgotPassword: "Forgot your password?",
+    ready: "Ready, click to log in.", fillFirst: "Fill in your email and password first.",
+    noAccount: "Don't have an account?", openStore: "Open your store now",
+    googleTimeoutError: "Couldn't complete Google sign-in on this browser. Try your email and password instead.",
+    googleGenericError: "Couldn't sign in with Google right now. Try again.",
+    loginTimeoutError: "Couldn't log in right now. Check your internet connection and try again.",
+    userNotFound: "No account with this email. Check the address, or create a new account.",
+    wrongPassword: "Incorrect password. You can click \"Forgot your password?\" below.",
+    invalidCredential: "Incorrect email or password. Double-check them, or click \"Forgot your password?\" below.",
+    genericLoginError: "Couldn't log in right now. Try again.",
+    wrongCredentials: "Incorrect email or password.",
+    enterEmailFirst: "Enter your email in the field above first, then click \"Forgot your password?\".",
+    resetSent: "We sent a password reset link to your email. Check your inbox (or spam folder).",
+    resetFailed: "Couldn't send the reset link. Make sure the email is correct and try again.",
+  },
+};
 
 const ADMIN_EMAIL = "k1997551@gmail.com";
 const CTA_WIDTH = 190;
@@ -57,6 +97,8 @@ const POPUP_UNAVAILABLE_CODES = new Set([
 ]);
 
 export default function Login() {
+  const [lang, setLang] = useLang();
+  const t = LOGIN_T[lang];
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -86,13 +128,14 @@ export default function Login() {
         // فعلاً (العلامة اللي نحطها قبل التحويل)، نوضح السبب بدل السكوت.
         if (sessionStorage.getItem("monah_google_signin_pending")) {
           sessionStorage.removeItem("monah_google_signin_pending");
-          setError("تعذر إكمال الدخول بحساب جوجل على هذا المتصفح. جرّبي «بريدك الإلكتروني وكلمة المرور» بدلها.");
+          setError(t.googleTimeoutError);
         }
       } catch (err) {
         sessionStorage.removeItem("monah_google_signin_pending");
-        setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
+        setError(t.googleGenericError);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // النافذة المنبثقة (popup) لدخول جوجل أوثق من التحويل الكامل (redirect) — ما
@@ -113,7 +156,7 @@ export default function Login() {
         return;
       }
       if (!POPUP_UNAVAILABLE_CODES.has(popupError.code)) {
-        setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
+        setError(t.googleGenericError);
         setGoogleLoading(false);
         return;
       }
@@ -123,7 +166,7 @@ export default function Login() {
       await signInWithRedirect(auth, new GoogleAuthProvider());
     } catch (err) {
       sessionStorage.removeItem("monah_google_signin_pending");
-      setError("تعذّر الدخول بحساب جوجل الآن. حاول مرة ثانية.");
+      setError(t.googleGenericError);
       setGoogleLoading(false);
     }
   }
@@ -134,19 +177,19 @@ export default function Login() {
     setResetMsg("");
     setLoading(true);
     try {
-      const cred = await withTimeout(signInWithEmailAndPassword(auth, email, password), "تعذر تسجيل الدخول الآن. تأكد من اتصالك بالإنترنت وحاول مرة ثانية.");
+      const cred = await withTimeout(signInWithEmailAndPassword(auth, email, password), t.loginTimeoutError);
       afterLogin(cred.user);
     } catch (err) {
       if (err.code === "auth/user-not-found") {
-        setError("ما فيه حساب بهذا البريد. تأكد من الإيميل أو أنشئ حساب جديد.");
+        setError(t.userNotFound);
       } else if (err.code === "auth/wrong-password") {
-        setError("كلمة المرور غير صحيحة. تقدر تضغط \"نسيت كلمة المرور؟\" تحت.");
+        setError(t.wrongPassword);
       } else if (err.code === "auth/invalid-credential") {
-        setError("البريد أو كلمة المرور غير صحيحة. تأكد منهما، أو اضغط \"نسيت كلمة المرور؟\" تحت.");
+        setError(t.invalidCredential);
       } else if (!err.code) {
-        setError(err.message || "تعذر تسجيل الدخول الآن. حاول مرة ثانية.");
+        setError(err.message || t.genericLoginError);
       } else {
-        setError("البريد أو كلمة المرور غير صحيحة.");
+        setError(t.wrongCredentials);
       }
     }
     setLoading(false);
@@ -156,47 +199,50 @@ export default function Login() {
     setError("");
     setResetMsg("");
     if (!email || !email.includes("@")) {
-      setError("اكتب بريدك الإلكتروني أول بخانة البريد فوق، وبعدين اضغط \"نسيت كلمة المرور؟\".");
+      setError(t.enterEmailFirst);
       return;
     }
     setResetLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
-      setResetMsg("أرسلنا لك رابط تغيير كلمة المرور على بريدك. تأكد من صندوق الوارد (أو الرسائل غير المرغوبة).");
+      setResetMsg(t.resetSent);
     } catch (err) {
-      setError("تعذّر إرسال رابط الاستعادة. تأكد إن البريد صحيح وحاول مرة ثانية.");
+      setError(t.resetFailed);
     }
     setResetLoading(false);
   }
 
   return (
-    <div className="auth-page" dir="rtl" lang="ar">
+    <div className="auth-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <style>{styles}</style>
       <div className="auth-card">
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>
+          <LangToggle lang={lang} onChange={setLang} className="auth-forgot" style={{ background: "none", border: "1px solid #EDEAE0", borderRadius: 100, padding: "6px 12px", cursor: "pointer", fontSize: 11, fontWeight: 800, color: "#8A8677" }} />
+        </div>
         <a className="auth-brand" href="#" style={{ display: "block", textDecoration: "none" }}>Monah</a>
-        <div className="auth-title">تسجيل الدخول</div>
+        <div className="auth-title">{t.login}</div>
 
         {error && <div className="auth-error">{error}</div>}
         {resetMsg && <div className="auth-success">{resetMsg}</div>}
 
         <button type="button" className="auth-google" onClick={handleGoogleSignIn} disabled={googleLoading}>
           <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.9A8.75 8.75 0 0017.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.55-1.84.87-3.06.87-2.36 0-4.36-1.6-5.07-3.75H.9v2.35A9 9 0 009 18z"/><path fill="#FBBC05" d="M3.93 10.68A5.4 5.4 0 013.64 9c0-.58.1-1.15.29-1.68V4.97H.9A9 9 0 000 9c0 1.45.35 2.83.9 4.03l3.03-2.35z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 009 0 9 9 0 00.9 4.97l3.03 2.35C4.64 5.18 6.64 3.58 9 3.58z"/></svg>
-          {googleLoading ? "جاري الدخول..." : "متابعة بحساب جوجل"}
+          {googleLoading ? t.loggingIn : t.continueWithGoogle}
         </button>
-        <div className="auth-divider">أو</div>
+        <div className="auth-divider">{t.or}</div>
 
         <form onSubmit={handleSubmit}>
           <div className="auth-field">
-            <label>البريد الإلكتروني</label>
+            <label>{t.email}</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="auth-field">
-            <label>كلمة المرور</label>
+            <label>{t.password}</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <div className="auth-forgot">
             <button type="button" onClick={handleForgotPassword} disabled={resetLoading}>
-              {resetLoading ? "جاري الإرسال..." : "نسيت كلمة المرور؟"}
+              {resetLoading ? t.sending : t.forgotPassword}
             </button>
           </div>
           <div className="auth-cta-track" ref={ctaTrackRef}>
@@ -207,16 +253,16 @@ export default function Login() {
               disabled={loading}
               style={{ "--cta-offset": `${ctaOffsetX}px` }}
             >
-              {loading ? "جاري الدخول..." : "تسجيل الدخول"}
+              {loading ? t.loggingIn : t.login}
             </button>
           </div>
           <div className={"auth-cta-hint" + (ctaFieldsReady ? " ready" : "")}>
-            {ctaFieldsReady ? "جاهز، اضغط للدخول." : "عبّي البريد وكلمة المرور أولًا."}
+            {ctaFieldsReady ? t.ready : t.fillFirst}
           </div>
         </form>
 
         <div className="auth-switch">
-          ما عندك حساب؟ <a href="#start-store">افتح متجرك الحين</a>
+          {t.noAccount} <a href="#start-store">{t.openStore}</a>
         </div>
       </div>
     </div>
