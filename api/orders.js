@@ -261,6 +261,7 @@ async function notifyBuyerOfConfirmation(order, orderId, deliveryToken) {
         <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع</p>
         <p><a href="${deliverUrl}" style="display:inline-block;background:#153A2C;color:#fff;text-decoration:none;padding:12px 22px;border-radius:100px;font-weight:700">تنزيل منتجك</a></p>
         <p style="color:#8A8677;font-size:12.5px">لو الزر ما اشتغل، افتح هذا الرابط: ${deliverUrl}</p>
+        <p style="color:#8A8677;font-size:12.5px">⚠️ ما تشوف هذا الإيميل بصندوق الوارد؟ افتح مجلد "الرسائل غير المرغوب فيها/Spam" — ممكن يكون وصل هناك. احفظ هذا الرابط أو اضغط "ليس بريدًا مزعجًا" عشان ترجع له بسهولة وقت ما تحتاجه.</p>
       </div>`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
