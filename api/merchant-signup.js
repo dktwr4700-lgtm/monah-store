@@ -12,6 +12,9 @@ if (!getApps().length) {
 
 const db = getFirestore();
 const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
+const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim();
+const RESEND_TIMEOUT_MS = 6000;
+const ADMIN_NOTIFY_EMAIL = "monahapp@outlook.sa";
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
 const MONTHLY_PLAN_PRICE = BASE_MONTHLY_PRICE;
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
@@ -124,9 +127,54 @@ function publicSignup(data) {
   };
 }
 
+// إشعار الإدارة بإيميل لما تاجر جديد يفعّل متجره (دفع الاشتراك ونجح). أفضل-جهد
+// فقط: أي فشل هنا ما يوقف تفعيل المتجر نفسه.
+async function notifyAdminOfNewSeller(request) {
+  if (!RESEND_API_KEY) {
+    console.error("notifyAdminOfNewSeller: skipped, RESEND_API_KEY is not set in this environment");
+    return;
+  }
+  try {
+    const storeName = cleanText(request.storeName, 80);
+    const html = `
+      <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
+        <h2 style="margin:0 0 12px">تاجر جديد فعّل متجره 🎉</h2>
+        <p><strong>اسم المتجر:</strong> ${storeName || "—"}</p>
+        <p><strong>إيميل التاجر:</strong> ${request.email || "—"}</p>
+        <p><strong>نوع المتجر:</strong> ${request.storeType || "—"}</p>
+      </div>`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+    try {
+      const resendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: "مُونة <notifications@monah-app.com>",
+          to: [ADMIN_NOTIFY_EMAIL],
+          subject: `تاجر جديد فعّل متجره${storeName ? " - " + storeName : ""}`,
+          html,
+        }),
+        signal: controller.signal,
+      });
+      if (!resendResponse.ok) {
+        const body = await resendResponse.text().catch(() => "");
+        console.error("notifyAdminOfNewSeller: Resend rejected the request", resendResponse.status, body);
+      } else {
+        console.log("notifyAdminOfNewSeller: sent to", ADMIN_NOTIFY_EMAIL);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (err) {
+    console.error("notifyAdminOfNewSeller failed", err);
+  }
+}
+
 async function activateSeller(uid, request) {
   const sellerRef = db.collection("sellers").doc(uid);
   const requestRef = db.collection("merchantSignups").doc(uid);
+  let created = false;
   await db.runTransaction(async (transaction) => {
     const sellerSnap = await transaction.get(sellerRef);
     if (sellerSnap.exists) return;
@@ -140,7 +188,9 @@ async function activateSeller(uid, request) {
       activeAddOns: cleanAddOnKeys(request.selectedAddOns),
     });
     transaction.update(requestRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
+    created = true;
   });
+  if (created) await notifyAdminOfNewSeller(request);
 }
 
 // التجربة المجانية تفعّل حساب التاجر فورًا بدون دفع — منتج واحد فقط وبدون تاريخ
