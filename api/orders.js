@@ -158,6 +158,74 @@ async function notifySellerOfProof(order, orderId) {
   }
 }
 
+// إشعار البائع بإيميل لما عميل يدفع بالبطاقة وتتأكد العملية تلقائيًا عبر
+// OmPay — بعكس التحويل اليدوي، هذا الطلب لا يحتاج أي مراجعة أو تأكيد من
+// البائع (فُتح التسليم للعميل تلقائيًا)، فقط نخبره إن مبلغًا دخل حسابه.
+// أفضل-جهد فقط: أي فشل هنا ما يوقف تأكيد الطلب نفسه.
+async function notifySellerOfCardPayment(order, orderId) {
+  if (!RESEND_API_KEY) {
+    console.error("notifySellerOfCardPayment: skipped, RESEND_API_KEY is not set in this environment");
+    return;
+  }
+  if (!order.ownerId) {
+    console.error("notifySellerOfCardPayment: skipped, order has no ownerId", orderId);
+    return;
+  }
+  try {
+    const [sellerUser, sellerSnap] = await Promise.all([
+      auth.getUser(order.ownerId).catch((err) => {
+        console.error("notifySellerOfCardPayment: auth.getUser failed", err.message);
+        return null;
+      }),
+      db.collection("sellers").doc(order.ownerId).get(),
+    ]);
+    const sellerData = sellerSnap.exists ? sellerSnap.data() : {};
+    const sellerEmail = cleanText(sellerData.notifyEmail, 160) || sellerUser?.email;
+    if (!sellerEmail) {
+      console.error("notifySellerOfCardPayment: skipped, no seller email found for", order.ownerId);
+      return;
+    }
+    const storeName = cleanText(sellerData.name, 80);
+    const items = order.type === "bundle" && Array.isArray(order.productNames)
+      ? order.productNames.join("، ")
+      : (order.productName || "منتج رقمي");
+    const price = Number(order.price || 0);
+    const html = `
+      <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
+        <h2 style="margin:0 0 12px">دفعة بطاقة جديدة 🎉</h2>
+        <p>عميل دفع بالبطاقة لطلب في متجرك${storeName ? ` "${storeName}"` : ""} على مُونة، وتأكدت العملية تلقائيًا عبر بوابة الدفع.</p>
+        <p><strong>المنتج:</strong> ${items}</p>
+        <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع — وصل مباشرة لحسابك في بوابة الدفع.</p>
+        <p>فُتح التنزيل للعميل تلقائيًا، ما تحتاجين تراجعين أو تؤكدين شي بنفسك لهذا الطلب.</p>
+      </div>`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+    try {
+      const resendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: "مُونة <notifications@monah-app.com>",
+          to: [sellerEmail],
+          subject: `دفعة بطاقة جديدة${storeName ? " - " + storeName : ""}`,
+          html,
+        }),
+        signal: controller.signal,
+      });
+      if (!resendResponse.ok) {
+        const body = await resendResponse.text().catch(() => "");
+        console.error("notifySellerOfCardPayment: Resend rejected the request", resendResponse.status, body);
+      } else {
+        console.log("notifySellerOfCardPayment: sent to", sellerEmail);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (err) {
+    console.error("notifySellerOfCardPayment failed", err);
+  }
+}
+
 // إشعار العميل بإيميل لما التاجر يؤكد استلام التحويل (أو تتأكد عملية الدفع
 // بالبطاقة) — يوصله رابط تسليم منتجه مباشرة بدون حاجة لتسجيل دخول. أفضل-جهد
 // فقط: أي فشل هنا ما يوقف تأكيد الطلب نفسه.
@@ -734,6 +802,7 @@ async function createCardCharge(req, res, account) {
       if (!result2.alreadyConfirmed) {
         await grantRepeatCoupon(order.ownerId, order.buyerUid);
         await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
+        await notifySellerOfCardPayment(order, orderId);
       }
       return res.status(200).json({ alreadyPaid: true, type: result2.type });
     }
@@ -784,6 +853,7 @@ async function verifyCardCharge(req, res, account) {
   if (!result2.alreadyConfirmed) {
     await grantRepeatCoupon(order.ownerId, order.buyerUid);
     await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
+    await notifySellerOfCardPayment(order, orderId);
   }
   return res.status(200).json({ paid: true, type: result2.type, ownerId: order.ownerId });
 }
