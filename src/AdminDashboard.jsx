@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
@@ -129,6 +129,7 @@ const ADMIN_T = {
     confirmDeleteSeller: (name) => `متأكد تبي تحذف حساب "${name}" ومنتجاته كلها نهائيًا؟ هذا الإجراء ما يترجع.`,
     adminPanelTitle: "لوحة تحكم الأدمن",
     totalSellers: "إجمالي التجار",
+    startPageVisits: "زيارات صفحة التسجيل",
     activeAccounts: "حسابات نشطة",
     disabledAccounts: "حسابات موقوفة",
     expiringWithinWeek: "اشتراكات تنتهي خلال أسبوع",
@@ -268,6 +269,7 @@ const ADMIN_T = {
     confirmDeleteSeller: (name) => `Delete the account "${name}" and all its products permanently? This action cannot be undone.`,
     adminPanelTitle: "Admin panel",
     totalSellers: "Total sellers",
+    startPageVisits: "Signup page visits",
     activeAccounts: "Active accounts",
     disabledAccounts: "Disabled accounts",
     expiringWithinWeek: "Subscriptions ending within a week",
@@ -417,6 +419,7 @@ export default function AdminDashboard() {
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [sellers, setSellers] = useState([]);
+  const [startPageVisits, setStartPageVisits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sellersError, setSellersError] = useState("");
   const [search, setSearch] = useState("");
@@ -485,6 +488,7 @@ export default function AdminDashboard() {
     loadInvites();
     loadSellerStatus();
     loadOrders();
+    loadSiteStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authChecked, currentUser]);
 
@@ -497,6 +501,15 @@ export default function AdminDashboard() {
       console.error(e);
     }
     setOrdersLoading(false);
+  }
+
+  async function loadSiteStats() {
+    try {
+      const snap = await getDoc(doc(db, "siteStats", "startPage"));
+      setStartPageVisits(snap.exists() ? Number(snap.data().visits) || 0 : 0);
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   async function loadSellers() {
@@ -966,6 +979,10 @@ export default function AdminDashboard() {
             <b>{sellers.length}</b>
             <span>{t.totalSellers}</span>
           </button>
+          <div className="admin-stat">
+            <b>{startPageVisits}</b>
+            <span>{t.startPageVisits}</span>
+          </div>
           <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}>
             <b>{activeCount}</b>
             <span>{t.activeAccounts}</span>

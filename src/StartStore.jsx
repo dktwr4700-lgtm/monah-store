@@ -216,6 +216,14 @@ export default function StartStore() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // عداد بسيط لزيارات صفحة التسجيل يستخدمه الأدمن لمعرفة نسبة التحويل — مرة
+  // وحدة بس بكل جلسة متصفح، بدون ما يعطّل الصفحة لو فشل الطلب.
+  useEffect(() => {
+    if (sessionStorage.getItem("monah_start_visit_tracked")) return;
+    sessionStorage.setItem("monah_start_visit_tracked", "1");
+    fetch("/api/track-start-visit", { method: "POST" }).catch(() => {});
+  }, []);
+
   async function submitForm(event) {
     event.preventDefault();
     setError("");
