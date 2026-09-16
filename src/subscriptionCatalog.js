@@ -1,5 +1,14 @@
 export const BASE_MONTHLY_PRICE = 5;
+export const BASE_PRODUCT_LIMIT = 50;
+export const PRO_MONTHLY_PRICE = 10;
+export const PRO_PRODUCT_LIMIT = 150;
 export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2;
+
+export function productLimitForPlan(plan) {
+  if (plan === "pro") return PRO_PRODUCT_LIMIT;
+  if (plan === "trial") return 1;
+  return BASE_PRODUCT_LIMIT;
+}
 
 // titleEn/descEn/groupEn تُستخدم بكل مكان يعرض هذا الكتالوج (الصفحة الرئيسية،
 // لوحة التاجر، صفحة فتح المتجر) لما التاجر يبدّل للإنجليزية عبر زر اللغة —

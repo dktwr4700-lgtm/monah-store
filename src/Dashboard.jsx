@@ -10,7 +10,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 class DebugErrorBoundary extends React.Component {
@@ -322,6 +322,7 @@ const DASH_T = {
     adDraftError: "تعذر تجهيز نص الإعلان الآن. حاول بعد قليل.",
     copyDraftError: "تعذر نسخ المسودة. انسخها يدويًا.",
     trialLimitError: "التجربة المجانية تسمح بمنتج واحد فقط. رقّي اشتراكك لإضافة المزيد.",
+    planLimitError: (limit) => `وصلت الحد الأقصى (${limit} منتج) لباقتك الحالية. رقّي اشتراكك لإضافة المزيد.`,
     nameAndPriceRequired: "اكتب اسم المنتج وسعرًا صحيحًا أو اكتب 0 للمنتج المجاني.",
     freeOnlyFiles: "المنتج المجاني حاليًا متاح للملفات فقط.",
     fillNamePriceFile: "عبّي اسم المنتج والسعر واختر ملف المنتج.",
@@ -785,6 +786,7 @@ const DASH_T = {
     adDraftError: "Couldn't prepare the ad text right now. Try again shortly.",
     copyDraftError: "Couldn't copy the draft. Copy it manually.",
     trialLimitError: "The free trial allows one product only. Upgrade your subscription to add more.",
+    planLimitError: (limit) => `You've reached your plan's limit (${limit} products). Upgrade your subscription to add more.`,
     nameAndPriceRequired: "Write the product name and a valid price, or write 0 for a free product.",
     freeOnlyFiles: "Free products are currently available for files only.",
     fillNamePriceFile: "Fill in the product name and price, and choose the product file.",
@@ -1700,6 +1702,10 @@ export default function Dashboard() {
       setError(t.trialLimitError);
       return;
     }
+    if (planLimitReached) {
+      setError(t.planLimitError(planProductLimit));
+      return;
+    }
 
     const cleanName = name.trim();
     const numericPrice = Number(price);
@@ -2597,6 +2603,8 @@ export default function Dashboard() {
   const initial = (storeName || t.initialFallback).charAt(0);
   const isTrial = sellerPlan === "trial";
   const trialLimitReached = isTrial && (trialProductClaimed || products.length >= 1);
+  const planProductLimit = productLimitForPlan(sellerPlan);
+  const planLimitReached = !isTrial && products.length >= planProductLimit;
   const publishedProducts = products.filter((product) => !product.hidden && !product.suspended);
   const hiddenProducts = products.filter((product) => product.hidden || product.suspended);
   const campaignVisitTotal = campaignLinks.reduce((total, link) => total + (Number(link.visits) || 0), 0);
@@ -2745,6 +2753,13 @@ export default function Dashboard() {
       {isTrial && (
         <div className="dh-verify-banner" style={{ background: "#FFF8E9", borderBottomColor: "#EFD9AB", color: "#7A5A17" }}>
           <span>{trialLimitReached ? t.trialUsedUp : t.trialActive}</span>
+          <button type="button" onClick={() => setTab("subscription")}>{t.upgradeSubscription}</button>
+        </div>
+      )}
+
+      {planLimitReached && (
+        <div className="dh-verify-banner" style={{ background: "#FFF8E9", borderBottomColor: "#EFD9AB", color: "#7A5A17" }}>
+          <span>{t.planLimitError(planProductLimit)}</span>
           <button type="button" onClick={() => setTab("subscription")}>{t.upgradeSubscription}</button>
         </div>
       )}
@@ -3647,7 +3662,8 @@ export default function Dashboard() {
 
         {tab === "subscription" && (() => {
           const addOnsMonthlyTotal = activeAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-          const monthlyTotal = BASE_MONTHLY_PRICE + addOnsMonthlyTotal;
+          const planBasePrice = sellerPlan === "pro" ? PRO_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
+          const monthlyTotal = planBasePrice + addOnsMonthlyTotal;
           const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
           const daysLeft = subscriptionDaysLeft;
           return (
@@ -3675,7 +3691,7 @@ export default function Dashboard() {
                   <b style={{ display: "block", color: "#0B0B0C", fontSize: 13 }}>{t.baseStoreLabel}</b>
                   <span className="dh-hint">{t.baseStoreDesc}</span>
                 </div>
-                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{BASE_MONTHLY_PRICE.toFixed(2)} {curr}</b>
+                <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{planBasePrice.toFixed(2)} {curr}</b>
               </div>
               {!isTrial && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>

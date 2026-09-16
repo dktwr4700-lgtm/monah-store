@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const CTA_WIDTH = 168;
@@ -72,6 +72,9 @@ const ST_T = {
     haveStoreLogin: "عندك متجر بالفعل؟ سجّل الدخول",
     activateStore: "فعّل متجرك",
     subscriptionIntro: (price) => `اشتراك متجرك الأساسي ${price} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.`,
+    choosePlan: "اختر باقتك",
+    basicPlanOption: (price, limit) => `الأساسية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
+    proPlanOption: (price, limit) => `برو — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     optionalAddOns: "إضافات اختيارية (تقدر تتخطاها الآن)",
     perMonth: "ر.ع/شهريًا",
     couponLabel: "كود خصم (اختياري)", couponPlaceholder: "اكتب الكود هنا", checking: "...", check: "تحقق",
@@ -111,6 +114,9 @@ const ST_T = {
     haveStoreLogin: "Already have a store? Log in",
     activateStore: "Activate your store",
     subscriptionIntro: (price) => `Your base store subscription is ${price} OMR/month. You can add optional add-ons now or later from the seller dashboard.`,
+    choosePlan: "Choose your plan",
+    basicPlanOption: (price, limit) => `Basic — ${price} OMR/month — up to ${limit} products`,
+    proPlanOption: (price, limit) => `Pro — ${price} OMR/month — up to ${limit} products`,
     optionalAddOns: "Optional add-ons (you can skip these for now)",
     perMonth: "OMR/month",
     couponLabel: "Discount code (optional)", couponPlaceholder: "Enter the code here", checking: "...", check: "Check",
@@ -161,6 +167,7 @@ export default function StartStore() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [selectedAddOns, setSelectedAddOns] = useState([]);
+  const [selectedPlan, setSelectedPlan] = useState("basic");
   const [couponCode, setCouponCode] = useState("");
   const [couponChecking, setCouponChecking] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -284,7 +291,8 @@ export default function StartStore() {
   }
 
   const addOnsTotal = selectedAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-  const paymentTotal = Math.max(0.1, BASE_MONTHLY_PRICE + addOnsTotal - couponDiscount);
+  const planPrice = selectedPlan === "pro" ? PRO_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
+  const paymentTotal = Math.max(0.1, planPrice + addOnsTotal - couponDiscount);
 
   async function checkCoupon() {
     const code = couponCode.trim();
@@ -313,7 +321,7 @@ export default function StartStore() {
     setBusy(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const data = await signupRequest("create_card_charge", { addOns: selectedAddOns, couponCode: couponCode.trim() }, idToken, t);
+      const data = await signupRequest("create_card_charge", { addOns: selectedAddOns, plan: selectedPlan, couponCode: couponCode.trim() }, idToken, t);
       if (data.activated) {
         window.location.hash = "dashboard";
         return;
@@ -374,6 +382,17 @@ export default function StartStore() {
           <div className="invite-title">{t.activateStore}</div>
           {error && <div className="invite-message error">{error}</div>}
           <p className="invite-text">{t.subscriptionIntro(BASE_MONTHLY_PRICE.toFixed(2))}</p>
+          <div className="invite-field">
+            <label>{t.choosePlan}</label>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
+              <input type="radio" name="plan" checked={selectedPlan === "basic"} onChange={() => setSelectedPlan("basic")} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>{t.basicPlanOption(BASE_MONTHLY_PRICE.toFixed(2), BASE_PRODUCT_LIMIT)}</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", fontWeight: 400 }}>
+              <input type="radio" name="plan" checked={selectedPlan === "pro"} onChange={() => setSelectedPlan("pro")} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>{t.proPlanOption(PRO_MONTHLY_PRICE.toFixed(2), PRO_PRODUCT_LIMIT)}</span>
+            </label>
+          </div>
           <div className="invite-field">
             <label>{t.optionalAddOns}</label>
             {ADD_ON_CATALOG.filter((item) => item.key !== "digitalSelling").map((item) => (
