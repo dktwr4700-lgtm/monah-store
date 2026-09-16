@@ -1,7 +1,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ompayRequest, ompayChargeSucceeded } from "../lib/ompay-client.js";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 
@@ -12,8 +12,14 @@ if (!getApps().length) {
 
 const db = getFirestore();
 const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
+const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim();
+const RESEND_TIMEOUT_MS = 6000;
+const ADMIN_NOTIFY_EMAIL = "monahapp@outlook.sa";
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
-const MONTHLY_PLAN_PRICE = BASE_MONTHLY_PRICE;
+const PLAN_PRICES = { basic: BASE_MONTHLY_PRICE, pro: PRO_MONTHLY_PRICE };
+function resolvePlan(value) {
+  return value === "pro" ? "pro" : "basic";
+}
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const CUSTOM_DOMAIN_PRICE = CUSTOM_DOMAIN_MONTHLY_PRICE;
 const DOMAIN_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
@@ -124,9 +130,54 @@ function publicSignup(data) {
   };
 }
 
+// إشعار الإدارة بإيميل لما تاجر جديد يفعّل متجره (دفع الاشتراك ونجح). أفضل-جهد
+// فقط: أي فشل هنا ما يوقف تفعيل المتجر نفسه.
+async function notifyAdminOfNewSeller(request) {
+  if (!RESEND_API_KEY) {
+    console.error("notifyAdminOfNewSeller: skipped, RESEND_API_KEY is not set in this environment");
+    return;
+  }
+  try {
+    const storeName = cleanText(request.storeName, 80);
+    const html = `
+      <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
+        <h2 style="margin:0 0 12px">تاجر جديد فعّل متجره 🎉</h2>
+        <p><strong>اسم المتجر:</strong> ${storeName || "—"}</p>
+        <p><strong>إيميل التاجر:</strong> ${request.email || "—"}</p>
+        <p><strong>نوع المتجر:</strong> ${request.storeType || "—"}</p>
+      </div>`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+    try {
+      const resendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: "مُونة <notifications@monah-app.com>",
+          to: [ADMIN_NOTIFY_EMAIL],
+          subject: `تاجر جديد فعّل متجره${storeName ? " - " + storeName : ""}`,
+          html,
+        }),
+        signal: controller.signal,
+      });
+      if (!resendResponse.ok) {
+        const body = await resendResponse.text().catch(() => "");
+        console.error("notifyAdminOfNewSeller: Resend rejected the request", resendResponse.status, body);
+      } else {
+        console.log("notifyAdminOfNewSeller: sent to", ADMIN_NOTIFY_EMAIL);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (err) {
+    console.error("notifyAdminOfNewSeller failed", err);
+  }
+}
+
 async function activateSeller(uid, request) {
   const sellerRef = db.collection("sellers").doc(uid);
   const requestRef = db.collection("merchantSignups").doc(uid);
+  let created = false;
   await db.runTransaction(async (transaction) => {
     const sellerSnap = await transaction.get(sellerRef);
     if (sellerSnap.exists) return;
@@ -135,12 +186,14 @@ async function activateSeller(uid, request) {
       email: request.email,
       storeType: request.storeType,
       createdAt: FieldValue.serverTimestamp(),
-      plan: "basic",
+      plan: resolvePlan(request.selectedPlan),
       subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
       activeAddOns: cleanAddOnKeys(request.selectedAddOns),
     });
     transaction.update(requestRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
+    created = true;
   });
+  if (created) await notifyAdminOfNewSeller(request);
 }
 
 // التجربة المجانية تفعّل حساب التاجر فورًا بدون دفع — منتج واحد فقط وبدون تاريخ
@@ -239,8 +292,9 @@ async function createCardCharge(req, res) {
   // "البيع الرقمي" يحتاج بوابة دفع خاصة بالتاجر مربوطة، وما فيه متجر بعد وقت التسجيل
   // حتى يقدر يربطها — تُستثنى هنا وتُشترى لاحقًا من لوحة التاجر بعد ربط البوابة.
   const selectedAddOns = cleanAddOnKeys(req.body?.addOns).filter((key) => key !== "digitalSelling");
+  const selectedPlan = resolvePlan(req.body?.plan);
   const { discountAmount, couponCode } = await resolveSignupCoupon(req.body?.couponCode);
-  const rawAmount = MONTHLY_PLAN_PRICE + addOnsTotal(selectedAddOns);
+  const rawAmount = PLAN_PRICES[selectedPlan] + addOnsTotal(selectedAddOns);
   const amount = Math.max(0.1, Number((rawAmount - discountAmount).toFixed(2)));
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `SUB-${account.uid}-${Date.now()}`;
@@ -255,7 +309,7 @@ async function createCardCharge(req, res) {
   if (!redirectUrl) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
-  await requestRef.update({ ompayReferenceNumber: referenceNumber, selectedAddOns, signupCouponCode: couponCode || null });
+  await requestRef.update({ ompayReferenceNumber: referenceNumber, selectedAddOns, selectedPlan, signupCouponCode: couponCode || null });
   return res.status(200).json({ url: redirectUrl });
 }
 
@@ -451,14 +505,16 @@ async function createRenewalCharge(req, res) {
   if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
   const seller = sellerSnap.data();
 
+  const renewalPlan = resolvePlan(seller.plan);
+
   if (seller.pendingRenewalReferenceNumber
     && await priorChargeSucceeded(seller.pendingRenewalReferenceNumber, "renew", account.uid)) {
     const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
-    await sellerRef.update({ subscriptionExpiresAt, plan: "basic", pendingRenewalReferenceNumber: FieldValue.delete() });
+    await sellerRef.update({ subscriptionExpiresAt, plan: renewalPlan, pendingRenewalReferenceNumber: FieldValue.delete() });
     return res.status(200).json({ activated: true, subscriptionExpiresAt });
   }
 
-  const amount = MONTHLY_PLAN_PRICE + addOnsTotal(seller.activeAddOns || []);
+  const amount = PLAN_PRICES[renewalPlan] + addOnsTotal(seller.activeAddOns || []);
 
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `RENEW-${account.uid}-${Date.now()}`;
