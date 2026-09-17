@@ -40,21 +40,21 @@ const styles = `
   .bp-card{background:#fff;border:1px solid #e7e3d8;border-radius:22px;padding:24px}
   .bp-badge{display:inline-flex;background:#edf3ee;color:var(--pp-brand);border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:800}
   .bp-title{font-family:'Almarai',sans-serif;font-size:22px;line-height:1.55;margin:13px 0 9px}
-  .bp-store{font-size:12px;color:#777;line-height:1.7}
+  .bp-store{font-size:12px;color:#525252;line-height:1.7}
   .bp-price-row{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #eee9df;border-bottom:1px solid #eee9df;margin:20px 0;padding:16px 0}
-  .bp-price-label{font-size:12px;color:#777}
+  .bp-price-label{font-size:12px;color:#525252}
   .bp-price{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--pp-brand)}
-  .bp-description{font-size:13px;line-height:2;color:#4d4b46;white-space:pre-line}
+  .bp-description{font-size:13px;line-height:2;color:#332F29;white-space:pre-line}
   .bp-items{margin-top:18px;border:1px solid #eee9df;border-radius:14px;overflow:hidden}
   .bp-items-title{font-size:11px;font-weight:800;color:#6e695f;padding:11px 14px;background:#faf9f5}
   .bp-item{display:flex;align-items:center;gap:9px;padding:10px 14px;border-top:1px solid #eee9df;font-size:12.5px}
   .bp-item span{color:var(--pp-brand)}
-  .bp-note{font-size:10.5px;line-height:1.7;color:#89857a;text-align:center;margin:14px 8px 0}
+  .bp-note{font-size:10.5px;line-height:1.7;color:#5A5648;text-align:center;margin:14px 8px 0}
   .bp-state{min-height:72vh;display:flex;align-items:center;justify-content:center;padding:20px}
   .bp-state-card{max-width:430px;width:100%;text-align:center;background:#fff;border:1px solid #e7e3d8;border-radius:24px;padding:35px 25px}
   .bp-state-mark{width:58px;height:58px;background:#eaf0eb;color:#163f2e;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 15px;font-size:23px}
   .bp-state h1{font-family:'Almarai',sans-serif;font-size:17px;margin:0 0 9px}
-  .bp-state p{font-size:12.5px;line-height:1.9;color:#777;margin:0 0 18px}
+  .bp-state p{font-size:12.5px;line-height:1.9;color:#525252;margin:0 0 18px}
   .bp-state a{display:inline-flex;background:#111;color:#fff;text-decoration:none;border-radius:999px;padding:11px 16px;font-size:12px;font-weight:800}
   @media(max-width:680px){.bp-shell{padding:16px}.bp-card{padding:20px}.bp-title{font-size:19px}}
 `;

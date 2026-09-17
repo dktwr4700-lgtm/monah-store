@@ -25,7 +25,7 @@ const styles = `
   .hero{ margin-top:40px; display:flex; align-items:center; gap:0; }
   .hero-copy{ flex:1 1 380px; min-width:280px; padding-inline-end:44px; position:relative; z-index:2; }
   .hero h1{ font-family:'Almarai', sans-serif; font-weight:800; font-size:clamp(32px,4.1vw,48px); line-height:1.32; color:#153A2C; margin-bottom:18px; letter-spacing:-.02em; text-wrap:balance; }
-  .hero p{ color:#8A8677; font-size:15px; line-height:1.9; max-width:400px; margin-bottom:26px; }
+  .hero p{ color:#5A5648; font-size:15px; line-height:1.9; max-width:400px; margin-bottom:26px; }
   .pill-black{ display:inline-flex; align-items:center; gap:8px; background:#D6F35C; color:#143226; padding:14px 23px; border-radius:100px; font-weight:800; font-size:14px; cursor:pointer; border:none; font-family:'Cairo', sans-serif; box-shadow:0 10px 22px rgba(0,0,0,.15); transition:transform .16s ease-out, box-shadow .16s ease-out; }
   .pill-black:hover{ transform:translateY(-2px); box-shadow:0 16px 28px rgba(21,58,44,.16); }
   .hero-cta-row{ display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
@@ -48,15 +48,15 @@ const styles = `
   .receipt-tag{ position:absolute; top:-11px; right:22px; background:#153A2C; color:#F5F2EA; font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:100px; }
   .receipt-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
   .receipt-head b{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; color:#0B0B0C; }
-  .receipt-head span{ font-size:11px; color:#8A8677; }
-  .receipt-sub{ font-size:11px; color:#8A8677; margin-bottom:16px; }
+  .receipt-head span{ font-size:11px; color:#5A5648; }
+  .receipt-sub{ font-size:11px; color:#5A5648; margin-bottom:16px; }
   .receipt-rule{ border-top:1px dashed #E1DDD1; margin:14px 0; }
   .receipt-line{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; font-size:12.5px; padding:5px 0; }
   .receipt-line .label{ color:#0B0B0C; }
-  .receipt-line .label small{ display:block; color:#8A8677; font-size:10.5px; margin-top:2px; }
+  .receipt-line .label small{ display:block; color:#5A5648; font-size:10.5px; margin-top:2px; }
   .receipt-line .value{ font-size:12.5px; color:#0B0B0C; }
   .receipt-total{ display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; }
-  .receipt-total b{ font-size:11.5px; color:#8A8677; font-weight:600; }
+  .receipt-total b{ font-size:11.5px; color:#5A5648; font-weight:600; }
   .receipt-total .amount{ font-size:21px; font-weight:700; color:#0B0B0C; }
 
   .stamp{ position:absolute; left:26px; bottom:14px; width:92px; height:92px; border-radius:50%; opacity:.94; display:flex; align-items:center; justify-content:center; text-align:center; transform:rotate(-13deg); }
@@ -72,7 +72,7 @@ const styles = `
   .ledger-row:first-child{ border-top:none; }
   .ledger-row .k{ font-size:13.5px; font-weight:700; color:#153A2C; white-space:nowrap; }
   .ledger-row .fill{ flex:1; border-bottom:1px dotted #D8D2C2; transform:translateY(-4px); }
-  .ledger-row .v{ font-size:13px; color:#8A8677; white-space:nowrap; }
+  .ledger-row .v{ font-size:13px; color:#5A5648; white-space:nowrap; }
   .ledger-row .v.strong{ color:#0B0B0C; font-weight:700; }
 
   @media (prefers-reduced-motion: no-preference){
@@ -99,14 +99,14 @@ const styles = `
   section.section{ padding:78px 0; }
   .section-eyebrow{ text-align:center; font-size:11.5px; color:#B9832F; font-weight:700; letter-spacing:.04em; margin-bottom:8px; }
   h2.section-title{ text-align:center; font-family:'Almarai', sans-serif; font-weight:800; font-size:clamp(24px,3vw,32px); margin-bottom:10px; color:#153A2C; }
-  .section-sub{ text-align:center; color:#8A8677; font-size:13.5px; margin-bottom:34px; }
+  .section-sub{ text-align:center; color:#5A5648; font-size:13.5px; margin-bottom:34px; }
 
   .n-list{ max-width:640px; margin:0 auto; }
   .n-row{ display:flex; align-items:center; gap:16px; padding:18px 4px; border-top:1px solid #EDEAE0; }
   .n-row:first-child{ border-top:none; }
   .n-figure{ font-family:'Almarai', sans-serif; font-weight:800; font-size:15px; color:#B9832F; min-width:26px; }
   .n-text b{ display:block; font-size:14px; font-weight:700; margin-bottom:3px; }
-  .n-text span{ color:#8A8677; font-size:12.5px; line-height:1.7; }
+  .n-text span{ color:#5A5648; font-size:12.5px; line-height:1.7; }
 
   .style-list{ max-width:640px; margin:0 auto; }
   .style-row{ display:flex; justify-content:space-between; align-items:center; padding:16px 4px; border-top:1px solid #EDEAE0; }
@@ -114,34 +114,34 @@ const styles = `
   .style-row .left{ display:flex; align-items:center; gap:13px; }
   .style-swatch{ width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; }
   .style-row b{ display:block; font-size:13.5px; font-weight:700; color:#0B0B0C; }
-  .style-row span{ font-size:11px; color:#8A8677; }
+  .style-row span{ font-size:11px; color:#5A5648; }
 
   .features{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; max-width:900px; margin:0 auto; }
   .feature{ background:#FFFFFF; border:1px solid #E7E2D6; border-radius:18px; padding:23px; box-shadow:0 12px 24px rgba(26,46,35,.035); }
   .feature-icon{ width:34px; height:34px; border-radius:9px; background:#EAF0EB; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
   .feature b{ display:block; font-size:13.5px; font-weight:700; margin-bottom:5px; }
-  .feature span{ color:#8A8677; font-size:12px; line-height:1.7; }
+  .feature span{ color:#5A5648; font-size:12px; line-height:1.7; }
 
   .protection{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; max-width:900px; margin:0 auto; }
   .protection-item{ background:#FFFDF8; border:1px solid #E7E2D6; border-radius:18px; padding:23px; }
   .protection-icon{ width:34px; height:34px; border-radius:9px; background:#F3E9D6; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
   .protection-item b{ display:block; font-size:13.5px; font-weight:700; margin-bottom:5px; }
-  .protection-item span{ color:#8A8677; font-size:12px; line-height:1.7; }
+  .protection-item span{ color:#5A5648; font-size:12px; line-height:1.7; }
 
   .compare{ max-width:600px; margin:0 auto; background:#FFFFFF; border:1px solid #EDEAE0; border-radius:16px; overflow:hidden; }
   .compare-row{ display:grid; grid-template-columns:1.3fr 1fr 1fr; align-items:center; padding:13px 18px; border-top:1px solid #EDEAE0; }
   .compare-row:first-child{ border-top:none; background:#FBFAF7; }
-  .compare-row:first-child span{ font-size:11px; font-weight:700; color:#8A8677; }
+  .compare-row:first-child span{ font-size:11px; font-weight:700; color:#5A5648; }
   .compare-label{ color:#3D4A66; font-size:12.5px; }
   .compare-monah{ text-align:center; color:#4B6152; font-weight:700; font-size:12.5px; }
-  .compare-other{ text-align:center; color:#B0AC9C; font-size:12.5px; }
+  .compare-other{ text-align:center; color:#7A766A; font-size:12.5px; }
 
   .billing-toggle{ display:flex; justify-content:center; align-items:center; gap:14px; margin-bottom:14px; }
   .billing-btn{ padding:10px 20px; border-radius:100px; font-size:12.5px; font-weight:700; cursor:pointer; border:1px solid #EDEAE0; background:#FFFFFF; color:#3D4A66; }
   .billing-btn.active{ background:#0B0B0C; color:#fff; border-color:#0B0B0C; }
   .billing-save-badge{ background:#EAF0EB; color:#4B6152; font-size:10px; font-weight:700; padding:3px 9px; border-radius:100px; margin-right:6px; }
 
-  .common-features{ text-align:center; color:#8A8677; font-size:11.5px; max-width:640px; margin:0 auto 28px; line-height:2; }
+  .common-features{ text-align:center; color:#5A5648; font-size:11.5px; max-width:640px; margin:0 auto 28px; line-height:2; }
   .common-features b{ color:#0B0B0C; }
 
   .pricing{ display:flex; gap:16px; max-width:920px; margin:0 auto 20px; flex-wrap:wrap; justify-content:center; align-items:stretch; }
@@ -149,25 +149,25 @@ const styles = `
   .price-card.popular{ border:2px solid #153A2C; padding-top:30px; box-shadow:0 18px 36px rgba(21,58,44,.12); transform:translateY(-6px); }
   .price-badge{ position:absolute; top:-12px; right:22px; background:#B9832F; color:#fff; font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:100px; }
   .price-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; margin-bottom:6px; }
-  .price-desc{ color:#8A8677; font-size:11px; line-height:1.7; margin-bottom:14px; min-height:30px; }
+  .price-desc{ color:#5A5648; font-size:11px; line-height:1.7; margin-bottom:14px; min-height:30px; }
   .price-value{ display:flex; align-items:baseline; gap:6px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:24px; margin-bottom:4px; }
-  .price-value span{ font-size:11.5px; color:#8A8677; font-family:'Cairo', sans-serif; font-weight:400; }
+  .price-value span{ font-size:11.5px; color:#5A5648; font-family:'Cairo', sans-serif; font-weight:400; }
   .price-yearly-note{ font-size:10.5px; color:#B9832F; font-weight:700; margin-bottom:14px; padding-bottom:14px; border-bottom:1px dashed #EDEAE0; min-height:14px; }
   .price-features{ flex:1; }
   .price-features div{ display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:#3D4A66; line-height:1.6; padding:5px 0; }
   .price-soon{ margin-top:8px; padding-top:8px; border-top:1px dashed #EDEAE0; }
   .price-soon-label{ color:#B9832F; font-size:9.5px; font-weight:700; margin-bottom:4px; }
-  .price-soon div{ font-size:10.5px; color:#B0AC9C; padding:2px 0; }
+  .price-soon div{ font-size:10.5px; color:#7A766A; padding:2px 0; }
   .price-btn{ width:100%; margin-top:18px; padding:12px; border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer; border:1.5px solid #0B0B0C; background:transparent; color:#0B0B0C; display:block; text-align:center; }
   .price-card.popular .price-btn{ background:#153A2C; color:#fff; border:none; }
-  .pricing-note{ text-align:center; color:#8A8677; font-size:11.5px; max-width:480px; margin:0 auto; line-height:1.8; }
+  .pricing-note{ text-align:center; color:#5A5648; font-size:11.5px; max-width:480px; margin:0 auto; line-height:1.8; }
 
   .faq{ max-width:640px; margin:0 auto; }
   .faq-item{ border-top:1px solid #EDEAE0; }
   .faq-item:last-child{ border-bottom:1px solid #EDEAE0; }
   .faq-q{ width:100%; text-align:right; background:none; border:none; cursor:pointer; padding:17px 0; display:flex; gap:12px; align-items:center; font-size:14px; font-weight:700; font-family:'Cairo', sans-serif; color:#0B0B0C; }
   .faq-q .n{ color:#B9832F; font-family:'JetBrains Mono', monospace; font-size:11.5px; }
-  .faq-a{ color:#8A8677; font-size:12.5px; line-height:1.8; padding-bottom:17px; padding-right:28px; max-width:500px; }
+  .faq-a{ color:#5A5648; font-size:12.5px; line-height:1.8; padding-bottom:17px; padding-right:28px; max-width:500px; }
 
   .final-cta{ padding:62px 0 30px; }
   .final-cta-inner{ min-height:290px; padding:44px 52px; border-radius:28px; background:linear-gradient(120deg,#14382B,#1C4A38); color:#fff; display:flex; align-items:center; justify-content:space-between; gap:30px; overflow:hidden; position:relative; box-shadow:0 24px 50px rgba(15,48,35,.16); }
@@ -239,7 +239,7 @@ const USECASES = [
   { title: { ar: "ملفات وتصاميم", en: "Files & designs" }, desc: { ar: "PDF، قوالب، صور", en: "PDF, templates, images" }, color: "#0E3B2C" },
   { title: { ar: "أكواد وتراخيص", en: "Codes & licenses" }, desc: { ar: "سكربتات، مفاتيح تفعيل", en: "Scripts, activation keys" }, color: "#B9832F" },
   { title: { ar: "دورات وملفات تعليمية", en: "Courses & learning materials" }, desc: { ar: "فيديو، ملخصات", en: "Video, summaries" }, color: "#4B6152" },
-  { title: { ar: "برستات ومحتوى", en: "Presets & content" }, desc: { ar: "قوالب سوشيال ميديا", en: "Social media templates" }, color: "#8A8677" },
+  { title: { ar: "برستات ومحتوى", en: "Presets & content" }, desc: { ar: "قوالب سوشيال ميديا", en: "Social media templates" }, color: "#5A5648" },
 ];
 
 const START_STORE_URL = "#start-store";
@@ -573,7 +573,7 @@ export default function App() {
                 {ADD_ON_CATALOG.map((item) => (
                   <div key={item.key} style={{ marginBottom: 10 }}>
                     <div>○ <b>{lang === "en" ? item.titleEn : item.title}</b> — {item.price} {lang === "en" ? "OMR" : "ر.ع"}</div>
-                    <div style={{ color: "#8A8677", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{lang === "en" ? item.descEn : item.desc}</div>
+                    <div style={{ color: "#5A5648", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{lang === "en" ? item.descEn : item.desc}</div>
                   </div>
                 ))}
               </div>

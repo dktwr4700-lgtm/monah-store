@@ -16,15 +16,15 @@ const STORE_TYPES = {
 const styles = `
   .invite-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FFFFFF;padding:20px;font-family:'Cairo',sans-serif;color:#16233F}
   .invite-card{width:100%;max-width:420px;background:#fff;border:1px solid #E4E0D3;border-radius:20px;padding:28px 24px;box-shadow:0 16px 34px rgba(22,35,63,.07)}
-  .invite-brand{font-family:'Almarai',sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:8px}.invite-title{font-family:'Almarai',sans-serif;font-size:17px;font-weight:800;text-align:center;margin-bottom:8px}.invite-text{font-size:12.5px;line-height:1.85;color:#625F55;text-align:center;margin:0 0 18px}
-  .invite-field{margin-bottom:14px}.invite-field label{display:block;font-size:12px;font-weight:800;color:#625F55;margin-bottom:6px}.invite-field input,.invite-field select{box-sizing:border-box;width:100%;padding:12px 13px;border:1px solid #E4E0D3;border-radius:10px;background:#FBFAF7;font:13px 'Cairo',sans-serif}
+  .invite-brand{font-family:'Almarai',sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:8px}.invite-title{font-family:'Almarai',sans-serif;font-size:17px;font-weight:800;text-align:center;margin-bottom:8px}.invite-text{font-size:12.5px;line-height:1.85;color:#403D35;text-align:center;margin:0 0 18px}
+  .invite-field{margin-bottom:14px}.invite-field label{display:block;font-size:12px;font-weight:800;color:#403D35;margin-bottom:6px}.invite-field input,.invite-field select{box-sizing:border-box;width:100%;padding:12px 13px;border:1px solid #E4E0D3;border-radius:10px;background:#FBFAF7;font:13px 'Cairo',sans-serif}
   .invite-btn{width:100%;border:0;border-radius:100px;padding:13px;background:#16233F;color:#fff;font:700 13.5px 'Cairo',sans-serif;cursor:pointer}.invite-btn:disabled{opacity:.6}
   .invite-message{border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px}.invite-message.error{background:#F6E9E5;color:#A34839}
   .invite-back{display:block;text-align:center;margin-top:16px;font-size:12px;font-weight:800;color:#16233F;text-decoration:none}
   .invite-google{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;background:#fff;color:#16233F;font:700 13px 'Cairo',sans-serif;padding:12px;border:1px solid #E4E0D3;border-radius:100px;cursor:pointer;margin-bottom:16px}
   .invite-google:disabled{opacity:.6}
-  .invite-lang{display:block;margin:0 auto 12px;border:1px solid #E4E0D3;background:#fff;color:#625F55;border-radius:100px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
-  .invite-divider{display:flex;align-items:center;gap:10px;color:#B0AC9C;font-size:11px;margin-bottom:16px}
+  .invite-lang{display:block;margin:0 auto 12px;border:1px solid #E4E0D3;background:#fff;color:#403D35;border-radius:100px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
+  .invite-divider{display:flex;align-items:center;gap:10px;color:#7A766A;font-size:11px;margin-bottom:16px}
   .invite-divider::before,.invite-divider::after{content:"";flex:1;height:1px;background:#E4E0D3}
   .invite-page button{transition:transform 100ms ease-out}.invite-page button:active{transform:scale(.96)}
   .invite-cta-track{display:flex;justify-content:center;padding:2px 0}
@@ -32,7 +32,7 @@ const styles = `
   .invite-cta-track .invite-btn:active{transform:translateX(var(--cta-offset,0px)) scale(.96)}
   .invite-cta-track .invite-btn.fleeing{transition:transform 190ms cubic-bezier(.3,1.4,.6,1)}
   .invite-cta-track .invite-btn.ready{background:#163F2E;box-shadow:0 0 0 3px rgba(55,114,75,.18)}
-  .invite-cta-hint{text-align:center;font-size:11px;color:#8A8677;margin-top:9px}
+  .invite-cta-hint{text-align:center;font-size:11px;color:#5A5648;margin-top:9px}
   .invite-cta-hint.ready{color:#37724B;font-weight:700}
   @media (prefers-reduced-motion: reduce){.invite-cta-track .invite-btn,.invite-cta-track .invite-btn.fleeing{transform:none!important;transition:background 200ms ease}}
 `;
@@ -407,8 +407,8 @@ export default function StartStore() {
               <label key={item.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
                 <input type="checkbox" checked={selectedAddOns.includes(item.key)} onChange={() => toggleAddOn(item.key)} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
                 <span style={{ fontSize: 12.5, lineHeight: 1.7, flex: 1, minWidth: 0 }}>
-                  <b>{lang === "en" ? item.titleEn : item.title}</b> — <span style={{ color: "#625F55" }}>+{item.price.toFixed(2)} {t.perMonth}</span>
-                  <br /><span style={{ color: "#8A8677" }}>{lang === "en" ? item.descEn : item.desc}</span>
+                  <b>{lang === "en" ? item.titleEn : item.title}</b> — <span style={{ color: "#403D35" }}>+{item.price.toFixed(2)} {t.perMonth}</span>
+                  <br /><span style={{ color: "#5A5648" }}>{lang === "en" ? item.descEn : item.desc}</span>
                 </span>
               </label>
             ))}

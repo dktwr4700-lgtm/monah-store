@@ -52,19 +52,19 @@ const styles = `
   .auth-brand{ font-family:'Almarai', sans-serif; font-weight:800; font-size:19px; color:#0B0B0C; text-align:center; margin-bottom:6px; }
   .auth-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:17px; text-align:center; margin-bottom:20px; color:#0B0B0C; }
   .auth-field{ margin-bottom:14px; }
-  .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#8A8677; }
+  .auth-field label{ display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#5A5648; }
   .auth-field input{ width:100%; padding:12px 14px; border:1px solid #EDEAE0; border-radius:10px; font-family:'Cairo'; font-size:13.5px; background:#FBFAF7; box-sizing:border-box; }
   .auth-btn{ width:100%; background:#0B0B0C; color:#fff; font-weight:700; font-size:14.5px; padding:13px; border:none; border-radius:100px; cursor:pointer; margin-top:6px; }
   .auth-btn:disabled{ opacity:.6; }
   .auth-error{ background:#F6E9E5; color:#B24C3A; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px; }
   .auth-success{ background:#EAF0EB; color:#4B6152; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px; }
   .auth-forgot{ text-align:left; margin-top:-6px; margin-bottom:14px; }
-  .auth-forgot button{ background:none; border:none; color:#8A8677; font-size:12px; font-family:'Cairo'; cursor:pointer; text-decoration:underline; padding:0; }
-  .auth-switch{ text-align:center; font-size:12.5px; color:#8A8677; margin-top:16px; }
+  .auth-forgot button{ background:none; border:none; color:#5A5648; font-size:12px; font-family:'Cairo'; cursor:pointer; text-decoration:underline; padding:0; }
+  .auth-switch{ text-align:center; font-size:12.5px; color:#5A5648; margin-top:16px; }
   .auth-switch a{ color:#0B0B0C; font-weight:700; text-decoration:none; }
   .auth-google{ width:100%; display:flex; align-items:center; justify-content:center; gap:9px; background:#fff; color:#0B0B0C; font-weight:700; font-size:13.5px; padding:12px; border:1px solid #EDEAE0; border-radius:100px; cursor:pointer; margin-bottom:16px; }
   .auth-google:disabled{ opacity:.6; }
-  .auth-divider{ display:flex; align-items:center; gap:10px; color:#B0AC9C; font-size:11px; margin-bottom:16px; }
+  .auth-divider{ display:flex; align-items:center; gap:10px; color:#7A766A; font-size:11px; margin-bottom:16px; }
   .auth-divider::before,.auth-divider::after{ content:""; flex:1; height:1px; background:#EDEAE0; }
 
   .auth-page button{ transition:transform 100ms ease-out; }
@@ -74,7 +74,7 @@ const styles = `
   .auth-cta-track .auth-btn:active{transform:translateX(var(--cta-offset,0px)) scale(.96)}
   .auth-cta-track .auth-btn.fleeing{transition:transform 190ms cubic-bezier(.3,1.4,.6,1)}
   .auth-cta-track .auth-btn.ready{background:#163F2E;box-shadow:0 0 0 3px rgba(55,114,75,.18)}
-  .auth-cta-hint{text-align:center;font-size:11px;color:#8A8677;margin-top:9px}
+  .auth-cta-hint{text-align:center;font-size:11px;color:#5A5648;margin-top:9px}
   .auth-cta-hint.ready{color:#37724B;font-weight:700}
   @media (prefers-reduced-motion: reduce){.auth-cta-track .auth-btn,.auth-cta-track .auth-btn.fleeing{transform:none!important;transition:background 200ms ease}}
 `;
@@ -217,7 +217,7 @@ export default function Login() {
       <style>{styles}</style>
       <div className="auth-card">
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>
-          <LangToggle lang={lang} onChange={setLang} className="auth-forgot" style={{ background: "none", border: "1px solid #EDEAE0", borderRadius: 100, padding: "6px 12px", cursor: "pointer", fontSize: 11, fontWeight: 800, color: "#8A8677" }} />
+          <LangToggle lang={lang} onChange={setLang} className="auth-forgot" style={{ background: "none", border: "1px solid #EDEAE0", borderRadius: 100, padding: "6px 12px", cursor: "pointer", fontSize: 11, fontWeight: 800, color: "#5A5648" }} />
         </div>
         <a className="auth-brand" href="#" style={{ display: "block", textDecoration: "none" }}>Monah</a>
         <div className="auth-title">{t.login}</div>
