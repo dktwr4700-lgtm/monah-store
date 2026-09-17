@@ -7,7 +7,7 @@ import {
   serverTimestamp, doc, setDoc, getDoc, getDocs, writeBatch,
   deleteDoc, updateDoc, increment
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan } from "./subscriptionCatalog.js";
@@ -528,7 +528,7 @@ const DASH_T = {
     eachCustomerCodeHint: "كل زبون ياخذ كود مختلف تلقائيًا. عدد الأسطر = عدد الأكواد المتوفرة.",
     previewProduct: "معاينة المنتج",
     saveAsDraft: "حفظ كمسودة",
-    uploadingFileMsg: "جاري رفع الملف...",
+    uploadingFileMsg: (pct) => `جاري رفع الملف... ${pct}%`,
     publishingMsg: "جاري النشر...",
     publishProduct: "نشر المنتج",
     draftHintBottom: "\"حفظ كمسودة\" يحفظ المنتج مخفيًا عن الزوار — تقدر تنشره بعدين من قائمة منتجاتك.",
@@ -992,7 +992,7 @@ const DASH_T = {
     eachCustomerCodeHint: "Each customer automatically gets a different code. Number of lines = number of available codes.",
     previewProduct: "Preview product",
     saveAsDraft: "Save as draft",
-    uploadingFileMsg: "Uploading the file...",
+    uploadingFileMsg: (pct) => `Uploading the file... ${pct}%`,
     publishingMsg: "Publishing...",
     publishProduct: "Publish product",
     draftHintBottom: "\"Save as draft\" saves the product hidden from visitors — you can publish it later from your products list.",
@@ -1303,6 +1303,7 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [copied, setCopied] = useState("");
   const [productQuery, setProductQuery] = useState("");
   const [productFilter, setProductFilter] = useState("all");
@@ -1764,10 +1765,23 @@ export default function Dashboard() {
       try {
         if (productType === "file" && productFile) {
           setUploadingFile(true);
+          setUploadProgress(0);
           const safeName = productFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
           const filePath = `secure/${productRef.id}/${safeName}`;
           const fileRef = ref(storage, filePath);
-          await uploadBytes(fileRef, productFile);
+          // نستخدم الرفع القابل للاستئناف (resumable) بدل الرفع العادي لأن ملفات
+          // المنتج تصل لين 5 جيجا (فيديوهات كورسات مثلًا) — الرفع العادي بدون
+          // متابعة تقدّم يخلي المستخدم يحس إن الصفحة "علقت"، وأي انقطاع بسيط
+          // بالاتصال يفشّل الرفع كامل من الصفر بدل ما يكمل من نفس النقطة.
+          await new Promise((resolve, reject) => {
+            const uploadTask = uploadBytesResumable(fileRef, productFile);
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => setUploadProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)),
+              reject,
+              resolve
+            );
+          });
           await updateDoc(doc(db, "products", productRef.id), { filePath });
         }
         await updateDoc(doc(db, "products", productRef.id), { hidden: !publish });
@@ -1783,6 +1797,7 @@ export default function Dashboard() {
       setDescription("");
       setProductFile(null);
       setFileInputKey((k) => k + 1);
+      setUploadProgress(0);
       setCategory("");
       setCodesText("");
       setProductType("file");
@@ -3017,7 +3032,7 @@ export default function Dashboard() {
                     {saving ? "..." : t.saveAsDraft}
                   </button>
                   <button className="dh-btn" type="button" onClick={(e) => handleAddProduct(e, true)} disabled={saving} style={{ flex: 1 }}>
-                    {saving ? (uploadingFile ? t.uploadingFileMsg : t.publishingMsg) : t.publishProduct}
+                    {saving ? (uploadingFile ? t.uploadingFileMsg(uploadProgress) : t.publishingMsg) : t.publishProduct}
                   </button>
                 </div>
                 <div className="dh-hint" style={{ marginTop: 8, textAlign: "center" }}>
