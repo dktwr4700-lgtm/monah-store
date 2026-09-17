@@ -25,6 +25,7 @@ const styles = `
   .hero{ margin-top:40px; display:flex; align-items:center; gap:0; }
   .hero-copy{ flex:1 1 380px; min-width:280px; padding-inline-end:44px; position:relative; z-index:2; }
   .hero h1{ font-family:'Almarai', sans-serif; font-weight:800; font-size:clamp(32px,4.1vw,48px); line-height:1.32; color:#153A2C; margin-bottom:18px; letter-spacing:-.02em; text-wrap:balance; }
+  .hero-eyebrow{ display:inline-flex; align-items:center; gap:7px; background:#EAF0EB; color:#153A2C; font-size:12px; font-weight:800; padding:7px 14px; border-radius:100px; margin-bottom:16px; }
   .hero p{ color:#5A5648; font-size:15px; line-height:1.9; max-width:400px; margin-bottom:26px; }
   .pill-black{ display:inline-flex; align-items:center; gap:8px; background:#D6F35C; color:#143226; padding:14px 23px; border-radius:100px; font-weight:800; font-size:14px; cursor:pointer; border:none; font-family:'Cairo', sans-serif; box-shadow:0 10px 22px rgba(0,0,0,.15); transition:transform .16s ease-out, box-shadow .16s ease-out; }
   .pill-black:hover{ transform:translateY(-2px); box-shadow:0 16px 28px rgba(21,58,44,.16); }
@@ -245,9 +246,11 @@ const USECASES = [
 const START_STORE_URL = "#start-store";
 
 const STEPS = [
-  { n: "01", title: { ar: "تفتح متجرك وتفعّل اشتراكك", en: "Open your store and activate your subscription" }, desc: { ar: "تسجّل بياناتك وتختار كلمة مرورك بنفسك، وتدفع اشتراكك الشهري بالبطاقة أو تحويل يدوي.", en: "Register your details, choose your own password, and pay your monthly subscription by card or manual transfer." } },
-  { n: "02", title: { ar: "ترفع منتجاتك الرقمية", en: "Upload your digital products" }, desc: { ar: "ملفات، تصاميم، أكواد — أي شي رقمي تبيعه.", en: "Files, designs, codes — anything digital you sell." } },
-  { n: "03", title: { ar: "تشارك الرابط وتستلم الطلبات", en: "Share your link and receive orders" }, desc: { ar: "العميل يطلب المنتج ويرفع إثبات التحويل، وأنت تؤكد الاستلام فيفتح التنزيل له تلقائيًا.", en: "The buyer orders the product and uploads proof of transfer; once you confirm, the download unlocks for them automatically." } },
+  { n: "01", title: { ar: "اضغط \"افتح متجرك الحين\" وسجّل بياناتك", en: "Click \"Open your store now\" and register" }, desc: { ar: "تكتب اسم متجرك وبريدك الإلكتروني وتختار كلمة مرورك بنفسك — بدون خبرة تقنية.", en: "Enter your store name and email, and choose your own password — no technical experience needed." } },
+  { n: "02", title: { ar: "فعّل اشتراكك بالبطاقة", en: "Activate your subscription by card" }, desc: { ar: "تدفع 5 ر.ع شهريًا، ويفتح متجرك ولوحة التحكم فورًا بعد الدفع.", en: "Pay 5 OMR/month, and your store and dashboard open right after payment." } },
+  { n: "03", title: { ar: "من لوحتك اضغط \"إضافة منتج\"", en: "From your dashboard, click \"Add product\"" }, desc: { ar: "ترفع ملفك (PDF، صورة، فيديو، كود...) وتكتب اسمه وسعره ووصفه، ثم تنشره.", en: "Upload your file (PDF, image, video, code…), write its name, price, and description, then publish it." } },
+  { n: "04", title: { ar: "يصير لمنتجك رابط خاص فيه", en: "Your product gets its own link" }, desc: { ar: "تنسخه وتشاركه بواتساب أو إنستغرام أو أي مكان تحب.", en: "Copy it and share it on WhatsApp, Instagram, or anywhere you like." } },
+  { n: "05", title: { ar: "العميل يطلب وأنت تؤكد الاستلام", en: "The buyer orders and you confirm receipt" }, desc: { ar: "يرفع إثبات التحويل، وبعد ما تأكد استلامك المبلغ من لوحتك، يفتح التنزيل له تلقائيًا.", en: "They upload proof of transfer; once you confirm you received the payment from your dashboard, the download unlocks for them automatically." } },
 ];
 
 const FAQS = [
@@ -280,6 +283,7 @@ const NAV_T = {
 };
 const HERO_T = {
   ar: {
+    heroEyebrow: "🏬 منصة إنشاء متاجر رقمية — أنشئ متجرك الخاص وبِع منتجاتك",
     h1a: "بيع منتجك الرقمي", h1b: "من رابط واحد",
     p: "ارفع ملفك، شارك رابط منتجك على واتساب أو إنستغرام، والعميل يطلبه ويرفع إثبات التحويل — تؤكد الاستلام فيفتح التنزيل له تلقائيًا.",
     ctaOpen: "افتح متجرك الحين ←", ctaHow: "شاهد كيف تعمل",
@@ -293,6 +297,7 @@ const HERO_T = {
     ledgerProtection: "حماية روابط التنزيل", ledgerProtectionValue: "مفعّلة على كل منتج",
   },
   en: {
+    heroEyebrow: "🏬 A platform to build your own online store and sell your products",
     h1a: "Sell your digital product", h1b: "from a single link",
     p: "Upload your file, share your product link on WhatsApp or Instagram — the buyer orders it and uploads proof of transfer. You confirm receipt, and the download unlocks for them automatically.",
     ctaOpen: "Open your store now →", ctaHow: "See how it works",
@@ -394,6 +399,7 @@ export default function App() {
       <div className="wrap">
         <div className="hero">
           <div className="hero-copy">
+            <div className="hero-eyebrow">{ht.heroEyebrow}</div>
             <h1>{ht.h1a}<br/>{ht.h1b}</h1>
             <p>{ht.p}</p>
             <div className="hero-cta-row">
