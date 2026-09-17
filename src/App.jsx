@@ -282,8 +282,6 @@ const HERO_T = {
   ar: {
     h1a: "بيع منتجك الرقمي", h1b: "من رابط واحد",
     p: "ارفع ملفك، شارك رابط منتجك على واتساب أو إنستغرام، والعميل يطلبه ويرفع إثبات التحويل — تؤكد الاستلام فيفتح التنزيل له تلقائيًا.",
-    pathHaveTitle: "📦 عندك منتج رقمي جاهز؟", pathHaveDesc: "ارفعه لمتجرك وابدأ تبيعه بدقايق.",
-    pathNoneTitle: "🗂️ ما عندك منتج بعد؟", pathNoneDesc: "اختر من مكتبتنا اللي فيها أكثر من ١٠,٠٠٠ منتج رقمي جاهز، وضيفه لمتجرك مباشرة.",
     ctaOpen: "افتح متجرك الحين ←", ctaHow: "شاهد كيف تعمل",
     receiptTag: "#٠٠١٤", receiptHead: "وصل بيع رقمي", receiptTime: "١٤:٠٦", receiptStore: "متجر هند للتصاميم",
     receiptItem: "رزمة قوالب سيرة ذاتية", receiptItemSub: "ملف PDF قابل للتعديل", receiptPrice: "٥.٠٠",
@@ -297,8 +295,6 @@ const HERO_T = {
   en: {
     h1a: "Sell your digital product", h1b: "from a single link",
     p: "Upload your file, share your product link on WhatsApp or Instagram — the buyer orders it and uploads proof of transfer. You confirm receipt, and the download unlocks for them automatically.",
-    pathHaveTitle: "📦 Already have a digital product?", pathHaveDesc: "Upload it to your store and start selling in minutes.",
-    pathNoneTitle: "🗂️ Don't have one yet?", pathNoneDesc: "Pick from our library of 10,000+ ready-made digital products and add them straight to your store.",
     ctaOpen: "Open your store now →", ctaHow: "See how it works",
     receiptTag: "#0014", receiptHead: "Digital sale receipt", receiptTime: "14:06", receiptStore: "Hind's Design Store",
     receiptItem: "Resume templates pack", receiptItemSub: "Editable PDF file", receiptPrice: "5.00",
@@ -328,7 +324,7 @@ const SECTIONS_T = {
     priceFeature3: "✓ تخصيص الاسم والشعار والهوية", priceFeature4: "✓ منتج مجاني وروابط تتبع الزيارات",
     addOnsLabel: "إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:",
     openStore: "افتح متجرك الحين",
-    pricingNote: "تختار باقتك (أساسية ٥ ر.ع أو برو ١٠ ر.ع شهريًا) وتفعّل فور الدفع بالبطاقة. أي إضافة تختارها تُضاف لمبلغ اشتراكك الشهري تلقائيًا.",
+    pricingNote: "الاشتراك الأساسي ٥ ر.ع شهريًا يُفعّل فور الدفع بالبطاقة. أي إضافة تختارها تُضاف لمبلغ اشتراكك الشهري تلقائيًا.",
     faqEyebrow: "أسئلة", faqTitle: "أسئلة شائعة",
     finalKicker: "خطوتك القادمة", finalTitle: "خلّ منتجك جاهزًا للمشاركة",
     finalP: "افتح متجرك الآن، ثم رتّب صفحته وخذ رابطك الخاص في مكان واحد وبشكل واضح.",
@@ -353,7 +349,7 @@ const SECTIONS_T = {
     priceFeature3: "✓ Customize your name, logo, and identity", priceFeature4: "✓ A free product and visit-tracking links",
     addOnsLabel: "Optional add-ons that grow your sales, chosen at signup or later from the seller dashboard:",
     openStore: "Open your store now",
-    pricingNote: "Choose your plan (Basic 5 OMR or Pro 10 OMR/month) and it activates instantly on card payment. Any add-on you choose is added to your monthly subscription automatically.",
+    pricingNote: "The base subscription (5 OMR/month) activates instantly on card payment. Any add-on you choose is added to your monthly subscription automatically.",
     faqEyebrow: "FAQ", faqTitle: "Frequently asked questions",
     finalKicker: "Your next step", finalTitle: "Get your product ready to share",
     finalP: "Open your store now, set up its page, and get your own link in one clear place.",
@@ -400,16 +396,6 @@ export default function App() {
           <div className="hero-copy">
             <h1>{ht.h1a}<br/>{ht.h1b}</h1>
             <p>{ht.p}</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "4px 0 18px" }}>
-              <div style={{ flex: "1 1 220px", background: "#F7F7F2", border: "1px solid rgba(19,33,27,.1)", borderRadius: 14, padding: "12px 14px" }}>
-                <b style={{ display: "block", fontSize: 13.5, marginBottom: 3 }}>{ht.pathHaveTitle}</b>
-                <span style={{ fontSize: 12.5, color: "#625F55", lineHeight: 1.6 }}>{ht.pathHaveDesc}</span>
-              </div>
-              <div style={{ flex: "1 1 220px", background: "#F7F7F2", border: "1px solid rgba(19,33,27,.1)", borderRadius: 14, padding: "12px 14px" }}>
-                <b style={{ display: "block", fontSize: 13.5, marginBottom: 3 }}>{ht.pathNoneTitle}</b>
-                <span style={{ fontSize: 12.5, color: "#625F55", lineHeight: 1.6 }}>{ht.pathNoneDesc}</span>
-              </div>
-            </div>
             <div className="hero-cta-row">
               <a className="pill-black" href={START_STORE_URL}>{ht.ctaOpen}</a>
               <a className="hero-ghost" href="#how">{ht.ctaHow}</a>
