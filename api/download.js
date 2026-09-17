@@ -147,7 +147,6 @@ export default async function handler(req, res) {
           action: 'read',
           expires: Date.now() + SIGNED_URL_TTL_MS,
           responseDisposition: 'inline',
-          responseType: 'text/html; charset=utf-8',
         }))[0]
       : (await file.getSignedUrl({
           version: 'v4',

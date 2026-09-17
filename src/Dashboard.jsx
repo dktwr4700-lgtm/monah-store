@@ -1774,7 +1774,9 @@ export default function Dashboard() {
           // متابعة تقدّم يخلي المستخدم يحس إن الصفحة "علقت"، وأي انقطاع بسيط
           // بالاتصال يفشّل الرفع كامل من الصفر بدل ما يكمل من نفس النقطة.
           await new Promise((resolve, reject) => {
-            const uploadTask = uploadBytesResumable(fileRef, productFile);
+            const uploadTask = uploadBytesResumable(fileRef, productFile, {
+              contentType: productFile.type || "application/octet-stream",
+            });
             uploadTask.on(
               "state_changed",
               (snapshot) => setUploadProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)),
