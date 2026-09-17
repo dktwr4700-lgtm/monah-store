@@ -25,7 +25,6 @@ const styles = `
   .hero{ margin-top:40px; display:flex; align-items:center; gap:0; }
   .hero-copy{ flex:1 1 380px; min-width:280px; padding-inline-end:44px; position:relative; z-index:2; }
   .hero h1{ font-family:'Almarai', sans-serif; font-weight:800; font-size:clamp(32px,4.1vw,48px); line-height:1.32; color:#153A2C; margin-bottom:18px; letter-spacing:-.02em; text-wrap:balance; }
-  .hero-eyebrow{ display:inline-flex; align-items:center; gap:7px; background:#EAF0EB; color:#153A2C; font-size:12px; font-weight:800; padding:7px 14px; border-radius:100px; margin-bottom:16px; }
   .hero p{ color:#5A5648; font-size:15px; line-height:1.9; max-width:400px; margin-bottom:26px; }
   .pill-black{ display:inline-flex; align-items:center; gap:8px; background:#D6F35C; color:#143226; padding:14px 23px; border-radius:100px; font-weight:800; font-size:14px; cursor:pointer; border:none; font-family:'Cairo', sans-serif; box-shadow:0 10px 22px rgba(0,0,0,.15); transition:transform .16s ease-out, box-shadow .16s ease-out; }
   .pill-black:hover{ transform:translateY(-2px); box-shadow:0 16px 28px rgba(21,58,44,.16); }
@@ -283,8 +282,7 @@ const NAV_T = {
 };
 const HERO_T = {
   ar: {
-    heroEyebrow: "🏬 منصة إنشاء متاجر رقمية — أنشئ متجرك الخاص وبِع منتجاتك",
-    h1a: "بيع منتجك الرقمي", h1b: "من رابط واحد",
+    h1a: "امتلك متجرك الرقمي", h1b: "وبيع بلا توقف",
     p: "ارفع ملفك، شارك رابط منتجك على واتساب أو إنستغرام، والعميل يطلبه ويرفع إثبات التحويل — تؤكد الاستلام فيفتح التنزيل له تلقائيًا.",
     ctaOpen: "افتح متجرك الحين ←", ctaHow: "شاهد كيف تعمل",
     receiptTag: "#٠٠١٤", receiptHead: "وصل بيع رقمي", receiptTime: "١٤:٠٦", receiptStore: "متجر هند للتصاميم",
@@ -297,8 +295,7 @@ const HERO_T = {
     ledgerProtection: "حماية روابط التنزيل", ledgerProtectionValue: "مفعّلة على كل منتج",
   },
   en: {
-    heroEyebrow: "🏬 A platform to build your own online store and sell your products",
-    h1a: "Sell your digital product", h1b: "from a single link",
+    h1a: "Own your digital store", h1b: "and sell non-stop",
     p: "Upload your file, share your product link on WhatsApp or Instagram — the buyer orders it and uploads proof of transfer. You confirm receipt, and the download unlocks for them automatically.",
     ctaOpen: "Open your store now →", ctaHow: "See how it works",
     receiptTag: "#0014", receiptHead: "Digital sale receipt", receiptTime: "14:06", receiptStore: "Hind's Design Store",
@@ -399,7 +396,6 @@ export default function App() {
       <div className="wrap">
         <div className="hero">
           <div className="hero-copy">
-            <div className="hero-eyebrow">{ht.heroEyebrow}</div>
             <h1>{ht.h1a}<br/>{ht.h1b}</h1>
             <p>{ht.p}</p>
             <div className="hero-cta-row">
