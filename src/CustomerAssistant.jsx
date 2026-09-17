@@ -246,7 +246,7 @@ export default function CustomerAssistant({ productData }) {
             <span style={{ fontWeight: 700, fontSize: 14, color: "#0B0B0C" }}>{t.panelTitle}</span>
             <button
               onClick={() => closePanel()}
-              style={{ background: "none", border: "none", color: "#8A8677", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
+              style={{ background: "none", border: "none", color: "#5A5648", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
             >
               ×
             </button>
@@ -254,7 +254,7 @@ export default function CustomerAssistant({ productData }) {
 
           <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, touchAction: "pan-y" }}>
             {messages.length === 0 && (
-              <p style={{ color: "#8A8677", fontSize: 13, textAlign: "center", marginTop: 24, lineHeight: 1.8 }}>
+              <p style={{ color: "#5A5648", fontSize: 13, textAlign: "center", marginTop: 24, lineHeight: 1.8 }}>
                 {t.emptyStateText}
               </p>
             )}
@@ -275,7 +275,7 @@ export default function CustomerAssistant({ productData }) {
                 </div>
               </div>
             ))}
-            {loading && <div style={{ textAlign: "end", color: "#8A8677", fontSize: 12.5 }}>{t.replyingEllipsis}</div>}
+            {loading && <div style={{ textAlign: "end", color: "#5A5648", fontSize: 12.5 }}>{t.replyingEllipsis}</div>}
           </div>
 
           <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #EDEAE0" }}>

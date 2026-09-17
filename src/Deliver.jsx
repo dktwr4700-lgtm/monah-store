@@ -16,8 +16,8 @@ const styles = `
   .dlv-download{background:#111;color:#fff}
   .dlv-copy{background:#fff;border:1px solid #d9d4c9;color:#163f2e}
   .dlv-code{direction:ltr;text-align:left;margin-top:10px;border-radius:10px;background:#f7f6f1;border:1px dashed #d7d1c4;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all;white-space:pre-line}
-  .dlv-note{font-size:10.5px;line-height:1.7;color:#89857a;margin-top:8px}
-  .dlv-state{background:#fff;border:1px solid #e5e0d6;border-radius:18px;padding:30px 18px;text-align:center;font-size:12px;line-height:1.9;color:#777}
+  .dlv-note{font-size:10.5px;line-height:1.7;color:#5A5648;margin-top:8px}
+  .dlv-state{background:#fff;border:1px solid #e5e0d6;border-radius:18px;padding:30px 18px;text-align:center;font-size:12px;line-height:1.9;color:#525252}
 `;
 
 const DLV_T = {

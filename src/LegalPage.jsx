@@ -6,17 +6,17 @@ const styles = `
   .lg-header{ padding:20px 22px; border-bottom:1px solid #EDEAE0; display:flex; justify-content:space-between; align-items:center; gap:10px; }
   .lg-brand{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:16px; text-decoration:none; }
   .lg-header-right{ display:flex; align-items:center; gap:10px; }
-  .lg-back{ color:#8A8677; font-size:12px; text-decoration:none; }
-  .lg-lang{ border:1px solid #EDEAE0; background:#fff; color:#8A8677; border-radius:100px; padding:7px 12px; font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; }
+  .lg-back{ color:#5A5648; font-size:12px; text-decoration:none; }
+  .lg-lang{ border:1px solid #EDEAE0; background:#fff; color:#5A5648; border-radius:100px; padding:7px 12px; font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; }
   .lg-wrap{ max-width:600px; margin:0 auto; padding:32px 22px 60px; }
   .lg-title{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:22px; margin-bottom:6px; }
-  .lg-updated{ color:#8A8677; font-size:11.5px; margin-bottom:28px; }
+  .lg-updated{ color:#5A5648; font-size:11.5px; margin-bottom:28px; }
   .lg-section{ margin-bottom:24px; }
   .lg-section h3{ font-family:'Almarai', sans-serif; font-weight:800; color:#0B0B0C; font-size:14.5px; margin-bottom:8px; }
   .lg-section p{ color:#3D4A66; font-size:13.5px; line-height:2; margin-bottom:6px; }
   .lg-section ul{ margin: 0; padding-inline-start: 20px; }
   .lg-section li{ color:#3D4A66; font-size:13.5px; line-height:1.9; margin-bottom:4px; }
-  .lg-note{ background:#FBFAF7; border:1px solid #EDEAE0; border-radius:12px; padding:14px 16px; color:#8A8677; font-size:12px; line-height:1.8; margin-top:8px; }
+  .lg-note{ background:#FBFAF7; border:1px solid #EDEAE0; border-radius:12px; padding:14px 16px; color:#5A5648; font-size:12px; line-height:1.8; margin-top:8px; }
 `;
 
 const PRIVACY = {

@@ -7,7 +7,7 @@ const styles = `
   .pr-lang{position:absolute;top:18px;inset-inline-end:18px;border:1px solid #E4E0D3;background:#fff;color:#16233F;border-radius:999px;padding:9px 13px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
   .pr-card{width:100%;max-width:400px;background:#fff;border:1px solid #E4E0D3;border-radius:20px;padding:30px 24px;text-align:center;box-shadow:0 16px 34px rgba(22,35,63,.07)}
   .pr-title{font-family:'Almarai',sans-serif;font-size:16px;font-weight:800;margin-bottom:10px}
-  .pr-copy{font-size:12.5px;line-height:1.85;color:#625F55}
+  .pr-copy{font-size:12.5px;line-height:1.85;color:#403D35}
   .pr-btn{display:inline-block;margin-top:18px;border:0;border-radius:100px;padding:12px 20px;background:#16233F;color:#fff;font:700 13px 'Cairo',sans-serif;text-decoration:none;cursor:pointer}
 `;
 
@@ -125,7 +125,7 @@ export default function PayResult({ orderId }) {
         {state === "pending" && <>
           <div className="pr-title">{t.pendingTitle}</div>
           <div className="pr-copy">{t.pendingCopy}</div>
-          {rawStatus && <div className="pr-copy" style={{ marginTop: 8, fontFamily: "monospace", direction: "ltr", color: "#B0AC9C" }}>status: {rawStatus}</div>}
+          {rawStatus && <div className="pr-copy" style={{ marginTop: 8, fontFamily: "monospace", direction: "ltr", color: "#7A766A" }}>status: {rawStatus}</div>}
           <a className="pr-btn" href={`#purchases/${ownerId}`}>{t.openOrders}</a>
         </>}
         {state === "error" && <>
