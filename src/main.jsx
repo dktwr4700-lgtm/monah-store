@@ -59,6 +59,65 @@ function PageLoading() {
   return <div dir="rtl" style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Cairo, sans-serif", color: "#4B6152", background: "#FBFAF7" }}>جاري التحميل…</div>;
 }
 
+const CHUNK_RELOAD_KEY = "monah-chunk-reload-attempted";
+
+function isChunkLoadError(error) {
+  const message = String(error?.message || "");
+  return /dynamically imported module|Importing a module script failed|Failed to fetch dynamically imported module|ChunkLoadError/i.test(message);
+}
+
+// جهاز الزائر يفتح الموقع قبل نشر تحديث جديد يبقى محمّل بنسخة قديمة من الكود،
+// وملفات الصفحات غير الرئيسية (Dashboard، StorePage...) صارت مبنية بأسماء ملفات
+// جديدة بعد النشر — أي محاولة تحميل صفحة غير محمّلة أصلًا تفشل بخطأ شبكي بدل ما
+// تفتح الصفحة، ومافيه أي شيء يمسك هذا الخطأ فيضل الزائر على شاشة فاضية أو مكسورة
+// لين يعرف بنفسه إنه يقفل التطبيق ويفتحه من جديد. نمسك تحديدًا خطأ تحميل الملف
+// (مو أي خطأ تطبيق آخر) ونعيد تحميل الصفحة مرة وحدة تلقائيًا؛ الحارس بـ
+// sessionStorage يمنع حلقة تحديث لا نهائية لو المشكلة شي ثاني غير تحديث النشر.
+class ChunkRecoveryBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { chunkError: false, otherError: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    if (isChunkLoadError(error)) return { chunkError: true };
+    return { otherError: error };
+  }
+
+  componentDidCatch(error) {
+    if (!isChunkLoadError(error)) return;
+    let alreadyTried = false;
+    try {
+      alreadyTried = sessionStorage.getItem(CHUNK_RELOAD_KEY) === "1";
+      if (!alreadyTried) sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
+    } catch {
+      // خصوصية المتصفح ممكن تمنع sessionStorage؛ نكمل بدون الحارس بدل ما نكسر الصفحة.
+    }
+    if (!alreadyTried) window.location.reload();
+  }
+
+  render() {
+    if (this.state.otherError) throw this.state.otherError;
+    if (this.state.chunkError) {
+      return (
+        <div dir="rtl" style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Cairo, sans-serif", color: "#153A2C", background: "#FBFAF7", padding: 24, textAlign: "center" }}>
+          <div>
+            <p style={{ marginBottom: 16, fontSize: 14 }}>صدر تحديث جديد للموقع. حدّث الصفحة عشان تفتح آخر نسخة.</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{ padding: "12px 24px", borderRadius: 100, border: "none", background: "#153A2C", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              تحديث الصفحة الآن
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function Root() {
   const [hash, setHash] = React.useState(window.location.hash.replace("#", ""));
 
@@ -85,7 +144,11 @@ function Root() {
   else if (hash === "start-store") page = <StartStore />;
   else if (hash.startsWith("store-pay-result/")) page = <StorePayResult param={hashSegment(hash, 1)} />;
   else if (hash.startsWith("store/")) page = <StorePage sellerId={hashSegment(hash, 1)} />;
-  return <Suspense fallback={<PageLoading />}>{page}</Suspense>;
+  return (
+    <ChunkRecoveryBoundary key={hash}>
+      <Suspense fallback={<PageLoading />}>{page}</Suspense>
+    </ChunkRecoveryBoundary>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
