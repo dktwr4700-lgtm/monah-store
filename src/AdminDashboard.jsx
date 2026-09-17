@@ -161,6 +161,8 @@ const ADMIN_T = {
     emailUnverified: "البريد غير مؤكد",
     emailVerified: "البريد مؤكد",
     subscriptionValidUntil: "الاشتراك ساري لين:",
+    sellerEmailLabel: "الإيميل:",
+    saveEmail: "حفظ الإيميل",
     savingEllipsis: "جاري الحفظ...",
     saveDate: "حفظ التاريخ",
     savePlan: "حفظ الباقة",
@@ -301,6 +303,8 @@ const ADMIN_T = {
     emailUnverified: "Email not verified",
     emailVerified: "Email verified",
     subscriptionValidUntil: "Subscription valid until:",
+    sellerEmailLabel: "Email:",
+    saveEmail: "Save email",
     savingEllipsis: "Saving...",
     saveDate: "Save date",
     savePlan: "Save plan",
@@ -428,6 +432,9 @@ export default function AdminDashboard() {
   const [expiryDrafts, setExpiryDrafts] = useState({});
   const [savingExpiryId, setSavingExpiryId] = useState(null);
   const [emailVerifiedMap, setEmailVerifiedMap] = useState({});
+  const [emailDrafts, setEmailDrafts] = useState({});
+  const [savingEmailId, setSavingEmailId] = useState(null);
+  const [emailErrors, setEmailErrors] = useState({});
 
   const [expandedId, setExpandedId] = useState(null);
   const [sellerProducts, setSellerProducts] = useState({});
@@ -718,6 +725,26 @@ export default function AdminDashboard() {
       console.error(e);
     }
     setSavingExpiryId(null);
+  }
+
+  function emailDraftFor(seller) {
+    return emailDrafts[seller.id] ?? seller.email ?? "";
+  }
+
+  async function saveSellerEmail(seller) {
+    const value = emailDraftFor(seller).trim();
+    setSavingEmailId(seller.id);
+    setEmailErrors((prev) => ({ ...prev, [seller.id]: "" }));
+    try {
+      await inviteRequest("updateSellerEmail", { sellerId: seller.id, email: value });
+      setSellers((prev) =>
+        prev.map((s) => (s.id === seller.id ? { ...s, email: value } : s))
+      );
+      setEmailVerifiedMap((prev) => ({ ...prev, [seller.id]: false }));
+    } catch (e) {
+      setEmailErrors((prev) => ({ ...prev, [seller.id]: e.message || t.genericError }));
+    }
+    setSavingEmailId(null);
   }
 
   async function toggleDisabled(seller) {
@@ -1123,6 +1150,26 @@ export default function AdminDashboard() {
                   {savingExpiryId === s.id ? t.savingEllipsis : t.saveDate}
                 </button>
               </div>
+
+              <div className="expiry-row">
+                <label htmlFor={`email-${s.id}`}>{t.sellerEmailLabel}</label>
+                <input
+                  id={`email-${s.id}`}
+                  type="email"
+                  value={emailDraftFor(s)}
+                  onChange={(e) =>
+                    setEmailDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))
+                  }
+                />
+                <button
+                  type="button"
+                  disabled={savingEmailId === s.id}
+                  onClick={() => saveSellerEmail(s)}
+                >
+                  {savingEmailId === s.id ? t.savingEllipsis : t.saveEmail}
+                </button>
+              </div>
+              {emailErrors[s.id] && <div className="dh-error">{emailErrors[s.id]}</div>}
 
               <div className="plan-row">
                 <label htmlFor={`plan-${s.id}`}>{t.planLabel}</label>

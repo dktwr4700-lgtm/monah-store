@@ -203,6 +203,27 @@ async function deleteInvite(req, res) {
   return res.status(200).json({ ok: true });
 }
 
+// يعدّل إيميل البائع بمكانين مرة وحدة (Firebase Auth + مستند sellers) عشان
+// يضلوا متطابقين — تعديل واحد منهم بس يخلي إيميل الدخول مختلف عن إيميل العرض
+// والإشعارات.
+async function updateSellerEmail(req, res) {
+  const owner = await requireOwner(req, res);
+  if (!owner) return;
+  const sellerId = cleanText(req.body?.sellerId, 120);
+  const newEmail = cleanEmail(req.body?.email);
+  if (!sellerId) return res.status(400).json({ error: "الحساب غير محدد." });
+  if (!/^\S+@\S+\.\S+$/.test(newEmail)) return res.status(400).json({ error: "اكتب إيميل صحيح." });
+
+  const sellerRef = db.collection("sellers").doc(sellerId);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) return res.status(404).json({ error: "لم نجد هذا الحساب." });
+
+  await auth.updateUser(sellerId, { email: newEmail, emailVerified: false })
+    .catch((error) => { throw new Error(error.code === "auth/email-already-exists" ? "هذا الإيميل مستخدم بحساب ثاني." : "تعذر تعديل إيميل الدخول."); });
+  await sellerRef.update({ email: newEmail });
+  return res.status(200).json({ ok: true });
+}
+
 async function sellerStatus(req, res) {
   const owner = await requireOwner(req, res);
   if (!owner) return;
@@ -231,6 +252,7 @@ export default async function handler(req, res) {
     if (action === "list") return await listInvites(req, res);
     if (action === "revoke") return await revokeInvite(req, res);
     if (action === "delete") return await deleteInvite(req, res);
+    if (action === "updateSellerEmail") return await updateSellerEmail(req, res);
     if (action === "sellerStatus") return await sellerStatus(req, res);
     return res.status(400).json({ error: "طلب الدعوة غير واضح." });
   } catch (error) {
