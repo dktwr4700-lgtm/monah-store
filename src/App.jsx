@@ -4,7 +4,7 @@ import { useLang, LangToggle } from "./i18n.jsx";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
-  .monah-app{ font-family:'Cairo', sans-serif; background:#F5F2EA; color:#13211B; overflow:hidden; }
+  .monah-app{ font-family:'Cairo', sans-serif; background:#FFFFFF; color:#13211B; overflow:hidden; }
   .monah-app .mono{ font-family:'JetBrains Mono', monospace; }
   .monah-app a{ text-decoration:none; }
   .monah-app :focus-visible{ outline:2px solid #0E3B2C; outline-offset:2px; }
