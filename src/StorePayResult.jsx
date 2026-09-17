@@ -3,7 +3,7 @@ import { auth } from "./firebase.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const styles = `
-  .pr-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F6F3EC;padding:20px;font-family:'Cairo',sans-serif;color:#16233F;position:relative}
+  .pr-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FFFFFF;padding:20px;font-family:'Cairo',sans-serif;color:#16233F;position:relative}
   .pr-lang{position:absolute;top:18px;inset-inline-end:18px;border:1px solid #E4E0D3;background:#fff;color:#16233F;border-radius:999px;padding:9px 13px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
   .pr-card{width:100%;max-width:400px;background:#fff;border:1px solid #E4E0D3;border-radius:20px;padding:30px 24px;text-align:center;box-shadow:0 16px 34px rgba(22,35,63,.07)}
   .pr-title{font-family:'Almarai',sans-serif;font-size:16px;font-weight:800;margin-bottom:10px}

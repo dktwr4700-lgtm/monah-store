@@ -30,7 +30,7 @@ const BP_T = {
 };
 
 const styles = `
-  .bp-page{--pp-brand:#163f2e;min-height:100vh;background:#f7f6f1;color:#111;font-family:'Cairo',sans-serif;direction:rtl}
+  .bp-page{--pp-brand:#163f2e;min-height:100vh;background:#fff;color:#111;font-family:'Cairo',sans-serif;direction:rtl}
   .bp-shell{max-width:640px;margin:auto;padding:20px}
   .bp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
   .bp-back{display:inline-flex;align-items:center;gap:7px;border:1px solid #e7e3d8;border-radius:999px;padding:9px 13px;background:#fff;color:#111;text-decoration:none;font-size:12px;font-weight:700}

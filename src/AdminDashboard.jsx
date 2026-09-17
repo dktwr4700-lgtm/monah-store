@@ -8,7 +8,7 @@ import { useLang, LangToggle } from "./i18n.jsx";
 const ADMIN_EMAIL = "k1997551@gmail.com";
 
 const styles = `
-  .admin-page{ min-height:100vh; background:#F6F3EC; font-family:'Cairo', sans-serif; color:#16233F; }
+  .admin-page{ min-height:100vh; background:#fff; font-family:'Cairo', sans-serif; color:#16233F; }
   .admin-page *{ box-sizing:border-box; }
   .admin-wrap{ max-width:960px; margin:0 auto; padding:24px 20px 60px; }
   .admin-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; gap:8px; flex-wrap:wrap; }

@@ -3,7 +3,7 @@ import { auth, ensureAnonymousAuth } from "./firebase.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const styles = `
-  .dlv-page{min-height:100vh;background:#f7f6f1;color:#111;font-family:'Cairo',sans-serif}
+  .dlv-page{min-height:100vh;background:#fff;color:#111;font-family:'Cairo',sans-serif}
   .dlv-shell{max-width:520px;margin:auto;padding:22px 16px 40px}
   .dlv-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
   .dlv-title{font-family:'Almarai',sans-serif;font-size:18px;font-weight:800}

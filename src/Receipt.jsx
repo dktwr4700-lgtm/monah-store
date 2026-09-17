@@ -3,7 +3,7 @@ import { auth, ensureAnonymousAuth } from "./firebase.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const styles = `
-  .rcpt-page{min-height:100vh;background:#f7f6f1;color:#111;font-family:'Cairo',sans-serif}
+  .rcpt-page{min-height:100vh;background:#fff;color:#111;font-family:'Cairo',sans-serif}
   .rcpt-shell{max-width:520px;margin:auto;padding:22px 16px 40px}
   .rcpt-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
   .rcpt-back,.rcpt-lang{border:1px solid #e2ded3;border-radius:999px;background:#fff;color:#163f2e;text-decoration:none;padding:9px 12px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer}
