@@ -4,7 +4,7 @@ import { useLang, LangToggle } from "./i18n.jsx";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
-  .monah-app{ font-family:'Cairo', sans-serif; background:#F5F2EA; color:#13211B; overflow:hidden; }
+  .monah-app{ font-family:'Cairo', sans-serif; background:#fff; color:#13211B; overflow:hidden; }
   .monah-app .mono{ font-family:'JetBrains Mono', monospace; }
   .monah-app a{ text-decoration:none; }
   .monah-app :focus-visible{ outline:2px solid #0E3B2C; outline-offset:2px; }
@@ -467,7 +467,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="section" id="how" style={{ background: "#FBFAF7" }}>
+      <section className="section" id="how" style={{ background: "#fff" }}>
         <div className="wrap">
           <div className="section-eyebrow reveal">{st.howEyebrow}</div>
           <h2 className="section-title reveal">{st.howTitle}</h2>
@@ -499,7 +499,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="section" style={{ background: "#FBFAF7" }}>
+      <section className="section" style={{ background: "#fff" }}>
         <div className="wrap">
           <div className="section-eyebrow reveal">{st.featuresEyebrow}</div>
           <h2 className="section-title reveal">{st.featuresTitle}</h2>
@@ -532,7 +532,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="section" style={{ background: "#FBFAF7" }}>
+      <section className="section" style={{ background: "#fff" }}>
         <div className="wrap">
           <div className="section-eyebrow reveal">{st.compareEyebrow}</div>
           <h2 className="section-title reveal">{st.compareTitle}</h2>
@@ -550,7 +550,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="section" id="pricing" style={{ background: "#FBFAF7" }}>
+      <section className="section" id="pricing" style={{ background: "#fff" }}>
         <div className="wrap">
           <div className="section-eyebrow reveal">{st.pricingEyebrow}</div>
           <h2 className="section-title reveal">{st.pricingTitle}</h2>
