@@ -13,13 +13,14 @@ const styles = `
   .reveal{ opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s ease; }
   .reveal.in{ opacity:1; transform:translateY(0); }
 
-  .nav{ display:flex; justify-content:space-between; align-items:center; direction:ltr; margin-top:16px; padding:12px 14px 12px 18px; background:rgba(255,255,255,.76); border:1px solid rgba(19,33,27,.09); border-radius:18px; box-shadow:0 12px 30px rgba(23,35,28,.06); position:relative; z-index:10; backdrop-filter:blur(12px); }
-  .nav-brand{ display:flex; align-items:center; gap:9px; font-family:'Almarai', sans-serif; font-weight:800; font-size:18px; color:#112A20; }
+  .nav{ display:flex; justify-content:space-between; align-items:center; direction:ltr; margin-top:16px; padding:12px 14px 12px 18px; background:rgba(255,255,255,.76); border:1px solid rgba(19,33,27,.09); border-radius:18px; box-shadow:0 12px 30px rgba(23,35,28,.06); position:relative; z-index:10; backdrop-filter:blur(12px); gap:10px; }
+  .nav-brand{ display:flex; align-items:center; gap:9px; font-family:'Almarai', sans-serif; font-weight:800; font-size:18px; color:#112A20; flex-shrink:0; white-space:nowrap; }
   .nav-brand img{ width:29px; height:29px; border-radius:9px; display:block; box-shadow:0 5px 14px rgba(14,59,44,.16); }
   .nav-btns{ display:flex; gap:10px; align-items:center; }
   .nav-btns{ direction:rtl; }
-  .nav-link{ font-size:13px; font-weight:700; color:#375044; padding:8px 5px; }
-  .nav-cta{ background:#153A2C; color:#fff; padding:10px 18px; border-radius:100px; font-size:12.5px; font-weight:700; box-shadow:0 8px 18px rgba(14,59,44,.18); }
+  .nav-link{ font-size:13px; font-weight:700; color:#375044; padding:8px 5px; white-space:nowrap; }
+  .nav-cta{ background:#153A2C; color:#fff; padding:10px 18px; border-radius:100px; font-size:12.5px; font-weight:700; box-shadow:0 8px 18px rgba(14,59,44,.18); white-space:nowrap; }
+  .nav-text-short{ display:none; }
 
   /* ===== HERO ===== */
   .hero{ margin-top:40px; display:flex; align-items:center; gap:0; }
@@ -206,6 +207,14 @@ const styles = `
     .final-orbit{ transform:scale(.82); margin:-20px 0 -26px; }
     .foot-wordmark{ text-align:center; }
   }
+  @media (max-width:480px){
+    .nav{ gap:6px; }
+    .nav-btns{ gap:6px; }
+    .nav-link{ padding:7px 3px; font-size:12px; }
+    .nav-cta{ padding:8px 11px; font-size:11.5px; }
+    .nav-text-full{ display:none; }
+    .nav-text-short{ display:inline; }
+  }
 
   .monah-app button{ transition:transform 100ms ease-out; }
   .monah-app button:active{ transform:scale(0.96); }
@@ -277,8 +286,8 @@ function FaqItem({ q, a, id }) {
 }
 
 const NAV_T = {
-  ar: { login: "تسجيل الدخول", openStore: "افتح متجرك الحين" },
-  en: { login: "Log in", openStore: "Open your store" },
+  ar: { login: "تسجيل الدخول", loginShort: "دخول", openStore: "افتح متجرك الحين", openStoreShort: "افتح متجرك" },
+  en: { login: "Log in", loginShort: "Log in", openStore: "Open your store", openStoreShort: "Open store" },
 };
 const HERO_T = {
   ar: {
@@ -387,8 +396,14 @@ export default function App() {
           </div>
           <div className="nav-btns">
             <LangToggle lang={lang} onChange={setLang} className="nav-link" style={{ background: "none", border: "1px solid rgba(19,33,27,.14)", borderRadius: 100, padding: "7px 12px", cursor: "pointer", font: "inherit" }} />
-            <a className="nav-link" href="#login">{nt.login}</a>
-            <a className="nav-cta" href={START_STORE_URL}>{nt.openStore}</a>
+            <a className="nav-link" href="#login">
+              <span className="nav-text-full">{nt.login}</span>
+              <span className="nav-text-short">{nt.loginShort}</span>
+            </a>
+            <a className="nav-cta" href={START_STORE_URL}>
+              <span className="nav-text-full">{nt.openStore}</span>
+              <span className="nav-text-short">{nt.openStoreShort}</span>
+            </a>
           </div>
         </div>
       </div>
