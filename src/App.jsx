@@ -286,8 +286,8 @@ function FaqItem({ q, a, id }) {
 }
 
 const NAV_T = {
-  ar: { login: "تسجيل الدخول", loginShort: "دخول", openStore: "افتح متجرك الحين", openStoreShort: "افتح متجرك" },
-  en: { login: "Log in", loginShort: "Log in", openStore: "Open your store", openStoreShort: "Open store" },
+  ar: { login: "تسجيل دخول", loginShort: "دخول", openStore: "إنشاء حساب", openStoreShort: "إنشاء حساب" },
+  en: { login: "Log in", loginShort: "Log in", openStore: "Create account", openStoreShort: "Create account" },
 };
 const HERO_T = {
   ar: {
