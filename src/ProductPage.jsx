@@ -127,6 +127,13 @@ export default function ProductPage({ productId }) {
   }, [productId]);
 
   const images = useMemo(() => Array.isArray(product?.images) ? product.images.filter(Boolean) : [], [product]);
+  const previewVideoUrl = product?.previewVideoUrl || "";
+  const media = useMemo(() => {
+    const list = [];
+    if (previewVideoUrl) list.push({ type: "video", url: previewVideoUrl });
+    for (const url of images) list.push({ type: "image", url });
+    return list;
+  }, [images, previewVideoUrl]);
   const pageDir = lang === "ar" ? "rtl" : "ltr";
   if (status === "loading") return <div className="pp-page" dir={pageDir} lang={lang}><style>{styles}</style><LoadingState t={t} /></div>;
   if (status === "missing" || status === "unavailable") return <div className="pp-page" dir={pageDir} lang={lang}><style>{styles}</style><MissingState unavailable={status === "unavailable"} t={t} /></div>;
@@ -169,9 +176,13 @@ export default function ProductPage({ productId }) {
         <div className="pp-grid">
           <section>
             <div className="pp-media">
-              {images.length ? <img src={images[activeImage]} alt={t.productImageAlt(name)} /> : <div className="pp-placeholder"><div className="pp-file"><b></b><i></i><i></i><i></i><em></em></div><span>{t.genericProduct}</span></div>}
+              {media.length
+                ? (media[activeImage]?.type === "video"
+                  ? <video src={media[activeImage].url} controls playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <img src={media[activeImage]?.url} alt={t.productImageAlt(name)} />)
+                : <div className="pp-placeholder"><div className="pp-file"><b></b><i></i><i></i><i></i><em></em></div><span>{t.genericProduct}</span></div>}
             </div>
-            {images.length > 1 && <div className="pp-thumbs" aria-label={t.productImages}>{images.map((image, index) => <button key={image} type="button" className={`pp-thumb ${activeImage === index ? "active" : ""}`} onClick={() => setActiveImage(index)} aria-label={t.showImage(index + 1)}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} /></button>)}</div>}
+            {media.length > 1 && <div className="pp-thumbs" aria-label={t.productImages}>{media.map((item, index) => <button key={item.url} type="button" className={`pp-thumb ${activeImage === index ? "active" : ""}`} onClick={() => setActiveImage(index)} aria-label={t.showImage(index + 1)}>{item.type === "video" ? <video src={item.url} muted style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} /> : <img src={item.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} />}</button>)}</div>}
           </section>
           <section className="pp-card">
             <span className="pp-category">{category}</span>

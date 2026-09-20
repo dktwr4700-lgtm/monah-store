@@ -231,7 +231,7 @@ export default function StorePage({ sellerId }) {
         {featuredProducts.length > 0 && <section className="mc-featured">
           <div className="mc-featured-head"><div className="mc-featured-title">{t.sellerPicks}</div><div className="mc-featured-note">{t.sellerPicksSub}</div></div>
           {featuredProducts.map((product) => <a className="mc-featured-card" href={`#product/${product.id}`} key={product.id}>
-            <div className="mc-featured-image">{product.images?.[0] ? <img src={product.images[0]} alt="" /> : <FileIcon />}</div>
+            <div className="mc-featured-image">{product.images?.[0] ? <img src={product.images[0]} alt="" /> : product.previewVideoUrl ? <video src={product.previewVideoUrl} muted preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <FileIcon />}</div>
             <div><div className="mc-featured-name">{product.name || t.genericProduct}</div><div className="mc-featured-price">{Number(product.price || 0).toFixed(2)} {curr}</div></div>
             <span className="mc-featured-badge">{t.featured}</span>
           </a>)}
@@ -252,7 +252,7 @@ export default function StorePage({ sellerId }) {
             <div className="mc-categories">{categories.map((category) => <button key={category} className={`mc-category ${activeCategory === category ? "active" : ""}`} onClick={() => setActiveCategory(category)}>{category === "الكل" ? t.all : category}</button>)}</div>
             <section className="mc-section">
               {shownProducts.length ? <div className="mc-grid">{shownProducts.map((product) => <a className="mc-product" href={`#product/${product.id}`} key={product.id}>
-                <div className="mc-product-img">{product.images?.[0] ? <img src={product.images[0]} alt={product.name || t.genericProduct} /> : <div className="mc-file-card"><b></b><i></i><i></i><i></i><em></em></div>}</div>
+                <div className="mc-product-img">{product.images?.[0] ? <img src={product.images[0]} alt={product.name || t.genericProduct} /> : product.previewVideoUrl ? <video src={product.previewVideoUrl} muted preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="mc-file-card"><b></b><i></i><i></i><i></i><em></em></div>}</div>
                 <div className="mc-product-type"><span className="mc-gold-dot" /> {product.category || t.genericProduct}</div>
                 <div className="mc-product-name">{product.name || t.genericProduct}{product.featured && <span className="mc-featured-badge" style={{ marginRight: 5 }}>{t.featured}</span>}</div>
                 <div className="mc-product-desc">{product.description || t.genericDesc}</div>
