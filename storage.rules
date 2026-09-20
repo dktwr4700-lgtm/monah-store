@@ -56,6 +56,14 @@ service firebase.storage {
       allow update, delete: if ownsNamedFile(fileName);
     }
 
+    match /product-previews/{fileName} {
+      allow read: if true;
+      allow create: if ownsNamedFile(fileName)
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+      allow update, delete: if ownsNamedFile(fileName);
+    }
+
     match /logos/{fileName} {
       allow read: if true;
       allow create: if ownsNamedFile(fileName)
