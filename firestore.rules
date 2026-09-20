@@ -44,7 +44,7 @@ service cloud.firestore {
         && (request.resource.data.price > 0 || request.resource.data.type == 'file')
         && request.resource.data.keys().hasOnly([
           'ownerId', 'name', 'price', 'description', 'category', 'type',
-          'filePath', 'codesCount', 'images', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt',
+          'filePath', 'codesCount', 'images', 'previewVideoUrl', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt',
           'requiresActivation'
         ]);
       allow update: if isAdmin() || (
