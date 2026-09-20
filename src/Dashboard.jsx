@@ -517,6 +517,12 @@ const DASH_T = {
     useThisDraft: "استخدم هذه المسودة",
     cancel: "إلغاء",
     productImagesLabel: "صور المنتج (حتى صورتين، اختياري)",
+    previewVideoLabel: "فيديو تعريفي للمنتج (اختياري، حتى 60 ثانية)",
+    removeVideo: "إزالة الفيديو",
+    invalidVideoFile: "الملف المختار مو فيديو صالح.",
+    previewVideoTooLarge: "حجم الفيديو كبير — الحد الأقصى 50 ميجابايت.",
+    previewVideoTooLong: "الفيديو أطول من 60 ثانية — اختصره وأعد المحاولة.",
+    uploadVideoError: "تعذر رفع الفيديو، حاول مرة ثانية.",
     productTypeLabel: "نوع المنتج",
     fileType: "ملف",
     codeType: "كود / ترخيص",
@@ -981,6 +987,12 @@ const DASH_T = {
     useThisDraft: "Use this draft",
     cancel: "Cancel",
     productImagesLabel: "Product images (up to two, optional)",
+    previewVideoLabel: "Product preview video (optional, up to 60 seconds)",
+    removeVideo: "Remove video",
+    invalidVideoFile: "The selected file isn't a valid video.",
+    previewVideoTooLarge: "Video is too large — 50MB max.",
+    previewVideoTooLong: "Video is longer than 60 seconds — trim it and try again.",
+    uploadVideoError: "Couldn't upload the video, try again.",
     productTypeLabel: "Product type",
     fileType: "File",
     codeType: "Code / license",
@@ -1287,6 +1299,9 @@ export default function Dashboard() {
   const [productImages, setProductImages] = useState([]);
   const [imagesUploading, setImagesUploading] = useState(false);
   const [imagesError, setImagesError] = useState("");
+  const [previewVideo, setPreviewVideo] = useState("");
+  const [previewVideoUploading, setPreviewVideoUploading] = useState(false);
+  const [previewVideoError, setPreviewVideoError] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
@@ -1745,6 +1760,7 @@ export default function Dashboard() {
         filePath: "",
         codesCount: productType === "code" ? codesList.length : 0,
         images: productImages,
+        previewVideoUrl: previewVideo || "",
         hidden: true,
         suspended: false,
         featured: false,
@@ -1805,6 +1821,7 @@ export default function Dashboard() {
       setProductType("file");
       setRequiresActivation(false);
       setProductImages([]);
+      setPreviewVideo("");
 
       if (isTrial && !trialProductClaimed) {
         await updateDoc(doc(db, "sellers", user.uid), { trialProductClaimed: true }).catch(() => {});
@@ -1836,6 +1853,7 @@ export default function Dashboard() {
     setProductType(p.type === "code" ? "code" : "file");
     setRequiresActivation(Boolean(p.requiresActivation));
     setProductImages([]);
+    setPreviewVideo("");
     setProductFile(null);
     setFileInputKey((k) => k + 1);
     setCodesText("");
@@ -2112,6 +2130,56 @@ export default function Dashboard() {
 
   function removeProductImage(url) {
     setProductImages((prev) => prev.filter((u) => u !== url));
+  }
+
+  function readVideoDuration(file) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(video.duration);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        reject(new Error("invalid video"));
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function handlePreviewVideoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPreviewVideoError("");
+    if (!file.type.startsWith("video/")) {
+      setPreviewVideoError(t.invalidVideoFile);
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setPreviewVideoError(t.previewVideoTooLarge);
+      return;
+    }
+    setPreviewVideoUploading(true);
+    try {
+      const duration = await readVideoDuration(file);
+      if (duration > 60) {
+        setPreviewVideoError(t.previewVideoTooLong);
+        setPreviewVideoUploading(false);
+        return;
+      }
+      const fileRef = ref(storage, `product-previews/${user.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      await uploadBytes(fileRef, file, { contentType: file.type });
+      const url = await getDownloadURL(fileRef);
+      setPreviewVideo(url);
+    } catch (err) {
+      setPreviewVideoError(t.uploadVideoError);
+    }
+    setPreviewVideoUploading(false);
+  }
+
+  function removePreviewVideo() {
+    setPreviewVideo("");
   }
 
   async function handleLogoUpload(e) {
@@ -2984,6 +3052,23 @@ export default function Dashboard() {
                     )}
                   </div>
                   {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
+                </div>
+                <div className="dh-field">
+                  <label>{t.previewVideoLabel}</label>
+                  <div className="dh-images-row">
+                    {previewVideo ? (
+                      <div className="dh-image-thumb-wrap">
+                        <video src={previewVideo} className="dh-image-thumb" muted />
+                        <button type="button" className="dh-image-remove" onClick={removePreviewVideo} aria-label={t.removeVideo}>✕</button>
+                      </div>
+                    ) : (
+                      <label className="dh-image-add">
+                        {previewVideoUploading ? "..." : "+"}
+                        <input type="file" accept="video/*" style={{ display: "none" }} onChange={handlePreviewVideoUpload} disabled={previewVideoUploading} />
+                      </label>
+                    )}
+                  </div>
+                  {previewVideoError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{previewVideoError}</div>}
                 </div>
                 <div className="dh-field">
                   <label>{t.productTypeLabel}</label>
