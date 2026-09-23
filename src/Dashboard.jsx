@@ -2896,14 +2896,16 @@ export default function Dashboard() {
               </div>
             </section>
 
-            <div className="dh-next">
-              <span className="dh-next-badge">{nextStep.badge}</span>
-              <div className="dh-next-title">{nextStep.title}</div>
-              <div className="dh-next-text">{nextStep.text}</div>
-              <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: `${(nextStep.progress / 5) * 100}%` }} /></div>
-              <div className="dh-next-step">{t.stepsOf5(nextStep.progress)}</div>
-              <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
-            </div>
+            {nextStep.key !== "share-store" && (
+              <div className="dh-next">
+                <span className="dh-next-badge">{nextStep.badge}</span>
+                <div className="dh-next-title">{nextStep.title}</div>
+                <div className="dh-next-text">{nextStep.text}</div>
+                <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: `${(nextStep.progress / 5) * 100}%` }} /></div>
+                <div className="dh-next-step">{t.stepsOf5(nextStep.progress)}</div>
+                <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
+              </div>
+            )}
 
             {stalledOrders.length > 0 && (
               <div className="dh-flag">
