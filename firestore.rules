@@ -19,6 +19,20 @@ service cloud.firestore {
       let seller = get(/databases/$(database)/documents/sellers/$(request.auth.uid)).data;
       return seller.get('plan', 'basic') == 'trial' && seller.get('trialProductClaimed', false) == true;
     }
+    // الحد الأقصى للمنتجات لكل باقة — يطابق productLimitForPlan في
+    // src/subscriptionCatalog.js. التجربة المجانية لها منطقها الخاص أعلاه
+    // (sellerTrialLimitReached)، ما تعتمد على هذا العداد.
+    function planProductLimit(plan) {
+      return plan == 'pro' ? 150 : (plan == 'starter' ? 2 : 50);
+    }
+    // يمنع تاجر باقة مدفوعة (غير التجربة) من إضافة منتج يتجاوز حد باقته —
+    // العداد productCount على وثيقة sellers يحدّثه التاجر نفسه بخطوة واحدة
+    // بالضبط (+1 عند الإضافة، -1 عند الحذف)، انظر قاعدة sellers أدناه.
+    function sellerPlanLimitReached() {
+      let seller = get(/databases/$(database)/documents/sellers/$(request.auth.uid)).data;
+      return seller.get('plan', 'basic') != 'trial'
+        && seller.get('productCount', 0) >= planProductLimit(seller.get('plan', 'basic'));
+    }
     function bundleIsPublic() {
       return resource.data.hidden == false && resource.data.get('suspended', false) == false;
     }
@@ -36,6 +50,7 @@ service cloud.firestore {
       allow get, list: if productIsPublic() || ownsExistingProduct() || isAdmin();
       allow create: if signedIn()
         && !sellerTrialLimitReached()
+        && !sellerPlanLimitReached()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.hidden == true
         && request.resource.data.suspended == false
@@ -130,6 +145,15 @@ service cloud.firestore {
             && resource.data.plan == 'trial'
             && resource.data.trialProductClaimed != true
             && request.resource.data.trialProductClaimed == true
+          )
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['productCount'])
+            && request.resource.data.productCount is int
+            && request.resource.data.productCount >= 0
+            && (
+              request.resource.data.productCount == resource.data.get('productCount', 0) + 1
+              || request.resource.data.productCount == resource.data.get('productCount', 0) - 1
+            )
           )
         )
       );
