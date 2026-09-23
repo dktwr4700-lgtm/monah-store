@@ -2889,9 +2889,8 @@ export default function Dashboard() {
                   <div className="dh-studio-meta">{t.styleMeta(lang === "en" ? selectedStoreStyle.nameEn : selectedStoreStyle.name)}</div>
                 </div>
               </div>
-              <div className="dh-studio-actions">
+              <div className="dh-studio-actions" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
                 <a className="dh-studio-action primary" href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer"><span>↗</span>{t.openYourStore}</a>
-                <button className="dh-studio-action" onClick={shareStore}><span>⌁</span>{copied === "share-store" ? t.copiedShort : t.shareStoreBtn}</button>
                 <button className="dh-studio-action" onClick={() => setTab("design")}><span>✦</span>{t.editAppearance}</button>
               </div>
             </section>
@@ -2927,14 +2926,6 @@ export default function Dashboard() {
               <button type="button" onClick={() => setTab("products")}>{t.addProductQuick}</button>
               <span>·</span>
               <button type="button" onClick={() => setTab("design")}>{t.storeDesignQuick}</button>
-              <span>·</span>
-              <button type="button" onClick={() => copyLink(slug || user.uid, "store")}>
-                {copied === "store" + (slug || user.uid) ? t.linkCopiedFull : t.copyStoreLinkBtn}
-              </button>
-              <span>·</span>
-              <button type="button" onClick={shareStore}>
-                {copied === "share-store" ? t.linkCopiedFull : t.shareStoreQuick}
-              </button>
             </div>
 
             <section className="dh-share-card">
@@ -2943,24 +2934,19 @@ export default function Dashboard() {
                   <div className="dh-share-title">{t.shareCenterTitle}</div>
                   <div className="dh-share-sub">{t.shareCenterSub}</div>
                 </div>
-                <span style={{ fontSize: 18 }}>↗</span>
-              </div>
-              <div className="dh-share-actions">
-                <button className="dh-share-btn primary" onClick={shareStore}>{t.shareBtn}</button>
-                <a className="dh-share-btn" href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">{t.whatsapp}</a>
-                <button className="dh-share-btn" onClick={() => copyLink(slug || user.uid, "store")}>{copied === "store" + (slug || user.uid) ? t.copiedShort : t.copyLinkBtn}</button>
-              </div>
-            </section>
-
-            <section className="dh-qr">
-              <div className="dh-qr-code"><QRCodeSVG value={storeUrl} size={70} bgColor="#ffffff" fgColor={storeColor} level="M" /></div>
-              <div>
-                <div className="dh-qr-title">{t.storeCodeTitle}</div>
-                <div className="dh-qr-sub">{t.storeCodeSub}</div>
-                <div className="dh-qr-actions">
-                  <button className="dh-mini-btn" onClick={() => copyLink(slug || user.uid, "store")}>{t.copyLinkBtn}</button>
-                  <button className="dh-mini-btn" onClick={shareStore}>{t.shareBtn}</button>
+                <div className="dh-qr-code" style={{ width: 56, height: 56, padding: 5, flexShrink: 0 }}>
+                  <QRCodeSVG value={storeUrl} size={44} bgColor="#ffffff" fgColor={storeColor} level="M" />
                 </div>
+              </div>
+              <div className="dh-store-row" style={{ marginBottom: 12 }}>
+                <span className="dh-store-url">{storeUrl}</span>
+                <button className="dh-copy" onClick={() => copyLink(slug || user.uid, "store")}>
+                  {copied === "store" + (slug || user.uid) ? t.copiedTiny : t.copyTiny}
+                </button>
+              </div>
+              <div className="dh-share-actions" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
+                <button className="dh-share-btn primary" onClick={shareStore}>{copied === "share-store" ? t.copiedShort : t.shareBtn}</button>
+                <a className="dh-share-btn" href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">{t.whatsapp}</a>
               </div>
             </section>
 
@@ -2986,15 +2972,6 @@ export default function Dashboard() {
               ))}
             </section>
 
-            <div className="dh-store-link">
-              <div className="dh-store-label">{t.publicStoreLinkLabel}</div>
-              <div className="dh-store-row">
-                <span className="dh-store-url">{storeUrl}</span>
-                <button className="dh-copy" onClick={() => copyLink(slug || user.uid, "store")}>
-                  {copied === "store" + (slug || user.uid) ? t.copiedTiny : t.copyTiny}
-                </button>
-              </div>
-            </div>
             <div className="dh-card">
               <div className="dh-title">{t.lastOrdersTitle}</div>
               {sellerOrders.length === 0 && (
