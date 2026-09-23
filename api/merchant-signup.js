@@ -14,7 +14,7 @@ const db = getFirestore();
 const FIREBASE_WEB_API_KEY = "AIzaSyCxpS_TMBc9mpJPjwK-TcRDfge-uCaO2Cc";
 const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim();
 const RESEND_TIMEOUT_MS = 6000;
-const ADMIN_NOTIFY_EMAIL = "monahapp@outlook.sa";
+const ADMIN_NOTIFY_EMAIL = "k1997551@gmail.com";
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
 const PLAN_PRICES = { starter: STARTER_MONTHLY_PRICE, basic: BASE_MONTHLY_PRICE, pro: PRO_MONTHLY_PRICE };
 function resolvePlan(value) {
