@@ -1122,9 +1122,12 @@ async function sendWhatsappMessage(phoneNumberId, accessToken, to, text) {
   }
 }
 
-function buildMonahAdminContext() {
+function buildMonahAdminContext(isFirstContact) {
   const addOnLines = ADD_ON_CATALOG.map((item) => `- ${item.title} (${item.price} ر.ع شهريًا): ${item.desc}`).join("\n");
-  return `أنت مساعد دعم يرد نيابة عن صاحب منصة "مُونة" على استفسارات التجار اللي يراسلونه مباشرة على واتساب. رد بأسلوب عربي طبيعي ومختصر ومباشر (٢-٤ جمل)، بدون رموز markdown خام.
+  const introInstruction = isFirstContact
+    ? "هذي أول رسالة من هذا الشخص — ابدأ ردك بجملة قصيرة توضح إنك مساعد آلي (مثلاً: \"هلا، أنا المساعد الآلي لمُونة 🤖\") قبل ما تجاوب على سؤاله."
+    : "هذا الشخص راسل قبل كذا وصار يعرف إنك مساعد آلي — لا تكرر التعريف بنفسك، جاوب على سؤاله مباشرة.";
+  return `أنت مساعد دعم آلي يرد نيابة عن صاحب منصة "مُونة" على استفسارات التجار اللي يراسلونه مباشرة على واتساب. رد بأسلوب عربي طبيعي ومختصر ومباشر (٢-٤ جمل)، بدون رموز markdown خام. ${introInstruction}
 
 معلومات مُونة (منصة متاجر رقمية لبيع الملفات والأكواد للتجار في عُمان):
 
@@ -1146,9 +1149,9 @@ ${addOnLines}
 - لا تعد بخصومات أو تغييرات بالأسعار.`;
 }
 
-async function generateAdminReply(question) {
+async function generateAdminReply(question, isFirstContact) {
   if (!GEMINI_API_KEY) return null;
-  const systemPrompt = buildMonahAdminContext();
+  const systemPrompt = buildMonahAdminContext(isFirstContact);
   const model = "gemini-3.6-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const response = await fetch(url, {
@@ -1181,11 +1184,19 @@ async function handleWhatsappWebhook(req, res) {
           if (!OWNER_WHATSAPP_ACCESS_TOKEN) continue;
           for (const message of messages) {
             if (message.type !== "text" || !message.text?.body) continue;
-            const reply = await generateAdminReply(message.text.body).catch((err) => {
+            // نعرّف المرسل بنفسه إنه يكلم مساعد آلي أول مرة بس — نتتبع ذلك بوثيقة
+            // بسيطة لكل رقم واتساب راسل صاحب مُونة على هذا الرقم.
+            const contactRef = db.collection("ownerAssistantContacts").doc(message.from);
+            const contactSnap = await contactRef.get();
+            const isFirstContact = !contactSnap.exists;
+            const reply = await generateAdminReply(message.text.body, isFirstContact).catch((err) => {
               console.error("handleWhatsappWebhook: admin reply generation failed", err);
               return null;
             });
-            if (reply) await sendWhatsappMessage(phoneNumberId, OWNER_WHATSAPP_ACCESS_TOKEN, message.from, reply);
+            if (reply) {
+              await sendWhatsappMessage(phoneNumberId, OWNER_WHATSAPP_ACCESS_TOKEN, message.from, reply);
+              if (isFirstContact) await contactRef.set({ introducedAt: FieldValue.serverTimestamp() });
+            }
           }
           continue;
         }
