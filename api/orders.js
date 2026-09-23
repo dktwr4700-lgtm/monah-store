@@ -5,6 +5,7 @@ import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
 import { ompayRequest as ompayRequestRaw, ompayChargeSucceeded } from "../lib/ompay-client.js";
+import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, STARTER_PRODUCT_LIMIT, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE, PRO_PRODUCT_LIMIT, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -94,6 +95,11 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
 // يخصنا قبل ما تفعّل الاشتراك بالأحداث.
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN?.trim() || "monah-whatsapp-verify-2026";
 const WHATSAPP_GRAPH_VERSION = "v21.0";
+// رقم واتساب صاحب مُونة الشخصي — مساعد داخلي يرد على استفسارات التجار الموجهة
+// له مباشرة (مو ميزة تُباع للتجار). نفس الـwebhook أعلاه يتحقق من هذا الرقم
+// قبل ما يرجع لمنطق "مساعد التاجر" العادي.
+const OWNER_WHATSAPP_PHONE_NUMBER_ID = process.env.OWNER_WHATSAPP_PHONE_NUMBER_ID?.trim();
+const OWNER_WHATSAPP_ACCESS_TOKEN = process.env.OWNER_WHATSAPP_ACCESS_TOKEN?.trim();
 
 // إشعار البائع بإيميل لما عميل يرفع إثبات تحويل — على نفس إيميل حساب البائع في
 // مونة (فيرباس)، بدون ما نحتاج حقل إعدادات جديد. أفضل-جهد فقط: أي فشل هنا
@@ -1116,6 +1122,48 @@ async function sendWhatsappMessage(phoneNumberId, accessToken, to, text) {
   }
 }
 
+function buildMonahAdminContext() {
+  const addOnLines = ADD_ON_CATALOG.map((item) => `- ${item.title} (${item.price} ر.ع شهريًا): ${item.desc}`).join("\n");
+  return `أنت مساعد دعم يرد نيابة عن صاحب منصة "مُونة" على استفسارات التجار اللي يراسلونه مباشرة على واتساب. رد بأسلوب عربي طبيعي ومختصر ومباشر (٢-٤ جمل)، بدون رموز markdown خام.
+
+معلومات مُونة (منصة متاجر رقمية لبيع الملفات والأكواد للتجار في عُمان):
+
+الباقات:
+- باقة "ابدأ": ${STARTER_MONTHLY_PRICE} ر.ع أول شهر فقط، بحد أقصى ${STARTER_PRODUCT_LIMIT} منتج — عند التجديد تتحول تلقائيًا لباقة "الأساسي".
+- باقة "الأساسي": ${BASE_MONTHLY_PRICE} ر.ع شهريًا، بحد أقصى ${BASE_PRODUCT_LIMIT} منتج.
+- باقة "برو": ${PRO_MONTHLY_PRICE} ر.ع شهريًا، بحد أقصى ${PRO_PRODUCT_LIMIT} منتج.
+- دومين مخصص (اختياري): ${CUSTOM_DOMAIN_MONTHLY_PRICE} ر.ع شهريًا إضافية.
+
+الإضافات المتاحة (اختيارية، تُفعّل من لوحة التاجر):
+${addOnLines}
+
+كيف يشتغل التسجيل: التاجر يسجل من الموقع، يختار باقة، يدفع بالبطاقة عبر OmPay، ومتجره يتفعّل فورًا.
+التحويل البنكي اليدوي متاح دائمًا كخيار دفع للعملاء، وربط بوابة دفع تلقائية يحتاج إضافة "البيع الرقمي".
+
+قواعد صارمة:
+- جاوب فقط من المعلومات أعلاه، لا تختلق تفاصيل أو أسعار غير مذكورة.
+- لو السؤال عن مشكلة تقنية محددة بحسابه (دفعة ما وصلت، منتج ما يشتغل) قل له بوضوح إن صاحب مُونة بيتابع معه بنفسه قريبًا، وما تحاول تحل المشكلة نيابة عنه.
+- لا تعد بخصومات أو تغييرات بالأسعار.`;
+}
+
+async function generateAdminReply(question) {
+  if (!GEMINI_API_KEY) return null;
+  const systemPrompt = buildMonahAdminContext();
+  const model = "gemini-3.6-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: String(question).trim() }] }],
+      generationConfig: { maxOutputTokens: 500 },
+    }),
+  });
+  const data = await response.json().catch(() => null);
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+}
+
 // Meta ترسل POST لكل حدث (رسالة واردة، أو تحديث حالة تسليم/قراءة) — نتجاهل أي
 // شي مو رسالة نصية واردة، ونرد 200 دايمًا حتى عند الخطأ الداخلي، عشان Meta ما
 // تعيد إرسال نفس الحدث بلا نهاية على شكل retries.
@@ -1128,6 +1176,19 @@ async function handleWhatsappWebhook(req, res) {
         const phoneNumberId = value.metadata?.phone_number_id;
         const messages = value.messages || [];
         if (!phoneNumberId || !messages.length) continue;
+
+        if (OWNER_WHATSAPP_PHONE_NUMBER_ID && phoneNumberId === OWNER_WHATSAPP_PHONE_NUMBER_ID) {
+          if (!OWNER_WHATSAPP_ACCESS_TOKEN) continue;
+          for (const message of messages) {
+            if (message.type !== "text" || !message.text?.body) continue;
+            const reply = await generateAdminReply(message.text.body).catch((err) => {
+              console.error("handleWhatsappWebhook: admin reply generation failed", err);
+              return null;
+            });
+            if (reply) await sendWhatsappMessage(phoneNumberId, OWNER_WHATSAPP_ACCESS_TOKEN, message.from, reply);
+          }
+          continue;
+        }
 
         const sellerSnap = await db.collection("sellers").where("whatsapp.phoneNumberId", "==", phoneNumberId).limit(1).get();
         if (sellerSnap.empty) continue;
