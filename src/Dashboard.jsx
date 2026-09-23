@@ -378,6 +378,11 @@ const DASH_T = {
     gatewayConnectedMsg: "تم الربط. عملاؤك الآن يقدرون يدفعون بالبطاقة مباشرة لحسابك.",
     disconnectGatewayError: "تعذر إلغاء الربط الآن.",
     gatewayDisconnectedMsg: "تم إلغاء الربط. العملاء الآن يحوّلون يدويًا فقط.",
+    whatsappFieldsRequired: "اكتب Phone Number ID و Access Token صحيحين من حساب Meta Business الخاص بك قبل الحفظ.",
+    connectWhatsappError: "تعذر ربط مساعد واتساب الآن.",
+    whatsappConnectedMsg: "تم الربط. المساعد الآن يرد تلقائي على عملائك عبر واتساب.",
+    disconnectWhatsappError: "تعذر إلغاء الربط الآن.",
+    whatsappDisconnectedMsg: "تم إلغاء الربط. المساعد توقف عن الرد.",
     genericOperationError: "تعذر تنفيذ العملية الآن.",
     domainNameMinLength: "اكتب اسمًا من 3 أحرف إنجليزية أو أرقام على الأقل.",
     domainAvailableMsg: "متاح! تقدر تكمل الشراء.",
@@ -698,6 +703,21 @@ const DASH_T = {
     apiSecretLabel: "سر API (OMPAY-API-Secret)",
     linkingEllipsis: "جاري الربط...",
     linkGateway: "اربط بوابة الدفع",
+    whatsappAssistantTitle: "مساعد واتساب الذكي",
+    whatsappConnectedSub: "مربوط · يرد تلقائي على عملائك",
+    whatsappNotConnectedSub: "غير مربوط",
+    whatsappIntro: "اربط رقم واتساب أعمالك عشان مساعد ذكي يرد تلقائي على استفسارات عملائك عن منتجاتك وأسعارك، ويرسل لهم رابط الشراء — على مدار الساعة.",
+    whatsappUpsellPrefix: "مهم: الربط وحده ما يكفي — لازم تفعّل إضافة \"مساعد واتساب الذكي\" (٢ ر.ع شهريًا) من تبويب",
+    whatsappUpsellSuffix: "حتى يشتغل المساعد فعليًا لعملائك.",
+    whatsappConnectedNowWorking: "مساعد واتساب مربوط الآن ويرد تلقائي على عملائك.",
+    whatsappSetupIntro: "هذا يحتاج حساب WhatsApp Business API خاص فيك من Meta for Developers (مو واتساب العادي على جوالك). أنشئ تطبيقك هناك، فعّل منتج WhatsApp، وعند إعداد الـWebhook الصق رابط والقيمة أدناه، ثم انسخ الـPhone Number ID والـAccess Token من نفس اللوحة والصقهم هنا.",
+    whatsappWebhookUrlLabel: "رابط الـWebhook (الصقه في إعدادات تطبيقك على Meta)",
+    whatsappVerifyTokenLabel: "Verify Token (الصقه في نفس الخانة بإعدادات Meta)",
+    whatsappPhoneNumberIdLabel: "Phone Number ID",
+    whatsappPhoneNumberIdPlaceholder: "من لوحة تطبيقك على Meta",
+    whatsappAccessTokenLabel: "Access Token",
+    whatsappAccessTokenPlaceholder: "توكن دائم من Meta Business",
+    linkWhatsapp: "اربط مساعد واتساب",
 
     freeOptionTitle: "الخيار المجاني — رابط متجرك",
     freeOptionText: "هذا الرابط شغال دائمًا ومجانًا، وتقدر تغيّر جزءه الأخير من تبويب \"هوية المتجر\".",
@@ -859,6 +879,11 @@ const DASH_T = {
     gatewayConnectedMsg: "Connected. Your customers can now pay by card directly to your account.",
     disconnectGatewayError: "Couldn't disconnect right now.",
     gatewayDisconnectedMsg: "Disconnected. Customers now transfer manually only.",
+    whatsappFieldsRequired: "Write a valid Phone Number ID and Access Token from your Meta Business account before saving.",
+    connectWhatsappError: "Couldn't connect the WhatsApp assistant right now.",
+    whatsappConnectedMsg: "Connected. The assistant now replies to your customers on WhatsApp automatically.",
+    disconnectWhatsappError: "Couldn't disconnect right now.",
+    whatsappDisconnectedMsg: "Disconnected. The assistant stopped replying.",
     genericOperationError: "Couldn't complete the operation right now.",
     domainNameMinLength: "Write a name of at least 3 English letters or digits.",
     domainAvailableMsg: "Available! You can complete the purchase.",
@@ -1179,6 +1204,21 @@ const DASH_T = {
     apiSecretLabel: "API secret (OMPAY-API-Secret)",
     linkingEllipsis: "Connecting...",
     linkGateway: "Connect payment gateway",
+    whatsappAssistantTitle: "WhatsApp AI assistant",
+    whatsappConnectedSub: "Connected · Replies to customers automatically",
+    whatsappNotConnectedSub: "Not connected",
+    whatsappIntro: "Connect your business WhatsApp number so an AI assistant automatically answers customer questions about your products and prices, and sends them the purchase link — around the clock.",
+    whatsappUpsellPrefix: "Important: connecting alone isn't enough — you need to activate the \"WhatsApp AI assistant\" add-on (2 OMR/month) from the",
+    whatsappUpsellSuffix: "tab for the assistant to actually work for your customers.",
+    whatsappConnectedNowWorking: "The WhatsApp assistant is connected now and replying to your customers automatically.",
+    whatsappSetupIntro: "This needs your own WhatsApp Business API account from Meta for Developers (not the regular WhatsApp app on your phone). Create your app there, enable the WhatsApp product, and when setting up the Webhook paste the URL and value below, then copy the Phone Number ID and Access Token from the same panel and paste them here.",
+    whatsappWebhookUrlLabel: "Webhook URL (paste into your Meta app's settings)",
+    whatsappVerifyTokenLabel: "Verify Token (paste into the same Meta settings field)",
+    whatsappPhoneNumberIdLabel: "Phone Number ID",
+    whatsappPhoneNumberIdPlaceholder: "From your Meta app dashboard",
+    whatsappAccessTokenLabel: "Access Token",
+    whatsappAccessTokenPlaceholder: "Permanent token from Meta Business",
+    linkWhatsapp: "Connect WhatsApp assistant",
 
     freeOptionTitle: "Free option — your store link",
     freeOptionText: "This link always works for free, and you can change its last part from the \"Store identity\" tab.",
@@ -1425,6 +1465,11 @@ export default function Dashboard() {
   const [ompayApiSecretInput, setOmpayApiSecretInput] = useState("");
   const [savingGateway, setSavingGateway] = useState(false);
   const [gatewayMessage, setGatewayMessage] = useState("");
+  const [whatsappConnected, setWhatsappConnected] = useState(false);
+  const [whatsappPhoneNumberIdInput, setWhatsappPhoneNumberIdInput] = useState("");
+  const [whatsappAccessTokenInput, setWhatsappAccessTokenInput] = useState("");
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState("");
   const [customDomainSlug, setCustomDomainSlug] = useState("");
   const [customDomainExpiresAt, setCustomDomainExpiresAt] = useState("");
   const [domainSlugInput, setDomainSlugInput] = useState("");
@@ -1476,6 +1521,7 @@ export default function Dashboard() {
       setSellerStoreType(data.storeType || "files");
       setPaymentInstructions(data.paymentInstructions || "");
       setGatewayConnected(data.paymentGateway?.provider === "ompay");
+      setWhatsappConnected(Boolean(data.whatsapp?.phoneNumberId));
       setPaymentBankName(data.paymentBankName || "");
       setPaymentAccountHolder(data.paymentAccountHolder || "");
       setPaymentAccountNumber(data.paymentAccountNumber || "");
@@ -2480,6 +2526,52 @@ export default function Dashboard() {
     setSavingGateway(false);
   }
 
+  async function saveWhatsappSettings() {
+    if (whatsappPhoneNumberIdInput.trim().length < 5 || whatsappAccessTokenInput.trim().length < 20) {
+      setWhatsappMessage(t.whatsappFieldsRequired);
+      return;
+    }
+    setSavingWhatsapp(true);
+    setWhatsappMessage("");
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action: "save_whatsapp_settings", phoneNumberId: whatsappPhoneNumberIdInput.trim(), accessToken: whatsappAccessTokenInput.trim() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || t.connectWhatsappError);
+      setWhatsappConnected(true);
+      setWhatsappPhoneNumberIdInput("");
+      setWhatsappAccessTokenInput("");
+      setWhatsappMessage(t.whatsappConnectedMsg);
+    } catch (err) {
+      setWhatsappMessage(err.message || t.connectWhatsappError);
+    }
+    setSavingWhatsapp(false);
+  }
+
+  async function disconnectWhatsapp() {
+    setSavingWhatsapp(true);
+    setWhatsappMessage("");
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action: "save_whatsapp_settings", disconnect: true }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || t.disconnectWhatsappError);
+      setWhatsappConnected(false);
+      setWhatsappMessage(t.whatsappDisconnectedMsg);
+    } catch (err) {
+      setWhatsappMessage(err.message || t.disconnectWhatsappError);
+    }
+    setSavingWhatsapp(false);
+  }
+
   async function domainSignupRequest(action, extra) {
     const idToken = await user.getIdToken();
     const response = await fetch("/api/merchant-signup", {
@@ -3462,6 +3554,10 @@ export default function Dashboard() {
               <div><b>{t.yourPaymentGateway}</b><span>{gatewayConnected ? t.gatewayConnectedSub : t.gatewayNotConnectedSub}</span></div>
               <span className="dh-settings-chev">‹</span>
             </button>
+            <button className="dh-settings-row" type="button" onClick={() => setTab("whatsapp")}>
+              <div><b>{t.whatsappAssistantTitle}</b><span>{whatsappConnected ? t.whatsappConnectedSub : t.whatsappNotConnectedSub}</span></div>
+              <span className="dh-settings-chev">‹</span>
+            </button>
             <button className="dh-settings-row" type="button" onClick={() => setTab("loyalty")}>
               <div><b>{t.autoWelcomeCoupon}</b><span>{repeatCouponEnabled ? t.activePercentLabel(repeatCouponPercent) : t.stoppedNow}</span></div>
               <span className="dh-settings-chev">‹</span>
@@ -3552,6 +3648,52 @@ export default function Dashboard() {
                 </>
               )}
               {gatewayMessage && <div className={(gatewayMessage === t.gatewayConnectedMsg || gatewayMessage === t.gatewayDisconnectedMsg) ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{gatewayMessage}</div>}
+            </div>
+          </>
+        )}
+
+        {tab === "whatsapp" && (
+          <>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
+            <div className="dh-card">
+              <div className="dh-title" style={{ marginBottom: 10 }}>{t.whatsappAssistantTitle}</div>
+              <p className="dh-hint" style={{ marginBottom: 12 }}>{t.whatsappIntro}</p>
+              {!activeAddOns.includes("whatsappAssistant") && (
+                <div className="dh-hint" style={{ marginBottom: 12, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
+                  {t.whatsappUpsellPrefix} <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t.subscriptionLinkLabel}</button> {t.whatsappUpsellSuffix}
+                </div>
+              )}
+              {whatsappConnected ? (
+                <>
+                  <div className="dh-hint" style={{ marginBottom: 12 }}>{t.whatsappConnectedNowWorking}</div>
+                  <button className="dh-btn" type="button" disabled={savingWhatsapp} onClick={disconnectWhatsapp}>{savingWhatsapp ? t.cancelingEllipsis : t.cancelLinking}</button>
+                </>
+              ) : (
+                <>
+                  <div className="dh-hint" style={{ marginBottom: 12, background: "#F7F7F2", borderRadius: 10, padding: "9px 12px" }}>
+                    {t.whatsappSetupIntro}
+                  </div>
+                  <div className="dh-field">
+                    <label>{t.whatsappWebhookUrlLabel}</label>
+                    <input type="text" readOnly value={`${window.location.origin}/api/orders`} style={{ direction: "ltr", textAlign: "right" }} onFocus={(e) => e.target.select()} />
+                  </div>
+                  <div className="dh-field">
+                    <label>{t.whatsappVerifyTokenLabel}</label>
+                    {/* لازم يطابق WHATSAPP_VERIFY_TOKEN (أو القيمة الافتراضية) في api/orders.js */}
+                    <input type="text" readOnly value="monah-whatsapp-verify-2026" style={{ direction: "ltr", textAlign: "right" }} onFocus={(e) => e.target.select()} />
+                  </div>
+                  <div className="dh-field">
+                    <label>{t.whatsappPhoneNumberIdLabel}</label>
+                    <input type="text" value={whatsappPhoneNumberIdInput} onChange={(e) => setWhatsappPhoneNumberIdInput(e.target.value)} placeholder={t.whatsappPhoneNumberIdPlaceholder} style={{ direction: "ltr", textAlign: "right" }} autoComplete="off" />
+                  </div>
+                  <div className="dh-field">
+                    <label>{t.whatsappAccessTokenLabel}</label>
+                    <input type="password" value={whatsappAccessTokenInput} onChange={(e) => setWhatsappAccessTokenInput(e.target.value)} placeholder={t.whatsappAccessTokenPlaceholder} autoComplete="off" />
+                  </div>
+                  <button className="dh-btn" type="button" disabled={savingWhatsapp} onClick={saveWhatsappSettings}>{savingWhatsapp ? t.linkingEllipsis : t.linkWhatsapp}</button>
+                </>
+              )}
+              {whatsappMessage && <div className={(whatsappMessage === t.whatsappConnectedMsg || whatsappMessage === t.whatsappDisconnectedMsg) ? "dh-hint" : "dh-error"} style={{ marginTop: 8 }}>{whatsappMessage}</div>}
             </div>
           </>
         )}

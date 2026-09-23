@@ -88,6 +88,12 @@ function safeProofPath(uid, orderId, proofPath) {
 // بصمت (ترويسة Authorization غير صالحة) قبل حتى ما يوصل Resend.
 const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim();
 const RESEND_TIMEOUT_MS = 6000;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
+// قيمة عامة (مو سر لكل تاجر) يدخلها التاجر بنفسه عند ربط تطبيق Meta الخاص به
+// بهذا الـwebhook — Meta ترسلها وقت التحقق الأولي من الرابط لتأكيد إنه فعلاً
+// يخصنا قبل ما تفعّل الاشتراك بالأحداث.
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN?.trim() || "monah-whatsapp-verify-2026";
+const WHATSAPP_GRAPH_VERSION = "v21.0";
 
 // إشعار البائع بإيميل لما عميل يرفع إثبات تحويل — على نفس إيميل حساب البائع في
 // مونة (فيرباس)، بدون ما نحتاج حقل إعدادات جديد. أفضل-جهد فقط: أي فشل هنا
@@ -1040,6 +1046,139 @@ async function saveSellerPaymentGateway(req, res, account) {
   return res.status(200).json({ ok: true, connected: true, provider });
 }
 
+// يتحقق منه Meta مرة وحدة (طلب GET) وقت ما التاجر يضيف رابط هذا الـwebhook
+// بإعدادات تطبيقه على Meta for Developers — لازم يرجّع الـchallenge كما هو
+// إذا الـverify_token طابق قيمتنا، وإلا يرفض الطلب.
+function whatsappVerifyWebhook(req, res) {
+  const mode = req.query?.["hub.mode"];
+  const token = req.query?.["hub.verify_token"];
+  const challenge = req.query?.["hub.challenge"];
+  if (mode === "subscribe" && token === WHATSAPP_VERIFY_TOKEN && challenge) {
+    res.setHeader("Content-Type", "text/plain");
+    return res.status(200).send(String(challenge));
+  }
+  return res.status(403).send("Forbidden");
+}
+
+function buildStoreWhatsappContext(seller, products) {
+  const lines = [];
+  lines.push(`اسم المتجر: ${seller.storeName || "متجر رقمي"}`);
+  const storeLink = seller.customDomainSlug ? `https://${seller.customDomainSlug}.monah-app.com` : `https://monah-app.com/#store/${seller.id}`;
+  lines.push(`رابط المتجر: ${storeLink}`);
+  if (!products.length) {
+    lines.push("لا توجد منتجات منشورة حاليًا.");
+  } else {
+    lines.push("المنتجات المتاحة:");
+    products.forEach((p) => {
+      lines.push(`- ${p.name}: ${p.price} ر.ع${p.description ? " — " + p.description : ""}`);
+    });
+  }
+  return lines.join("\n");
+}
+
+async function generateWhatsappReply(storeContext, question) {
+  if (!GEMINI_API_KEY) return null;
+  const systemPrompt = `أنت مساعد مبيعات ودود يرد على عملاء متجر رقمي عبر واتساب، باسم المتجر لا باسمك. مهمتك تجاوب استفسارات العميل عن المنتجات والأسعار وترشده لرابط الشراء، بأسلوب عربي طبيعي مختصر ومباشر (٢-٤ جمل)، بدون رموز markdown خام.
+
+بيانات المتجر:
+${storeContext}
+
+قواعد صارمة:
+- جاوب فقط من المعلومات أعلاه، لا تختلق تفاصيل غير موجودة.
+- لا تفاوض على السعر ولا تعد بخصومات غير مذكورة.
+- لا تؤكد وجود دفع أو تسليم لم يُذكر صراحة.
+- إذا السؤال مو له علاقة بالمتجر أو منتجاته، وجّه العميل بلطف إنك هنا بس تساعده بأسئلة المتجر.`;
+
+  const model = "gemini-3.6-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: String(question).trim() }] }],
+      generationConfig: { maxOutputTokens: 500 },
+    }),
+  });
+  const data = await response.json().catch(() => null);
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+}
+
+async function sendWhatsappMessage(phoneNumberId, accessToken, to, text) {
+  const url = `https://graph.facebook.com/${WHATSAPP_GRAPH_VERSION}/${phoneNumberId}/messages`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: text } }),
+  });
+  if (!response.ok) {
+    console.error("sendWhatsappMessage: Meta rejected the request", response.status, await response.text().catch(() => ""));
+  }
+}
+
+// Meta ترسل POST لكل حدث (رسالة واردة، أو تحديث حالة تسليم/قراءة) — نتجاهل أي
+// شي مو رسالة نصية واردة، ونرد 200 دايمًا حتى عند الخطأ الداخلي، عشان Meta ما
+// تعيد إرسال نفس الحدث بلا نهاية على شكل retries.
+async function handleWhatsappWebhook(req, res) {
+  try {
+    const entries = req.body?.entry || [];
+    for (const entry of entries) {
+      for (const change of entry.changes || []) {
+        const value = change.value || {};
+        const phoneNumberId = value.metadata?.phone_number_id;
+        const messages = value.messages || [];
+        if (!phoneNumberId || !messages.length) continue;
+
+        const sellerSnap = await db.collection("sellers").where("whatsapp.phoneNumberId", "==", phoneNumberId).limit(1).get();
+        if (sellerSnap.empty) continue;
+        const sellerDoc = sellerSnap.docs[0];
+        const seller = { id: sellerDoc.id, ...sellerDoc.data() };
+        if (!seller.whatsapp?.enabled || !seller.whatsapp?.accessToken) continue;
+        if (!(seller.activeAddOns || []).includes("whatsappAssistant")) continue;
+
+        const productsSnap = await db.collection("products").where("ownerId", "==", seller.id).get();
+        const products = productsSnap.docs.map((d) => d.data()).filter((p) => !p.hidden && !p.suspended).slice(0, 25);
+        const storeContext = buildStoreWhatsappContext(seller, products);
+
+        for (const message of messages) {
+          if (message.type !== "text" || !message.text?.body) continue;
+          const reply = await generateWhatsappReply(storeContext, message.text.body).catch((err) => {
+            console.error("handleWhatsappWebhook: reply generation failed", err);
+            return null;
+          });
+          if (reply) await sendWhatsappMessage(phoneNumberId, seller.whatsapp.accessToken, message.from, reply);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("handleWhatsappWebhook failed", err);
+  }
+  return res.status(200).json({ ok: true });
+}
+
+async function saveWhatsappSettings(req, res, account) {
+  await requireSeller(account.uid);
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (!sellerSnap.exists) throw new OrderError(409, "لم نجد متجرًا مفعّلًا لهذا الحساب.");
+
+  if (req.body?.disconnect) {
+    await sellerRef.set({ whatsapp: FieldValue.delete() }, { merge: true });
+    return res.status(200).json({ ok: true, connected: false });
+  }
+
+  const phoneNumberId = cleanText(req.body?.phoneNumberId, 40);
+  const accessToken = cleanText(req.body?.accessToken, 400);
+  if (phoneNumberId.length < 5 || accessToken.length < 20) {
+    throw new OrderError(400, "اكتب Phone Number ID و Access Token صحيحين من حساب Meta Business الخاص بك.");
+  }
+
+  await sellerRef.set({
+    whatsapp: { phoneNumberId, accessToken, enabled: true, connectedAt: FieldValue.serverTimestamp() },
+  }, { merge: true });
+  return res.status(200).json({ ok: true, connected: true });
+}
+
 async function saveRepeatCouponSettings(req, res, account) {
   await requireSeller(account.uid);
   const enabled = Boolean(req.body?.enabled);
@@ -1054,6 +1193,14 @@ async function saveRepeatCouponSettings(req, res, account) {
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
+  // طلبات Meta (تحقق الـwebhook GET، وأحداث الرسائل POST) ما تحمل توكن دخول
+  // مُونة العادي — لازم نتعامل معها قبل بوابة المصادقة والتحقق من POST فقط.
+  if (req.method === "GET" && req.query?.["hub.mode"]) {
+    return whatsappVerifyWebhook(req, res);
+  }
+  if (req.method === "POST" && req.body?.object === "whatsapp_business_account") {
+    return await handleWhatsappWebhook(req, res);
+  }
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "الطريقة غير مدعومة." });
@@ -1074,6 +1221,7 @@ export default async function handler(req, res) {
     if (action === "save_payment_instructions") return await savePaymentInstructions(req, res, account);
     if (action === "save_payment_gateway") return await saveSellerPaymentGateway(req, res, account);
     if (action === "save_repeat_coupon_settings") return await saveRepeatCouponSettings(req, res, account);
+    if (action === "save_whatsapp_settings") return await saveWhatsappSettings(req, res, account);
     return res.status(400).json({ error: "طلب الطلبات غير واضح." });
   } catch (error) {
     if (error instanceof OrderError) return res.status(error.code).json({ error: error.message });
