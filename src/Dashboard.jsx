@@ -144,6 +144,8 @@ const styles = `
   .dh-title{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; color:#0B0B0C; }
   .dh-title-count{ font-family:'JetBrains Mono',monospace; color:#5A5648; font-size:11px; }
 
+  .dh-group-title{ margin:24px 0 12px; padding-top:20px; border-top:1px solid #F1EFE6; font-family:'Almarai',sans-serif; font-weight:800; font-size:12px; color:#163F2E; }
+  .dh-group-title:first-child{ margin-top:0; padding-top:0; border-top:0; }
   .dh-field{ margin-bottom:12px; }
   .dh-field label{ display:block; font-size:12.5px; color:#403D35; margin-bottom:6px; font-weight:600; }
   .dh-field input:not([type="checkbox"]):not([type="radio"]), .dh-field textarea, .dh-field select{ width:100%; padding:11px 13px; border:1px solid #EDEAE0; border-radius:10px; font-size:13px; background:#FBFAF7; font-family:'Cairo', sans-serif; box-sizing:border-box; }
@@ -501,6 +503,9 @@ const DASH_T = {
     upgradeNow: "رقّي اشتراكك الآن",
     addNewProduct: "أضف منتج جديد",
     openFormHint: "افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.",
+    groupBasicInfo: "معلومات أساسية",
+    groupMedia: "الصور والفيديو",
+    groupDelivery: "طريقة التسليم",
     productNameLabel: "اسم المنتج",
     priceLabel: "السعر (ر.ع)",
     freeFileHint: "اكتب 0 إذا تريد تجعل هذا الملف مجانيًا للزوار.",
@@ -715,6 +720,11 @@ const DASH_T = {
     storeCoverAlt: "غلاف المتجر",
     storeLogoAlt: "شعار المتجر",
     designSavedMsg: "تم حفظ تصميم متجرك.",
+    groupBranding: "الشعار والغلاف",
+    groupInfo: "معلومات المتجر",
+    groupContact: "التواصل",
+    groupContent: "المحتوى",
+    groupStyle: "المظهر والدفع",
     storeCoverLabel: "غلاف المتجر (اختياري)",
     noCover: "بدون غلاف",
     uploadingEllipsis: "جاري الرفع...",
@@ -971,6 +981,9 @@ const DASH_T = {
     upgradeNow: "Upgrade your subscription now",
     addNewProduct: "Add a new product",
     openFormHint: "Only open the form when you're ready to add a product.",
+    groupBasicInfo: "Basic info",
+    groupMedia: "Images & video",
+    groupDelivery: "Delivery method",
     productNameLabel: "Product name",
     priceLabel: "Price (OMR)",
     freeFileHint: "Write 0 if you want to make this file free for visitors.",
@@ -1185,6 +1198,11 @@ const DASH_T = {
     storeCoverAlt: "Store cover",
     storeLogoAlt: "Store logo",
     designSavedMsg: "Your store design was saved.",
+    groupBranding: "Logo & cover",
+    groupInfo: "Store info",
+    groupContact: "Contact",
+    groupContent: "Content",
+    groupStyle: "Style & payment",
     storeCoverLabel: "Store cover (optional)",
     noCover: "No cover",
     uploadingEllipsis: "Uploading...",
@@ -2871,21 +2889,22 @@ export default function Dashboard() {
                   <div className="dh-studio-meta">{t.styleMeta(lang === "en" ? selectedStoreStyle.nameEn : selectedStoreStyle.name)}</div>
                 </div>
               </div>
-              <div className="dh-studio-actions">
+              <div className="dh-studio-actions" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
                 <a className="dh-studio-action primary" href={`#store/${slug || user.uid}`} target="_blank" rel="noopener noreferrer"><span>↗</span>{t.openYourStore}</a>
-                <button className="dh-studio-action" onClick={shareStore}><span>⌁</span>{copied === "share-store" ? t.copiedShort : t.shareStoreBtn}</button>
                 <button className="dh-studio-action" onClick={() => setTab("design")}><span>✦</span>{t.editAppearance}</button>
               </div>
             </section>
 
-            <div className="dh-next">
-              <span className="dh-next-badge">{nextStep.badge}</span>
-              <div className="dh-next-title">{nextStep.title}</div>
-              <div className="dh-next-text">{nextStep.text}</div>
-              <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: `${(nextStep.progress / 5) * 100}%` }} /></div>
-              <div className="dh-next-step">{t.stepsOf5(nextStep.progress)}</div>
-              <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
-            </div>
+            {nextStep.key !== "share-store" && (
+              <div className="dh-next">
+                <span className="dh-next-badge">{nextStep.badge}</span>
+                <div className="dh-next-title">{nextStep.title}</div>
+                <div className="dh-next-text">{nextStep.text}</div>
+                <div className="dh-next-bar"><div className="dh-next-bar-fill" style={{ width: `${(nextStep.progress / 5) * 100}%` }} /></div>
+                <div className="dh-next-step">{t.stepsOf5(nextStep.progress)}</div>
+                <button className="dh-next-btn" onClick={nextStep.onClick}>{nextStep.cta}</button>
+              </div>
+            )}
 
             {stalledOrders.length > 0 && (
               <div className="dh-flag">
@@ -2907,14 +2926,6 @@ export default function Dashboard() {
               <button type="button" onClick={() => setTab("products")}>{t.addProductQuick}</button>
               <span>·</span>
               <button type="button" onClick={() => setTab("design")}>{t.storeDesignQuick}</button>
-              <span>·</span>
-              <button type="button" onClick={() => copyLink(slug || user.uid, "store")}>
-                {copied === "store" + (slug || user.uid) ? t.linkCopiedFull : t.copyStoreLinkBtn}
-              </button>
-              <span>·</span>
-              <button type="button" onClick={shareStore}>
-                {copied === "share-store" ? t.linkCopiedFull : t.shareStoreQuick}
-              </button>
             </div>
 
             <section className="dh-share-card">
@@ -2923,24 +2934,19 @@ export default function Dashboard() {
                   <div className="dh-share-title">{t.shareCenterTitle}</div>
                   <div className="dh-share-sub">{t.shareCenterSub}</div>
                 </div>
-                <span style={{ fontSize: 18 }}>↗</span>
-              </div>
-              <div className="dh-share-actions">
-                <button className="dh-share-btn primary" onClick={shareStore}>{t.shareBtn}</button>
-                <a className="dh-share-btn" href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">{t.whatsapp}</a>
-                <button className="dh-share-btn" onClick={() => copyLink(slug || user.uid, "store")}>{copied === "store" + (slug || user.uid) ? t.copiedShort : t.copyLinkBtn}</button>
-              </div>
-            </section>
-
-            <section className="dh-qr">
-              <div className="dh-qr-code"><QRCodeSVG value={storeUrl} size={70} bgColor="#ffffff" fgColor={storeColor} level="M" /></div>
-              <div>
-                <div className="dh-qr-title">{t.storeCodeTitle}</div>
-                <div className="dh-qr-sub">{t.storeCodeSub}</div>
-                <div className="dh-qr-actions">
-                  <button className="dh-mini-btn" onClick={() => copyLink(slug || user.uid, "store")}>{t.copyLinkBtn}</button>
-                  <button className="dh-mini-btn" onClick={shareStore}>{t.shareBtn}</button>
+                <div className="dh-qr-code" style={{ width: 56, height: 56, padding: 5, flexShrink: 0 }}>
+                  <QRCodeSVG value={storeUrl} size={44} bgColor="#ffffff" fgColor={storeColor} level="M" />
                 </div>
+              </div>
+              <div className="dh-store-row" style={{ marginBottom: 12 }}>
+                <span className="dh-store-url">{storeUrl}</span>
+                <button className="dh-copy" onClick={() => copyLink(slug || user.uid, "store")}>
+                  {copied === "store" + (slug || user.uid) ? t.copiedTiny : t.copyTiny}
+                </button>
+              </div>
+              <div className="dh-share-actions" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
+                <button className="dh-share-btn primary" onClick={shareStore}>{copied === "share-store" ? t.copiedShort : t.shareBtn}</button>
+                <a className="dh-share-btn" href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">{t.whatsapp}</a>
               </div>
             </section>
 
@@ -2966,15 +2972,6 @@ export default function Dashboard() {
               ))}
             </section>
 
-            <div className="dh-store-link">
-              <div className="dh-store-label">{t.publicStoreLinkLabel}</div>
-              <div className="dh-store-row">
-                <span className="dh-store-url">{storeUrl}</span>
-                <button className="dh-copy" onClick={() => copyLink(slug || user.uid, "store")}>
-                  {copied === "store" + (slug || user.uid) ? t.copiedTiny : t.copyTiny}
-                </button>
-              </div>
-            </div>
             <div className="dh-card">
               <div className="dh-title">{t.lastOrdersTitle}</div>
               {sellerOrders.length === 0 && (
@@ -3007,6 +3004,7 @@ export default function Dashboard() {
               <div className="dh-section-body">
               {error && <div className="dh-error">{error}</div>}
               <form onSubmit={(e) => e.preventDefault()}>
+                <div className="dh-group-title">{t.groupBasicInfo}</div>
                 <div className="dh-field">
                   <label>{t.productNameLabel}</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
@@ -3035,6 +3033,7 @@ export default function Dashboard() {
                   {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
                   {descriptionDraftTarget === "new" && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">{t.draftOnlyEditable}</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft("new")}>{t.useThisDraft}</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>{t.cancel}</button></div></div>}
                 </div>
+                <div className="dh-group-title">{t.groupMedia}</div>
                 <div className="dh-field">
                   <label>{t.productImagesLabel}</label>
                   <div className="dh-images-row">
@@ -3053,6 +3052,7 @@ export default function Dashboard() {
                   </div>
                   {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
                 </div>
+                <div className="dh-group-title">{t.groupDelivery}</div>
                 <div className="dh-field">
                   <label>{t.previewVideoLabel}</label>
                   <div className="dh-images-row">
@@ -3657,6 +3657,7 @@ export default function Dashboard() {
               {designSaved && <div className="dh-success">{t.designSavedMsg}</div>}
               {error && <div className="dh-error">{error}</div>}
 
+              <div className="dh-group-title">{t.groupBranding}</div>
               <div className="dh-field">
                 <label>{t.storeCoverLabel}</label>
                 <div className="ds-cover-row">
@@ -3685,6 +3686,7 @@ export default function Dashboard() {
                 </div>
                 {logoError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{logoError}</div>}
               </div>
+              <div className="dh-group-title">{t.groupInfo}</div>
               <div className="dh-field">
                 <label>{t.storeNameLabel}</label>
                 <input type="text" value={storeName} onChange={(e) => { setStoreName(e.target.value); setDesignDirty(true); }} />
@@ -3699,6 +3701,7 @@ export default function Dashboard() {
                 {slugError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{slugError}</div>}
                 <div className="dh-hint">{t.slugWillAppear(slug || t.yourNamePlaceholder)}</div>
               </div>
+              <div className="dh-group-title">{t.groupContact}</div>
               <div className="dh-field">
                 <label>{t.whatsappFieldLabel}</label>
                 <input type="text" value={whatsapp} onChange={(e) => { setWhatsapp(e.target.value); setDesignDirty(true); }} placeholder="96891234567" style={{ direction: "ltr", textAlign: "right" }} />
@@ -3712,6 +3715,7 @@ export default function Dashboard() {
                 <input type="email" value={contactEmail} onChange={(e) => { setContactEmail(e.target.value); setDesignDirty(true); }} placeholder="support@yourbrand.com" style={{ direction: "ltr", textAlign: "right" }} />
                 <div className="dh-hint">{t.supportEmailHint}</div>
               </div>
+              <div className="dh-group-title">{t.groupContent}</div>
               <div className="dh-field">
                 <label>{t.storeAboutLabel}</label>
                 <textarea rows="3" value={storeAbout} onChange={(e) => { setStoreAbout(e.target.value); setDesignDirty(true); }} placeholder={t.storeAboutPlaceholder} />
@@ -3728,6 +3732,7 @@ export default function Dashboard() {
                 ))}
                 {storeFaqs.length < 5 && <button type="button" className="ds-add" onClick={addFaq}>{t.addQuestion}</button>}
               </div>
+              <div className="dh-group-title">{t.groupStyle}</div>
               <div className="dh-field">
                 <label>{t.chooseStoreStyle}</label>
                 <div className="dh-hint">{t.storeStyleHint}</div>
