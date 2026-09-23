@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const styles = `
@@ -255,7 +255,7 @@ const START_STORE_URL = "#start-store";
 
 const STEPS = [
   { n: "01", title: { ar: "اضغط \"افتح متجرك الحين\" وسجّل بياناتك", en: "Click \"Open your store now\" and register" }, desc: { ar: "تكتب اسم متجرك وبريدك الإلكتروني وتختار كلمة مرورك بنفسك — بدون خبرة تقنية.", en: "Enter your store name and email, and choose your own password — no technical experience needed." } },
-  { n: "02", title: { ar: "فعّل اشتراكك بالبطاقة", en: "Activate your subscription by card" }, desc: { ar: "تدفع 5 ر.ع شهريًا، ويفتح متجرك ولوحة التحكم فورًا بعد الدفع.", en: "Pay 5 OMR/month, and your store and dashboard open right after payment." } },
+  { n: "02", title: { ar: "فعّل اشتراكك بالبطاقة", en: "Activate your subscription by card" }, desc: { ar: "تدفع نص ريال بس تبدأ، ويفتح متجرك ولوحة التحكم فورًا بعد الدفع.", en: "Pay just 0.5 OMR to start, and your store and dashboard open right after payment." } },
   { n: "03", title: { ar: "من لوحتك اضغط \"إضافة منتج\"", en: "From your dashboard, click \"Add product\"" }, desc: { ar: "ترفع ملفك (PDF، صورة، فيديو، كود...) وتكتب اسمه وسعره ووصفه، ثم تنشره.", en: "Upload your file (PDF, image, video, code…), write its name, price, and description, then publish it." } },
   { n: "04", title: { ar: "يصير لمنتجك رابط خاص فيه", en: "Your product gets its own link" }, desc: { ar: "تنسخه وتشاركه بواتساب أو إنستغرام أو أي مكان تحب.", en: "Copy it and share it on WhatsApp, Instagram, or anywhere you like." } },
   { n: "05", title: { ar: "العميل يطلب وأنت تؤكد الاستلام", en: "The buyer orders and you confirm receipt" }, desc: { ar: "يرفع إثبات التحويل، وبعد ما تأكد استلامك المبلغ من لوحتك، يفتح التنزيل له تلقائيًا.", en: "They upload proof of transfer; once you confirm you received the payment from your dashboard, the download unlocks for them automatically." } },
@@ -328,14 +328,14 @@ const SECTIONS_T = {
     compareMonah: "Monah", compareOther: "منصات تقليدية",
     pricingEyebrow: "الاشتراك", pricingTitle: "ابدأ بسيط، وكبّر متجرك متى احتجت",
     pricingSub: "متجر أساسي يشتغل من أول يوم بسعر واضح، وإضافات تفتح لك مبيعات أسرع وأذكى وقت ما تحتاجها — بدون التزام بأكثر من اللي تختاره.",
-    priceBadge: "اشتراك مرن", priceName: "متجرك الأساسي",
-    priceDesc: "صفحة متجر بهويتك، إدارة المنتجات، والمشاركة والتتبع والمنتجات المجانية.",
+    priceBadge: "ابدأ بمبلغ رمزي", priceName: "جرّب متجرك",
+    priceDesc: "صفحة متجر بهويتك، حتى منتجين، والمشاركة والتتبع — وترقّي لباقة أكبر أي وقت.",
     priceUnit: "ر.ع / شهريًا بعد التفعيل",
     priceFeature1: "✓ لوحة تاجر عربية سهلة", priceFeature2: "✓ صفحة متجر وروابط مشاركة",
     priceFeature3: "✓ تخصيص الاسم والشعار والهوية", priceFeature4: "✓ منتج مجاني وروابط تتبع الزيارات",
     addOnsLabel: "إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:",
     openStore: "افتح متجرك الحين",
-    pricingNote: "الاشتراك الأساسي ٥ ر.ع شهريًا يُفعّل فور الدفع بالبطاقة. أي إضافة تختارها تُضاف لمبلغ اشتراكك الشهري تلقائيًا.",
+    pricingNote: "باقة التجربة نص ريال شهريًا (حتى منتجين) تُفعّل فور الدفع بالبطاقة. ترقّى للباقة الأساسية أو برو أي وقت تحتاج منتجات أكثر.",
     faqEyebrow: "أسئلة", faqTitle: "أسئلة شائعة",
     finalKicker: "خطوتك القادمة", finalTitle: "خلّ منتجك جاهزًا للمشاركة",
     finalP: "افتح متجرك الآن، ثم رتّب صفحته وخذ رابطك الخاص في مكان واحد وبشكل واضح.",
@@ -353,14 +353,14 @@ const SECTIONS_T = {
     compareMonah: "Monah", compareOther: "Traditional platforms",
     pricingEyebrow: "Subscription", pricingTitle: "Start simple, grow your store whenever you need",
     pricingSub: "A base store that works from day one at a clear price, with add-ons that unlock faster, smarter sales whenever you need them — no commitment beyond what you choose.",
-    priceBadge: "Flexible subscription", priceName: "Your base store",
-    priceDesc: "A store page with your identity, product management, sharing, tracking, and free products.",
+    priceBadge: "Start for pocket change", priceName: "Try your store",
+    priceDesc: "A store page with your identity, up to two products, sharing, and tracking — upgrade to a bigger plan anytime.",
     priceUnit: "OMR / month after activation",
     priceFeature1: "✓ Easy Arabic seller dashboard", priceFeature2: "✓ A store page with sharing links",
     priceFeature3: "✓ Customize your name, logo, and identity", priceFeature4: "✓ A free product and visit-tracking links",
     addOnsLabel: "Optional add-ons that grow your sales, chosen at signup or later from the seller dashboard:",
     openStore: "Open your store now",
-    pricingNote: "The base subscription (5 OMR/month) activates instantly on card payment. Any add-on you choose is added to your monthly subscription automatically.",
+    pricingNote: "The starter plan (0.5 OMR/month, up to 2 products) activates instantly on card payment. Upgrade to Basic or Pro anytime you need more products.",
     faqEyebrow: "FAQ", faqTitle: "Frequently asked questions",
     finalKicker: "Your next step", finalTitle: "Get your product ready to share",
     finalP: "Open your store now, set up its page, and get your own link in one clear place.",
@@ -578,7 +578,7 @@ export default function App() {
               <div className="price-badge">{st.priceBadge}</div>
               <div className="price-name">{st.priceName}</div>
               <div className="price-desc">{st.priceDesc}</div>
-              <div className="price-value mono">{BASE_MONTHLY_PRICE}<span>{st.priceUnit}</span></div>
+              <div className="price-value mono">{STARTER_MONTHLY_PRICE}<span>{st.priceUnit}</span></div>
               <div className="price-features">
                 <div>{st.priceFeature1}</div>
                 <div>{st.priceFeature2}</div>

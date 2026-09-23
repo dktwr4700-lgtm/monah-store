@@ -1,3 +1,5 @@
+export const STARTER_MONTHLY_PRICE = 0.5;
+export const STARTER_PRODUCT_LIMIT = 2;
 export const BASE_MONTHLY_PRICE = 5;
 export const BASE_PRODUCT_LIMIT = 50;
 export const PRO_MONTHLY_PRICE = 10;
@@ -7,7 +9,14 @@ export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2;
 export function productLimitForPlan(plan) {
   if (plan === "pro") return PRO_PRODUCT_LIMIT;
   if (plan === "trial") return 1;
+  if (plan === "starter") return STARTER_PRODUCT_LIMIT;
   return BASE_PRODUCT_LIMIT;
+}
+
+export function priceForPlan(plan) {
+  if (plan === "pro") return PRO_MONTHLY_PRICE;
+  if (plan === "starter") return STARTER_MONTHLY_PRICE;
+  return BASE_MONTHLY_PRICE;
 }
 
 // titleEn/descEn/groupEn تُستخدم بكل مكان يعرض هذا الكتالوج (الصفحة الرئيسية،

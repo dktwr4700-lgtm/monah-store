@@ -10,7 +10,7 @@ import {
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 class DebugErrorBoundary extends React.Component {
@@ -3769,7 +3769,7 @@ export default function Dashboard() {
 
         {tab === "subscription" && (() => {
           const addOnsMonthlyTotal = activeAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-          const planBasePrice = sellerPlan === "pro" ? PRO_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
+          const planBasePrice = priceForPlan(sellerPlan);
           const monthlyTotal = planBasePrice + addOnsMonthlyTotal;
           const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
           const daysLeft = subscriptionDaysLeft;

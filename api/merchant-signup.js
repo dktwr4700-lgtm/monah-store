@@ -1,7 +1,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ompayRequest, ompayChargeSucceeded } from "../lib/ompay-client.js";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
+import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 
@@ -16,9 +16,11 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim();
 const RESEND_TIMEOUT_MS = 6000;
 const ADMIN_NOTIFY_EMAIL = "monahapp@outlook.sa";
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
-const PLAN_PRICES = { basic: BASE_MONTHLY_PRICE, pro: PRO_MONTHLY_PRICE };
+const PLAN_PRICES = { starter: STARTER_MONTHLY_PRICE, basic: BASE_MONTHLY_PRICE, pro: PRO_MONTHLY_PRICE };
 function resolvePlan(value) {
-  return value === "pro" ? "pro" : "basic";
+  if (value === "pro") return "pro";
+  if (value === "starter") return "starter";
+  return "basic";
 }
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const CUSTOM_DOMAIN_PRICE = CUSTOM_DOMAIN_MONTHLY_PRICE;

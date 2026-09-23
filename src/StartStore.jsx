@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, STARTER_PRODUCT_LIMIT, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const CTA_WIDTH = 168;
@@ -61,7 +61,7 @@ const ST_T = {
     paymentStartError: "تعذر بدء الدفع الآن.",
     brand: "مُونة",
     formTitle: "افتح متجرك الرقمي الآن",
-    formText: "اكتب بيانات متجرك وبريدك. الاشتراك 5 ر.ع شهريًا.",
+    formText: (price) => `اكتب بيانات متجرك وبريدك. تقدر تبدأ من ${price} ر.ع شهريًا بس.`,
     storeNameLabel: "اسم المتجر", storeNamePlaceholder: "مثال: متجر هند للتصاميم",
     whatDoYouSell: "ماذا تبيع؟",
     creating: "جاري الإنشاء...", continueWithGoogle: "متابعة بحساب جوجل",
@@ -71,8 +71,9 @@ const ST_T = {
     readyContinue: "جاهز، اضغط للمتابعة.", oneFieldLeft: "بقي حقل وحد.", fillFirst: "عبّي البريد وكلمة المرور أولًا.",
     haveStoreLogin: "عندك متجر بالفعل؟ سجّل الدخول",
     activateStore: "فعّل متجرك",
-    subscriptionIntro: (price) => `اشتراك متجرك الأساسي ${price} ر.ع شهريًا. تقدر تضيف إضافات اختيارية الآن أو لاحقًا من لوحة التاجر.`,
+    subscriptionIntro: (price) => `تقدر تبدأ من ${price} ر.ع شهريًا فقط. تقدر تضيف إضافات اختيارية أو ترقّي باقتك الآن أو لاحقًا من لوحة التاجر.`,
     choosePlan: "اختر باقتك",
+    starterPlanOption: (price, limit) => `تجربة رمزية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     basicPlanOption: (price, limit) => `الأساسية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     proPlanOption: (price, limit) => `برو — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     optionalAddOns: "إضافات اختيارية (تقدر تتخطاها الآن)",
@@ -103,7 +104,7 @@ const ST_T = {
     paymentStartError: "Couldn't start the payment right now.",
     brand: "Monah",
     formTitle: "Open your digital store now",
-    formText: "Enter your store details and email. Subscription is 5 OMR/month.",
+    formText: (price) => `Enter your store details and email. Plans start from just ${price} OMR/month.`,
     storeNameLabel: "Store name", storeNamePlaceholder: "e.g. Hind's Design Store",
     whatDoYouSell: "What do you sell?",
     creating: "Creating...", continueWithGoogle: "Continue with Google",
@@ -113,8 +114,9 @@ const ST_T = {
     readyContinue: "Ready, click to continue.", oneFieldLeft: "One field left.", fillFirst: "Fill in your email and password first.",
     haveStoreLogin: "Already have a store? Log in",
     activateStore: "Activate your store",
-    subscriptionIntro: (price) => `Your base store subscription is ${price} OMR/month. You can add optional add-ons now or later from the seller dashboard.`,
+    subscriptionIntro: (price) => `You can start from just ${price} OMR/month. Add optional add-ons or upgrade your plan now or later from the seller dashboard.`,
     choosePlan: "Choose your plan",
+    starterPlanOption: (price, limit) => `Starter — ${price} OMR/month — up to ${limit} products`,
     basicPlanOption: (price, limit) => `Basic — ${price} OMR/month — up to ${limit} products`,
     proPlanOption: (price, limit) => `Pro — ${price} OMR/month — up to ${limit} products`,
     optionalAddOns: "Optional add-ons (you can skip these for now)",
@@ -167,7 +169,7 @@ export default function StartStore() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [selectedAddOns, setSelectedAddOns] = useState([]);
-  const [selectedPlan, setSelectedPlan] = useState("basic");
+  const [selectedPlan, setSelectedPlan] = useState("starter");
   const [couponCode, setCouponCode] = useState("");
   const [couponChecking, setCouponChecking] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -299,7 +301,7 @@ export default function StartStore() {
   }
 
   const addOnsTotal = selectedAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-  const planPrice = selectedPlan === "pro" ? PRO_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
+  const planPrice = selectedPlan === "pro" ? PRO_MONTHLY_PRICE : selectedPlan === "starter" ? STARTER_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
   const paymentTotal = Math.max(0.1, planPrice + addOnsTotal - couponDiscount);
 
   async function checkCoupon() {
@@ -350,7 +352,7 @@ export default function StartStore() {
 
         {step === "form" && <>
           <div className="invite-title">{t.formTitle}</div>
-          <p className="invite-text">{t.formText}</p>
+          <p className="invite-text">{t.formText(STARTER_MONTHLY_PRICE.toFixed(2))}</p>
           {error && <div className="invite-message error">{error}</div>}
           <div className="invite-field"><label>{t.storeNameLabel}</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder={t.storeNamePlaceholder} required /></div>
           <div className="invite-field"><label>{t.whatDoYouSell}</label><select value={storeType} onChange={(event) => setStoreType(event.target.value)}>{Object.entries(STORE_TYPES[lang]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
@@ -389,9 +391,13 @@ export default function StartStore() {
         {step === "payment" && <>
           <div className="invite-title">{t.activateStore}</div>
           {error && <div className="invite-message error">{error}</div>}
-          <p className="invite-text">{t.subscriptionIntro(BASE_MONTHLY_PRICE.toFixed(2))}</p>
+          <p className="invite-text">{t.subscriptionIntro(STARTER_MONTHLY_PRICE.toFixed(2))}</p>
           <div className="invite-field">
             <label>{t.choosePlan}</label>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
+              <input type="radio" name="plan" checked={selectedPlan === "starter"} onChange={() => setSelectedPlan("starter")} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>{t.starterPlanOption(STARTER_MONTHLY_PRICE.toFixed(2), STARTER_PRODUCT_LIMIT)}</span>
+            </label>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
               <input type="radio" name="plan" checked={selectedPlan === "basic"} onChange={() => setSelectedPlan("basic")} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
               <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>{t.basicPlanOption(BASE_MONTHLY_PRICE.toFixed(2), BASE_PRODUCT_LIMIT)}</span>
