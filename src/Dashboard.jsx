@@ -1844,6 +1844,8 @@ export default function Dashboard() {
       if (isTrial && !trialProductClaimed) {
         await updateDoc(doc(db, "sellers", user.uid), { trialProductClaimed: true }).catch(() => {});
         setTrialProductClaimed(true);
+      } else if (!isTrial) {
+        await updateDoc(doc(db, "sellers", user.uid), { productCount: increment(1) }).catch(() => {});
       }
     } catch (err) {
       setError(t.genericTryAgain);
@@ -1954,6 +1956,9 @@ export default function Dashboard() {
     setDeletingId(productId);
     try {
       await deleteDoc(doc(db, "products", productId));
+      if (!isTrial) {
+        await updateDoc(doc(db, "sellers", user.uid), { productCount: increment(-1) }).catch(() => {});
+      }
       setConfirmDeleteId(null);
     } catch (err) {
       setError(t.deleteProductError);
