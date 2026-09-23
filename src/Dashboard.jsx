@@ -500,6 +500,8 @@ const DASH_T = {
 
     trialLimitTitle: "وصلت لحد التجربة المجانية",
     trialLimitHint: "التجربة المجانية تسمح بمنتج واحد. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي ميزات مونة.",
+    planLimitTitle: "وصلت للحد الأقصى لباقتك",
+    planLimitHint: (limit) => `باقتك الحالية تسمح بـ ${limit} منتج بس. رقّي اشتراكك لإضافة منتجات أكثر.`,
     upgradeNow: "رقّي اشتراكك الآن",
     addNewProduct: "أضف منتج جديد",
     openFormHint: "افتح النموذج فقط عندما تكون جاهزًا لإضافة منتج.",
@@ -978,6 +980,8 @@ const DASH_T = {
 
     trialLimitTitle: "You've reached the free trial limit",
     trialLimitHint: "The free trial allows one product. Upgrade your subscription to add unlimited products and unlock the rest of Monah's features.",
+    planLimitTitle: "You've reached your plan's limit",
+    planLimitHint: (limit) => `Your current plan allows ${limit} products only. Upgrade your subscription to add more products.`,
     upgradeNow: "Upgrade your subscription now",
     addNewProduct: "Add a new product",
     openFormHint: "Only open the form when you're ready to add a product.",
@@ -3001,6 +3005,12 @@ export default function Dashboard() {
               <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F", textAlign: "center" }}>
                 <div className="dh-title" style={{ marginBottom: 6 }}>{t.trialLimitTitle}</div>
                 <div className="dh-hint" style={{ marginBottom: 14 }}>{t.trialLimitHint}</div>
+                <button className="dh-btn" type="button" onClick={() => setTab("subscription")}>{t.upgradeNow}</button>
+              </div>
+            ) : planLimitReached ? (
+              <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F", textAlign: "center" }}>
+                <div className="dh-title" style={{ marginBottom: 6 }}>{t.planLimitTitle}</div>
+                <div className="dh-hint" style={{ marginBottom: 14 }}>{t.planLimitHint(planProductLimit)}</div>
                 <button className="dh-btn" type="button" onClick={() => setTab("subscription")}>{t.upgradeNow}</button>
               </div>
             ) : (
