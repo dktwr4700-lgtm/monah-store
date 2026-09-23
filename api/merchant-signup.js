@@ -561,10 +561,34 @@ async function verifyRenewalCharge(req, res) {
 // التاجر أكمل الخطوة بين تشغيلتين ما توصله نصيحة ما تنفعه. نفس ترتيب الخطوة
 // التالية اللي تعرضها لوحة التاجر بتبويب "الرئيسية".
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// كل خطوة فيها "schedule": جدول أيام من وقت التسجيل، كل رقم فيه يرسل تذكير
+// جديد طالما الشرط بعده صحيح وقت التشغيل (مو بس أول مرة) — يعني لو ما تحرك
+// التاجر تتكرر له الرسالة على فترات متباعدة أكثر، وتتوقف تلقائيًا بعد آخر رقم.
+function isStepDue(step, sentSoFar, daysSince) {
+  if (sentSoFar >= step.schedule.length) return false;
+  return daysSince >= step.schedule[sentSoFar];
+}
+
+// طلب تسجيل بدأ بس ما وصل لخطوة الدفع/التفعيل بعد (merchantSignups بحالة
+// awaiting_payment). نذكّره بعد يوم، وبعدين بعد 3 أيام لو بعده ما كمل.
+const SIGNUP_REMINDER_STEP = {
+  key: "completeSignup",
+  schedule: [1, 3],
+  subject: "خطوة وحدة بس وتفتح متجرك!",
+  heading: "بدأت تسجيل متجرك بمُونة ولسا ما كملت",
+  body: `
+    <p>لاحظنا إنك بدأت تسجّل متجرك بمُونة بس ما وصلت لخطوة الدفع وتفعيل المتجر.</p>
+    <p>الخطوة الأخيرة بسيطة وتاخذ أقل من دقيقتين — بعدها متجرك يصير جاهز تبيع فيه.</p>
+  `,
+  ctaLabel: "كمّل تسجيل متجرك",
+  ctaHash: "#start-store",
+};
+
 const TIP_STEPS = [
   {
     key: "addProduct",
-    minDaysSinceSignup: 1,
+    schedule: [1, 3, 7],
     condition: (ctx) => ctx.productCount === 0,
     subject: "لسا ما ضفت أول منتج بمتجرك؟",
     heading: "خطوة وحدة بس تفصلك عن أول عملية بيع",
@@ -577,7 +601,7 @@ const TIP_STEPS = [
   },
   {
     key: "storeInfo",
-    minDaysSinceSignup: 3,
+    schedule: [3, 10],
     condition: (ctx) => ctx.productCount > 0 && (!ctx.hasTagline || !ctx.hasContact),
     subject: "كمّل بيانات متجرك عشان يبين احترافي أكثر",
     heading: "متجرك شغّال، بس فيه شوي تفاصيل ناقصة",
@@ -636,24 +660,42 @@ async function sendOnboardingReminders(req, res) {
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  const cutoff = new Date(Date.now() - TIP_STEPS[0].minDaysSinceSignup * DAY_MS);
-  const snap = await db.collection("sellers").get();
-  const sellers = snap.docs
-    .map((doc) => ({ id: doc.id, ...doc.data() }))
-    .filter((seller) => seller.email && seller.createdAt?.toDate?.() && seller.createdAt.toDate() <= cutoff);
-
   const now = Date.now();
   let sentCount = 0;
   let checkedCount = 0;
+
+  // 1) طلبات تسجيل بدأت بس ما وصلت لخطوة الدفع/التفعيل — نذكّرهم يكملون.
+  const signupsSnap = await db.collection("merchantSignups").where("status", "==", "awaiting_payment").get();
+  for (const doc of signupsSnap.docs) {
+    const signup = { id: doc.id, ...doc.data() };
+    if (!signup.email || !signup.createdAt?.toDate) continue;
+    const daysSince = (now - signup.createdAt.toDate().getTime()) / DAY_MS;
+    const sentSoFar = signup.signupRemindersSent || 0;
+    if (!isStepDue(SIGNUP_REMINDER_STEP, sentSoFar, daysSince)) continue;
+
+    checkedCount++;
+    const sent = await sendTipEmail(signup, SIGNUP_REMINDER_STEP);
+    if (sent) {
+      await db.collection("merchantSignups").doc(signup.id).update({ signupRemindersSent: sentSoFar + 1 });
+      sentCount++;
+    }
+  }
+
+  // 2) تجار فعّلوا متجرهم بس ناقصهم خطوات (أول منتج، بيانات المتجر).
+  const sellersSnap = await db.collection("sellers").get();
+  const sellers = sellersSnap.docs
+    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter((seller) => seller.email && seller.createdAt?.toDate?.());
+
   for (const seller of sellers) {
-    const alreadySent = seller.onboardingTipsSent || {};
     const daysSinceSignup = (now - seller.createdAt.toDate().getTime()) / DAY_MS;
+    const tipsSent = seller.onboardingTipsSent || {};
     let productsSnap = null;
     let storeSnap = null;
 
     for (const step of TIP_STEPS) {
-      if (alreadySent[step.key]) continue;
-      if (daysSinceSignup < step.minDaysSinceSignup) continue;
+      const sentSoFar = tipsSent[step.key] || 0;
+      if (!isStepDue(step, sentSoFar, daysSinceSignup)) continue;
 
       if (!productsSnap) productsSnap = await db.collection("products").where("ownerId", "==", seller.id).get();
       if (!storeSnap) storeSnap = await db.collection("stores").doc(seller.id).get();
@@ -669,7 +711,7 @@ async function sendOnboardingReminders(req, res) {
 
       const sent = await sendTipEmail(seller, step);
       if (sent) {
-        await db.collection("sellers").doc(seller.id).update({ [`onboardingTipsSent.${step.key}`]: true });
+        await db.collection("sellers").doc(seller.id).update({ [`onboardingTipsSent.${step.key}`]: sentSoFar + 1 });
         sentCount++;
       }
       break;
