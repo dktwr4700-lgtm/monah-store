@@ -22,6 +22,13 @@ function resolvePlan(value) {
   if (value === "starter") return "starter";
   return "basic";
 }
+// باقة "ابدأ" (0.50 ر.ع) سعر تعريفي لأول شهر بس — أي تجديد بعده يتحول
+// تلقائي لباقة "الأساسي" العادية بسعرها الطبيعي، بدل ما يستمر يتجدد بنفس
+// السعر الرمزي إلى الأبد.
+function renewalPlanFor(plan) {
+  const resolved = resolvePlan(plan);
+  return resolved === "starter" ? "basic" : resolved;
+}
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const CUSTOM_DOMAIN_PRICE = CUSTOM_DOMAIN_MONTHLY_PRICE;
 const DOMAIN_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
@@ -507,7 +514,7 @@ async function createRenewalCharge(req, res) {
   if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
   const seller = sellerSnap.data();
 
-  const renewalPlan = resolvePlan(seller.plan);
+  const renewalPlan = renewalPlanFor(seller.plan);
 
   if (seller.pendingRenewalReferenceNumber
     && await priorChargeSucceeded(seller.pendingRenewalReferenceNumber, "renew", account.uid)) {
@@ -552,7 +559,7 @@ async function verifyRenewalCharge(req, res) {
   }
 
   const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
-  await sellerRef.update({ subscriptionExpiresAt, plan: "basic", pendingRenewalReferenceNumber: FieldValue.delete() });
+  await sellerRef.update({ subscriptionExpiresAt, plan: renewalPlanFor(seller.plan), pendingRenewalReferenceNumber: FieldValue.delete() });
   return res.status(200).json({ paid: true, subscriptionExpiresAt });
 }
 

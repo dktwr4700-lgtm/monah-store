@@ -19,6 +19,12 @@ export function priceForPlan(plan) {
   return BASE_MONTHLY_PRICE;
 }
 
+// سعر "ابدأ" (0.50 ر.ع) تعريفي لأول شهر بس — أي تجديد بعده يحسب على أساس
+// باقة "الأساسي" العادية، فيطابق ما يحسبه السيرفر فعليًا وقت التجديد.
+export function renewalPriceForPlan(plan) {
+  return priceForPlan(plan === "starter" ? "basic" : plan);
+}
+
 // titleEn/descEn/groupEn تُستخدم بكل مكان يعرض هذا الكتالوج (الصفحة الرئيسية،
 // لوحة التاجر، صفحة فتح المتجر) لما التاجر يبدّل للإنجليزية عبر زر اللغة —
 // title/desc/group العربية تبقى الافتراضي.

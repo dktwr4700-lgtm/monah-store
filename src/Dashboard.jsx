@@ -10,7 +10,7 @@ import {
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 class DebugErrorBoundary extends React.Component {
@@ -769,6 +769,7 @@ const DASH_T = {
     freeTrialBadge: "تجربة مجانية",
     activeBadge: "مفعّل",
     trialSubscriptionHint: "أنت على التجربة المجانية — منتج واحد فقط، بدون حد زمني. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي الميزات (الإضافات، الدومين الخاص، وغيرها).",
+    starterRenewalHint: (price) => `أنت على باقة "ابدأ" بسعر تعريفي (0.50 ر.ع) لأول شهر بس. عند التجديد بينتقل اشتراكك تلقائيًا لباقة "الأساسي" بسعرها العادي (${price} ر.ع) وحد أعلى للمنتجات.`,
     baseStoreLabel: "المتجر الأساسي",
     baseStoreDesc: "الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.",
     subscriptionActiveUntil: (date, daysPart) => `الاشتراك ساري حتى ${date}${daysPart}.`,
@@ -1249,6 +1250,7 @@ const DASH_T = {
     freeTrialBadge: "Free trial",
     activeBadge: "Active",
     trialSubscriptionHint: "You're on the free trial — one product only, no time limit. Upgrade your subscription to add unlimited products and unlock the rest of the features (add-ons, custom domain, and more).",
+    starterRenewalHint: (price) => `You're on the "Starter" plan at an introductory price (0.50 OMR) for the first month only. On renewal your subscription switches automatically to the regular "Basic" plan (${price} OMR) with a higher product limit.`,
     baseStoreLabel: "Base store",
     baseStoreDesc: "Identity, products, sharing, QR, free products, and visit tracking.",
     subscriptionActiveUntil: (date, daysPart) => `Subscription active until ${date}${daysPart}.`,
@@ -3785,7 +3787,7 @@ export default function Dashboard() {
         {tab === "subscription" && (() => {
           const addOnsMonthlyTotal = activeAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
           const planBasePrice = priceForPlan(sellerPlan);
-          const monthlyTotal = planBasePrice + addOnsMonthlyTotal;
+          const monthlyTotal = renewalPriceForPlan(sellerPlan) + addOnsMonthlyTotal;
           const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
           const daysLeft = subscriptionDaysLeft;
           return (
@@ -3806,6 +3808,11 @@ export default function Dashboard() {
               {isTrial && (
                 <div className="dh-hint" style={{ background: "#FFF8E9", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
                   {t.trialSubscriptionHint}
+                </div>
+              )}
+              {!isTrial && sellerPlan === "starter" && (
+                <div className="dh-hint" style={{ background: "#FFF8E9", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
+                  {t.starterRenewalHint(BASE_MONTHLY_PRICE.toFixed(2))}
                 </div>
               )}
               <div className="dh-subscription-base" style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
