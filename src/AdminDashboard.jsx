@@ -160,6 +160,7 @@ const ADMIN_T = {
     subscriptionExpired: "منتهي الاشتراك",
     emailUnverified: "البريد غير مؤكد",
     emailVerified: "البريد مؤكد",
+    confirmEmailManually: "تأكيد الإيميل يدويًا",
     subscriptionValidUntil: "الاشتراك ساري لين:",
     sellerEmailLabel: "الإيميل:",
     saveEmail: "حفظ الإيميل",
@@ -302,6 +303,7 @@ const ADMIN_T = {
     subscriptionExpired: "Subscription expired",
     emailUnverified: "Email not verified",
     emailVerified: "Email verified",
+    confirmEmailManually: "Confirm email manually",
     subscriptionValidUntil: "Subscription valid until:",
     sellerEmailLabel: "Email:",
     saveEmail: "Save email",
@@ -435,6 +437,7 @@ export default function AdminDashboard() {
   const [emailDrafts, setEmailDrafts] = useState({});
   const [savingEmailId, setSavingEmailId] = useState(null);
   const [emailErrors, setEmailErrors] = useState({});
+  const [confirmingEmailId, setConfirmingEmailId] = useState(null);
 
   const [expandedId, setExpandedId] = useState(null);
   const [sellerProducts, setSellerProducts] = useState({});
@@ -748,6 +751,21 @@ export default function AdminDashboard() {
       setEmailErrors((prev) => ({ ...prev, [seller.id]: e.message || t.genericError }));
     }
     setSavingEmailId(null);
+  }
+
+  // للتجار المسجلين قبل ما نضيف تأكيد الإيميل بالنظام — إيميلهم حقيقي فعليًا
+  // بس ما فيه رابط تأكيد اتبعث لهم وقت التسجيل، فنعلّمه مؤكد يدويًا بعد ما
+  // نتأكد منه بأنفسنا.
+  async function confirmSellerEmailManually(seller) {
+    setConfirmingEmailId(seller.id);
+    setEmailErrors((prev) => ({ ...prev, [seller.id]: "" }));
+    try {
+      await inviteRequest("confirmSellerEmail", { sellerId: seller.id });
+      setEmailVerifiedMap((prev) => ({ ...prev, [seller.id]: true }));
+    } catch (e) {
+      setEmailErrors((prev) => ({ ...prev, [seller.id]: e.message || t.genericError }));
+    }
+    setConfirmingEmailId(null);
   }
 
   async function toggleDisabled(seller) {
@@ -1128,7 +1146,16 @@ export default function AdminDashboard() {
                   <span className="seller-badge badge-expired">{t.subscriptionExpired}</span>
                 )}
                 {emailVerifiedMap[s.id] === false && (
-                  <span className="seller-badge badge-expired">{t.emailUnverified}</span>
+                  <>
+                    <span className="seller-badge badge-expired">{t.emailUnverified}</span>
+                    <button
+                      type="button"
+                      disabled={confirmingEmailId === s.id}
+                      onClick={() => confirmSellerEmailManually(s)}
+                    >
+                      {confirmingEmailId === s.id ? t.savingEllipsis : t.confirmEmailManually}
+                    </button>
+                  </>
                 )}
                 {emailVerifiedMap[s.id] === true && (
                   <span className="seller-badge badge-active">{t.emailVerified}</span>
