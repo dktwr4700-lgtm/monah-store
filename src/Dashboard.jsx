@@ -374,6 +374,7 @@ const DASH_T = {
     paymentInstructionsSaved: "تم حفظ تعليمات التحويل. تظهر للمشتري بعد بدء الطلب فقط.",
     paymentInstructionsSavedToast: "تم حفظ تعليمات التحويل ✓",
     gatewayKeysRequired: "اكتب مفتاح API وسر API صحيحين من حسابك في OmPay قبل الحفظ.",
+    gatewayKeysRequiredPaypal: "اكتب Client ID وClient Secret صحيحين من حسابك في PayPal (Live) قبل الحفظ.",
     connectGatewayError: "تعذر ربط بوابة الدفع الآن.",
     gatewayConnectedMsg: "تم الربط. عملاؤك الآن يقدرون يدفعون بالبطاقة مباشرة لحسابك.",
     disconnectGatewayError: "تعذر إلغاء الربط الآن.",
@@ -702,6 +703,7 @@ const DASH_T = {
     paypalClientIdLabel: "Client ID",
     paypalClientIdPlaceholder: "من لوحة تطبيقك على developer.paypal.com",
     paypalClientSecretLabel: "Client Secret",
+    paypalClientSecretPlaceholder: "من نفس لوحة تطبيقك على developer.paypal.com",
     cancelingEllipsis: "جاري الإلغاء...",
     cancelLinking: "إلغاء الربط",
     apiKeyLabel: "مفتاح API (OMPAY-API-Key)",
@@ -883,6 +885,7 @@ const DASH_T = {
     paymentInstructionsSaved: "Transfer instructions saved. They appear to the buyer only after they start an order.",
     paymentInstructionsSavedToast: "Transfer instructions saved ✓",
     gatewayKeysRequired: "Write a valid API key and API secret from your OmPay account before saving.",
+    gatewayKeysRequiredPaypal: "Write a valid Client ID and Client Secret from your PayPal (Live) account before saving.",
     connectGatewayError: "Couldn't connect the payment gateway right now.",
     gatewayConnectedMsg: "Connected. Your customers can now pay by card directly to your account.",
     disconnectGatewayError: "Couldn't disconnect right now.",
@@ -1211,6 +1214,7 @@ const DASH_T = {
     paypalClientIdLabel: "Client ID",
     paypalClientIdPlaceholder: "From your app dashboard on developer.paypal.com",
     paypalClientSecretLabel: "Client Secret",
+    paypalClientSecretPlaceholder: "From the same app dashboard on developer.paypal.com",
     cancelingEllipsis: "Canceling...",
     cancelLinking: "Disconnect",
     apiKeyLabel: "API key (OMPAY-API-Key)",
@@ -2509,7 +2513,7 @@ export default function Dashboard() {
     const firstValue = isPaypal ? paypalClientIdInput.trim() : ompayApiKeyInput.trim();
     const secondValue = isPaypal ? paypalClientSecretInput.trim() : ompayApiSecretInput.trim();
     if (firstValue.length < 10 || secondValue.length < 10) {
-      setGatewayMessage(t.gatewayKeysRequired);
+      setGatewayMessage(isPaypal ? t.gatewayKeysRequiredPaypal : t.gatewayKeysRequired);
       return;
     }
     setSavingGateway(true);
@@ -3689,7 +3693,7 @@ export default function Dashboard() {
                       </div>
                       <div className="dh-field">
                         <label>{t.paypalClientSecretLabel}</label>
-                        <input type="password" value={paypalClientSecretInput} onChange={(e) => setPaypalClientSecretInput(e.target.value)} placeholder={t.paypalClientIdPlaceholder} autoComplete="off" />
+                        <input type="password" value={paypalClientSecretInput} onChange={(e) => setPaypalClientSecretInput(e.target.value)} placeholder={t.paypalClientSecretPlaceholder} autoComplete="off" />
                       </div>
                     </>
                   ) : (
