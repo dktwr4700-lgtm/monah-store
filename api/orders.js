@@ -5,6 +5,7 @@ import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
 import { ompayRequest as ompayRequestRaw, ompayChargeSucceeded } from "../lib/ompay-client.js";
+import { paypalRequest as paypalRequestRaw, paypalOrderSucceeded, paypalApproveUrl } from "../lib/paypal-client.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, STARTER_PRODUCT_LIMIT, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE, PRO_PRODUCT_LIMIT, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
@@ -17,6 +18,10 @@ const DELIVERY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // ويفترض تشتغل له دائمًا (مثل معلمة تستخدمها طول السنة الدراسية).
 const INTERACTIVE_UNLOCK_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 export const MAX_FILE_DOWNLOADS = 5;
+// PayPal ما يدعم الريال العماني كعملة معاملات، فنحوّل السعر لدولار وقت الدفع.
+// الريال العماني مربوط بسعر صرف ثابت بالدولار منذ 1986 (1 د.أ = 0.3845 ر.ع)،
+// فهذا الرقم دقيق دائمًا ولا يحتاج تحديث دوري من مصدر خارجي.
+const OMR_TO_USD_RATE = 1 / 0.3845;
 
 if (!getApps().length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
@@ -766,6 +771,14 @@ async function ompayRequest(method, path, body, credentialsOverride) {
   }
 }
 
+async function paypalRequest(method, path, body, credentialsOverride) {
+  try {
+    return await paypalRequestRaw(method, path, body, credentialsOverride);
+  } catch (error) {
+    throw new OrderError(error.code || 502, error.message);
+  }
+}
+
 function chargeRedirectUrl(charge) {
   const url = charge?.redirect_url || charge?.redirectUrl || charge?.data?.redirect_url || charge?.data?.redirectUrl;
   if (!url) console.error("OmPay bank-hosted charge missing redirect_url. Raw response:", JSON.stringify(charge));
@@ -774,33 +787,29 @@ function chargeRedirectUrl(charge) {
 
 // الشحن يصير دايمًا بمفاتيح بوابة الدفع الخاصة بالتاجر نفسه (مالك المنتج)،
 // أبدًا بمفاتيح مُونة — مُونة ما تلمس فلوس مبيعات أي تاجر.
-async function sellerOmpayCredentials(ownerId) {
+async function sellerGatewayCredentials(ownerId) {
   const sellerSnap = await db.collection("sellers").doc(ownerId).get();
   const seller = sellerSnap.exists ? sellerSnap.data() : {};
   const gateway = seller.paymentGateway;
-  if (!gateway || gateway.provider !== "ompay" || !gateway.ompayApiKey || !gateway.ompayApiSecret) {
+  if (!gateway?.provider) {
     throw new OrderError(409, "صاحب المتجر لم يربط بوابة دفع بعد. استخدم التحويل اليدوي.");
   }
   if (!sellerCardPaymentAvailable(seller)) {
     throw new OrderError(409, "صاحب المتجر لم يفعّل إضافة البيع الرقمي بعد. استخدم التحويل اليدوي.");
   }
-  return { apiKey: gateway.ompayApiKey, apiSecret: gateway.ompayApiSecret };
+  if (gateway.provider === "paypal") {
+    if (!gateway.paypalClientId || !gateway.paypalClientSecret) {
+      throw new OrderError(409, "صاحب المتجر لم يربط بوابة دفع بعد. استخدم التحويل اليدوي.");
+    }
+    return { provider: "paypal", clientId: gateway.paypalClientId, clientSecret: gateway.paypalClientSecret };
+  }
+  if (!gateway.ompayApiKey || !gateway.ompayApiSecret) {
+    throw new OrderError(409, "صاحب المتجر لم يربط بوابة دفع بعد. استخدم التحويل اليدوي.");
+  }
+  return { provider: "ompay", apiKey: gateway.ompayApiKey, apiSecret: gateway.ompayApiSecret };
 }
 
-async function createCardCharge(req, res, account) {
-  const orderId = cleanText(req.body?.orderId, 160);
-  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
-  const orderRef = db.collection("orders").doc(orderId);
-  const orderSnap = await orderRef.get();
-  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
-    throw new OrderError(403, "لا تملك هذا الطلب.");
-  }
-  const order = orderSnap.data();
-  if (order.status !== "draft") {
-    throw new OrderError(409, "هذا الطلب لا يقبل الدفع الآن.");
-  }
-  const credentials = await sellerOmpayCredentials(order.ownerId);
-
+async function createOmpayCharge(order, orderId, orderRef, origin, credentials, account) {
   // لو فيه محاولة دفع سابقة على نفس الطلب، نتحقق منها أولًا بدل ما ننشئ شحنة
   // جديدة — عشان ما نخصم العميل مرتين على دفعة نجحت فعليًا بس ما تأكدنا منها.
   // لو التحقق نفسه فشل (خطأ اتصال مثلاً) نوقف بدل ما نكمل ونخاطر بخصم مزدوج،
@@ -817,11 +826,10 @@ async function createCardCharge(req, res, account) {
         await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
         await notifySellerOfCardPayment(order, orderId);
       }
-      return res.status(200).json({ alreadyPaid: true, type: result2.type });
+      return { alreadyPaid: true, type: result2.type };
     }
   }
 
-  const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `ORDER-${orderId}-${Date.now()}`;
   const charge = await ompayRequest("POST", "/api/v1/transactions/bank-hosted", {
     amount: Number(Number(order.price).toFixed(3)),
@@ -835,7 +843,106 @@ async function createCardCharge(req, res, account) {
     throw new OrderError(502, "تعذر تجهيز صفحة الدفع الآن. جرب التحويل اليدوي.");
   }
   await orderRef.update({ ompayReferenceNumber: referenceNumber });
-  return res.status(200).json({ url: redirectUrl });
+  return { url: redirectUrl };
+}
+
+async function createPaypalCharge(order, orderId, orderRef, origin, credentials, account) {
+  // نفس فكرة فحص المحاولة السابقة عند OmPay، بس بدون Capture — نتأكد بس هل
+  // اكتملت فعليًا (COMPLETED) قبل لا ننشئ طلب PayPal جديد.
+  if (order.paypalOrderId) {
+    const priorResult = await paypalRequest("GET", `/v2/checkout/orders/${order.paypalOrderId}`, null, credentials).catch((error) => { throw new OrderError(error.code || 502, "تعذر التحقق من محاولة دفع سابقة على هذا الطلب. حاول مرة ثانية بعد قليل بدل ما تدفع من جديد."); });
+    const { succeeded } = paypalOrderSucceeded(priorResult);
+    if (succeeded) {
+      const result2 = await markOrderConfirmed(orderRef, orderId, "paypal");
+      if (!result2.alreadyConfirmed) {
+        await grantRepeatCoupon(order.ownerId, order.buyerUid);
+        await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
+        await notifySellerOfCardPayment(order, orderId);
+      }
+      return { alreadyPaid: true, type: result2.type };
+    }
+  }
+
+  const usdAmount = (Number(order.price) * OMR_TO_USD_RATE).toFixed(2);
+  const paypalOrder = await paypalRequest("POST", "/v2/checkout/orders", {
+    intent: "CAPTURE",
+    purchase_units: [{ reference_id: orderId, amount: { currency_code: "USD", value: usdAmount } }],
+    application_context: {
+      return_url: `${origin}/#pay-result/${orderId}`,
+      cancel_url: `${origin}/#pay-result/${orderId}`,
+      user_action: "PAY_NOW",
+    },
+  }, credentials);
+
+  const redirectUrl = paypalApproveUrl(paypalOrder);
+  if (!redirectUrl) {
+    console.error("PayPal order missing approve link. Raw response:", JSON.stringify(paypalOrder));
+    throw new OrderError(502, "تعذر تجهيز صفحة الدفع الآن. جرب التحويل اليدوي.");
+  }
+  await orderRef.update({ paypalOrderId: paypalOrder.id });
+  return { url: redirectUrl };
+}
+
+async function createCardCharge(req, res, account) {
+  const orderId = cleanText(req.body?.orderId, 160);
+  if (!isValidId(orderId)) throw new OrderError(400, "الطلب غير محدد.");
+  const orderRef = db.collection("orders").doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists || orderSnap.data().buyerUid !== account.uid) {
+    throw new OrderError(403, "لا تملك هذا الطلب.");
+  }
+  const order = orderSnap.data();
+  if (order.status !== "draft") {
+    throw new OrderError(409, "هذا الطلب لا يقبل الدفع الآن.");
+  }
+  const credentials = await sellerGatewayCredentials(order.ownerId);
+  const origin = `https://${req.headers.host || "monah-app.com"}`;
+
+  const result = credentials.provider === "paypal"
+    ? await createPaypalCharge(order, orderId, orderRef, origin, credentials, account)
+    : await createOmpayCharge(order, orderId, orderRef, origin, credentials, account);
+  return res.status(200).json(result);
+}
+
+async function verifyOmpayCharge(order, orderId, orderRef, credentials, account) {
+  if (!order.ompayReferenceNumber) {
+    throw new OrderError(409, "لا توجد عملية دفع بالبطاقة لهذا الطلب.");
+  }
+  const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
+    reference_number: order.ompayReferenceNumber,
+  }, credentials);
+  const { succeeded, status } = await ompayChargeSucceeded(result, { kind: "order", referenceNumber: order.ompayReferenceNumber, uid: account.uid });
+  if (!succeeded) {
+    return { paid: false, status };
+  }
+  const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
+  if (!result2.alreadyConfirmed) {
+    await grantRepeatCoupon(order.ownerId, order.buyerUid);
+    await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
+    await notifySellerOfCardPayment(order, orderId);
+  }
+  return { paid: true, type: result2.type, ownerId: order.ownerId };
+}
+
+async function verifyPaypalCharge(order, orderId, orderRef, credentials, account) {
+  if (!order.paypalOrderId) {
+    throw new OrderError(409, "لا توجد عملية دفع بالبطاقة لهذا الطلب.");
+  }
+  // العميل رجع من صفحة موافقة PayPal — نلتقط الطلب فعليًا الآن (تسحب الفلوس).
+  // "ORDER_ALREADY_CAPTURED" (يرجعها عميل PayPal كنجاح) يغطي حالة إعادة تحميل
+  // صفحة النتيجة بعد التقاط ناجح سابق.
+  const result = await paypalRequest("POST", `/v2/checkout/orders/${order.paypalOrderId}/capture`, {}, credentials);
+  const { succeeded, status } = paypalOrderSucceeded(result);
+  if (!succeeded) {
+    return { paid: false, status };
+  }
+  const result2 = await markOrderConfirmed(orderRef, orderId, "paypal");
+  if (!result2.alreadyConfirmed) {
+    await grantRepeatCoupon(order.ownerId, order.buyerUid);
+    await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
+    await notifySellerOfCardPayment(order, orderId);
+  }
+  return { paid: true, type: result2.type, ownerId: order.ownerId };
 }
 
 async function verifyCardCharge(req, res, account) {
@@ -850,25 +957,11 @@ async function verifyCardCharge(req, res, account) {
   if (order.status === "confirmed") {
     return res.status(200).json({ paid: true, type: order.type, ownerId: order.ownerId });
   }
-  if (!order.ompayReferenceNumber) {
-    throw new OrderError(409, "لا توجد عملية دفع بالبطاقة لهذا الطلب.");
-  }
-  const credentials = await sellerOmpayCredentials(order.ownerId);
-
-  const result = await ompayRequest("POST", "/api/v1/transactions/inquiry", {
-    reference_number: order.ompayReferenceNumber,
-  }, credentials);
-  const { succeeded, status } = await ompayChargeSucceeded(result, { kind: "order", referenceNumber: order.ompayReferenceNumber, uid: account.uid });
-  if (!succeeded) {
-    return res.status(200).json({ paid: false, status });
-  }
-  const result2 = await markOrderConfirmed(orderRef, orderId, "ompay");
-  if (!result2.alreadyConfirmed) {
-    await grantRepeatCoupon(order.ownerId, order.buyerUid);
-    await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
-    await notifySellerOfCardPayment(order, orderId);
-  }
-  return res.status(200).json({ paid: true, type: result2.type, ownerId: order.ownerId });
+  const credentials = await sellerGatewayCredentials(order.ownerId);
+  const result = credentials.provider === "paypal"
+    ? await verifyPaypalCharge(order, orderId, orderRef, credentials, account)
+    : await verifyOmpayCharge(order, orderId, orderRef, credentials, account);
+  return res.status(200).json(result);
 }
 
 async function deleteOrderAsAdmin(req, res, account) {
@@ -1039,9 +1132,22 @@ async function saveSellerPaymentGateway(req, res, account) {
   }
 
   const provider = cleanText(req.body?.provider, 20);
+  if (provider !== "ompay" && provider !== "paypal") throw new OrderError(400, "بوابة الدفع غير مدعومة حاليًا.");
+
+  if (provider === "paypal") {
+    const paypalClientId = cleanText(req.body?.paypalClientId, 200);
+    const paypalClientSecret = cleanText(req.body?.paypalClientSecret, 200);
+    if (paypalClientId.length < 10 || paypalClientSecret.length < 10) {
+      throw new OrderError(400, "اكتب Client ID و Client Secret صحيحين من حساب PayPal Business الخاص بك.");
+    }
+    await sellerRef.set({
+      paymentGateway: { provider, paypalClientId, paypalClientSecret, connectedAt: FieldValue.serverTimestamp() },
+    }, { merge: true });
+    return res.status(200).json({ ok: true, connected: true, provider });
+  }
+
   const ompayApiKey = cleanText(req.body?.ompayApiKey, 200);
   const ompayApiSecret = cleanText(req.body?.ompayApiSecret, 200);
-  if (provider !== "ompay") throw new OrderError(400, "بوابة الدفع غير مدعومة حاليًا.");
   if (ompayApiKey.length < 10 || ompayApiSecret.length < 10) {
     throw new OrderError(400, "اكتب مفتاح API وسر API صحيحين من حسابك في OmPay.");
   }
