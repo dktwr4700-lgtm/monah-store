@@ -456,12 +456,20 @@ async function createAddOnCharge(req, res) {
   const requested = cleanAddOnKeys(req.body?.addOns);
   const newAddOns = requested.filter((key) => !active.has(key));
   if (newAddOns.length === 0) throw new SignupError(400, "اختر إضافة واحدة على الأقل غير مفعّلة عندك.");
-  // "البيع الرقمي" ما ينفع تشتريه قبل ما تربط بوابة دفعك الخاصة — وإلا تدفع قيمته
-  // وما تقدر تستخدمه لين تربطها لاحقًا.
-  if (newAddOns.includes("digitalSelling") && seller.paymentGateway?.provider !== "ompay") {
+  // "البيع الرقمي" ما ينفع تفعيله قبل ما تربط بوابة دفعك الخاصة (OmPay أو
+  // PayPal) — وإلا يفعّله بدون ما يقدر يستخدمه لين تربطها لاحقًا.
+  if (newAddOns.includes("digitalSelling") && !seller.paymentGateway?.provider) {
     throw new SignupError(409, "اربط بوابة الدفع الخاصة بك أولًا من الإعدادات قبل تفعيل إضافة البيع الرقمي.");
   }
   const amount = addOnsTotal(newAddOns);
+
+  // "البيع الرقمي" مجاني (جزء من فتح المتجر) — لو كل الإضافات المطلوبة
+  // مجانية، نفعّلها فورًا بدون المرور ببوابة الدفع.
+  if (amount <= 0) {
+    const activeAddOns = Array.from(new Set([...(seller.activeAddOns || []), ...newAddOns]));
+    await sellerRef.update({ activeAddOns });
+    return res.status(200).json({ activated: true, activeAddOns });
+  }
 
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `ADDON-${account.uid}-${Date.now()}`;

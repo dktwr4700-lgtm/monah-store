@@ -289,7 +289,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const catalog = await source("src/subscriptionCatalog.js");
 
     expect([...catalog.matchAll(/key: "/g)]).toHaveLength(5);
-    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", groupEn: "Digital selling", title: "البيع الرقمي", titleEn: "Digital selling", price: 2');
+    expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", groupEn: "Digital selling", title: "البيع الرقمي", titleEn: "Digital selling", price: 0');
     expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", groupEn: "Sales growth", title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
     expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", groupEn: "Sales management", title: "إدارة المبيعات", titleEn: "Sales management", price: 1');
     expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", groupEn: "Extra protection", title: "حماية إضافية", titleEn: "Extra protection", price: 0.5');

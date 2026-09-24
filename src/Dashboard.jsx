@@ -693,7 +693,7 @@ const DASH_T = {
 
     yourPaymentGatewayTitle: "بوابة الدفع الخاصة بك",
     gatewayIntro: "اربط بوابة دفع خاصة فيك (OmPay أو PayPal — لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.",
-    gatewayUpsellPrefix: "مهم: ربط البوابة وحده ما يكفي — لازم تفعّل إضافة \"البيع الرقمي\" (٢ ر.ع شهريًا) من تبويب",
+    gatewayUpsellPrefix: "مهم: ربط البوابة وحده ما يكفي — لازم تفعّل إضافة \"البيع الرقمي\" (مجانًا) من تبويب",
     gatewayUpsellSuffix: "حتى تشتغل الميزة فعليًا لعملائك.",
     gatewayConnectedNowWorking: "بوابتك مربوطة الآن وشغالة.",
     gatewayConnectedNowWorkingPaypal: "بوابة PayPal مربوطة الآن وشغالة. عملاؤك يدفعون بالدولار (يحوّل السعر تلقائيًا من الريال العماني).",
@@ -813,6 +813,8 @@ const DASH_T = {
     connectGatewayFirstSuffix: "أولًا لتقدر تفعّلها",
     addOnsSelectedCount: (n) => `${n} إضافة مختارة`,
     payAndActivateAddOns: (price) => `ادفع ${price} ر.ع وفعّل الإضافات`,
+    activateAddOnsFree: "فعّل الإضافات مجانًا",
+    freeBadge: "مجانًا",
     addOnBillingNote: "لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.",
 
     previewTitle: "معاينة — هكذا يشوفها العميل",
@@ -1200,7 +1202,7 @@ const DASH_T = {
 
     yourPaymentGatewayTitle: "Your payment gateway",
     gatewayIntro: "Connect your own payment gateway (OmPay or PayPal — you need an active merchant account with them in your name) so your customers pay by card directly to your account — Monah never touches this money. Without connecting, manual transfer remains the only option.",
-    gatewayUpsellPrefix: "Important: connecting the gateway alone isn't enough — you need to activate the \"Digital selling\" add-on (2 OMR/month) from the",
+    gatewayUpsellPrefix: "Important: connecting the gateway alone isn't enough — you need to activate the \"Digital selling\" add-on (free) from the",
     gatewayUpsellSuffix: "tab for the feature to actually work for your customers.",
     gatewayConnectedNowWorking: "Your gateway is connected now and working.",
     gatewayConnectedNowWorkingPaypal: "Your PayPal gateway is connected now and working. Your customers pay in USD (converted automatically from OMR).",
@@ -1320,6 +1322,8 @@ const DASH_T = {
     connectGatewayFirstSuffix: "first to activate it",
     addOnsSelectedCount: (n) => `${n} add-ons selected`,
     payAndActivateAddOns: (price) => `Pay ${price} OMR and activate the add-ons`,
+    activateAddOnsFree: "Activate the add-ons for free",
+    freeBadge: "Free",
     addOnBillingNote: "When you activate an add-on, you pay its full price now, then it's automatically included in your next monthly renewal amount.",
 
     previewTitle: "Preview — this is what the customer sees",
@@ -4064,7 +4068,7 @@ export default function Dashboard() {
                             <div className="dh-hint" style={{ marginTop: 3 }}>{lang === "en" ? item.descEn : item.desc}</div>
                           </div>
                         </div>
-                        <b className="dh-item-price">+{item.price.toFixed(2)} {curr}</b>
+                        <b className="dh-item-price">{item.price > 0 ? `+${item.price.toFixed(2)} ${curr}` : t.freeBadge}</b>
                       </div>
                       {gatewayLocked ? (
                         <span style={{ display: "inline-block", marginTop: 6, background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>
@@ -4085,10 +4089,10 @@ export default function Dashboard() {
               <div className="dh-card" style={{ position: "sticky", bottom: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                   <span className="dh-hint">{t.addOnsSelectedCount(addOnSelection.length)}</span>
-                  <b className="mono" style={{ color: "#163F2E" }}>{selectionTotal.toFixed(2)} {curr}</b>
+                  <b className="mono" style={{ color: "#163F2E" }}>{selectionTotal > 0 ? `${selectionTotal.toFixed(2)} ${curr}` : t.freeBadge}</b>
                 </div>
                 <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={addOnBuying} onClick={buyAddOns}>
-                  {addOnBuying ? t.preparingPayment : t.payAndActivateAddOns(selectionTotal.toFixed(2))}
+                  {addOnBuying ? t.preparingPayment : (selectionTotal > 0 ? t.payAndActivateAddOns(selectionTotal.toFixed(2)) : t.activateAddOnsFree)}
                 </button>
                 {addOnMessage && <div className="dh-error" style={{ marginTop: 8 }}>{addOnMessage}</div>}
               </div>
