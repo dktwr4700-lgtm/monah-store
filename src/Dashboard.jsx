@@ -692,10 +692,16 @@ const DASH_T = {
     saveTransferInstructions: "حفظ تعليمات التحويل",
 
     yourPaymentGatewayTitle: "بوابة الدفع الخاصة بك",
-    gatewayIntro: "اربط حساب OmPay الخاص فيك (لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.",
+    gatewayIntro: "اربط بوابة دفع خاصة فيك (OmPay أو PayPal — لازم يكون عندك حساب تاجر مفعّل عندهم باسمك) عشان عملاؤك يدفعون بالبطاقة مباشرة لحسابك أنت — مُونة ما تلمس هالفلوس أبدًا. بدون ربط، يبقى التحويل اليدوي هو الخيار الوحيد.",
     gatewayUpsellPrefix: "مهم: ربط البوابة وحده ما يكفي — لازم تفعّل إضافة \"البيع الرقمي\" (٢ ر.ع شهريًا) من تبويب",
     gatewayUpsellSuffix: "حتى تشتغل الميزة فعليًا لعملائك.",
     gatewayConnectedNowWorking: "بوابتك مربوطة الآن وشغالة.",
+    gatewayConnectedNowWorkingPaypal: "بوابة PayPal مربوطة الآن وشغالة. عملاؤك يدفعون بالدولار (يحوّل السعر تلقائيًا من الريال العماني).",
+    gatewayProviderLabel: "اختار بوابة الدفع",
+    paypalIntro: "PayPal ما يدعم الريال العماني — نحوّل سعر المنتج تلقائيًا للدولار وقت الدفع بسعر الصرف الثابت (2.60 د.أ لكل ر.ع تقريبًا). لازم يكون عندك حساب PayPal Business فعلي يقدر يستقبل مدفوعات.",
+    paypalClientIdLabel: "Client ID",
+    paypalClientIdPlaceholder: "من لوحة تطبيقك على developer.paypal.com",
+    paypalClientSecretLabel: "Client Secret",
     cancelingEllipsis: "جاري الإلغاء...",
     cancelLinking: "إلغاء الربط",
     apiKeyLabel: "مفتاح API (OMPAY-API-Key)",
@@ -1193,10 +1199,16 @@ const DASH_T = {
     saveTransferInstructions: "Save transfer instructions",
 
     yourPaymentGatewayTitle: "Your payment gateway",
-    gatewayIntro: "Connect your own OmPay account (you need an active merchant account with them in your name) so your customers pay by card directly to your account — Monah never touches this money. Without connecting, manual transfer remains the only option.",
+    gatewayIntro: "Connect your own payment gateway (OmPay or PayPal — you need an active merchant account with them in your name) so your customers pay by card directly to your account — Monah never touches this money. Without connecting, manual transfer remains the only option.",
     gatewayUpsellPrefix: "Important: connecting the gateway alone isn't enough — you need to activate the \"Digital selling\" add-on (2 OMR/month) from the",
     gatewayUpsellSuffix: "tab for the feature to actually work for your customers.",
     gatewayConnectedNowWorking: "Your gateway is connected now and working.",
+    gatewayConnectedNowWorkingPaypal: "Your PayPal gateway is connected now and working. Your customers pay in USD (converted automatically from OMR).",
+    gatewayProviderLabel: "Choose payment gateway",
+    paypalIntro: "PayPal doesn't support Omani Rial — the product price is converted automatically to USD at checkout using a fixed exchange rate (about 2.60 USD per OMR). You need a real PayPal Business account that can receive payments.",
+    paypalClientIdLabel: "Client ID",
+    paypalClientIdPlaceholder: "From your app dashboard on developer.paypal.com",
+    paypalClientSecretLabel: "Client Secret",
     cancelingEllipsis: "Canceling...",
     cancelLinking: "Disconnect",
     apiKeyLabel: "API key (OMPAY-API-Key)",
@@ -1461,8 +1473,12 @@ export default function Dashboard() {
   const [savingPayment, setSavingPayment] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [gatewayConnected, setGatewayConnected] = useState(false);
+  const [connectedGatewayProvider, setConnectedGatewayProvider] = useState("");
+  const [gatewayProviderChoice, setGatewayProviderChoice] = useState("ompay");
   const [ompayApiKeyInput, setOmpayApiKeyInput] = useState("");
   const [ompayApiSecretInput, setOmpayApiSecretInput] = useState("");
+  const [paypalClientIdInput, setPaypalClientIdInput] = useState("");
+  const [paypalClientSecretInput, setPaypalClientSecretInput] = useState("");
   const [savingGateway, setSavingGateway] = useState(false);
   const [gatewayMessage, setGatewayMessage] = useState("");
   const [whatsappConnected, setWhatsappConnected] = useState(false);
@@ -1520,7 +1536,8 @@ export default function Dashboard() {
       setTrialProductClaimed(Boolean(data.trialProductClaimed));
       setSellerStoreType(data.storeType || "files");
       setPaymentInstructions(data.paymentInstructions || "");
-      setGatewayConnected(data.paymentGateway?.provider === "ompay");
+      setGatewayConnected(Boolean(data.paymentGateway?.provider));
+      setConnectedGatewayProvider(data.paymentGateway?.provider || "");
       setWhatsappConnected(Boolean(data.whatsapp?.phoneNumberId));
       setPaymentBankName(data.paymentBankName || "");
       setPaymentAccountHolder(data.paymentAccountHolder || "");
@@ -2481,7 +2498,13 @@ export default function Dashboard() {
   }
 
   async function saveGateway() {
-    if (ompayApiKeyInput.trim().length < 10 || ompayApiSecretInput.trim().length < 10) {
+    const isPaypal = gatewayProviderChoice === "paypal";
+    const body = isPaypal
+      ? { action: "save_payment_gateway", provider: "paypal", paypalClientId: paypalClientIdInput.trim(), paypalClientSecret: paypalClientSecretInput.trim() }
+      : { action: "save_payment_gateway", provider: "ompay", ompayApiKey: ompayApiKeyInput.trim(), ompayApiSecret: ompayApiSecretInput.trim() };
+    const firstValue = isPaypal ? paypalClientIdInput.trim() : ompayApiKeyInput.trim();
+    const secondValue = isPaypal ? paypalClientSecretInput.trim() : ompayApiSecretInput.trim();
+    if (firstValue.length < 10 || secondValue.length < 10) {
       setGatewayMessage(t.gatewayKeysRequired);
       return;
     }
@@ -2492,13 +2515,16 @@ export default function Dashboard() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ action: "save_payment_gateway", provider: "ompay", ompayApiKey: ompayApiKeyInput.trim(), ompayApiSecret: ompayApiSecretInput.trim() }),
+        body: JSON.stringify(body),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || t.connectGatewayError);
       setGatewayConnected(true);
+      setConnectedGatewayProvider(isPaypal ? "paypal" : "ompay");
       setOmpayApiKeyInput("");
       setOmpayApiSecretInput("");
+      setPaypalClientIdInput("");
+      setPaypalClientSecretInput("");
       setGatewayMessage(t.gatewayConnectedMsg);
     } catch (err) {
       setGatewayMessage(err.message || t.connectGatewayError);
@@ -2519,6 +2545,7 @@ export default function Dashboard() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || t.disconnectGatewayError);
       setGatewayConnected(false);
+      setConnectedGatewayProvider("");
       setGatewayMessage(t.gatewayDisconnectedMsg);
     } catch (err) {
       setGatewayMessage(err.message || t.disconnectGatewayError);
@@ -3631,19 +3658,48 @@ export default function Dashboard() {
               )}
               {gatewayConnected ? (
                 <>
-                  <div className="dh-hint" style={{ marginBottom: 12 }}>{t.gatewayConnectedNowWorking}</div>
+                  <div className="dh-hint" style={{ marginBottom: 12 }}>{connectedGatewayProvider === "paypal" ? t.gatewayConnectedNowWorkingPaypal : t.gatewayConnectedNowWorking}</div>
                   <button className="dh-btn" type="button" disabled={savingGateway} onClick={disconnectGateway}>{savingGateway ? t.cancelingEllipsis : t.cancelLinking}</button>
                 </>
               ) : (
                 <>
                   <div className="dh-field">
-                    <label>{t.apiKeyLabel}</label>
-                    <input type="password" value={ompayApiKeyInput} onChange={(e) => setOmpayApiKeyInput(e.target.value)} placeholder={t.apiKeyPlaceholder} autoComplete="off" />
+                    <label>{t.gatewayProviderLabel}</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: gatewayProviderChoice === "ompay" ? 800 : 500 }}>
+                        <input type="radio" name="gatewayProvider" checked={gatewayProviderChoice === "ompay"} onChange={() => setGatewayProviderChoice("ompay")} />
+                        OmPay
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: gatewayProviderChoice === "paypal" ? 800 : 500 }}>
+                        <input type="radio" name="gatewayProvider" checked={gatewayProviderChoice === "paypal"} onChange={() => setGatewayProviderChoice("paypal")} />
+                        PayPal
+                      </label>
+                    </div>
                   </div>
-                  <div className="dh-field">
-                    <label>{t.apiSecretLabel}</label>
-                    <input type="password" value={ompayApiSecretInput} onChange={(e) => setOmpayApiSecretInput(e.target.value)} placeholder={t.apiKeyPlaceholder} autoComplete="off" />
-                  </div>
+                  {gatewayProviderChoice === "paypal" ? (
+                    <>
+                      <div className="dh-hint" style={{ marginBottom: 12, background: "#F7F7F2", borderRadius: 10, padding: "9px 12px" }}>{t.paypalIntro}</div>
+                      <div className="dh-field">
+                        <label>{t.paypalClientIdLabel}</label>
+                        <input type="password" value={paypalClientIdInput} onChange={(e) => setPaypalClientIdInput(e.target.value)} placeholder={t.paypalClientIdPlaceholder} autoComplete="off" />
+                      </div>
+                      <div className="dh-field">
+                        <label>{t.paypalClientSecretLabel}</label>
+                        <input type="password" value={paypalClientSecretInput} onChange={(e) => setPaypalClientSecretInput(e.target.value)} placeholder={t.paypalClientIdPlaceholder} autoComplete="off" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="dh-field">
+                        <label>{t.apiKeyLabel}</label>
+                        <input type="password" value={ompayApiKeyInput} onChange={(e) => setOmpayApiKeyInput(e.target.value)} placeholder={t.apiKeyPlaceholder} autoComplete="off" />
+                      </div>
+                      <div className="dh-field">
+                        <label>{t.apiSecretLabel}</label>
+                        <input type="password" value={ompayApiSecretInput} onChange={(e) => setOmpayApiSecretInput(e.target.value)} placeholder={t.apiKeyPlaceholder} autoComplete="off" />
+                      </div>
+                    </>
+                  )}
                   <button className="dh-btn" type="button" disabled={savingGateway} onClick={saveGateway}>{savingGateway ? t.linkingEllipsis : t.linkGateway}</button>
                 </>
               )}
