@@ -218,9 +218,13 @@ async function updateSellerEmail(req, res) {
   const sellerSnap = await sellerRef.get();
   if (!sellerSnap.exists) return res.status(404).json({ error: "لم نجد هذا الحساب." });
 
-  await auth.updateUser(sellerId, { email: newEmail, emailVerified: false })
-    .catch((error) => { throw new Error(error.code === "auth/email-already-exists" ? "هذا الإيميل مستخدم بحساب ثاني." : "تعذر تعديل إيميل الدخول."); });
-  await sellerRef.update({ email: newEmail });
+  // لو الإيميل ما تغيّر فعليًا (ضغط "حفظ الإيميل" بدون تعديل القيمة)، ما نلمس
+  // Firebase Auth أبدًا — وإلا كنا نصفّر emailVerified لإيميل مؤكد فعليًا بدون أي سبب.
+  if (cleanEmail(sellerSnap.data().email) !== newEmail) {
+    await auth.updateUser(sellerId, { email: newEmail, emailVerified: false })
+      .catch((error) => { throw new Error(error.code === "auth/email-already-exists" ? "هذا الإيميل مستخدم بحساب ثاني." : "تعذر تعديل إيميل الدخول."); });
+    await sellerRef.update({ email: newEmail });
+  }
   return res.status(200).json({ ok: true });
 }
 
