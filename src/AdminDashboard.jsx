@@ -733,6 +733,7 @@ export default function AdminDashboard() {
 
   async function saveSellerEmail(seller) {
     const value = emailDraftFor(seller).trim();
+    const emailChanged = value.toLowerCase() !== (seller.email || "").toLowerCase();
     setSavingEmailId(seller.id);
     setEmailErrors((prev) => ({ ...prev, [seller.id]: "" }));
     try {
@@ -740,7 +741,9 @@ export default function AdminDashboard() {
       setSellers((prev) =>
         prev.map((s) => (s.id === seller.id ? { ...s, email: value } : s))
       );
-      setEmailVerifiedMap((prev) => ({ ...prev, [seller.id]: false }));
+      if (emailChanged) {
+        setEmailVerifiedMap((prev) => ({ ...prev, [seller.id]: false }));
+      }
     } catch (e) {
       setEmailErrors((prev) => ({ ...prev, [seller.id]: e.message || t.genericError }));
     }
