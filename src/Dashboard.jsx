@@ -11,7 +11,7 @@ import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import { watermarkImage } from "./watermarkImage.js";
-import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan, upgradeOptionsForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 class DebugErrorBoundary extends React.Component {
@@ -446,7 +446,7 @@ const DASH_T = {
     unpaidLimitTitle: "منتجك الأول جاهز كمسودة",
     unpaidLimitHint: "قبل التفعيل تقدر تجهّز منتج واحد. فعّل متجرك عشان تنشره وتضيف منتجات أكثر.",
     unpaidSubscriptionTitle: "متجرك غير مفعّل بعد",
-    unpaidSubscriptionHint: (price) => `سجّلت مجانًا وتقدر تجهّز متجرك ومنتجك الأول. عشان تنشر وتبيع اختر باقتك وادفع أول شهر — تبدأ من ${price} ر.ع.`,
+    unpaidSubscriptionHint: (price) => `سجّلت مجانًا وتقدر تجهّز متجرك ومنتجك الأول. عشان تنشر وتبيع اختر باقتك وادفع اشتراكك الشهري — تبدأ من ${price} ر.ع.`,
     unpaidStepTitle: "باقي خطوة وحدة: فعّل متجرك",
     unpaidStepText: "منتجك محفوظ كمسودة. فعّل متجرك باختيار باقتك عشان تنشره ويقدر عملاؤك يشترونه.",
     upgradeSubscription: "رقّي اشتراكك",
@@ -813,7 +813,12 @@ const DASH_T = {
     freeTrialBadge: "تجربة مجانية",
     activeBadge: "مفعّل",
     trialSubscriptionHint: "أنت على التجربة المجانية — منتج واحد فقط، بدون حد زمني. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي الميزات (الإضافات، الدومين الخاص، وغيرها).",
-    starterRenewalHint: (price) => `أنت على باقة "ابدأ" بسعر تعريفي (0.50 ر.ع) لأول شهر بس. عند التجديد بينتقل اشتراكك تلقائيًا لباقة "الأساسي" بسعرها العادي (${price} ر.ع) وحد أعلى للمنتجات.`,
+    starterRenewalHint: () => `أنت على باقة "ابدأ": 0.50 ر.ع شهريًا وحتى 2 منتج. تحتاج منتجات أكثر؟ رقّي باقتك من تحت.`,
+    upgradePlanTitle: "رقّي باقتك",
+    upgradePlanHint: "الترقية تبدأ فورًا، ويبدأ معها اشتراك جديد لمدة 30 يوم من يوم الدفع (مع إضافاتك المفعّلة).",
+    upgradePlanOption: (name, price, limit) => `${name} — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
+    planNames: { starter: "ابدأ", basic: "الأساسي", pro: "برو" },
+    payAndUpgradeTo: (name, price) => `ادفع ${price} ر.ع ورقّي لـ${name}`,
     baseStoreLabel: "المتجر الأساسي",
     baseStoreDesc: "الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.",
     subscriptionActiveUntil: (date, daysPart) => `الاشتراك ساري حتى ${date}${daysPart}.`,
@@ -972,7 +977,7 @@ const DASH_T = {
     unpaidLimitTitle: "Your first product is ready as a draft",
     unpaidLimitHint: "Before activation you can prepare one product. Activate your store to publish it and add more.",
     unpaidSubscriptionTitle: "Your store isn't activated yet",
-    unpaidSubscriptionHint: (price) => `You signed up for free and can prepare your store and first product. To publish and sell, choose a plan and pay the first month — from ${price} OMR.`,
+    unpaidSubscriptionHint: (price) => `You signed up for free and can prepare your store and first product. To publish and sell, choose a plan and pay your monthly subscription — from ${price} OMR.`,
     unpaidStepTitle: "One step left: activate your store",
     unpaidStepText: "Your product is saved as a draft. Activate your store by choosing a plan so you can publish it and customers can buy it.",
     upgradeSubscription: "Upgrade your subscription",
@@ -1339,7 +1344,12 @@ const DASH_T = {
     freeTrialBadge: "Free trial",
     activeBadge: "Active",
     trialSubscriptionHint: "You're on the free trial — one product only, no time limit. Upgrade your subscription to add unlimited products and unlock the rest of the features (add-ons, custom domain, and more).",
-    starterRenewalHint: (price) => `You're on the "Starter" plan at an introductory price (0.50 OMR) for the first month only. On renewal your subscription switches automatically to the regular "Basic" plan (${price} OMR) with a higher product limit.`,
+    starterRenewalHint: () => `You're on the "Starter" plan: 0.50 OMR a month, up to 2 products. Need more products? Upgrade your plan below.`,
+    upgradePlanTitle: "Upgrade your plan",
+    upgradePlanHint: "Upgrades apply right away and start a new 30-day subscription from the day you pay (including your active add-ons).",
+    upgradePlanOption: (name, price, limit) => `${name} — ${price} OMR/month — up to ${limit} products`,
+    planNames: { starter: "Starter", basic: "Basic", pro: "Pro" },
+    payAndUpgradeTo: (name, price) => `Pay ${price} OMR and upgrade to ${name}`,
     baseStoreLabel: "Base store",
     baseStoreDesc: "Identity, products, sharing, QR, free products, and visit tracking.",
     subscriptionActiveUntil: (date, daysPart) => `Subscription active until ${date}${daysPart}.`,
@@ -2775,11 +2785,11 @@ export default function Dashboard() {
     window.location.hash = "start-store";
   }
 
-  async function renewSubscription() {
+  async function renewSubscription(plan) {
     setRenewalBuying(true);
     setRenewalMessage("");
     try {
-      const data = await domainSignupRequest("create_renewal_charge", {});
+      const data = await domainSignupRequest("create_renewal_charge", plan ? { plan } : {});
       if (data.activated) {
         window.location.reload();
         return;
@@ -3091,7 +3101,7 @@ export default function Dashboard() {
       {subscriptionDaysLeft !== null && subscriptionDaysLeft <= 5 && (
         <div className="dh-verify-banner" style={{ background: subscriptionDaysLeft < 0 ? "#F6E9E5" : "#FFF8E9", borderBottomColor: subscriptionDaysLeft < 0 ? "#E3C3B8" : "#EFD9AB", color: subscriptionDaysLeft < 0 ? "#A34839" : "#7A5A17" }}>
           <span>{subscriptionDaysLeft < 0 ? t.subscriptionExpired : t.subscriptionExpiringSoon(subscriptionDaysLeft)}</span>
-          <button type="button" onClick={renewSubscription} disabled={renewalBuying}>{renewalBuying ? t.preparingPayment : t.renewNow}</button>
+          <button type="button" onClick={() => renewSubscription()} disabled={renewalBuying}>{renewalBuying ? t.preparingPayment : t.renewNow}</button>
         </div>
       )}
 
@@ -4173,7 +4183,7 @@ export default function Dashboard() {
               )}
               {!isTrial && sellerPlan === "starter" && (
                 <div className="dh-hint" style={{ background: "#FFF8E9", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
-                  {t.starterRenewalHint(BASE_MONTHLY_PRICE.toFixed(2))}
+                  {t.starterRenewalHint()}
                 </div>
               )}
               <div className="dh-subscription-base" style={{ background: "#F7F7F2", borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -4197,11 +4207,29 @@ export default function Dashboard() {
                 </div>
                 <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{monthlyTotal.toFixed(2)} {curr}</b>
               </div>
-              <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={renewalBuying} onClick={renewSubscription}>
+              <button className="dh-btn" type="button" style={{ marginTop: 10, width: "100%" }} disabled={renewalBuying} onClick={() => renewSubscription()}>
                 {renewalBuying ? t.preparingPayment : (isTrial ? t.payAndUpgrade(monthlyTotal.toFixed(2)) : t.payAndRenew(monthlyTotal.toFixed(2)))}
               </button>
               {renewalMessage && <div className="dh-error" style={{ marginTop: 8 }}>{renewalMessage}</div>}
             </div>
+
+            {!isTrial && upgradeOptionsForPlan(sellerPlan).length > 0 && (
+              <div className="dh-card">
+                <div className="dh-title" style={{ marginBottom: 4 }}>{t.upgradePlanTitle}</div>
+                <div className="dh-hint" style={{ marginBottom: 12 }}>{t.upgradePlanHint}</div>
+                {upgradeOptionsForPlan(sellerPlan).map((plan) => {
+                  const upgradeTotal = priceForPlan(plan) + addOnsMonthlyTotal;
+                  return (
+                    <div key={plan} style={{ background: "#F7F7F2", borderRadius: 12, padding: "12px 13px", marginBottom: 10 }}>
+                      <b style={{ display: "block", fontSize: 13 }}>{t.upgradePlanOption(t.planNames[plan], priceForPlan(plan).toFixed(2), productLimitForPlan(plan))}</b>
+                      <button className="dh-btn" type="button" style={{ marginTop: 8, width: "100%" }} disabled={renewalBuying} onClick={() => renewSubscription(plan)}>
+                        {renewalBuying ? t.preparingPayment : t.payAndUpgradeTo(t.planNames[plan], upgradeTotal.toFixed(2))}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {Array.from(new Set(ADD_ON_CATALOG.map((item) => item.group))).map((group) => (
               <div className="dh-card" key={group}>

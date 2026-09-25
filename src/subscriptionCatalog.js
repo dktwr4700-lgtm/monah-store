@@ -21,10 +21,17 @@ export function priceForPlan(plan) {
   return BASE_MONTHLY_PRICE;
 }
 
-// سعر "ابدأ" (0.50 ر.ع) تعريفي لأول شهر بس — أي تجديد بعده يحسب على أساس
-// باقة "الأساسي" العادية، فيطابق ما يحسبه السيرفر فعليًا وقت التجديد.
+// كل باقة تتجدد بسعرها نفسه ("ابدأ" تبقى 0.50 ر.ع شهريًا) — يطابق
+// renewalPlanFor في api/merchant-signup.js. التجربة القديمة ("trial") تتجدد كأساسي.
 export function renewalPriceForPlan(plan) {
-  return priceForPlan(plan === "starter" ? "basic" : plan);
+  return priceForPlan(plan);
+}
+
+// الباقات اللي يقدر التاجر يرقّي لها من باقته الحالية (من الأرخص للأغلى).
+export const PLAN_ORDER = ["starter", "basic", "pro"];
+export function upgradeOptionsForPlan(plan) {
+  const current = PLAN_ORDER.indexOf(plan === "trial" ? "starter" : plan);
+  return PLAN_ORDER.slice(current + 1);
 }
 
 // titleEn/descEn/groupEn تُستخدم بكل مكان يعرض هذا الكتالوج (الصفحة الرئيسية،

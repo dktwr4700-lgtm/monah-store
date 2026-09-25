@@ -257,7 +257,7 @@ const START_STORE_URL = "#start-store";
 const STEPS = [
   { n: "01", title: { ar: "اضغط \"افتح متجرك الحين\" وسجّل بياناتك", en: "Click \"Open your store now\" and register" }, desc: { ar: "تكتب اسم متجرك وبريدك الإلكتروني وتختار كلمة مرورك بنفسك — بدون خبرة تقنية.", en: "Enter your store name and email, and choose your own password — no technical experience needed." } },
   { n: "02", title: { ar: "ادخل لوحتك وجهّز متجرك مجانًا", en: "Enter your dashboard and set up for free" }, desc: { ar: "التسجيل مجاني: تجهّز متجرك وتضيف منتجك الأول من \"إضافة منتج\" — ترفع ملفك وتكتب اسمه وسعره ووصفه.", en: "Signing up is free: set up your store and add your first product from \"Add product\" — upload your file and write its name, price, and description." } },
-  { n: "03", title: { ar: "فعّل متجرك لما تنشر", en: "Activate your store when you publish" }, desc: { ar: "لما تكون جاهز تنشر، تختار باقتك وتدفع بالبطاقة — تبدأ من نص ريال لأول شهر، ومتجرك ينشر فورًا.", en: "When you're ready to publish, pick a plan and pay by card — from just 0.5 OMR for the first month — and your store goes live instantly." } },
+  { n: "03", title: { ar: "فعّل متجرك لما تنشر", en: "Activate your store when you publish" }, desc: { ar: "لما تكون جاهز تنشر، تختار باقتك وتدفع بالبطاقة — تبدأ من نص ريال شهريًا، ومتجرك ينشر فورًا.", en: "When you're ready to publish, pick a plan and pay by card — from just 0.5 OMR a month — and your store goes live instantly." } },
   { n: "04", title: { ar: "يصير لمنتجك رابط خاص فيه", en: "Your product gets its own link" }, desc: { ar: "تنسخه وتشاركه بواتساب أو إنستغرام أو أي مكان تحب.", en: "Copy it and share it on WhatsApp, Instagram, or anywhere you like." } },
   { n: "05", title: { ar: "العميل يطلب وأنت تؤكد الاستلام", en: "The buyer orders and you confirm receipt" }, desc: { ar: "يرفع إثبات التحويل، وبعد ما تأكد استلامك المبلغ من لوحتك، يفتح التنزيل له تلقائيًا.", en: "They upload proof of transfer; once you confirm you received the payment from your dashboard, the download unlocks for them automatically." } },
 ];
@@ -336,7 +336,7 @@ const SECTIONS_T = {
     priceFeature3: "✓ تخصيص الاسم والشعار والهوية", priceFeature4: "✓ منتج مجاني وروابط تتبع الزيارات",
     addOnsLabel: "إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:",
     openStore: "افتح متجرك الحين",
-    pricingNote: "التسجيل وتجهيز المتجر مجاني، وتدفع بس لما تنشر منتجاتك. باقة التجربة نص ريال لأول شهر (حتى منتجين)، وترقّى للباقة الأساسية أو برو أي وقت تحتاج منتجات أكثر.",
+    pricingNote: "التسجيل وتجهيز المتجر مجاني، وتدفع بس لما تنشر منتجاتك. باقة «ابدأ» نص ريال شهريًا (حتى منتجين)، ولو احتجت منتجات أكثر ترقّى للأساسي (5 ر.ع) أو برو (10 ر.ع) بضغطة من لوحتك.",
     faqEyebrow: "أسئلة", faqTitle: "أسئلة شائعة",
     finalKicker: "خطوتك القادمة", finalTitle: "خلّ منتجك جاهزًا للمشاركة",
     finalP: "افتح متجرك الآن، ثم رتّب صفحته وخذ رابطك الخاص في مكان واحد وبشكل واضح.",
@@ -361,7 +361,7 @@ const SECTIONS_T = {
     priceFeature3: "✓ Customize your name, logo, and identity", priceFeature4: "✓ A free product and visit-tracking links",
     addOnsLabel: "Optional add-ons that grow your sales, chosen at signup or later from the seller dashboard:",
     openStore: "Open your store now",
-    pricingNote: "Signing up and setting up your store is free — you only pay when you publish your products. The starter plan is 0.5 OMR for the first month (up to 2 products), and you can upgrade to Basic or Pro anytime you need more products.",
+    pricingNote: "Signing up and setting up your store is free — you only pay when you publish your products. The Starter plan is 0.5 OMR a month (up to 2 products); if you need more products, upgrade to Basic (5 OMR) or Pro (10 OMR) in one tap from your dashboard.",
     faqEyebrow: "FAQ", faqTitle: "Frequently asked questions",
     finalKicker: "Your next step", finalTitle: "Get your product ready to share",
     finalP: "Open your store now, set up its page, and get your own link in one clear place.",
