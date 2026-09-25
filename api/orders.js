@@ -47,6 +47,8 @@ function requireActiveSeller(sellerSnap) {
   if (!sellerSnap.exists) return {};
   const seller = sellerSnap.data();
   if (seller.disabled) throw new OrderError(409, "هذا المتجر متوقف حاليًا. تواصل مع التاجر.");
+  // تاجر سجّل مجانًا ولسا ما دفع اشتراكه — يقدر يجهّز متجره بس ما يبيع لين يفعّله.
+  if (seller.plan === "unpaid") throw new OrderError(409, "هذا المتجر لم يُفعَّل بعد. تواصل مع التاجر.");
   if (seller.subscriptionExpiresAt && new Date(seller.subscriptionExpiresAt) < new Date()) {
     throw new OrderError(409, "اشتراك هذا المتجر منتهي حاليًا. تواصل مع التاجر.");
   }

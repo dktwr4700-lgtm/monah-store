@@ -43,6 +43,12 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "هذا المنتج غير متاح حاليًا." });
     }
 
+    // متجر سجّل مجانًا ولسا ما فعّل اشتراكه ما يوزّع ملفات، حتى المجانية منها.
+    const sellerSnap = product.ownerId ? await db.collection("sellers").doc(product.ownerId).get() : null;
+    if (sellerSnap?.exists && sellerSnap.data().plan === "unpaid") {
+      return res.status(404).json({ error: "هذا المنتج غير متاح حاليًا." });
+    }
+
     const file = bucket.file(product.filePath);
     const [exists] = await file.exists();
     if (!exists) {

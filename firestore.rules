@@ -23,7 +23,12 @@ service cloud.firestore {
     // src/subscriptionCatalog.js. التجربة المجانية لها منطقها الخاص أعلاه
     // (sellerTrialLimitReached)، ما تعتمد على هذا العداد.
     function planProductLimit(plan) {
-      return plan == 'pro' ? 150 : (plan == 'starter' ? 2 : 50);
+      return plan == 'pro' ? 150 : (plan == 'starter' ? 2 : (plan == 'unpaid' ? 1 : 50));
+    }
+    // تاجر سجّل مجانًا ولسا ما دفع اشتراكه: يقدر يجهّز منتج كمسودة (مخفي)
+    // بس ما يقدر ينشره لين يفعّل متجره.
+    function sellerIsUnpaid() {
+      return get(/databases/$(database)/documents/sellers/$(request.auth.uid)).data.get('plan', 'basic') == 'unpaid';
     }
     // يمنع تاجر باقة مدفوعة (غير التجربة) من إضافة منتج يتجاوز حد باقته —
     // العداد productCount على وثيقة sellers يحدّثه التاجر نفسه بخطوة واحدة
@@ -71,6 +76,7 @@ service cloud.firestore {
           'name', 'price', 'description', 'category', 'filePath', 'codesCount',
           'images', 'hidden', 'featured', 'sortOrder', 'requiresActivation'
         ])
+        && (request.resource.data.hidden == true || !sellerIsUnpaid())
       );
       allow delete: if ownsExistingProduct() || isAdmin();
 

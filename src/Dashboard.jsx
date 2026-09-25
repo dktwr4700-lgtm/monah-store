@@ -10,9 +10,8 @@ import {
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
-import { loadPreviewDraft, clearPreviewDraft, dataUrlToBlob } from "./storePreviewDraft.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -434,6 +433,18 @@ const DASH_T = {
     renewNow: "جدّد الاشتراك الآن",
     trialUsedUp: "أنت على التجربة المجانية واستخدمت منتجك الوحيد. رقّي اشتراكك لإضافة منتجات بلا حدود.",
     trialActive: "أنت على التجربة المجانية — منتج واحد مجانًا بدون بطاقة.",
+    unpaidBanner: "متجرك لسا مو مفعّل — جهّزه براحتك وأضف منتجك كمسودة، ولما تكون جاهز تنشر وتبيع فعّل متجرك.",
+    activateStoreCta: "فعّل متجرك",
+    unpaidPromptTitle: "فعّل متجرك عشان تنشر",
+    unpaidPromptSaved: "تم حفظ منتجك كمسودة ✓",
+    unpaidPromptText: (price) => `عشان تنشر منتجاتك وتبدأ تستقبل طلبات، فعّل متجرك باختيار باقتك — تبدأ من ${price} ر.ع شهريًا.`,
+    unpaidPromptLater: "لاحقًا",
+    unpaidLimitTitle: "منتجك الأول جاهز كمسودة",
+    unpaidLimitHint: "قبل التفعيل تقدر تجهّز منتج واحد. فعّل متجرك عشان تنشره وتضيف منتجات أكثر.",
+    unpaidSubscriptionTitle: "متجرك غير مفعّل بعد",
+    unpaidSubscriptionHint: (price) => `سجّلت مجانًا وتقدر تجهّز متجرك ومنتجك الأول. عشان تنشر وتبيع اختر باقتك وادفع أول شهر — تبدأ من ${price} ر.ع.`,
+    unpaidStepTitle: "باقي خطوة وحدة: فعّل متجرك",
+    unpaidStepText: "منتجك محفوظ كمسودة. فعّل متجرك باختيار باقتك عشان تنشره ويقدر عملاؤك يشترونه.",
     upgradeSubscription: "رقّي اشتراكك",
     homeTab: "الرئيسية",
     productsTab: "المنتجات",
@@ -817,12 +828,6 @@ const DASH_T = {
     addOnsSelectedCount: (n) => `${n} إضافة مختارة`,
     payAndActivateAddOns: (price) => `ادفع ${price} ر.ع وفعّل الإضافات`,
     activateAddOnsFree: "فعّل الإضافات مجانًا",
-    previewDraftTitle: "منتجك من المعاينة جاهز",
-    previewDraftBody: (productName) => `جهّزنا "${productName}" بالصورة والوصف والسعر اللي شفتها قبل التسجيل. باقي ترفع الملف اللي يوصل للعميل وتنشره.`,
-    previewDraftUse: "أضفه لمتجري",
-    previewDraftApplying: "نجهّزه...",
-    previewDraftDismiss: "لا شكرًا",
-    previewDraftApplied: "عبّينا بيانات منتجك تحت — ارفع الملف اللي يوصل للعميل بعد الشراء، ثم اضغط نشر.",
     freeBadge: "مجانًا",
     addOnBillingNote: "لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.",
 
@@ -951,6 +956,18 @@ const DASH_T = {
     renewNow: "Renew subscription now",
     trialUsedUp: "You're on the free trial and used your only product. Upgrade your subscription to add unlimited products.",
     trialActive: "You're on the free trial — one product free, no card.",
+    unpaidBanner: "Your store isn't activated yet — set it up at your own pace and add your product as a draft. When you're ready to publish and sell, activate your store.",
+    activateStoreCta: "Activate your store",
+    unpaidPromptTitle: "Activate your store to publish",
+    unpaidPromptSaved: "Your product was saved as a draft ✓",
+    unpaidPromptText: (price) => `To publish your products and start receiving orders, activate your store by choosing a plan — from ${price} OMR/month.`,
+    unpaidPromptLater: "Later",
+    unpaidLimitTitle: "Your first product is ready as a draft",
+    unpaidLimitHint: "Before activation you can prepare one product. Activate your store to publish it and add more.",
+    unpaidSubscriptionTitle: "Your store isn't activated yet",
+    unpaidSubscriptionHint: (price) => `You signed up for free and can prepare your store and first product. To publish and sell, choose a plan and pay the first month — from ${price} OMR.`,
+    unpaidStepTitle: "One step left: activate your store",
+    unpaidStepText: "Your product is saved as a draft. Activate your store by choosing a plan so you can publish it and customers can buy it.",
     upgradeSubscription: "Upgrade your subscription",
     homeTab: "Home",
     productsTab: "Products",
@@ -1334,12 +1351,6 @@ const DASH_T = {
     addOnsSelectedCount: (n) => `${n} add-ons selected`,
     payAndActivateAddOns: (price) => `Pay ${price} OMR and activate the add-ons`,
     activateAddOnsFree: "Activate the add-ons for free",
-    previewDraftTitle: "Your product from the preview is ready",
-    previewDraftBody: (productName) => `We've prepared "${productName}" with the image, description and price you saw before signing up. Just upload the file your customer receives and publish it.`,
-    previewDraftUse: "Add it to my store",
-    previewDraftApplying: "Preparing...",
-    previewDraftDismiss: "No thanks",
-    previewDraftApplied: "We've filled in your product below — upload the file the customer gets after purchase, then press publish.",
     freeBadge: "Free",
     addOnBillingNote: "When you activate an add-on, you pay its full price now, then it's automatically included in your next monthly renewal amount.",
 
@@ -1396,9 +1407,6 @@ export default function Dashboard() {
   const [productImages, setProductImages] = useState([]);
   const [imagesUploading, setImagesUploading] = useState(false);
   const [imagesError, setImagesError] = useState("");
-  const [previewDraft, setPreviewDraft] = useState(() => loadPreviewDraft());
-  const [applyingPreviewDraft, setApplyingPreviewDraft] = useState(false);
-  const [previewDraftApplied, setPreviewDraftApplied] = useState(false);
   const [previewVideo, setPreviewVideo] = useState("");
   const [previewVideoUploading, setPreviewVideoUploading] = useState(false);
   const [previewVideoError, setPreviewVideoError] = useState("");
@@ -1416,6 +1424,7 @@ export default function Dashboard() {
   const [restockSaving, setRestockSaving] = useState(false);
   const [restockError, setRestockError] = useState("");
   const [error, setError] = useState("");
+  const [activationPrompt, setActivationPrompt] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -1579,12 +1588,12 @@ export default function Dashboard() {
       setRepeatCouponPercent(Number(data.repeatCouponPercent) || 10);
       setSellerAccess("active");
     }
-    async function merchantSignupAction(action) {
+    async function merchantSignupAction(action, payload = {}) {
       const idToken = await user.getIdToken();
       const response = await fetch("/api/merchant-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...payload }),
       });
       return response.json().catch(() => ({}));
     }
@@ -1592,6 +1601,27 @@ export default function Dashboard() {
     // حالة مؤقتة غير واضحة)، نعيد التحقق منها تلقائيًا كل ما يفتح التاجر لوحته —
     // بدون ما يحتاج يعيد الدفع بنفسه أو يتواصل معنا.
     async function autoVerifyPendingPurchases(data) {
+      // تاجر سجّل مجانًا وبدأ يدفع اشتراكه بس ما رجع لصفحة التأكيد — نتحقق من
+      // دفعته تلقائيًا ونفعّل متجره لو نجحت.
+      if (data.plan === "unpaid") {
+        try {
+          const statusData = await merchantSignupAction("status");
+          if (cancelled) return;
+          if (statusData?.signup?.hasPendingPayment) {
+            const verifyData = await merchantSignupAction("verify_card_charge");
+            if (cancelled) return;
+            if (verifyData?.paid) {
+              const retrySnap = await getDoc(doc(db, "sellers", user.uid));
+              if (!cancelled && retrySnap.exists()) {
+                data = retrySnap.data();
+                applySellerData(data);
+              }
+            }
+          }
+        } catch (autoVerifyErr) {
+          console.error(autoVerifyErr);
+        }
+      }
       const checks = [
         ["pendingAddOnReferenceNumber", "verify_addon_charge"],
         ["pendingDomainReferenceNumber", "verify_domain_charge"],
@@ -1637,6 +1667,13 @@ export default function Dashboard() {
               const retrySnap = await getDoc(doc(db, "sellers", user.uid));
               if (!cancelled && retrySnap.exists()) return applySellerData(retrySnap.data());
             }
+          }
+          // تسجيل قديم (قبل ما يصير التسجيل مجاني) ما كمّل الدفع — نفتح له لوحته
+          // كمتجر غير مفعّل بدل ما نقفلها بوجهه.
+          if (statusData?.signup?.status === "awaiting_payment" && !cancelled) {
+            await merchantSignupAction("register", { storeName: statusData.signup.storeName, storeType: statusData.signup.storeType });
+            const retrySnap = await getDoc(doc(db, "sellers", user.uid));
+            if (!cancelled && retrySnap.exists()) return applySellerData(retrySnap.data());
           }
         } catch (autoVerifyErr) {
           console.error(autoVerifyErr);
@@ -1821,9 +1858,11 @@ export default function Dashboard() {
     navigator.clipboard.writeText(adCopy).then(() => setCopied("ad-copy")).catch(() => setAdCopyError(t.copyDraftError));
   }
 
-  async function handleAddProduct(e, publish) {
+  async function handleAddProduct(e, requestedPublish) {
     e.preventDefault();
     setError("");
+    // قبل التفعيل ما فيه نشر: نحفظ المنتج كمسودة ونعرض له خطوة التفعيل.
+    const publish = requestedPublish && !isUnpaid;
 
     if (trialLimitReached) {
       setError(t.trialLimitError);
@@ -1933,7 +1972,6 @@ export default function Dashboard() {
       setRequiresActivation(false);
       setProductImages([]);
       setPreviewVideo("");
-      setPreviewDraftApplied(false);
 
       if (isTrial && !trialProductClaimed) {
         await updateDoc(doc(db, "sellers", user.uid), { trialProductClaimed: true }).catch(() => {});
@@ -1941,6 +1979,7 @@ export default function Dashboard() {
       } else if (!isTrial) {
         await updateDoc(doc(db, "sellers", user.uid), { productCount: increment(1) }).catch(() => {});
       }
+      if (requestedPublish && isUnpaid) setActivationPrompt("saved");
     } catch (err) {
       setError(t.genericTryAgain);
       setUploadingFile(false);
@@ -2061,6 +2100,10 @@ export default function Dashboard() {
   }
 
   async function toggleHidden(productId, currentlyHidden) {
+    if (currentlyHidden && isUnpaid) {
+      setActivationPrompt("publish");
+      return;
+    }
     setTogglingHiddenId(productId);
     try {
       await updateDoc(doc(db, "products", productId), { hidden: !currentlyHidden });
@@ -2243,43 +2286,6 @@ export default function Dashboard() {
       }
     }
     setImagesUploading(false);
-  }
-
-  // المنتج اللي جرّبه التاجر بمعاينة الصفحة الرئيسية قبل التسجيل — نعبّي فيه
-  // نموذج "إضافة منتج" (والصورة نرفعها لتخزين المتجر)، وهو يكمل الملف وينشر.
-  async function applyPreviewDraft() {
-    if (!previewDraft) return;
-    setApplyingPreviewDraft(true);
-    setTab("products");
-    setName(previewDraft.productName || "");
-    setPrice(previewDraft.price ? String(previewDraft.price) : "");
-    setDescription(previewDraft.description || "");
-    setProductType("file");
-    if (previewDraft.image) {
-      try {
-        const blob = await dataUrlToBlob(previewDraft.image);
-        const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}-preview`);
-        await uploadBytes(fileRef, blob, { contentType: "image/jpeg" });
-        const url = await getDownloadURL(fileRef);
-        setProductImages((prev) => [url, ...prev].slice(0, 2));
-      } catch {
-        setImagesError(t.uploadImageError);
-      }
-    }
-    clearPreviewDraft();
-    setPreviewDraft(null);
-    setPreviewDraftApplied(true);
-    setApplyingPreviewDraft(false);
-    setTimeout(() => {
-      if (!addProductRef.current) return;
-      addProductRef.current.open = true;
-      addProductRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 120);
-  }
-
-  function dismissPreviewDraft() {
-    clearPreviewDraft();
-    setPreviewDraft(null);
   }
 
   function removeProductImage(url) {
@@ -2737,6 +2743,13 @@ export default function Dashboard() {
     }
   }
 
+  // تفعيل متجر سجّل مجانًا يمر بنفس خطوة اختيار الباقة والدفع بصفحة فتح
+  // المتجر — تتعرف عليه تلقائيًا وتعرض له الباقات مباشرة.
+  function goActivateStore() {
+    setActivationPrompt(null);
+    window.location.hash = "start-store";
+  }
+
   async function renewSubscription() {
     setRenewalBuying(true);
     setRenewalMessage("");
@@ -2897,6 +2910,7 @@ export default function Dashboard() {
   const storeUrl = `${window.location.origin}${window.location.pathname}#store/${slug || user.uid}`;
   const initial = (storeName || t.initialFallback).charAt(0);
   const isTrial = sellerPlan === "trial";
+  const isUnpaid = sellerPlan === "unpaid";
   const trialLimitReached = isTrial && (trialProductClaimed || products.length >= 1);
   const planProductLimit = productLimitForPlan(sellerPlan);
   const planLimitReached = !isTrial && products.length >= planProductLimit;
@@ -2924,6 +2938,17 @@ export default function Dashboard() {
         text: t.firstProductText,
         cta: t.firstProductCta,
         onClick: () => setTab("products"),
+        progress: stepsDone,
+      };
+    }
+    if (isUnpaid) {
+      return {
+        key: "activate-store",
+        badge: t.nextStepBadgeNext,
+        title: t.unpaidStepTitle,
+        text: t.unpaidStepText,
+        cta: t.activateStoreCta,
+        onClick: goActivateStore,
         progress: stepsDone,
       };
     }
@@ -3052,7 +3077,26 @@ export default function Dashboard() {
         </div>
       )}
 
-      {planLimitReached && (
+      {isUnpaid && (
+        <div className="dh-verify-banner" style={{ background: "#FFF8E9", borderBottomColor: "#EFD9AB", color: "#7A5A17" }}>
+          <span>{t.unpaidBanner}</span>
+          <button type="button" onClick={goActivateStore}>{t.activateStoreCta}</button>
+        </div>
+      )}
+
+      {activationPrompt && (
+        <div role="dialog" aria-modal="true" onClick={() => setActivationPrompt(null)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(11,11,12,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div className="dh-card" onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 380, margin: 0, textAlign: "center", borderTop: "3px solid #163F2E" }}>
+            {activationPrompt === "saved" && <div style={{ color: "#37724B", fontWeight: 800, fontSize: 12.5, marginBottom: 8 }}>{t.unpaidPromptSaved}</div>}
+            <div className="dh-title" style={{ marginBottom: 8 }}>{t.unpaidPromptTitle}</div>
+            <div className="dh-hint" style={{ marginBottom: 16 }}>{t.unpaidPromptText(STARTER_MONTHLY_PRICE.toFixed(2))}</div>
+            <button className="dh-btn" type="button" style={{ width: "100%" }} onClick={goActivateStore}>{t.activateStoreCta}</button>
+            <button className="dh-item-action" type="button" style={{ width: "100%", marginTop: 8 }} onClick={() => setActivationPrompt(null)}>{t.unpaidPromptLater}</button>
+          </div>
+        </div>
+      )}
+
+      {planLimitReached && !isUnpaid && (
         <div className="dh-verify-banner" style={{ background: "#FFF8E9", borderBottomColor: "#EFD9AB", color: "#7A5A17" }}>
           <span>{t.planLimitError(planProductLimit)}</span>
           <button type="button" onClick={() => setTab("subscription")}>{t.upgradeSubscription}</button>
@@ -3068,26 +3112,6 @@ export default function Dashboard() {
       </div>
 
       <div className="dh-wrap">
-
-        {previewDraft && !trialLimitReached && !planLimitReached && (
-          <div className="dh-card" style={{ display: "flex", gap: 14, alignItems: "center", borderTop: "3px solid #D6F35C", flexWrap: "wrap" }}>
-            {previewDraft.image && (
-              <img src={previewDraft.image} alt="" style={{ width: 64, height: 64, borderRadius: 14, objectFit: "cover", flexShrink: 0 }} />
-            )}
-            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-              <div className="dh-title" style={{ marginBottom: 4 }}>{t.previewDraftTitle}</div>
-              <div className="dh-hint">{t.previewDraftBody(previewDraft.productName)}</div>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="dh-btn" type="button" onClick={applyPreviewDraft} disabled={applyingPreviewDraft} style={{ width: "auto", padding: "12px 20px", minHeight: 44 }}>
-                {applyingPreviewDraft ? t.previewDraftApplying : t.previewDraftUse}
-              </button>
-              <button type="button" onClick={dismissPreviewDraft} disabled={applyingPreviewDraft} style={{ background: "#fff", color: "#375044", border: "1px solid #DDD8CB", borderRadius: 100, padding: "12px 18px", minHeight: 44, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.previewDraftDismiss}
-              </button>
-            </div>
-          </div>
-        )}
 
         {tab === "overview" && (
           <>
@@ -3210,6 +3234,12 @@ export default function Dashboard() {
                 <div className="dh-hint" style={{ marginBottom: 14 }}>{t.trialLimitHint}</div>
                 <button className="dh-btn" type="button" onClick={() => setTab("subscription")}>{t.upgradeNow}</button>
               </div>
+            ) : planLimitReached && isUnpaid ? (
+              <div className="dh-card" style={{ borderTop: "3px solid #163F2E", textAlign: "center" }}>
+                <div className="dh-title" style={{ marginBottom: 6 }}>{t.unpaidLimitTitle}</div>
+                <div className="dh-hint" style={{ marginBottom: 14 }}>{t.unpaidLimitHint}</div>
+                <button className="dh-btn" type="button" onClick={goActivateStore}>{t.activateStoreCta}</button>
+              </div>
             ) : planLimitReached ? (
               <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F", textAlign: "center" }}>
                 <div className="dh-title" style={{ marginBottom: 6 }}>{t.planLimitTitle}</div>
@@ -3221,7 +3251,6 @@ export default function Dashboard() {
               <summary><div className="dh-section-summary"><b>{t.addNewProduct}</b><span>{t.openFormHint}</span></div></summary>
               <div className="dh-section-body">
               {error && <div className="dh-error">{error}</div>}
-              {previewDraftApplied && <div className="dh-hint" style={{ background: "#F4F8E6", borderRadius: 10, padding: "10px 12px", marginBottom: 12, color: "#2F4A1E" }}>{t.previewDraftApplied}</div>}
               <form onSubmit={(e) => e.preventDefault()}>
                 <div className="dh-group-title">{t.groupBasicInfo}</div>
                 <div className="dh-field">
@@ -4071,6 +4100,16 @@ export default function Dashboard() {
           const monthlyTotal = renewalPriceForPlan(sellerPlan) + addOnsMonthlyTotal;
           const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
           const daysLeft = subscriptionDaysLeft;
+          if (isUnpaid) return (
+          <>
+            <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
+            <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F" }}>
+              <div className="dh-title" style={{ marginBottom: 6 }}>{t.unpaidSubscriptionTitle}</div>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>{t.unpaidSubscriptionHint(STARTER_MONTHLY_PRICE.toFixed(2))}</div>
+              <button className="dh-btn" type="button" style={{ width: "100%" }} onClick={goActivateStore}>{t.activateStoreCta}</button>
+            </div>
+          </>
+          );
           return (
           <>
             <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>

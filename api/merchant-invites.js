@@ -136,8 +136,13 @@ async function activateInvite(req, res) {
   const invite = await findInvite(req.body?.token);
   if (!invite) return res.status(404).json({ error: "هذا الرابط غير صالح أو انتهت صلاحيته." });
   const sellerRef = db.collection("sellers").doc(account.uid);
+  // تاجر سجّل مجانًا (plan "unpaid") ولسا ما دفع يقدر يفعّل متجره بالدعوة —
+  // نرقّي نفس وثيقته بدل ما نرفضه، عشان ما يضيع اللي جهّزه بلوحته.
   const existingSeller = await db.collection("sellers").where("email", "==", account.email).limit(1).get();
-  if (!existingSeller.empty) return res.status(409).json({ error: "هذا البريد لديه متجر مفعّل بالفعل." });
+  const ownUnpaidSeller = !existingSeller.empty
+    && existingSeller.docs[0].id === account.uid
+    && existingSeller.docs[0].data().plan === "unpaid";
+  if (!existingSeller.empty && !ownUnpaidSeller) return res.status(409).json({ error: "هذا البريد لديه متجر مفعّل بالفعل." });
 
   // لو نفس الحساب كان بدأ تسجيل ذاتي عادي قبل (merchantSignups بحالة
   // awaiting_payment) وتركه وفعّل متجره عن طريق الدعوة هذي بدالها، لازم نقفل
@@ -153,17 +158,25 @@ async function activateInvite(req, res) {
       if (!inviteSnapshot.exists) throw new Error("invalid_invite");
       const currentInvite = inviteSnapshot.data();
       if (currentInvite.status !== "pending" || isExpired(currentInvite)) throw new Error("invalid_invite");
-      if (sellerSnapshot.exists) throw new Error("seller_exists");
+      if (sellerSnapshot.exists && sellerSnapshot.data().plan !== "unpaid") throw new Error("seller_exists");
 
-      transaction.set(sellerRef, {
-        storeName: currentInvite.storeName,
-        email: account.email,
-        storeType: currentInvite.storeType,
-        inviteId: invite.ref.id,
-        createdAt: FieldValue.serverTimestamp(),
-        plan: "basic",
-        subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
-      });
+      if (sellerSnapshot.exists) {
+        transaction.update(sellerRef, {
+          inviteId: invite.ref.id,
+          plan: "basic",
+          subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
+        });
+      } else {
+        transaction.set(sellerRef, {
+          storeName: currentInvite.storeName,
+          email: account.email,
+          storeType: currentInvite.storeType,
+          inviteId: invite.ref.id,
+          createdAt: FieldValue.serverTimestamp(),
+          plan: "basic",
+          subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
+        });
+      }
       transaction.update(invite.ref, {
         status: "accepted",
         acceptedBy: account.uid,

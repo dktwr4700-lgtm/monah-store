@@ -9,6 +9,8 @@ export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2;
 export function productLimitForPlan(plan) {
   if (plan === "pro") return PRO_PRODUCT_LIMIT;
   if (plan === "trial") return 1;
+  // سجّل مجانًا ولسا ما دفع: منتج واحد كمسودة لين يفعّل متجره.
+  if (plan === "unpaid") return 1;
   if (plan === "starter") return STARTER_PRODUCT_LIMIT;
   return BASE_PRODUCT_LIMIT;
 }

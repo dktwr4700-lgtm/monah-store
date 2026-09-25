@@ -183,13 +183,33 @@ async function notifyAdminOfNewSeller(request) {
   }
 }
 
+// تاجر سجّل مجانًا ودخل لوحته يجهّز متجره، بس ما يقدر ينشر أو يبيع لين يدفع
+// اشتراكه — نفس وثيقة sellers تبقى، وأول دفع ناجح يرقّيها للباقة اللي اختارها.
+const UNPAID_PLAN = "unpaid";
+
+function isUnpaidSeller(seller) {
+  return seller?.plan === UNPAID_PLAN;
+}
+
 async function activateSeller(uid, request) {
   const sellerRef = db.collection("sellers").doc(uid);
   const requestRef = db.collection("merchantSignups").doc(uid);
   let created = false;
   await db.runTransaction(async (transaction) => {
     const sellerSnap = await transaction.get(sellerRef);
-    if (sellerSnap.exists) return;
+    if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) return;
+    if (sellerSnap.exists) {
+      const existing = sellerSnap.data();
+      transaction.update(sellerRef, {
+        plan: resolvePlan(request.selectedPlan),
+        subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
+        activeAddOns: Array.from(new Set([...(existing.activeAddOns || []), ...cleanAddOnKeys(request.selectedAddOns)])),
+        activatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(requestRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
+      created = true;
+      return;
+    }
     transaction.set(sellerRef, {
       storeName: request.storeName,
       email: request.email,
@@ -247,8 +267,10 @@ async function register(req, res) {
   const storeType = STORE_TYPES.has(req.body?.storeType) ? req.body.storeType : "files";
   if (storeName.length < 2) return res.status(400).json({ error: "اكتب اسم المتجر." });
 
-  const sellerSnap = await db.collection("sellers").doc(account.uid).get();
-  if (sellerSnap.exists) return res.status(409).json({ error: "عندك متجر مفعّل بالفعل." });
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const sellerSnap = await sellerRef.get();
+  if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) return res.status(409).json({ error: "عندك متجر مفعّل بالفعل." });
+  if (sellerSnap.exists) return res.status(200).json({ ok: true, unpaid: true });
   const existingSeller = await db.collection("sellers").where("email", "==", account.email).limit(1).get();
   if (!existingSeller.empty) return res.status(409).json({ error: "هذا البريد لديه متجر مفعّل بالفعل." });
 
@@ -260,16 +282,31 @@ async function register(req, res) {
     status: "awaiting_payment",
     createdAt: FieldValue.serverTimestamp(),
   }, { merge: true });
-  return res.status(200).json({ ok: true });
+  // التسجيل نفسه مجاني: نفتح له لوحة التاجر فورًا بباقة "unpaid" يجهّز فيها
+  // متجره ومنتج واحد كمسودة، والدفع يُطلب لما يجي ينشر (createCardCharge).
+  await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(sellerRef);
+    if (snap.exists) return;
+    transaction.set(sellerRef, {
+      storeName,
+      email: account.email,
+      storeType,
+      createdAt: FieldValue.serverTimestamp(),
+      plan: UNPAID_PLAN,
+      activeAddOns: [],
+    });
+  });
+  return res.status(200).json({ ok: true, unpaid: true });
 }
 
 async function status(req, res) {
   const account = await authenticatedAccount(req);
   const sellerSnap = await db.collection("sellers").doc(account.uid).get();
-  if (sellerSnap.exists) return res.status(200).json({ activated: true });
+  const unpaid = sellerSnap.exists && isUnpaidSeller(sellerSnap.data());
+  if (sellerSnap.exists && !unpaid) return res.status(200).json({ activated: true });
   const requestSnap = await db.collection("merchantSignups").doc(account.uid).get();
-  if (!requestSnap.exists) return res.status(200).json({ activated: false, signup: null });
-  return res.status(200).json({ activated: false, signup: publicSignup(requestSnap.data()) });
+  if (!requestSnap.exists) return res.status(200).json({ activated: false, unpaid, signup: null });
+  return res.status(200).json({ activated: false, unpaid, signup: publicSignup(requestSnap.data()) });
 }
 
 // لو فيه محاولة دفع سابقة على نفس الطلب، نتحقق منها أولًا بدل ما ننشئ شحنة جديدة —
@@ -363,6 +400,7 @@ async function createDomainCharge(req, res) {
   if (slug.length < 3) throw new SignupError(400, "اكتب اسم دومين من 3 أحرف إنجليزية أو أرقام على الأقل.");
 
   const seller = sellerSnap.data();
+  if (isUnpaidSeller(seller)) throw new SignupError(409, "فعّل متجرك أولًا، وبعدها تقدر تحجز الدومين.");
   if (seller.pendingDomainReferenceNumber && seller.pendingDomainSlug
     && await priorChargeSucceeded(seller.pendingDomainReferenceNumber, "domain", account.uid)) {
     const pendingSlug = seller.pendingDomainSlug;
@@ -471,6 +509,8 @@ async function createAddOnCharge(req, res) {
     return res.status(200).json({ activated: true, activeAddOns });
   }
 
+  if (isUnpaidSeller(seller)) throw new SignupError(409, "فعّل متجرك أولًا، وبعدها تقدر تضيف الإضافات المدفوعة.");
+
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `ADDON-${account.uid}-${Date.now()}`;
   const charge = await ompayRequest("POST", "/api/v1/transactions/bank-hosted", {
@@ -521,6 +561,7 @@ async function createRenewalCharge(req, res) {
   const sellerSnap = await sellerRef.get();
   if (!sellerSnap.exists) throw new SignupError(403, "لازم يكون متجرك مفعّلًا أولًا.");
   const seller = sellerSnap.data();
+  if (isUnpaidSeller(seller)) throw new SignupError(409, "متجرك لسا ما تفعّل — فعّله أولًا باختيار باقتك.");
 
   const renewalPlan = renewalPlanFor(seller.plan);
 
@@ -591,12 +632,12 @@ const SIGNUP_REMINDER_STEP = {
   key: "completeSignup",
   schedule: [1, 3],
   subject: "خطوة وحدة بس وتفتح متجرك!",
-  heading: "بدأت تسجيل متجرك بمُونة ولسا ما كملت",
+  heading: "متجرك بمُونة جاهز ينتظر التفعيل",
   body: `
-    <p>لاحظنا إنك بدأت تسجّل متجرك بمُونة بس ما وصلت لخطوة الدفع وتفعيل المتجر.</p>
-    <p>الخطوة الأخيرة بسيطة وتاخذ أقل من دقيقتين — بعدها متجرك يصير جاهز تبيع فيه.</p>
+    <p>لاحظنا إنك سجّلت متجرك بمُونة بس لسا ما فعّلته.</p>
+    <p>الخطوة الأخيرة بسيطة وتاخذ أقل من دقيقتين: اختر باقتك وادفع الاشتراك — بعدها تنشر منتجاتك ومتجرك يصير جاهز تبيع فيه.</p>
   `,
-  ctaLabel: "كمّل تسجيل متجرك",
+  ctaLabel: "فعّل متجرك",
   ctaHash: "#start-store",
 };
 
@@ -688,8 +729,9 @@ async function sendOnboardingReminders(req, res) {
     // لو التاجر فعليًا صار عنده متجر مفعّل (فعّله عن طريق دعوة إدارية مثلًا، مسار
     // ما يمر بـmerchantSignups أصلًا)، وثيقة awaiting_payment هذي بقت عالقة بحالتها
     // القديمة بالغلط — نصلّحها هنا بدل ما نرسل له تذكير "كمّل تسجيلك" وهو خلاص يبيع.
+    // تاجر "unpaid" (سجّل مجانًا ولسا ما دفع) نكمل نذكّره عادي.
     const sellerSnap = await db.collection("sellers").doc(signup.id).get();
-    if (sellerSnap.exists) {
+    if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) {
       await db.collection("merchantSignups").doc(signup.id).update({ status: "activated", activatedAt: FieldValue.serverTimestamp() });
       continue;
     }
@@ -710,7 +752,7 @@ async function sendOnboardingReminders(req, res) {
   const sellersSnap = await db.collection("sellers").get();
   const sellers = sellersSnap.docs
     .map((doc) => ({ id: doc.id, ...doc.data() }))
-    .filter((seller) => seller.email && seller.createdAt?.toDate?.());
+    .filter((seller) => seller.email && seller.createdAt?.toDate?.() && !isUnpaidSeller(seller));
 
   for (const seller of sellers) {
     const daysSinceSignup = (now - seller.createdAt.toDate().getTime()) / DAY_MS;

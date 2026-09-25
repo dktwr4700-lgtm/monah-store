@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { auth } from "./firebase.js";
-import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { onAuthStateChanged, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, STARTER_PRODUCT_LIMIT, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
-import { loadPreviewDraft } from "./storePreviewDraft.js";
 
 const CTA_WIDTH = 168;
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
@@ -62,7 +61,7 @@ const ST_T = {
     paymentStartError: "تعذر بدء الدفع الآن.",
     brand: "مُونة",
     formTitle: "افتح متجرك الرقمي الآن",
-    formText: (price) => `اكتب بيانات متجرك وبريدك. تقدر تبدأ من ${price} ر.ع شهريًا بس.`,
+    formText: () => "التسجيل مجاني: اكتب بيانات متجرك وبريدك وادخل لوحتك فورًا، وجهّز متجرك براحتك. تدفع الاشتراك بس لما تجي تنشر منتجاتك.",
     storeNameLabel: "اسم المتجر", storeNamePlaceholder: "مثال: متجر هند للتصاميم",
     whatDoYouSell: "ماذا تبيع؟",
     creating: "جاري الإنشاء...", continueWithGoogle: "متابعة بحساب جوجل",
@@ -72,7 +71,8 @@ const ST_T = {
     readyContinue: "جاهز، اضغط للمتابعة.", oneFieldLeft: "بقي حقل وحد.", fillFirst: "عبّي البريد وكلمة المرور أولًا.",
     haveStoreLogin: "عندك متجر بالفعل؟ سجّل الدخول",
     activateStore: "فعّل متجرك",
-    subscriptionIntro: (price) => `تقدر تبدأ من ${price} ر.ع شهريًا فقط. تقدر تضيف إضافات اختيارية أو ترقّي باقتك الآن أو لاحقًا من لوحة التاجر.`,
+    subscriptionIntro: (price) => `عشان تنشر منتجاتك وتبدأ تبيع، اختر باقتك — تبدأ من ${price} ر.ع شهريًا فقط. تقدر تضيف إضافات اختيارية أو ترقّي باقتك الآن أو لاحقًا من لوحة التاجر.`,
+    laterToDashboard: "لاحقًا — رجوع للوحة التاجر",
     choosePlan: "اختر باقتك",
     starterPlanOption: (price, limit) => `تجربة رمزية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     basicPlanOption: (price, limit) => `الأساسية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
@@ -105,7 +105,7 @@ const ST_T = {
     paymentStartError: "Couldn't start the payment right now.",
     brand: "Monah",
     formTitle: "Open your digital store now",
-    formText: (price) => `Enter your store details and email. Plans start from just ${price} OMR/month.`,
+    formText: () => "Signing up is free: enter your store details and email, go straight to your dashboard, and set up your store at your own pace. You only pay the subscription when you're ready to publish your products.",
     storeNameLabel: "Store name", storeNamePlaceholder: "e.g. Hind's Design Store",
     whatDoYouSell: "What do you sell?",
     creating: "Creating...", continueWithGoogle: "Continue with Google",
@@ -115,7 +115,8 @@ const ST_T = {
     readyContinue: "Ready, click to continue.", oneFieldLeft: "One field left.", fillFirst: "Fill in your email and password first.",
     haveStoreLogin: "Already have a store? Log in",
     activateStore: "Activate your store",
-    subscriptionIntro: (price) => `You can start from just ${price} OMR/month. Add optional add-ons or upgrade your plan now or later from the seller dashboard.`,
+    subscriptionIntro: (price) => `To publish your products and start selling, choose your plan — from just ${price} OMR/month. Add optional add-ons or upgrade your plan now or later from the seller dashboard.`,
+    laterToDashboard: "Later — back to the seller dashboard",
     choosePlan: "Choose your plan",
     starterPlanOption: (price, limit) => `Starter — ${price} OMR/month — up to ${limit} products`,
     basicPlanOption: (price, limit) => `Basic — ${price} OMR/month — up to ${limit} products`,
@@ -163,7 +164,7 @@ export default function StartStore() {
   const [lang, setLang] = useLang();
   const t = ST_T[lang];
   const [step, setStep] = useState("form");
-  const [storeName, setStoreName] = useState(() => loadPreviewDraft()?.storeName || "");
+  const [storeName, setStoreName] = useState("");
   const [storeType, setStoreType] = useState("files");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -175,6 +176,7 @@ export default function StartStore() {
   const [couponChecking, setCouponChecking] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState("");
+  const submittingRef = useRef(false);
 
   const emailReady = EMAIL_PATTERN.test(email.trim());
   const passwordReady = password.length >= 6;
@@ -200,6 +202,7 @@ export default function StartStore() {
           }
           return;
         }
+        submittingRef.current = true;
         setBusy(true);
         const savedStoreName = sessionStorage.getItem("monah_pending_store_name") || "";
         const savedStoreType = sessionStorage.getItem("monah_pending_store_type") || "files";
@@ -207,15 +210,52 @@ export default function StartStore() {
         sessionStorage.removeItem("monah_pending_store_type");
         const idToken = await result.user.getIdToken(true);
         await signupRequest("register", { storeName: savedStoreName.trim(), storeType: savedStoreType }, idToken, t);
-        setStoreName(savedStoreName);
-        setStoreType(savedStoreType);
-        setStep("payment");
+        window.location.hash = "dashboard";
+        return;
       } catch (redirectError) {
         await signOut(auth).catch(() => {});
         setError(redirectError.message || t.googleRedirectError);
       }
       setBusy(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // تاجر مسجّل دخول وسجّل متجره مجانًا (أو بدأ تسجيل قديم ما كمّله) ورجع لهذي
+  // الصفحة — من زر "فعّل متجرك" باللوحة أو من إيميل التذكير — نوديه مباشرة
+  // لخطوة اختيار الباقة والدفع بدل ما نعرض له نموذج التسجيل من جديد. نتحقق من
+  // أول حالة دخول بس، عشان ما نتداخل مع تسجيل جديد يصير الحين بنفس الصفحة.
+  useEffect(() => {
+    const googleRedirectPending = sessionStorage.getItem("monah_pending_store_name") !== null;
+    let firstAuthState = true;
+    let cancelled = false;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!firstAuthState) return;
+      firstAuthState = false;
+      if (!user || googleRedirectPending || submittingRef.current) return;
+      try {
+        const idToken = await user.getIdToken();
+        const data = await signupRequest("status", {}, idToken, t);
+        if (cancelled || submittingRef.current) return;
+        if (data.activated) {
+          window.location.hash = "dashboard";
+          return;
+        }
+        if (!data.unpaid && data.signup?.status !== "awaiting_payment") return;
+        if (!data.unpaid) {
+          // تسجيل قديم من قبل التسجيل المجاني: نحوّله لمتجر "غير مفعّل" عشان
+          // يقدر يدخل لوحته حتى لو رجع منها بدون ما يدفع.
+          await signupRequest("register", { storeName: data.signup.storeName, storeType: data.signup.storeType }, idToken, t).catch(() => {});
+        }
+        if (cancelled || submittingRef.current) return;
+        if (data.signup?.storeName) setStoreName(data.signup.storeName);
+        if (data.signup?.storeType) setStoreType(data.signup.storeType);
+        setStep("payment");
+      } catch {
+        // لو التحقق فشل نخلي نموذج التسجيل العادي ظاهر.
+      }
+    });
+    return () => { cancelled = true; unsubscribe(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -232,6 +272,7 @@ export default function StartStore() {
     setError("");
     if (storeName.trim().length < 2) return setError(t.writeStoreName);
     if (password.length < 6) return setError(t.weakPasswordLength);
+    submittingRef.current = true;
     setBusy(true);
     try {
       let credential;
@@ -244,7 +285,8 @@ export default function StartStore() {
       }
       const idToken = await credential.user.getIdToken(true);
       await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken, t);
-      setStep("payment");
+      window.location.hash = "dashboard";
+      return;
     } catch (submitError) {
       await signOut(auth).catch(() => {});
       if (submitError.code === "auth/weak-password") setError(t.weakPassword);
@@ -252,6 +294,7 @@ export default function StartStore() {
       else if (submitError.code === "auth/wrong-password" || submitError.code === "auth/invalid-credential") setError(t.accountExists);
       else setError(submitError.message || t.createAccountError);
     }
+    submittingRef.current = false;
     setBusy(false);
   }
 
@@ -268,22 +311,24 @@ export default function StartStore() {
   async function submitWithGoogle() {
     setError("");
     if (storeName.trim().length < 2) return setError(t.writeStoreNameFirst);
+    submittingRef.current = true;
     setBusy(true);
     try {
       const credential = await signInWithPopup(auth, new GoogleAuthProvider());
       const idToken = await credential.user.getIdToken(true);
       await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken, t);
-      setStep("payment");
-      setBusy(false);
+      window.location.hash = "dashboard";
       return;
     } catch (popupError) {
       if (popupError.code === "auth/popup-closed-by-user" || popupError.code === "auth/cancelled-popup-request") {
+        submittingRef.current = false;
         setBusy(false);
         return;
       }
       if (!POPUP_UNAVAILABLE_CODES.has(popupError.code)) {
         await signOut(auth).catch(() => {});
         setError(popupError.message || t.googleCreateError);
+        submittingRef.current = false;
         setBusy(false);
         return;
       }
@@ -294,6 +339,7 @@ export default function StartStore() {
       await signInWithRedirect(auth, new GoogleAuthProvider());
     } catch (submitError) {
       setError(submitError.message || t.createAccountError);
+      submittingRef.current = false;
       setBusy(false);
     }
   }
@@ -354,7 +400,7 @@ export default function StartStore() {
 
         {step === "form" && <>
           <div className="invite-title">{t.formTitle}</div>
-          <p className="invite-text">{t.formText(STARTER_MONTHLY_PRICE.toFixed(2))}</p>
+          <p className="invite-text">{t.formText()}</p>
           {error && <div className="invite-message error">{error}</div>}
           <div className="invite-field"><label>{t.storeNameLabel}</label><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder={t.storeNamePlaceholder} required /></div>
           <div className="invite-field"><label>{t.whatDoYouSell}</label><select value={storeType} onChange={(event) => setStoreType(event.target.value)}>{Object.entries(STORE_TYPES[lang]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
@@ -439,6 +485,7 @@ export default function StartStore() {
           </div>
           <div className="invite-message" style={{ background: "#F7F7F2", color: "#16233F", fontWeight: 700, textAlign: "center" }}>{t.monthlyTotal} {paymentTotal.toFixed(2)} {lang === "ar" ? "ر.ع" : "OMR"}</div>
           <button className="invite-btn" type="button" onClick={payByCard} disabled={busy}>{busy ? t.redirectingToPayment : t.payWithCard(paymentTotal.toFixed(2))}</button>
+          <a className="invite-back" href="#dashboard">{t.laterToDashboard}</a>
         </>}
       </main>
     </div>
