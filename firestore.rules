@@ -51,6 +51,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // مساعد مُونة بالصفحة الرئيسية (api/customer-assistant.js): أسئلة الزوار
+    // تنكتب من السيرفر بس ويقراها الأدمن، وعدّادات الحدود اليومية سيرفر فقط.
+    match /assistantQuestions/{questionId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /assistantLimits/{limitId} {
+      allow read, write: if false;
+    }
+
     match /products/{productId} {
       allow get, list: if productIsPublic() || ownsExistingProduct() || isAdmin();
       allow create: if signedIn()
