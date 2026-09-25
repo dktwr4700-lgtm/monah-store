@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
+import StorePreviewTry from "./StorePreviewTry.jsx";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
@@ -293,7 +294,7 @@ const HERO_T = {
   ar: {
     h1a: "امتلك متجرك الرقمي", h1b: "وبيع بلا توقف",
     p: "ارفع ملفك، شارك رابط منتجك على واتساب أو إنستغرام، والعميل يطلبه ويرفع إثبات التحويل — تؤكد الاستلام فيفتح التنزيل له تلقائيًا.",
-    ctaOpen: "افتح متجرك الحين ←", ctaHow: "شاهد كيف تعمل",
+    ctaOpen: "افتح متجرك الحين ←", ctaTry: "جرّب متجرك قبل التسجيل",
     receiptTag: "#٠٠١٤", receiptHead: "وصل بيع رقمي", receiptTime: "١٤:٠٦", receiptStore: "متجر هند للتصاميم",
     receiptItem: "رزمة قوالب سيرة ذاتية", receiptItemSub: "ملف PDF قابل للتعديل", receiptPrice: "٥.٠٠",
     receiptCommission: "العمولة على البيع", receiptCommissionValue: "٪٠",
@@ -306,7 +307,7 @@ const HERO_T = {
   en: {
     h1a: "Own your digital store", h1b: "and sell non-stop",
     p: "Upload your file, share your product link on WhatsApp or Instagram — the buyer orders it and uploads proof of transfer. You confirm receipt, and the download unlocks for them automatically.",
-    ctaOpen: "Open your store now →", ctaHow: "See how it works",
+    ctaOpen: "Open your store now →", ctaTry: "Try your store before signing up",
     receiptTag: "#0014", receiptHead: "Digital sale receipt", receiptTime: "14:06", receiptStore: "Hind's Design Store",
     receiptItem: "Resume templates pack", receiptItemSub: "Editable PDF file", receiptPrice: "5.00",
     receiptCommission: "Commission on sale", receiptCommissionValue: "0%",
@@ -415,7 +416,7 @@ export default function App() {
             <p>{ht.p}</p>
             <div className="hero-cta-row">
               <a className="pill-black" href={START_STORE_URL}>{ht.ctaOpen}</a>
-              <a className="hero-ghost" href="#how">{ht.ctaHow}</a>
+              <a className="hero-ghost" href="#try">{ht.ctaTry}</a>
             </div>
           </div>
 
@@ -468,6 +469,8 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <StorePreviewTry lang={lang} />
 
       <section className="section">
         <div className="wrap">
@@ -589,7 +592,7 @@ export default function App() {
                 <div className="price-soon-label">{st.addOnsLabel}</div>
                 {ADD_ON_CATALOG.map((item) => (
                   <div key={item.key} style={{ marginBottom: 10 }}>
-                    <div>○ <b>{lang === "en" ? item.titleEn : item.title}</b> — {item.price} {lang === "en" ? "OMR" : "ر.ع"}</div>
+                    <div>○ <b>{lang === "en" ? item.titleEn : item.title}</b> — {item.price > 0 ? `${item.price} ${lang === "en" ? "OMR" : "ر.ع"}` : (lang === "en" ? "Free" : "مجانًا")}</div>
                     <div style={{ color: "#5A5648", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{lang === "en" ? item.descEn : item.desc}</div>
                   </div>
                 ))}
