@@ -273,8 +273,9 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const dashboard = await source("src/Dashboard.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
 
-    expect(landing).toContain("اشتراك مرن");
-    expect(landing).toContain("متجرك الأساسي");
+    expect(landing).toContain("ابدأ بمبلغ رمزي");
+    expect(landing).toContain("جرّب متجرك");
+    expect(landing).toContain("التسجيل وتجهيز المتجر مجاني");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
     expect(dashboard).toContain("subscriptionHint(BASE_MONTHLY_PRICE.toFixed(2))");
@@ -288,19 +289,20 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const landing = await source("src/App.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
 
-    expect([...catalog.matchAll(/key: "/g)]).toHaveLength(5);
+    expect([...catalog.matchAll(/key: "/g)]).toHaveLength(6);
     expect(catalog).toContain('key: "digitalSelling", group: "البيع الرقمي", groupEn: "Digital selling", title: "البيع الرقمي", titleEn: "Digital selling", price: 0');
     expect(catalog).toContain('key: "salesGrowth", group: "زيادة المبيعات", groupEn: "Sales growth", title: "زيادة المبيعات", titleEn: "Sales growth", price: 1');
     expect(catalog).toContain('key: "salesManagement", group: "إدارة المبيعات", groupEn: "Sales management", title: "إدارة المبيعات", titleEn: "Sales management", price: 1');
     expect(catalog).toContain('key: "extraProtection", group: "حماية المنتجات", groupEn: "Extra protection", title: "حماية إضافية", titleEn: "Extra protection", price: 0.5');
     expect(catalog).toContain('key: "aiTools", group: "أدوات الذكاء", groupEn: "AI tools", title: "أدوات الذكاء", titleEn: "AI tools", price: 1');
+    expect(catalog).toContain('key: "whatsappAssistant", group: "مساعد واتساب", groupEn: "WhatsApp assistant", title: "مساعد واتساب الذكي", titleEn: "WhatsApp AI assistant", price: 2');
     expect(catalog).not.toContain('key: "customDomain"');
     expect(catalog).toContain("export const CUSTOM_DOMAIN_MONTHLY_PRICE = 2");
     expect(catalog).not.toContain('key: "affiliate"');
     expect(catalog).not.toContain('key: "giftCards"');
     expect(catalog).not.toContain('key: "upsell"');
     expect(catalog).not.toContain('key: "aiLaunch"');
-    expect(landing).toContain('import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js"');
+    expect(landing).toContain('import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE } from "./subscriptionCatalog.js"');
     expect(landing).toContain("ADD_ON_CATALOG.map((item) =>");
     expect(landing).not.toContain("البيع الرقمي — 2 ر.ع");
   });
@@ -412,7 +414,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
     expect(landing).toContain("يرفع إثبات التحويل");
     expect(landing).toContain("بعد تأكيد التاجر استلام المبلغ");
-    expect(landing).toContain("متجرك الأساسي");
+    expect(landing).toContain("جرّب متجرك");
     expect(landing).toContain("إضافات اختيارية تكبّر مبيعاتك");
     expect(landing).not.toContain("PACKAGES.map");
     expect(landing).not.toContain("وفّر شهرين");
@@ -491,7 +493,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(rules).toContain("allow read, write: if false;");
   });
 
-  it("يسمح للتاجر يسجّل متجره بنفسه ويفعّل اشتراكه فورًا بالبطاقة عبر OmPay", async () => {
+  it("يسمح للتاجر يسجّل متجره بنفسه مجانًا، ويفعّل اشتراكه بالبطاقة عبر OmPay لما ينشر", async () => {
     const main = await source("src/main.jsx");
     const landing = await source("src/App.jsx");
     const startStore = await source("src/StartStore.jsx");
@@ -509,9 +511,13 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(startStore).not.toContain("submit_manual_proof");
     expect(storePayResult).toContain('"verify_card_charge"');
 
-    expect(signupApi).toContain("const MONTHLY_PLAN_PRICE = BASE_MONTHLY_PRICE");
-    expect(signupApi).toContain('import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js"');
-    expect(signupApi).toContain('if (sellerSnap.exists) return res.status(409)');
+    expect(signupApi).toContain("const PLAN_PRICES = { starter: STARTER_MONTHLY_PRICE, basic: BASE_MONTHLY_PRICE, pro: PRO_MONTHLY_PRICE }");
+    expect(signupApi).toContain('import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js"');
+    expect(signupApi).toContain("if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) return res.status(409)");
+    // التسجيل المجاني: register ينشئ متجر "unpaid"، والدفع الأول يرقّيه — والبيع مقفول لين يدفع.
+    expect(signupApi).toContain("plan: UNPAID_PLAN");
+    expect(signupApi).toContain("if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) return;");
+    expect(await source("api/orders.js")).toContain('if (seller.plan === "unpaid") throw new OrderError(409');
     expect(signupApi).toContain("await ompayChargeSucceeded(result,");
     expect(signupApi).toContain("async function activateSeller(uid, request)");
     expect(signupApi).toContain("subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
@@ -543,7 +549,9 @@ describe("عقود المسارات العامة في مُونَة", () => {
     // شحن مشتريات العملاء لازم يمر بمفاتيح بوابة الدفع الخاصة بالتاجر (paymentGateway.ompayApiKey/ompayApiSecret)،
     // ما يستخدم process.env.OMPAY_API_KEY/SECRET (مفاتيح مُونة) مباشرة أبدًا.
     expect(ompayClient).toContain("credentialsOverride");
-    expect(orderApi).toContain("async function sellerOmpayCredentials(ownerId)");
+    expect(orderApi).toContain("async function sellerGatewayCredentials(ownerId)");
+    expect(orderApi).toContain('return { provider: "paypal", clientId: gateway.paypalClientId, clientSecret: gateway.paypalClientSecret };');
+    expect(orderApi).toContain('return { provider: "ompay", apiKey: gateway.ompayApiKey, apiSecret: gateway.ompayApiSecret };');
 
     // ربط البوابة وحده ما يكفي: لازم التاجر يكون دافع اشتراك إضافة "البيع الرقمي" بعد،
     // وإلا يتفاجأ عميله بعد الدفع إن البطاقة ما تشتغل.
@@ -561,7 +569,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(orderApi).toContain("gateway.ompayApiSecret");
     expect(orderApi).toContain('action === "save_payment_gateway"');
     expect(orderApi).toContain("async function saveSellerPaymentGateway(req, res, account)");
-    expect(orderApi).toContain('if (provider !== "ompay")');
+    expect(orderApi).toContain('if (provider !== "ompay" && provider !== "paypal")');
 
     expect(orderPanel).toContain('orderRequest("create_card_charge"');
     expect(orderPanel).toContain("order.cardPaymentAvailable &&");
