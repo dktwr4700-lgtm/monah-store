@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, STARTER_PRODUCT_LIMIT, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
@@ -236,6 +236,7 @@ export default function StartStore() {
       let credential;
       try {
         credential = await withTimeout(createUserWithEmailAndPassword(auth, email, password), t.createAccountTimeout);
+        sendEmailVerification(credential.user).catch(() => {});
       } catch (createError) {
         if (createError.code !== "auth/email-already-in-use") throw createError;
         credential = await withTimeout(signInWithEmailAndPassword(auth, email, password), t.loginTimeout);

@@ -27,6 +27,7 @@ const PPO_T = {
     couponApplied: (code, price, original) => `تم تطبيق كوبون ${code}. المبلغ المطلوب: ${price} ر.ع بدل ${original} ر.ع.`,
     amountDue: "المبلغ المطلوب:",
     payingByCard: "جاري التحويل لصفحة الدفع...", payByCardNow: "ادفع الآن بالبطاقة", orTransferManually: "— أو حوّل يدويًا —",
+    securePaymentNote: "دفع آمن ومشفّر عبر بوابة الدفع الرسمية — المتجر ما يشوف بيانات بطاقتك أبدًا.",
     bank: "البنك", accountHolder: "صاحب الحساب", accountNumber: "رقم الحساب", phoneNumber: "رقم الجوال",
     copied: "تم النسخ", copy: "نسخ",
     manualTransferNote: "بعد التحويل اليدوي، ارفع صورة أو PDF للإثبات. يظهر الإيصال للتاجر فقط لمراجعته.",
@@ -57,6 +58,7 @@ const PPO_T = {
     couponApplied: (code, price, original) => `Coupon ${code} applied. Amount due: ${price} OMR instead of ${original} OMR.`,
     amountDue: "Amount due:",
     payingByCard: "Redirecting to payment page...", payByCardNow: "Pay now by card", orTransferManually: "— or transfer manually —",
+    securePaymentNote: "Secure, encrypted payment through the official payment gateway — the store never sees your card details.",
     bank: "Bank", accountHolder: "Account holder", accountNumber: "Account number", phoneNumber: "Phone number",
     copied: "Copied", copy: "Copy",
     manualTransferNote: "After the manual transfer, upload a photo or PDF as proof. The receipt is only shown to the seller for review.",
@@ -246,6 +248,10 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lan
             {error && <div className="ppo-error">{error}</div>}
             {order.cardPaymentAvailable && <>
               <button type="button" className="ppo-primary" style={{ width: "100%", marginTop: 12 }} onClick={payByCard} disabled={busy}>{busy ? t.payingByCard : t.payByCardNow}</button>
+              <div className="ppo-small" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, color: "#37724B" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2"/><path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                <span>{t.securePaymentNote}</span>
+              </div>
               {hasManualTransfer && <div className="ppo-small" style={{ textAlign: "center", margin: "13px 0" }}>{t.orTransferManually}</div>}
             </>}
             {hasManualTransfer && <>
