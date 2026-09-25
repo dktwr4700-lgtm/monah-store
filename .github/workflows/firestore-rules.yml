@@ -1,0 +1,45 @@
+name: Firestore rules
+
+# يتحقق من firestore.rules بكل PR يغيّرها، وينشرها لـ Firebase بعد الدمج في main.
+on:
+  pull_request:
+    paths:
+      - firestore.rules
+      - scripts/deploy-firestore-rules.mjs
+      - .github/workflows/firestore-rules.yml
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - scripts/deploy-firestore-rules.mjs
+      - .github/workflows/firestore-rules.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firestore-rules-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Check rules
+        if: github.event_name == 'pull_request'
+        run: node scripts/deploy-firestore-rules.mjs --check
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Deploy rules
+        if: github.event_name != 'pull_request'
+        run: node scripts/deploy-firestore-rules.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
