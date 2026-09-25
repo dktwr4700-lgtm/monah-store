@@ -22,12 +22,25 @@ function resolvePlan(value) {
   if (value === "starter") return "starter";
   return "basic";
 }
-// باقة "ابدأ" (0.50 ر.ع) سعر تعريفي لأول شهر بس — أي تجديد بعده يتحول
-// تلقائي لباقة "الأساسي" العادية بسعرها الطبيعي، بدل ما يستمر يتجدد بنفس
-// السعر الرمزي إلى الأبد.
+// كل باقة تتجدد بنفسها وبسعرها: "ابدأ" (0.50 ر.ع شهريًا، حتى منتجين) باقة
+// دائمة، والتاجر يرقّي بنفسه للأساسي أو برو لما يحتاج منتجات أكثر
+// (upgradePlanFor). التجربة المجانية القديمة ("trial") تتجدد كأساسي.
 function renewalPlanFor(plan) {
-  const resolved = resolvePlan(plan);
-  return resolved === "starter" ? "basic" : resolved;
+  return resolvePlan(plan);
+}
+
+const PLAN_RANK = { starter: 1, basic: 2, pro: 3 };
+
+// الباقة اللي ينشحن عليها التجديد: نفس باقته، أو باقة أعلى لو طلب ترقية.
+// ما نسمح بالنزول لباقة أقل من هنا (ممكن تكون منتجاته أكثر من حدها).
+function upgradePlanFor(seller, requestedPlan) {
+  const current = renewalPlanFor(seller.plan);
+  if (!Object.hasOwn(PLAN_RANK, requestedPlan || "")) return current;
+  return PLAN_RANK[requestedPlan] >= PLAN_RANK[current] ? requestedPlan : current;
+}
+
+function pendingRenewalPlanFor(seller) {
+  return seller.pendingRenewalPlan ? resolvePlan(seller.pendingRenewalPlan) : renewalPlanFor(seller.plan);
 }
 const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const CUSTOM_DOMAIN_PRICE = CUSTOM_DOMAIN_MONTHLY_PRICE;
@@ -585,15 +598,19 @@ async function createRenewalCharge(req, res) {
   const seller = sellerSnap.data();
   if (isUnpaidSeller(seller)) throw new SignupError(409, "متجرك لسا ما تفعّل — فعّله أولًا باختيار باقتك.");
 
-  const renewalPlan = renewalPlanFor(seller.plan);
-
   if (seller.pendingRenewalReferenceNumber
     && await priorChargeSucceeded(seller.pendingRenewalReferenceNumber, "renew", account.uid)) {
     const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
-    await sellerRef.update({ subscriptionExpiresAt, plan: renewalPlan, pendingRenewalReferenceNumber: FieldValue.delete() });
+    await sellerRef.update({
+      subscriptionExpiresAt,
+      plan: pendingRenewalPlanFor(seller),
+      pendingRenewalReferenceNumber: FieldValue.delete(),
+      pendingRenewalPlan: FieldValue.delete(),
+    });
     return res.status(200).json({ activated: true, subscriptionExpiresAt });
   }
 
+  const renewalPlan = upgradePlanFor(seller, req.body?.plan);
   const amount = PLAN_PRICES[renewalPlan] + addOnsTotal(seller.activeAddOns || []);
 
   const origin = `https://${req.headers.host || "monah-app.com"}`;
@@ -609,7 +626,7 @@ async function createRenewalCharge(req, res) {
   if (!redirectUrl) {
     throw new SignupError(502, "تعذر تجهيز صفحة الدفع الآن. حاول مرة ثانية.");
   }
-  await sellerRef.update({ pendingRenewalReferenceNumber: referenceNumber });
+  await sellerRef.update({ pendingRenewalReferenceNumber: referenceNumber, pendingRenewalPlan: renewalPlan });
   return res.status(200).json({ url: redirectUrl });
 }
 
@@ -630,7 +647,12 @@ async function verifyRenewalCharge(req, res) {
   }
 
   const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
-  await sellerRef.update({ subscriptionExpiresAt, plan: renewalPlanFor(seller.plan), pendingRenewalReferenceNumber: FieldValue.delete() });
+  await sellerRef.update({
+    subscriptionExpiresAt,
+    plan: pendingRenewalPlanFor(seller),
+    pendingRenewalReferenceNumber: FieldValue.delete(),
+    pendingRenewalPlan: FieldValue.delete(),
+  });
   return res.status(200).json({ paid: true, subscriptionExpiresAt });
 }
 

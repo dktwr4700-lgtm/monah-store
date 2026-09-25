@@ -74,7 +74,7 @@ const ST_T = {
     subscriptionIntro: (price) => `عشان تنشر منتجاتك وتبدأ تبيع، اختر باقتك — تبدأ من ${price} ر.ع شهريًا فقط. تقدر تضيف إضافات اختيارية أو ترقّي باقتك الآن أو لاحقًا من لوحة التاجر.`,
     laterToDashboard: "لاحقًا — رجوع للوحة التاجر",
     choosePlan: "اختر باقتك",
-    starterPlanOption: (price, limit) => `تجربة رمزية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
+    starterPlanOption: (price, limit) => `ابدأ — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     basicPlanOption: (price, limit) => `الأساسية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     proPlanOption: (price, limit) => `برو — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     optionalAddOns: "إضافات اختيارية (تقدر تتخطاها الآن)",

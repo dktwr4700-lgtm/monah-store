@@ -518,6 +518,10 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(signupApi).toContain("plan: UNPAID_PLAN");
     expect(signupApi).toContain("if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) return;");
     expect(await source("api/orders.js")).toContain('if (seller.plan === "unpaid") throw new OrderError(409');
+    // باقة "ابدأ" تتجدد بنفسها (0.50 ر.ع شهريًا)، والترقية للأساسي أو برو يختارها التاجر بنفسه.
+    expect(signupApi).toContain("function renewalPlanFor(plan) {\n  return resolvePlan(plan);\n}");
+    expect(signupApi).toContain("const renewalPlan = upgradePlanFor(seller, req.body?.plan);");
+    expect(signupApi).toContain("pendingRenewalPlan: renewalPlan");
     expect(signupApi).toContain("await ompayChargeSucceeded(result,");
     expect(signupApi).toContain("async function activateSeller(uid, request)");
     expect(signupApi).toContain("subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS))");
