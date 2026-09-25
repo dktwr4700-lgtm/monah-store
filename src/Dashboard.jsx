@@ -10,6 +10,7 @@ import {
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
+import { watermarkImage } from "./watermarkImage.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
@@ -355,6 +356,9 @@ const DASH_T = {
     invalidImageFiles: "اختر ملفات صور صالحة.",
     imageTooLargeSkipped: "حجم إحدى الصور أكبر من 5 ميجا، تجاوزناها.",
     uploadImageError: "تعذر رفع إحدى الصور، حاول مرة ثانية.",
+    watermarkImagesLabel: "ضع علامة مائية باسم متجري على صور العرض",
+    watermarkImagesHint: "مناسب للدعوات والتصاميم والصور: الصورة اللي يشوفها الزوار تطلع عليها علامة باسم متجرك، فما أحد يقدر يصوّرها ويستخدمها ببلاش. ارفع النسخة النظيفة كملف التسليم تحت — ما يستلمها العميل إلا بعد الشراء.",
+    watermarkError: "تعذر تجهيز العلامة المائية لإحدى الصور، جرّب صورة ثانية.",
     invalidImageFile: "اختر ملف صورة صالحًا.",
     imageTooLargeSingle: "حجم الصورة أكبر من 5 ميجا، اختاري صورة أصغر.",
     uploadPhotoError: "تعذر رفع الصورة، حاول مرة ثانية.",
@@ -878,6 +882,9 @@ const DASH_T = {
     invalidImageFiles: "Choose valid image files.",
     imageTooLargeSkipped: "One of the images is larger than 5 MB, we skipped it.",
     uploadImageError: "Couldn't upload one of the images, try again.",
+    watermarkImagesLabel: "Watermark my preview images with my store name",
+    watermarkImagesHint: "Great for invitations, designs and photos: the image visitors see carries your store name, so nobody can screenshot it and use it for free. Upload the clean version as the delivery file below — the customer only gets it after buying.",
+    watermarkError: "Couldn't watermark one of the images, try a different one.",
     invalidImageFile: "Choose a valid image file.",
     imageTooLargeSingle: "The image is larger than 5 MB, choose a smaller image.",
     uploadPhotoError: "Couldn't upload the image, try again.",
@@ -1407,6 +1414,10 @@ export default function Dashboard() {
   const [productImages, setProductImages] = useState([]);
   const [imagesUploading, setImagesUploading] = useState(false);
   const [imagesError, setImagesError] = useState("");
+  // اختيار العلامة المائية يتذكره المتصفح، عشان تاجر الدعوات ما يحتاج يفعّله كل مرة.
+  const [watermarkImages, setWatermarkImages] = useState(() => {
+    try { return localStorage.getItem("monah_watermark_images") === "1"; } catch { return false; }
+  });
   const [previewVideo, setPreviewVideo] = useState("");
   const [previewVideoUploading, setPreviewVideoUploading] = useState(false);
   const [previewVideoError, setPreviewVideoError] = useState("");
@@ -2272,13 +2283,27 @@ export default function Dashboard() {
         setImagesError(t.invalidImageFiles);
         continue;
       }
-      if (file.size > 5 * 1024 * 1024) {
+      // مع العلامة المائية نصغّر الصورة لـ 1600px قبل الرفع، فنقبل أصل أكبر.
+      if (file.size > (watermarkImages ? 25 : 5) * 1024 * 1024) {
         setImagesError(t.imageTooLargeSkipped);
         continue;
       }
+      let uploadFile = file;
+      if (watermarkImages) {
+        try {
+          uploadFile = await watermarkImage(file, storeName);
+        } catch (err) {
+          setImagesError(t.watermarkError);
+          continue;
+        }
+        if (uploadFile.size > 5 * 1024 * 1024) {
+          setImagesError(t.imageTooLargeSkipped);
+          continue;
+        }
+      }
       try {
         const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-        await uploadBytes(fileRef, file);
+        await uploadBytes(fileRef, uploadFile, { contentType: uploadFile.type || file.type });
         const url = await getDownloadURL(fileRef);
         setProductImages((prev) => [...prev, url]);
       } catch (err) {
@@ -3298,6 +3323,22 @@ export default function Dashboard() {
                       </label>
                     )}
                   </div>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10, cursor: "pointer", fontWeight: 400 }}>
+                    <input
+                      type="checkbox"
+                      checked={watermarkImages}
+                      onChange={(event) => {
+                        const next = event.target.checked;
+                        setWatermarkImages(next);
+                        try { localStorage.setItem("monah_watermark_images", next ? "1" : "0"); } catch { /* تفضيل محلي بس */ }
+                      }}
+                      style={{ marginTop: 3, width: "auto", flexShrink: 0 }}
+                    />
+                    <span>
+                      <b style={{ display: "block", fontSize: 12.5 }}>{t.watermarkImagesLabel}</b>
+                      <span className="dh-hint">{t.watermarkImagesHint}</span>
+                    </span>
+                  </label>
                   {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
                 </div>
                 <div className="dh-group-title">{t.groupDelivery}</div>
