@@ -29,8 +29,14 @@ const TRY_T = {
     taglinePlaceholder: "سطر تعريفي لمتجرك يظهر هنا",
     fileType: "ملف رقمي",
     productPlaceholder: "منتجك الأول يظهر هنا",
-    buy: "اشترِ الآن",
     curr: "ر.ع",
+    caption: "هكذا بيشوف عملاؤك متجرك على جوالهم",
+    statProducts: "منتج رقمي",
+    organized: "مرتب", organizedSub: "تصفح وفئات واضحة",
+    direct: "مباشر", directSub: "تواصل مع التاجر",
+    storeProducts: "منتجات المتجر", chooseProduct: "اختر المنتج وابدأ شغلك اليوم.",
+    viewProduct: "عرض المنتج",
+    storeWord: "متجر", poweredBy: "مدعوم من مُونة",
     storeMeta: "متجر رقمي على مُونة",
     ctaTitle: "عجبك؟",
     cta: "افتح متجرك الحقيقي الحين ←",
@@ -61,8 +67,14 @@ const TRY_T = {
     taglinePlaceholder: "Your store's tagline shows here",
     fileType: "Digital file",
     productPlaceholder: "Your first product shows here",
-    buy: "Buy now",
     curr: "OMR",
+    caption: "This is how customers see your store on their phone",
+    statProducts: "digital product",
+    organized: "Organized", organizedSub: "Clear browsing & categories",
+    direct: "Direct", directSub: "Message the seller directly",
+    storeProducts: "Store products", chooseProduct: "Pick a product and get started today.",
+    viewProduct: "View product",
+    storeWord: "Store", poweredBy: "Powered by Monah",
     storeMeta: "A digital store on Monah",
     ctaTitle: "Like it?",
     cta: "Open your real store now →",
@@ -94,32 +106,56 @@ const styles = `
   .spt-error{ margin-top:14px; background:#FBEDEA; color:#8A2E1F; border-radius:12px; padding:11px 14px; font-size:13px; line-height:1.7; }
   .spt-status{ margin-top:12px; text-align:center; font-size:12.5px; color:#375044; min-height:20px; }
 
-  .spt-phone{ width:100%; max-width:380px; margin:0 auto; background:#fff; border-radius:34px; border:9px solid #13211B; box-shadow:0 34px 60px rgba(19,33,27,.2); overflow:hidden; position:relative; }
-  .spt-phone-bar{ height:22px; display:flex; justify-content:center; align-items:center; background:#fff; }
-  .spt-phone-bar i{ width:74px; height:5px; border-radius:6px; background:#E4DFD2; display:block; }
-  .spt-screen{ padding:12px 14px 18px; font-family:'Cairo',sans-serif; }
-  .spt-badge{ position:absolute; top:34px; inset-inline-end:22px; z-index:3; background:#D6F35C; color:#143226; font-size:10.5px; font-weight:800; padding:4px 10px; border-radius:100px; }
-  .spt-store{ background:#163F2E; color:#fff; border-radius:20px; padding:20px 18px; position:relative; overflow:hidden; isolation:isolate; }
+  .spt-caption{ text-align:center; font-size:13px; font-weight:800; color:#375044; margin-bottom:12px; }
+  .spt-phone{ width:100%; max-width:380px; margin:0 auto; background:#fff; border-radius:38px; border:10px solid #13211B; box-shadow:0 34px 60px rgba(19,33,27,.2); overflow:hidden; position:relative; font-family:'Cairo',sans-serif; }
+  .spt-urlbar{ position:relative; display:flex; align-items:center; justify-content:center; gap:6px; background:#F1EFE9; margin:10px 12px 0; border-radius:12px; padding:7px 10px; font-size:11px; color:#4A564C; direction:ltr; font-family:'JetBrains Mono',monospace; }
+  .spt-urlbar svg{ flex-shrink:0; color:#37724B; }
+  .spt-badge{ position:absolute; top:50%; left:6px; transform:translateY(-50%); font-family:'Cairo',sans-serif; background:#D6F35C; color:#143226; font-size:10px; font-weight:800; padding:3px 9px; border-radius:100px; }
+  .spt-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid rgba(17,32,24,.08); margin-top:8px; }
+  .spt-wordmark{ display:flex; align-items:center; gap:8px; font-weight:800; font-size:12.5px; color:#163F2E; min-width:0; }
+  .spt-wordmark span.nm{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .spt-mark{ width:28px; height:28px; border-radius:9px; background:#163F2E; color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-weight:900; font-size:13px; flex-shrink:0; }
+  .spt-gold{ width:5px; height:5px; border-radius:50%; background:#D6A450; display:inline-block; flex-shrink:0; }
+  .spt-icons{ display:flex; gap:6px; flex-shrink:0; }
+  .spt-icon{ width:30px; height:30px; border-radius:100px; border:1px solid rgba(17,32,24,.12); display:flex; align-items:center; justify-content:center; color:#163F2E; }
+  .spt-screen{ padding:12px 12px 16px; }
+  .spt-store{ background:#163F2E; color:#fff; border-radius:20px; padding:20px 16px 26px; position:relative; overflow:hidden; isolation:isolate; }
   .spt-store:before{ content:""; position:absolute; width:190px; height:190px; border:1px solid rgba(255,255,255,.15); border-radius:50%; top:-100px; inset-inline-start:-60px; z-index:-1; }
+  .spt-store:after{ content:""; position:absolute; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.07); bottom:-65px; inset-inline-end:-30px; z-index:-1; }
   .spt-store-row{ display:flex; align-items:center; gap:12px; }
-  .spt-logo{ width:52px; height:52px; border-radius:16px; background:#fff; color:#163F2E; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-weight:800; font-size:21px; flex-shrink:0; box-shadow:0 8px 16px rgba(0,0,0,.18); }
+  .spt-logo{ width:54px; height:54px; border-radius:17px; background:#fff; color:#163F2E; display:flex; align-items:center; justify-content:center; font-family:'Almarai',sans-serif; font-weight:800; font-size:21px; flex-shrink:0; box-shadow:0 8px 16px rgba(0,0,0,.18); }
   .spt-store-name{ font-family:'Almarai',sans-serif; font-weight:800; font-size:17px; line-height:1.4; overflow-wrap:anywhere; }
   .spt-store-tag{ font-size:11.5px; color:rgba(255,255,255,.82); margin-top:4px; line-height:1.7; }
   .spt-store-meta{ font-size:9.5px; letter-spacing:.04em; color:rgba(255,255,255,.62); font-weight:800; margin-top:5px; }
-  .spt-product{ margin-top:14px; border:1px solid rgba(17,32,24,.1); border-radius:18px; overflow:hidden; background:#fff; }
-  .spt-product-img{ aspect-ratio:4/3; background:#EAF0EB; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  .spt-product-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .spt-assure{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); background:#fff; border:1px solid rgba(17,32,24,.1); border-radius:14px; margin:-12px 10px 0; position:relative; z-index:2; box-shadow:0 10px 20px rgba(11,11,12,.06); }
+  .spt-assure div{ padding:9px 4px; text-align:center; border-inline-start:1px solid rgba(17,32,24,.09); }
+  .spt-assure div:first-child{ border-inline-start:0; }
+  .spt-assure strong{ font-size:11px; display:block; color:#163F2E; }
+  .spt-assure span{ font-size:9px; color:#4A564C; display:block; margin-top:2px; }
+  .spt-catalog{ margin:18px 2px 10px; }
+  .spt-eyebrow{ font-size:9.5px; color:#C28B3B; font-weight:800; display:flex; align-items:center; gap:5px; }
+  .spt-ctitle{ font-family:'Almarai',sans-serif; font-weight:800; font-size:14px; color:#112018; margin-top:3px; }
+  .spt-product{ border:1px solid rgba(17,32,24,.1); border-radius:18px; overflow:hidden; background:#fff; }
+  .spt-product-img{ aspect-ratio:1/1; background:#EAF0EB; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+  .spt-product-img .bg{ position:absolute; inset:-24px; width:calc(100% + 48px); height:calc(100% + 48px); object-fit:cover; filter:blur(18px); opacity:.5; }
+  .spt-product-img .fg{ position:relative; width:100%; height:100%; object-fit:contain; display:block; }
+  .spt-doc{ width:52%; height:66%; background:#FFFDF8; box-shadow:0 10px 18px rgba(11,11,12,.12); border-radius:10px; transform:rotate(-6deg); padding:12px; }
+  .spt-doc b{ display:block; width:65%; height:7px; border-radius:8px; background:#C28B3B; }
+  .spt-doc i{ display:block; height:5px; background:#EDEAE0; border-radius:7px; margin-top:9px; }
+  .spt-doc i:nth-child(3){ width:80%; } .spt-doc i:nth-child(4){ width:92%; }
+  .spt-doc em{ display:block; height:22px; background:#EAF0EB; border-radius:6px; margin-top:12px; }
   .spt-product-body{ padding:12px 13px 14px; }
   .spt-type{ font-size:10px; color:#9C6D1F; font-weight:800; }
   .spt-name{ font-size:14px; font-weight:800; line-height:1.55; color:#112018; margin-top:3px; }
-  .spt-desc{ font-size:11.5px; color:#4A564C; line-height:1.8; margin-top:5px; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
-  .spt-price-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; }
-  .spt-price{ font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:800; color:#163F2E; }
-  .spt-buy{ background:#163F2E; color:#fff; border-radius:100px; padding:8px 16px; font-size:11.5px; font-weight:800; }
+  .spt-desc{ font-size:11.5px; color:#4A564C; line-height:1.8; margin-top:5px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .spt-price{ display:block; font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:800; color:#163F2E; margin-top:8px; }
+  .spt-view{ display:block; margin-top:9px; border:1.5px solid #163F2E; color:#163F2E; border-radius:100px; padding:8px; text-align:center; font-size:11px; font-weight:800; }
+  .spt-foot{ text-align:center; color:#5C6660; font-size:10px; margin-top:16px; }
+  .spt-foot b{ color:#112018; } .spt-foot span{ color:#163F2E; font-weight:800; }
   .spt-muted{ color:#A7A08E; }
   .spt-line{ display:block; height:10px; border-radius:6px; background:#EDEAE0; margin-top:8px; }
   .spt-line.w70{ width:70%; } .spt-line.w90{ width:90%; } .spt-line.w50{ width:50%; }
-  .spt-loading .spt-line, .spt-loading .spt-product-img{ background:linear-gradient(90deg,#EDEAE0 0%,#F7F5EF 50%,#EDEAE0 100%); background-size:200% 100%; animation:sptShimmer 1.2s ease-in-out infinite; }
+  .spt-loading .spt-line{ background:linear-gradient(90deg,#EDEAE0 0%,#F7F5EF 50%,#EDEAE0 100%); background-size:200% 100%; animation:sptShimmer 1.2s ease-in-out infinite; }
   @keyframes sptShimmer{ from{ background-position:100% 0; } to{ background-position:-100% 0; } }
   .spt-reveal{ animation:sptIn .5s ease-out both; }
   @keyframes sptIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
@@ -131,7 +167,7 @@ const styles = `
   .spt-retry{ margin-top:8px; background:none; border:0; color:#375044; font-family:'Cairo',sans-serif; font-size:12.5px; text-decoration:underline; cursor:pointer; padding:10px; min-height:44px; }
 
   @media (prefers-reduced-motion: reduce){
-    .spt-loading .spt-line, .spt-loading .spt-product-img, .spt-reveal{ animation:none; }
+    .spt-loading .spt-line, .spt-reveal{ animation:none; }
   }
   @media (max-width:860px){
     .spt{ padding:54px 0; }
@@ -322,9 +358,24 @@ export default function StorePreviewTry({ lang }) {
           </form>
 
           <div className="spt-preview" ref={previewRef}>
+            <div className="spt-caption">{t.caption}</div>
             <div className="spt-phone">
-              <div className="spt-phone-bar" aria-hidden="true"><i /></div>
-              <div className="spt-badge">{t.previewBadge}</div>
+              <div className="spt-urlbar" aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2.2"/><path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+                <span>monah-app.com</span>
+                <span className="spt-badge">{t.previewBadge}</span>
+              </div>
+              <div className="spt-top">
+                <div className="spt-wordmark">
+                  <span className="spt-mark" aria-hidden="true">{initialOf(storeName)}</span>
+                  <span className="nm">{shownName}</span>
+                  <span className="spt-gold" />
+                </div>
+                <div className="spt-icons" aria-hidden="true">
+                  <span className="spt-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="2"/><path d="M16 16l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></span>
+                  <span className="spt-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h2l2 10h10l2-7H7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="10" cy="19" r="1.4" fill="currentColor"/><circle cx="17" cy="19" r="1.4" fill="currentColor"/></svg></span>
+                </div>
+              </div>
               <div className={"spt-screen" + (loading ? " spt-loading" : "")}>
                 <div className="spt-store">
                   <div className="spt-store-row">
@@ -336,10 +387,27 @@ export default function StorePreviewTry({ lang }) {
                     </div>
                   </div>
                 </div>
+                <div className="spt-assure" aria-hidden="true">
+                  <div><strong className="mono">1</strong><span>{t.statProducts}</span></div>
+                  <div><strong>{t.organized}</strong><span>{t.organizedSub}</span></div>
+                  <div><strong>{t.direct}</strong><span>{t.directSub}</span></div>
+                </div>
+
+                <div className="spt-catalog">
+                  <div className="spt-eyebrow"><span className="spt-gold" /> {t.storeProducts}</div>
+                  <div className="spt-ctitle">{t.chooseProduct}</div>
+                </div>
 
                 <div className={"spt-product" + (result ? " spt-reveal" : "")}>
                   <div className="spt-product-img">
-                    {image ? <img src={image.dataUrl} alt="" /> : null}
+                    {image ? (
+                      <>
+                        <img className="bg" src={image.dataUrl} alt="" aria-hidden="true" />
+                        <img className="fg" src={image.dataUrl} alt="" />
+                      </>
+                    ) : (
+                      <div className="spt-doc" aria-hidden="true"><b /><i /><i /><i /><em /></div>
+                    )}
                   </div>
                   <div className="spt-product-body">
                     <div className="spt-type">{t.fileType}</div>
@@ -347,10 +415,8 @@ export default function StorePreviewTry({ lang }) {
                       <>
                         <div className="spt-name">{result.productName}</div>
                         <div className="spt-desc">{result.description}</div>
-                        <div className="spt-price-row">
-                          <span className="spt-price">{priceText}</span>
-                          <span className="spt-buy" aria-hidden="true">{t.buy}</span>
-                        </div>
+                        <span className="spt-price">{priceText}</span>
+                        <span className="spt-view" aria-hidden="true">{t.viewProduct}</span>
                       </>
                     ) : loading ? (
                       <>
@@ -363,6 +429,8 @@ export default function StorePreviewTry({ lang }) {
                     )}
                   </div>
                 </div>
+
+                <div className="spt-foot">{t.storeWord} <b>{shownName}</b> · <span>{t.poweredBy}</span></div>
               </div>
             </div>
 
