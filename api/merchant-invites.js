@@ -139,10 +139,17 @@ async function activateInvite(req, res) {
   const existingSeller = await db.collection("sellers").where("email", "==", account.email).limit(1).get();
   if (!existingSeller.empty) return res.status(409).json({ error: "هذا البريد لديه متجر مفعّل بالفعل." });
 
+  // لو نفس الحساب كان بدأ تسجيل ذاتي عادي قبل (merchantSignups بحالة
+  // awaiting_payment) وتركه وفعّل متجره عن طريق الدعوة هذي بدالها، لازم نقفل
+  // ذاك الطلب القديم — وإلا يضل عالق بحالته القديمة ويستمر تذكير التاجر
+  // "كمّل تسجيلك" بالإيميل رغم إن متجره خلاص شغال.
+  const staleSignupRef = db.collection("merchantSignups").doc(account.uid);
+
   try {
     await db.runTransaction(async (transaction) => {
       const inviteSnapshot = await transaction.get(invite.ref);
       const sellerSnapshot = await transaction.get(sellerRef);
+      const staleSignupSnapshot = await transaction.get(staleSignupRef);
       if (!inviteSnapshot.exists) throw new Error("invalid_invite");
       const currentInvite = inviteSnapshot.data();
       if (currentInvite.status !== "pending" || isExpired(currentInvite)) throw new Error("invalid_invite");
@@ -163,6 +170,9 @@ async function activateInvite(req, res) {
         acceptedEmail: account.email,
         acceptedAt: FieldValue.serverTimestamp(),
       });
+      if (staleSignupSnapshot.exists) {
+        transaction.update(staleSignupRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
+      }
     });
   } catch (error) {
     if (error?.message === "seller_exists") return res.status(409).json({ error: "هذا الحساب لديه متجر مفعّل بالفعل." });
