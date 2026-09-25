@@ -684,6 +684,16 @@ async function sendOnboardingReminders(req, res) {
   for (const doc of signupsSnap.docs) {
     const signup = { id: doc.id, ...doc.data() };
     if (!signup.email || !signup.createdAt?.toDate) continue;
+
+    // لو التاجر فعليًا صار عنده متجر مفعّل (فعّله عن طريق دعوة إدارية مثلًا، مسار
+    // ما يمر بـmerchantSignups أصلًا)، وثيقة awaiting_payment هذي بقت عالقة بحالتها
+    // القديمة بالغلط — نصلّحها هنا بدل ما نرسل له تذكير "كمّل تسجيلك" وهو خلاص يبيع.
+    const sellerSnap = await db.collection("sellers").doc(signup.id).get();
+    if (sellerSnap.exists) {
+      await db.collection("merchantSignups").doc(signup.id).update({ status: "activated", activatedAt: FieldValue.serverTimestamp() });
+      continue;
+    }
+
     const daysSince = (now - signup.createdAt.toDate().getTime()) / DAY_MS;
     const sentSoFar = signup.signupRemindersSent || 0;
     if (!isStepDue(SIGNUP_REMINDER_STEP, sentSoFar, daysSince)) continue;
