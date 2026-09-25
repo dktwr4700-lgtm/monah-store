@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp } from "firebase/firestore";
 import { BASE_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
@@ -151,6 +151,12 @@ const ADMIN_T = {
     invitesTab: "دعوات التجار",
     signupCouponsTab: "أكواد خصم التسجيل",
     paymentDebugTab: "سجل تشخيص الدفع",
+    assistantTab: "أسئلة المساعد",
+    assistantIntro: "آخر الأسئلة اللي سألها الزوار لمساعد \"اسأل مونة\" بالصفحة الرئيسية (بدون أي بيانات عن السائل). تفيدك تعرف وش يهم الناس، ووش المعلومات اللي لازم تضيفها أو توضحها.",
+    assistantToday: (n) => `أسئلة اليوم: ${n}`,
+    assistantNoQuestions: "ما فيه أسئلة للحين.",
+    assistantUnanswered: "ما انرد",
+    assistantFollowUp: (n) => `سؤال رقم ${n} بالمحادثة`,
     conversionTab: "التحويل",
     conversionStat: "نسبة تحويل التسجيل المجاني",
     conversionIntro: "من سجّل مجانًا، وكم منهم فعّل ودفع، ومين الأقرب للدفع. المتاجر اللي فعّلت قبل التسجيل المجاني ما تدخل بهذي الأرقام.",
@@ -315,6 +321,12 @@ const ADMIN_T = {
     invitesTab: "Seller invites",
     signupCouponsTab: "Signup discount codes",
     paymentDebugTab: "Payment debug log",
+    assistantTab: "Assistant questions",
+    assistantIntro: "The latest questions visitors asked the \"Ask Monah\" assistant on the home page (no data about who asked). Useful to see what people care about and what information to add or clarify.",
+    assistantToday: (n) => `Questions today: ${n}`,
+    assistantNoQuestions: "No questions yet.",
+    assistantUnanswered: "Not answered",
+    assistantFollowUp: (n) => `Question #${n} in the chat`,
     conversionTab: "Conversion",
     conversionStat: "Free-signup conversion",
     conversionIntro: "Who signed up for free, how many activated and paid, and who is closest to paying. Stores activated before free signup existed aren't counted.",
@@ -525,6 +537,8 @@ export default function AdminDashboard() {
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
   const [paymentDebugLogs, setPaymentDebugLogs] = useState([]);
+  const [assistantQuestions, setAssistantQuestions] = useState([]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
   const [paymentDebugLoading, setPaymentDebugLoading] = useState(false);
 
   const [signupCoupons, setSignupCoupons] = useState([]);
@@ -674,6 +688,17 @@ export default function AdminDashboard() {
       setInviteError(error.message);
     }
     setDeletingInviteId("");
+  }
+
+  async function loadAssistantQuestions() {
+    setAssistantLoading(true);
+    try {
+      const snap = await getDocs(query(collection(db, "assistantQuestions"), orderBy("createdAt", "desc"), limit(150)));
+      setAssistantQuestions(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
+    } catch (error) {
+      console.error(error);
+    }
+    setAssistantLoading(false);
   }
 
   async function loadPaymentDebugLogs() {
@@ -1162,6 +1187,9 @@ export default function AdminDashboard() {
           <button className={"admin-tab" + (view === "coupons" ? " active" : "")} onClick={() => { setView("coupons"); loadSignupCoupons(); }}>
             {t.signupCouponsTab}
           </button>
+          <button className={"admin-tab" + (view === "assistant" ? " active" : "")} onClick={() => { setView("assistant"); loadAssistantQuestions(); }}>
+            {t.assistantTab}
+          </button>
           <button className={"admin-tab" + (view === "paymentDebug" ? " active" : "")} onClick={() => { setView("paymentDebug"); loadPaymentDebugLogs(); }}>
             {t.paymentDebugTab}
           </button>
@@ -1632,6 +1660,29 @@ export default function AdminDashboard() {
             ))}
           </>
         )}
+
+        {view === "assistant" && (() => {
+          const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+          const todayCount = assistantQuestions.filter((item) => toMillis(item.createdAt) >= todayStart.getTime()).length;
+          return (
+            <>
+              <div className="invite-sub" style={{ marginBottom: 8 }}>{t.assistantIntro}</div>
+              {!assistantLoading && <div className="detail-heading" style={{ marginBottom: 12 }}>{t.assistantToday(todayCount)}</div>}
+              {assistantLoading && <div className="loading">{t.loadingLog}</div>}
+              {!assistantLoading && assistantQuestions.length === 0 && <div className="empty">{t.assistantNoQuestions}</div>}
+              {!assistantLoading && assistantQuestions.map((item) => (
+                <div className="invite-row" key={item.id}>
+                  <div style={{ fontSize: 13.5, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{item.question}</div>
+                  <div className="invite-meta" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleString(dateLocale) : ""}</span>
+                    {Number(item.turn) > 1 && <span>· {t.assistantFollowUp(item.turn)}</span>}
+                    {item.answered === false && <span className="seller-badge badge-expired">{t.assistantUnanswered}</span>}
+                  </div>
+                </div>
+              ))}
+            </>
+          );
+        })()}
 
         {view === "paymentDebug" && (
           <>

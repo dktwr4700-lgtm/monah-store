@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
+import MonahAssistant from "./MonahAssistant.jsx";
 
 const styles = `
   .monah-app *{ box-sizing:border-box; }
@@ -636,6 +637,8 @@ export default function App() {
         </div>
         <div className="foot-wordmark">Monah</div>
       </div>
+
+      <MonahAssistant lang={lang} />
     </div>
   );
 }
