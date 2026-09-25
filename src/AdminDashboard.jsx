@@ -101,7 +101,7 @@ const styles = `
 
 const ADMIN_T = {
   ar: {
-    planTrial: "تجربة مجانية", planBasic: "أساسية", planPro: "احترافية", planFull: "متجر متكامل", planNone: "بدون باقة",
+    planTrial: "تجربة مجانية", planUnpaid: "غير مفعّل (سجّل مجانًا)", planStarter: "ابدأ", planBasic: "أساسية", planPro: "احترافية", planFull: "متجر متكامل", planNone: "بدون باقة",
     storeTypeBooks: "كتب رقمية", storeTypeVideos: "فيديوهات ودورات", storeTypeCodes: "أكواد وتراخيص", storeTypeFiles: "ملفات وقوالب",
     inviteRequestError: "تعذر تنفيذ الدعوة الآن.",
     inviteLinkCreated: "تم إنشاء الرابط. انسخه الآن وأرسله للتاجر؛ ينتهي بعد 3 أيام.",
@@ -244,7 +244,7 @@ const ADMIN_T = {
     unknown: "غير معروف",
   },
   en: {
-    planTrial: "Free trial", planBasic: "Basic", planPro: "Pro", planFull: "Full store", planNone: "No plan",
+    planTrial: "Free trial", planUnpaid: "Not activated (free signup)", planStarter: "Starter", planBasic: "Basic", planPro: "Pro", planFull: "Full store", planNone: "No plan",
     storeTypeBooks: "Digital books", storeTypeVideos: "Videos & courses", storeTypeCodes: "Codes & licenses", storeTypeFiles: "Files & templates",
     inviteRequestError: "Couldn't complete the invite request right now.",
     inviteLinkCreated: "The link was created. Copy it now and send it to the seller; it expires after 3 days.",
@@ -403,6 +403,8 @@ export default function AdminDashboard() {
 
   function planLabel(plan) {
     if (plan === "trial") return t.planTrial;
+    if (plan === "unpaid") return t.planUnpaid;
+    if (plan === "starter") return t.planStarter;
     if (plan === "basic") return t.planBasic;
     if (plan === "pro") return t.planPro;
     if (plan === "full") return t.planFull;
@@ -1098,7 +1100,9 @@ export default function AdminDashboard() {
         <div className="admin-filters">
           <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}>
             <option value="all">{t.allPlans}</option>
+            <option value="unpaid">{t.planUnpaid}</option>
             <option value="trial">{t.planTrial}</option>
+            <option value="starter">{t.planStarter}</option>
             <option value="basic">{t.planBasic}</option>
             <option value="pro">{t.planPro}</option>
             <option value="full">{t.planFull}</option>
@@ -1208,6 +1212,7 @@ export default function AdminDashboard() {
                   value={planDraftFor(s)}
                   onChange={(e) => setPlanDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
                 >
+                  {s.plan && s.plan !== "basic" && <option value={s.plan}>{planLabel(s.plan)}</option>}
                   <option value="basic">{t.planBasic}</option>
                 </select>
                 <button type="button" disabled={savingPlanId === s.id} onClick={() => savePlan(s)}>
