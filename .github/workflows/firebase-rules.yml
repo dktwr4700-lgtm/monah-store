@@ -1,25 +1,27 @@
-name: Firestore rules
+name: Firebase rules
 
-# يتحقق من firestore.rules بكل PR يغيّرها، وينشرها لـ Firebase بعد الدمج في main.
+# يتحقق من firestore.rules و storage.rules بكل PR يغيّرها، وينشرها لـ Firebase بعد الدمج في main.
 on:
   pull_request:
     paths:
       - firestore.rules
-      - scripts/deploy-firestore-rules.mjs
-      - .github/workflows/firestore-rules.yml
+      - storage.rules
+      - scripts/deploy-firebase-rules.mjs
+      - .github/workflows/firebase-rules.yml
   push:
     branches: [main]
     paths:
       - firestore.rules
-      - scripts/deploy-firestore-rules.mjs
-      - .github/workflows/firestore-rules.yml
+      - storage.rules
+      - scripts/deploy-firebase-rules.mjs
+      - .github/workflows/firebase-rules.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: firestore-rules-${{ github.event_name }}-${{ github.ref }}
+  group: firebase-rules-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -35,11 +37,11 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Check rules
         if: github.event_name == 'pull_request'
-        run: node scripts/deploy-firestore-rules.mjs --check
+        run: node scripts/deploy-firebase-rules.mjs --check
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - name: Deploy rules
         if: github.event_name != 'pull_request'
-        run: node scripts/deploy-firestore-rules.mjs
+        run: node scripts/deploy-firebase-rules.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
