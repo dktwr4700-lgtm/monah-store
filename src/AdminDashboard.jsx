@@ -58,6 +58,14 @@ const styles = `
   .expiry-row button{ border:0; border-radius:8px; padding:7px 12px; font-size:11.5px; font-weight:700; background:#16233F; color:#fff; cursor:pointer; white-space:nowrap; }
   .expiry-row button:disabled{ opacity:.6; }
   .seller-actions{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .conv-intro{ color:#5A5648; font-size:12.5px; line-height:1.8; margin:0 0 14px; }
+  .conv-periods{ display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .conv-periods button{ border:1px solid #E4E0D3; background:#fff; color:#16233F; border-radius:100px; padding:7px 14px; font:700 12px 'Cairo',sans-serif; cursor:pointer; }
+  .conv-periods button.active{ background:#16233F; border-color:#16233F; color:#fff; }
+  .conv-funnel{ margin:-8px 0 22px; color:#5A5648; font-size:12px; }
+  .conv-bar{ height:8px; background:#F1EEE4; border-radius:100px; overflow:hidden; margin-top:8px; }
+  .conv-bar i{ display:block; height:100%; background:#37724B; border-radius:100px; }
+  .lead-mail{ display:inline-block; border-radius:8px; padding:7px 12px; font-size:11.5px; font-weight:700; background:#16233F; color:#fff; text-decoration:none; white-space:nowrap; }
   .seller-btn{ padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; border:1px solid #E4E0D3; background:#fff; color:#16233F; }
   .seller-btn.warn{ border-color:#E7C9C1; color:#B24C3A; }
   .seller-btn.danger{ background:#B24C3A; color:#fff; border:none; }
@@ -143,6 +151,27 @@ const ADMIN_T = {
     invitesTab: "دعوات التجار",
     signupCouponsTab: "أكواد خصم التسجيل",
     paymentDebugTab: "سجل تشخيص الدفع",
+    conversionTab: "التحويل",
+    conversionStat: "نسبة تحويل التسجيل المجاني",
+    conversionIntro: "من سجّل مجانًا، وكم منهم فعّل ودفع، ومين الأقرب للدفع. المتاجر اللي فعّلت قبل التسجيل المجاني ما تدخل بهذي الأرقام.",
+    periodLabel: "الفترة",
+    period7: "آخر 7 أيام",
+    period30: "آخر 30 يوم",
+    periodAll: "من البداية",
+    freeSignups: "سجّلوا مجانًا",
+    paidActivations: "فعّلوا ودفعوا",
+    conversionRate: "نسبة التحويل",
+    avgDaysToPay: "متوسط الأيام حتى الدفع",
+    draftedNotPaid: "جهّزوا منتج وما دفعوا",
+    visitToSignup: (rate) => `${rate}٪ من زيارات صفحة التسجيل (من البداية) سجّلوا`,
+    leadsTitle: "متاجر ما فعّلت بعد",
+    leadsHint: "مرتبين: اللي جهّز منتج أول (الأقرب للدفع)، بعدها الأحدث.",
+    noLeads: "ما فيه متاجر غير مفعّلة بهذي الفترة.",
+    draftedProducts: (n) => (n > 0 ? `جهّز ${n} منتج` : "ما جهّز منتج"),
+    daysAgo: (n) => (n === 0 ? "سجّل اليوم" : `سجّل قبل ${n} يوم`),
+    emailSeller: "راسله",
+    leadEmailSubject: (store) => `"${store}" بمُونة — نساعدك تفعّل متجرك؟`,
+    leadEmailBody: (store) => `هلا،\n\nشفنا إنك سجّلت متجر "${store}" بمُونة وبديت تجهّزه 👏\nإذا عندك أي سؤال عن الباقات أو الدفع أو رفع المنتجات، رد على هذا الإيميل ونساعدك تفعّل متجرك وتبدأ تبيع.\n\nفريق مُونة`,
     searchPlaceholder: "ابحث باسم المتجر أو الإيميل...",
     allPlans: "كل الباقات",
     allStatuses: "كل الحالات",
@@ -286,6 +315,27 @@ const ADMIN_T = {
     invitesTab: "Seller invites",
     signupCouponsTab: "Signup discount codes",
     paymentDebugTab: "Payment debug log",
+    conversionTab: "Conversion",
+    conversionStat: "Free-signup conversion",
+    conversionIntro: "Who signed up for free, how many activated and paid, and who is closest to paying. Stores activated before free signup existed aren't counted.",
+    periodLabel: "Period",
+    period7: "Last 7 days",
+    period30: "Last 30 days",
+    periodAll: "All time",
+    freeSignups: "Free signups",
+    paidActivations: "Activated & paid",
+    conversionRate: "Conversion rate",
+    avgDaysToPay: "Avg. days to pay",
+    draftedNotPaid: "Drafted a product, not paid",
+    visitToSignup: (rate) => `${rate}% of signup-page visits (all time) signed up`,
+    leadsTitle: "Stores not activated yet",
+    leadsHint: "Sorted: those who drafted a product first (closest to paying), then newest.",
+    noLeads: "No unactivated stores in this period.",
+    draftedProducts: (n) => (n > 0 ? `${n} product drafted` : "No product yet"),
+    daysAgo: (n) => (n === 0 ? "Signed up today" : `Signed up ${n} days ago`),
+    emailSeller: "Email them",
+    leadEmailSubject: (store) => `"${store}" on Monah — can we help you activate your store?`,
+    leadEmailBody: (store) => `Hi,\n\nWe saw you signed up "${store}" on Monah and started setting it up 👏\nIf you have any question about plans, payment or uploading products, just reply to this email and we'll help you activate your store and start selling.\n\nThe Monah team`,
     searchPlaceholder: "Search by store name or email...",
     allPlans: "All plans",
     allStatuses: "All statuses",
@@ -447,6 +497,7 @@ export default function AdminDashboard() {
   const [deletingProductId, setDeletingProductId] = useState(null);
 
   const [view, setView] = useState("sellers");
+  const [conversionPeriod, setConversionPeriod] = useState("30");
   const [allProducts, setAllProducts] = useState([]);
   const [allProductsLoading, setAllProductsLoading] = useState(false);
   const [allProductsLoaded, setAllProductsLoaded] = useState(false);
@@ -851,8 +902,12 @@ export default function AdminDashboard() {
     const value = planDraftFor(seller);
     setSavingPlanId(seller.id);
     try {
-      await updateDoc(doc(db, "sellers", seller.id), { plan: value });
-      setSellers((prev) => prev.map((s) => (s.id === seller.id ? { ...s, plan: value } : s)));
+      // تفعيل يدوي لمتجر سجّل مجانًا (دفع بتحويل مثلًا) — نسجّل وقت التفعيل عشان
+      // يدخل بأرقام تبويب "التحويل" مثل اللي دفع بالبطاقة.
+      const manualActivation = seller.plan === "unpaid" && value !== "unpaid";
+      const update = manualActivation ? { plan: value, activatedAt: serverTimestamp() } : { plan: value };
+      await updateDoc(doc(db, "sellers", seller.id), update);
+      setSellers((prev) => prev.map((s) => (s.id === seller.id ? { ...s, plan: value, ...(manualActivation ? { activatedAt: new Date() } : {}) } : s)));
     } catch (e) {
       console.error(e);
     }
@@ -1002,9 +1057,27 @@ export default function AdminDashboard() {
 
   const activeCount = sellers.filter((s) => !s.disabled).length;
   const disabledCount = sellers.filter((s) => s.disabled).length;
-  const activeSubscribers = sellers.filter((s) => !s.disabled && !isSubscriptionExpired(s)).length;
+  const activeSubscribers = sellers.filter((s) => !s.disabled && s.plan !== "unpaid" && !isSubscriptionExpired(s)).length;
   const monthlyRevenue = activeSubscribers * BASE_MONTHLY_PRICE;
   const expiringSoonCount = sellers.filter(isExpiringSoon).length;
+
+  // التسجيل المجاني: المتجر يبدأ بباقة "unpaid"، وأول دفع يحط activatedAt على
+  // نفس الوثيقة. فكل متجر unpaid أو عنده activatedAt دخل من التسجيل المجاني.
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const conversionSince = conversionPeriod === "all" ? 0 : Date.now() - Number(conversionPeriod) * DAY_MS;
+  const freeSignupSellers = sellers.filter((s) => (s.plan === "unpaid" || s.activatedAt) && toMillis(s.createdAt) >= conversionSince);
+  const convertedSellers = freeSignupSellers.filter((s) => s.plan !== "unpaid");
+  const unpaidLeads = freeSignupSellers
+    .filter((s) => s.plan === "unpaid")
+    .sort((a, b) => (Number(b.productCount) || 0) - (Number(a.productCount) || 0) || toMillis(b.createdAt) - toMillis(a.createdAt));
+  const draftedLeadsCount = unpaidLeads.filter((s) => Number(s.productCount) > 0).length;
+  const conversionRate = freeSignupSellers.length ? Math.round((convertedSellers.length / freeSignupSellers.length) * 100) : 0;
+  const daysToPay = convertedSellers
+    .map((s) => (toMillis(s.activatedAt) - toMillis(s.createdAt)) / DAY_MS)
+    .filter((days) => Number.isFinite(days) && days >= 0);
+  const avgDaysToPay = daysToPay.length ? (daysToPay.reduce((sum, days) => sum + days, 0) / daysToPay.length).toFixed(1) : "—";
+  const allFreeSignupsCount = sellers.filter((s) => s.plan === "unpaid" || s.activatedAt).length;
+  const visitToSignupRate = startPageVisits > 0 ? Math.round((allFreeSignupsCount / startPageVisits) * 100) : null;
 
   const confirmedOrders = orders.filter((o) => o.status === "confirmed");
   const pendingOrders = orders.filter((o) => o.status === "awaiting_seller_confirmation");
@@ -1064,11 +1137,18 @@ export default function AdminDashboard() {
             <b>{ordersLoading ? "…" : totalSalesVolume.toFixed(2)} {curr}</b>
             <span>{t.totalConfirmedSales}</span>
           </button>
+          <button type="button" className="admin-stat" onClick={() => setView("conversion")}>
+            <b>{conversionRate}٪</b>
+            <span>{t.conversionStat}</span>
+          </button>
         </div>
 
         <div className="admin-tabs">
           <button className={"admin-tab" + (view === "sellers" ? " active" : "")} onClick={() => setView("sellers")}>
             {t.sellersTab}
+          </button>
+          <button className={"admin-tab" + (view === "conversion" ? " active" : "")} onClick={() => setView("conversion")}>
+            {t.conversionTab}
           </button>
           <button className={"admin-tab" + (view === "products" ? " active" : "")} onClick={openProductsView}>
             {t.allProductsTab}
@@ -1332,6 +1412,68 @@ export default function AdminDashboard() {
               </div>
             </div>
           ))}
+
+        {view === "conversion" && (
+          <>
+            <p className="conv-intro">{t.conversionIntro}</p>
+            <div className="conv-periods" role="group" aria-label={t.periodLabel}>
+              {[["7", t.period7], ["30", t.period30], ["all", t.periodAll]].map(([value, label]) => (
+                <button key={value} type="button" className={conversionPeriod === value ? "active" : ""} onClick={() => setConversionPeriod(value)}>{label}</button>
+              ))}
+            </div>
+            <div className="admin-stats">
+              <div className="admin-stat">
+                <b>{freeSignupSellers.length}</b>
+                <span>{t.freeSignups}</span>
+              </div>
+              <div className="admin-stat">
+                <b>{convertedSellers.length}</b>
+                <span>{t.paidActivations}</span>
+              </div>
+              <div className="admin-stat">
+                <b>{conversionRate}٪</b>
+                <span>{t.conversionRate}</span>
+                <div className="conv-bar"><i style={{ width: `${conversionRate}%` }} /></div>
+              </div>
+              <div className="admin-stat">
+                <b>{draftedLeadsCount}</b>
+                <span>{t.draftedNotPaid}</span>
+              </div>
+              <div className="admin-stat">
+                <b>{avgDaysToPay}</b>
+                <span>{t.avgDaysToPay}</span>
+              </div>
+            </div>
+            {visitToSignupRate !== null && <div className="conv-funnel">{t.visitToSignup(visitToSignupRate)}</div>}
+
+            <div className="detail-heading" style={{ fontSize: 14 }}>{t.leadsTitle}</div>
+            <p className="conv-intro" style={{ marginBottom: 10 }}>{t.leadsHint}</p>
+            {loading && <div className="loading">{t.loadingSellers}</div>}
+            {!loading && unpaidLeads.length === 0 && <div className="detail-empty">{t.noLeads}</div>}
+            {!loading && unpaidLeads.map((s) => {
+              const drafted = Number(s.productCount) || 0;
+              const days = Math.max(0, Math.floor((Date.now() - toMillis(s.createdAt)) / DAY_MS));
+              const store = s.storeName || t.noNameFallback;
+              const mailto = `mailto:${s.email}?subject=${encodeURIComponent(t.leadEmailSubject(store))}&body=${encodeURIComponent(t.leadEmailBody(store))}`;
+              return (
+                <div className="seller-card" key={s.id}>
+                  <div className="seller-top" style={{ cursor: "default" }}>
+                    <div>
+                      <div className="seller-name">{store}</div>
+                      <div className="seller-email">{s.email}</div>
+                    </div>
+                    {s.email && <a className="lead-mail" href={mailto}>{t.emailSeller}</a>}
+                  </div>
+                  <div className="seller-meta">
+                    <span className={"seller-badge " + (drafted > 0 ? "badge-active" : "badge-plan")}>{t.draftedProducts(drafted)}</span>
+                    <span className="seller-meta-item">{t.daysAgo(days)}</span>
+                    {emailVerifiedMap[s.id] === false && <span className="seller-badge badge-expired">{t.emailUnverified}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
 
         {view === "products" && (
           <>
