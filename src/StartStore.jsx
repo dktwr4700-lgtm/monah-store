@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailA
 import useRunawayButton from "./useRunawayButton.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, STARTER_PRODUCT_LIMIT, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
+import { loadPreviewDraft } from "./storePreviewDraft.js";
 
 const CTA_WIDTH = 168;
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
@@ -162,7 +163,7 @@ export default function StartStore() {
   const [lang, setLang] = useLang();
   const t = ST_T[lang];
   const [step, setStep] = useState("form");
-  const [storeName, setStoreName] = useState("");
+  const [storeName, setStoreName] = useState(() => loadPreviewDraft()?.storeName || "");
   const [storeType, setStoreType] = useState("files");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

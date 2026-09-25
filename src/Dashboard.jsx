@@ -12,6 +12,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
+import { loadPreviewDraft, clearPreviewDraft, dataUrlToBlob } from "./storePreviewDraft.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -816,6 +817,12 @@ const DASH_T = {
     addOnsSelectedCount: (n) => `${n} إضافة مختارة`,
     payAndActivateAddOns: (price) => `ادفع ${price} ر.ع وفعّل الإضافات`,
     activateAddOnsFree: "فعّل الإضافات مجانًا",
+    previewDraftTitle: "منتجك من المعاينة جاهز",
+    previewDraftBody: (productName) => `جهّزنا "${productName}" بالصورة والوصف والسعر اللي شفتها قبل التسجيل. باقي ترفع الملف اللي يوصل للعميل وتنشره.`,
+    previewDraftUse: "أضفه لمتجري",
+    previewDraftApplying: "نجهّزه...",
+    previewDraftDismiss: "لا شكرًا",
+    previewDraftApplied: "عبّينا بيانات منتجك تحت — ارفع الملف اللي يوصل للعميل بعد الشراء، ثم اضغط نشر.",
     freeBadge: "مجانًا",
     addOnBillingNote: "لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.",
 
@@ -1327,6 +1334,12 @@ const DASH_T = {
     addOnsSelectedCount: (n) => `${n} add-ons selected`,
     payAndActivateAddOns: (price) => `Pay ${price} OMR and activate the add-ons`,
     activateAddOnsFree: "Activate the add-ons for free",
+    previewDraftTitle: "Your product from the preview is ready",
+    previewDraftBody: (productName) => `We've prepared "${productName}" with the image, description and price you saw before signing up. Just upload the file your customer receives and publish it.`,
+    previewDraftUse: "Add it to my store",
+    previewDraftApplying: "Preparing...",
+    previewDraftDismiss: "No thanks",
+    previewDraftApplied: "We've filled in your product below — upload the file the customer gets after purchase, then press publish.",
     freeBadge: "Free",
     addOnBillingNote: "When you activate an add-on, you pay its full price now, then it's automatically included in your next monthly renewal amount.",
 
@@ -1383,6 +1396,9 @@ export default function Dashboard() {
   const [productImages, setProductImages] = useState([]);
   const [imagesUploading, setImagesUploading] = useState(false);
   const [imagesError, setImagesError] = useState("");
+  const [previewDraft, setPreviewDraft] = useState(() => loadPreviewDraft());
+  const [applyingPreviewDraft, setApplyingPreviewDraft] = useState(false);
+  const [previewDraftApplied, setPreviewDraftApplied] = useState(false);
   const [previewVideo, setPreviewVideo] = useState("");
   const [previewVideoUploading, setPreviewVideoUploading] = useState(false);
   const [previewVideoError, setPreviewVideoError] = useState("");
@@ -1917,6 +1933,7 @@ export default function Dashboard() {
       setRequiresActivation(false);
       setProductImages([]);
       setPreviewVideo("");
+      setPreviewDraftApplied(false);
 
       if (isTrial && !trialProductClaimed) {
         await updateDoc(doc(db, "sellers", user.uid), { trialProductClaimed: true }).catch(() => {});
@@ -2226,6 +2243,43 @@ export default function Dashboard() {
       }
     }
     setImagesUploading(false);
+  }
+
+  // المنتج اللي جرّبه التاجر بمعاينة الصفحة الرئيسية قبل التسجيل — نعبّي فيه
+  // نموذج "إضافة منتج" (والصورة نرفعها لتخزين المتجر)، وهو يكمل الملف وينشر.
+  async function applyPreviewDraft() {
+    if (!previewDraft) return;
+    setApplyingPreviewDraft(true);
+    setTab("products");
+    setName(previewDraft.productName || "");
+    setPrice(previewDraft.price ? String(previewDraft.price) : "");
+    setDescription(previewDraft.description || "");
+    setProductType("file");
+    if (previewDraft.image) {
+      try {
+        const blob = await dataUrlToBlob(previewDraft.image);
+        const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}-preview`);
+        await uploadBytes(fileRef, blob, { contentType: "image/jpeg" });
+        const url = await getDownloadURL(fileRef);
+        setProductImages((prev) => [url, ...prev].slice(0, 2));
+      } catch {
+        setImagesError(t.uploadImageError);
+      }
+    }
+    clearPreviewDraft();
+    setPreviewDraft(null);
+    setPreviewDraftApplied(true);
+    setApplyingPreviewDraft(false);
+    setTimeout(() => {
+      if (!addProductRef.current) return;
+      addProductRef.current.open = true;
+      addProductRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  }
+
+  function dismissPreviewDraft() {
+    clearPreviewDraft();
+    setPreviewDraft(null);
   }
 
   function removeProductImage(url) {
@@ -3015,6 +3069,26 @@ export default function Dashboard() {
 
       <div className="dh-wrap">
 
+        {previewDraft && !trialLimitReached && !planLimitReached && (
+          <div className="dh-card" style={{ display: "flex", gap: 14, alignItems: "center", borderTop: "3px solid #D6F35C", flexWrap: "wrap" }}>
+            {previewDraft.image && (
+              <img src={previewDraft.image} alt="" style={{ width: 64, height: 64, borderRadius: 14, objectFit: "cover", flexShrink: 0 }} />
+            )}
+            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+              <div className="dh-title" style={{ marginBottom: 4 }}>{t.previewDraftTitle}</div>
+              <div className="dh-hint">{t.previewDraftBody(previewDraft.productName)}</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="dh-btn" type="button" onClick={applyPreviewDraft} disabled={applyingPreviewDraft} style={{ width: "auto", padding: "12px 20px", minHeight: 44 }}>
+                {applyingPreviewDraft ? t.previewDraftApplying : t.previewDraftUse}
+              </button>
+              <button type="button" onClick={dismissPreviewDraft} disabled={applyingPreviewDraft} style={{ background: "#fff", color: "#375044", border: "1px solid #DDD8CB", borderRadius: 100, padding: "12px 18px", minHeight: 44, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.previewDraftDismiss}
+              </button>
+            </div>
+          </div>
+        )}
+
         {tab === "overview" && (
           <>
             <section className="dh-studio" style={{ "--studio-color": storeColor }}>
@@ -3147,6 +3221,7 @@ export default function Dashboard() {
               <summary><div className="dh-section-summary"><b>{t.addNewProduct}</b><span>{t.openFormHint}</span></div></summary>
               <div className="dh-section-body">
               {error && <div className="dh-error">{error}</div>}
+              {previewDraftApplied && <div className="dh-hint" style={{ background: "#F4F8E6", borderRadius: 10, padding: "10px 12px", marginBottom: 12, color: "#2F4A1E" }}>{t.previewDraftApplied}</div>}
               <form onSubmit={(e) => e.preventDefault()}>
                 <div className="dh-group-title">{t.groupBasicInfo}</div>
                 <div className="dh-field">
