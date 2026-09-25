@@ -139,22 +139,39 @@ function publicSignup(data) {
   };
 }
 
-// إشعار الإدارة بإيميل لما تاجر جديد يفعّل متجره (دفع الاشتراك ونجح). أفضل-جهد
-// فقط: أي فشل هنا ما يوقف تفعيل المتجر نفسه.
-async function notifyAdminOfNewSeller(request) {
+const STORE_TYPE_LABELS = { books: "كتب رقمية", videos: "فيديوهات ودورات", codes: "أكواد وتراخيص", files: "ملفات وقوالب" };
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+
+// إشعار الإدارة بإيميل عن تاجر جديد. نوعين:
+//   "activated"   — تاجر دفع الاشتراك وفعّل متجره.
+//   "free_signup" — تاجر سجّل مجانًا بس، عشان المالك يتواصل معه وهو متحمس
+//                   (قبل ما يدفع) ويساعده يفعّل.
+// أفضل-جهد فقط: أي فشل هنا ما يوقف التسجيل أو التفعيل نفسه.
+async function notifyAdminOfNewSeller(request, kind = "activated") {
   if (!RESEND_API_KEY) {
     console.error("notifyAdminOfNewSeller: skipped, RESEND_API_KEY is not set in this environment");
     return;
   }
   try {
     const storeName = cleanText(request.storeName, 80);
+    const freeSignup = kind === "free_signup";
+    const heading = freeSignup ? "تاجر جديد سجّل مجانًا 👋" : "تاجر جديد فعّل متجره 🎉";
+    const note = freeSignup
+      ? `<p style="background:#FFF8E9;border-radius:10px;padding:10px 12px;color:#7A5A17">لسا ما دفع — يجهّز متجره الحين. تواصل معه اليوم وساعده يفعّل؛ تلقاه مع باقي المتاجر غير المفعّلة بتبويب "التحويل" في لوحة الأدمن.</p>`
+      : "";
     const html = `
       <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
-        <h2 style="margin:0 0 12px">تاجر جديد فعّل متجره 🎉</h2>
-        <p><strong>اسم المتجر:</strong> ${storeName || "—"}</p>
-        <p><strong>إيميل التاجر:</strong> ${request.email || "—"}</p>
-        <p><strong>نوع المتجر:</strong> ${request.storeType || "—"}</p>
+        <h2 style="margin:0 0 12px">${heading}</h2>
+        <p><strong>اسم المتجر:</strong> ${escapeHtml(storeName) || "—"}</p>
+        <p><strong>إيميل التاجر:</strong> ${escapeHtml(request.email) || "—"}</p>
+        <p><strong>نوع المتجر:</strong> ${escapeHtml(STORE_TYPE_LABELS[request.storeType] || request.storeType) || "—"}</p>
+        ${note}
+        <a href="https://monah-app.com/#admin" style="display:inline-block;margin-top:8px;padding:10px 18px;background:#163F2E;color:#fff;border-radius:100px;text-decoration:none;font-weight:700">فتح لوحة الأدمن</a>
       </div>`;
+    const subject = `${freeSignup ? "تاجر جديد سجّل مجانًا" : "تاجر جديد فعّل متجره"}${storeName ? " - " + storeName : ""}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
     try {
@@ -164,7 +181,7 @@ async function notifyAdminOfNewSeller(request) {
         body: JSON.stringify({
           from: "مُونة <notifications@monah-app.com>",
           to: [ADMIN_NOTIFY_EMAIL],
-          subject: `تاجر جديد فعّل متجره${storeName ? " - " + storeName : ""}`,
+          subject,
           html,
         }),
         signal: controller.signal,
@@ -173,7 +190,7 @@ async function notifyAdminOfNewSeller(request) {
         const body = await resendResponse.text().catch(() => "");
         console.error("notifyAdminOfNewSeller: Resend rejected the request", resendResponse.status, body);
       } else {
-        console.log("notifyAdminOfNewSeller: sent to", ADMIN_NOTIFY_EMAIL);
+        console.log("notifyAdminOfNewSeller: sent", kind, "to", ADMIN_NOTIFY_EMAIL);
       }
     } finally {
       clearTimeout(timeoutId);
@@ -196,6 +213,7 @@ async function activateSeller(uid, request) {
   const requestRef = db.collection("merchantSignups").doc(uid);
   let created = false;
   await db.runTransaction(async (transaction) => {
+    created = false; // Firestore ممكن يعيد المحاولة — نعتمد على آخر محاولة بس.
     const sellerSnap = await transaction.get(sellerRef);
     if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) return;
     if (sellerSnap.exists) {
@@ -284,7 +302,9 @@ async function register(req, res) {
   }, { merge: true });
   // التسجيل نفسه مجاني: نفتح له لوحة التاجر فورًا بباقة "unpaid" يجهّز فيها
   // متجره ومنتج واحد كمسودة، والدفع يُطلب لما يجي ينشر (createCardCharge).
+  let created = false;
   await db.runTransaction(async (transaction) => {
+    created = false; // Firestore ممكن يعيد المحاولة — نعتمد على آخر محاولة بس.
     const snap = await transaction.get(sellerRef);
     if (snap.exists) return;
     transaction.set(sellerRef, {
@@ -295,7 +315,9 @@ async function register(req, res) {
       plan: UNPAID_PLAN,
       activeAddOns: [],
     });
+    created = true;
   });
+  if (created) await notifyAdminOfNewSeller({ storeName, email: account.email, storeType }, "free_signup");
   return res.status(200).json({ ok: true, unpaid: true });
 }
 
