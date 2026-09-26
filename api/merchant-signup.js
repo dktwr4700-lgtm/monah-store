@@ -753,8 +753,10 @@ async function sendTipEmail(seller, step) {
   }
 }
 
-// يستدعيه Vercel Cron بـ GET يوميًا — محمي بـ CRON_SECRET بدل مصادقة التاجر
+// كان يستدعيه Vercel Cron بـ GET يوميًا — محمي بـ CRON_SECRET بدل مصادقة التاجر
 // العادية، عشان ما أحد بره Vercel يقدر يشغّله.
+// موقوف حاليًا بطلب المالك: شلنا الجدولة من vercel.json. لإرجاعه أضف في vercel.json:
+// "crons": [{ "path": "/api/merchant-signup?job=onboarding_reminders", "schedule": "0 8 * * *" }]
 async function sendOnboardingReminders(req, res) {
   const authHeader = req.headers.authorization || "";
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
