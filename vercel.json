@@ -2,9 +2,6 @@
   "rewrites": [
     { "source": "/l/store/:sellerId", "destination": "/api/link-preview?type=store&sellerId=:sellerId" }
   ],
-  "crons": [
-    { "path": "/api/merchant-signup?job=onboarding_reminders", "schedule": "0 8 * * *" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
