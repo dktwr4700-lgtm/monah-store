@@ -343,7 +343,6 @@ const SECTIONS_T = {
     finalCta: "افتح متجرك الحين ←", orbitCard: "متجرك الرقمي",
     footContact: "تواصل", footWhatsapp: "واتساب:", footEmail: "إيميل:",
     footLinks: "روابط", footPrivacy: "سياسة الخصوصية", footTerms: "الشروط والأحكام",
-    footFamily: "من معمار الرقمية", footUjra: "أُجرة: إدارة الإيجارات", footSahm: "سَهم: تنظيم الجمعيات",
   },
   en: {
     whyEyebrow: "Why Monah", whyTitle: "A platform built for you",
@@ -369,7 +368,6 @@ const SECTIONS_T = {
     finalCta: "Open your store now →", orbitCard: "Your digital store",
     footContact: "Contact", footWhatsapp: "WhatsApp:", footEmail: "Email:",
     footLinks: "Links", footPrivacy: "Privacy policy", footTerms: "Terms & conditions",
-    footFamily: "By Mimar Digital", footUjra: "Ujra: rent tracking", footSahm: "Sahm: savings circles",
   },
 };
 
@@ -636,7 +634,6 @@ export default function App() {
         <div className="foot-top">
           <div><b>{st.footContact}</b><div className="foot-contact">{st.footWhatsapp} <a href="https://wa.me/96876630905" target="_blank" rel="noopener noreferrer">76630905</a></div><div className="foot-contact" style={{ marginTop: 4 }}>{st.footEmail} <a href="mailto:monahapp@outlook.sa">monahapp@outlook.sa</a></div></div>
           <div><b>{st.footLinks}</b><a href="#privacy">{st.footPrivacy}</a><a href="#terms">{st.footTerms}</a></div>
-          <div><b>{st.footFamily}</b><a href="https://ujra.vercel.app" target="_blank" rel="noopener noreferrer">{st.footUjra}</a><a href="https://sahm-om.vercel.app" target="_blank" rel="noopener noreferrer">{st.footSahm}</a></div>
         </div>
         <div className="foot-wordmark">Monah</div>
       </div>
