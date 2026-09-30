@@ -595,6 +595,12 @@ const DASH_T = {
     edit: "تعديل",
     duplicateAsNew: "نسخ كمنتج جديد",
     addCodesBtn: "إضافة أكواد",
+    editCodesTitle: "الأكواد المتوفرة",
+    codesLoading: "نحمّل الأكواد…",
+    noCodesLeft: "ما في أكواد متوفرة. أضيفي أكواد جديدة تحت.",
+    confirmDeleteStockCode: "تحذفين هذا الكود من المخزون؟",
+    deleteStockCodeError: "تعذر حذف الكود، حاول مرة ثانية.",
+    showAllCodes: "عرض كل الأكواد",
     deletingEllipsis: "جاري الحذف...",
     show: "إظهار",
     unhide: "إخفاء",
@@ -1126,6 +1132,12 @@ const DASH_T = {
     edit: "Edit",
     duplicateAsNew: "Duplicate as new product",
     addCodesBtn: "Add codes",
+    editCodesTitle: "Available codes",
+    codesLoading: "Loading codes…",
+    noCodesLeft: "No codes available. Add new codes below.",
+    confirmDeleteStockCode: "Delete this code from stock?",
+    deleteStockCodeError: "Couldn't delete the code, try again.",
+    showAllCodes: "Show all codes",
     deletingEllipsis: "Deleting...",
     show: "Show",
     unhide: "Hide",
@@ -1438,6 +1450,13 @@ export default function Dashboard() {
   const [editCategory, setEditCategory] = useState("");
   const [editRequiresActivation, setEditRequiresActivation] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
+  // تعديل كامل للمنتج: الصور، والأكواد المتوفرة (حذف وإضافة) من نفس النموذج
+  const [editImages, setEditImages] = useState([]);
+  const [editImagesUploading, setEditImagesUploading] = useState(false);
+  const [editCodes, setEditCodes] = useState(null);
+  const [editCodesAll, setEditCodesAll] = useState(false);
+  const [editNewCodes, setEditNewCodes] = useState("");
+  const [codeDeletingId, setCodeDeletingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [restockingId, setRestockingId] = useState(null);
@@ -2015,6 +2034,31 @@ export default function Dashboard() {
     setEditDescription(p.description || "");
     setEditCategory(p.category || "");
     setEditRequiresActivation(Boolean(p.requiresActivation));
+    setEditImages(Array.isArray(p.images) ? p.images : []);
+    setEditNewCodes("");
+    setEditCodesAll(false);
+    setEditCodes(null);
+    setImagesError("");
+    if (p.type === "code") {
+      getDocs(query(collection(db, "products", p.id, "codes"), where("used", "==", false)))
+        .then((snap) => setEditCodes(snap.docs.map((d) => ({ id: d.id, code: d.data().code }))))
+        .catch(() => setEditCodes([]));
+    }
+  }
+
+  async function deleteStockCode(productId, codeId) {
+    if (!window.confirm(t.confirmDeleteStockCode)) return;
+    setCodeDeletingId(codeId);
+    try {
+      const batch = writeBatch(db);
+      batch.delete(doc(db, "products", productId, "codes", codeId));
+      batch.update(doc(db, "products", productId), { codesCount: increment(-1) });
+      await batch.commit();
+      setEditCodes((prev) => (prev || []).filter((c) => c.id !== codeId));
+    } catch (err) {
+      setError(t.deleteStockCodeError);
+    }
+    setCodeDeletingId(null);
   }
 
   // تسريع رفع منتجات كثيرة متشابهة (زي حزم PLR) — ننسخ النص والسعر والتصنيف
@@ -2054,16 +2098,25 @@ export default function Dashboard() {
       setError(t.freeOnlyFiles);
       return;
     }
+    const newCodes = product?.type === "code" ? editNewCodes.split("\n").map((c) => c.trim()).filter(Boolean) : [];
     setEditSaving(true);
     try {
-      await updateDoc(doc(db, "products", productId), {
+      const batch = writeBatch(db);
+      newCodes.forEach((code) => {
+        batch.set(doc(collection(db, "products", productId, "codes")), { code, used: false, usedBy: null, usedAt: null });
+      });
+      batch.update(doc(db, "products", productId), {
         name: cleanName,
         price: numericPrice,
         description: editDescription || "",
         category: editCategory || "عام",
+        images: editImages,
+        ...(newCodes.length ? { codesCount: increment(newCodes.length) } : {}),
         ...(product?.type === "file" ? { requiresActivation: editRequiresActivation } : {}),
       });
+      await batch.commit();
       setEditingId(null);
+      setEditNewCodes("");
     } catch (err) {
       setError(t.saveEditError);
     }
@@ -2274,11 +2327,13 @@ export default function Dashboard() {
   const activeBundles = bundles.filter((bundle) => !bundle.archived);
   const archivedBundles = bundles.filter((bundle) => bundle.archived);
 
-  async function handleProductImageUpload(e) {
+  // نفس رفع الصور لنموذج الإضافة ونموذج التعديل
+  async function handleProductImageUpload(e, current = productImages, setImages = setProductImages, setUploading = setImagesUploading) {
     const files = Array.from(e.target.files || []);
+    if (e.target) e.target.value = "";
     if (files.length === 0) return;
     setImagesError("");
-    const remainingSlots = 2 - productImages.length;
+    const remainingSlots = 2 - current.length;
     if (remainingSlots <= 0) {
       setImagesError(t.maxTwoImages);
       return;
@@ -2287,7 +2342,7 @@ export default function Dashboard() {
     if (files.length > filesToUpload.length) {
       setImagesError(t.maxTwoImagesPartial);
     }
-    setImagesUploading(true);
+    setUploading(true);
     for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) {
         setImagesError(t.invalidImageFiles);
@@ -2315,12 +2370,12 @@ export default function Dashboard() {
         const fileRef = ref(storage, `product-images/${user.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
         await uploadBytes(fileRef, uploadFile, { contentType: uploadFile.type || file.type });
         const url = await getDownloadURL(fileRef);
-        setProductImages((prev) => [...prev, url]);
+        setImages((prev) => [...prev, url]);
       } catch (err) {
         setImagesError(t.uploadImageError);
       }
     }
-    setImagesUploading(false);
+    setUploading(false);
   }
 
   function removeProductImage(url) {
@@ -3329,7 +3384,7 @@ export default function Dashboard() {
                     {productImages.length < 2 && (
                       <label className="dh-image-add">
                         {imagesUploading ? "..." : "+"}
-                        <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleProductImageUpload} disabled={imagesUploading} />
+                        <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => handleProductImageUpload(e)} disabled={imagesUploading} />
                       </label>
                     )}
                   </div>
@@ -3487,6 +3542,44 @@ export default function Dashboard() {
                         {descriptionDraftError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{descriptionDraftError}</div>}
                         {descriptionDraftTarget === p.id && descriptionDraft && <div className="dh-ai-draft"><div className="dh-ai-draft-title">{t.editDraftOnlyNoAutoSave}</div><p>{descriptionDraft}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" type="button" onClick={() => useDescriptionDraft(p.id)}>{t.useThisDraft}</button><button className="dh-ai-btn" type="button" onClick={() => { setDescriptionDraft(""); setDescriptionDraftTarget(""); }}>{t.cancel}</button></div></div>}
                       </div>
+                      <div className="dh-field">
+                        <label>{t.productImagesLabel}</label>
+                        <div className="dh-images-row">
+                          {editImages.map((url) => (
+                            <div className="dh-image-thumb-wrap" key={url}>
+                              <img src={url} alt="" className="dh-image-thumb" />
+                              <button type="button" className="dh-image-remove" onClick={() => setEditImages((prev) => prev.filter((u) => u !== url))}>✕</button>
+                            </div>
+                          ))}
+                          {editImages.length < 2 && (
+                            <label className="dh-image-add">
+                              {editImagesUploading ? "..." : "+"}
+                              <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => handleProductImageUpload(e, editImages, setEditImages, setEditImagesUploading)} disabled={editImagesUploading} />
+                            </label>
+                          )}
+                        </div>
+                        {imagesError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{imagesError}</div>}
+                      </div>
+                      {p.type === "code" && (
+                        <div className="dh-field">
+                          <label>{t.editCodesTitle} ({editCodes ? editCodes.length : p.codesCount || 0})</label>
+                          {editCodes === null && <div className="dh-hint">{t.codesLoading}</div>}
+                          {editCodes && editCodes.length === 0 && <div className="dh-hint">{t.noCodesLeft}</div>}
+                          {editCodes && editCodes.length > 0 && (
+                            <div style={{ display: "grid", gap: 6, maxHeight: 260, overflowY: "auto", border: "1px solid #EAE4D6", borderRadius: 12, padding: 8 }}>
+                              {(editCodesAll ? editCodes : editCodes.slice(0, 20)).map((c) => (
+                                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                  <span style={{ direction: "ltr", fontFamily: "monospace", fontSize: 13, overflowWrap: "anywhere" }}>{c.code}</span>
+                                  <button type="button" className="dh-item-action danger" style={{ flex: "none", padding: "4px 10px" }} onClick={() => deleteStockCode(p.id, c.id)} disabled={codeDeletingId === c.id}>{codeDeletingId === c.id ? "..." : t.deleteCode}</button>
+                                </div>
+                              ))}
+                              {!editCodesAll && editCodes.length > 20 && <button type="button" className="dh-item-action" onClick={() => setEditCodesAll(true)}>{t.showAllCodes} ({editCodes.length})</button>}
+                            </div>
+                          )}
+                          <label style={{ marginTop: 12 }}>{t.pasteNewCodesLabel}</label>
+                          <textarea rows="4" value={editNewCodes} onChange={(e) => setEditNewCodes(e.target.value)} placeholder={"CODE-004\nCODE-005"} style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }} />
+                        </div>
+                      )}
                       {p.type !== "code" && (
                         <div className="dh-hint" style={{ marginBottom: 10 }}>
                           {t.editNoteChangeFile}

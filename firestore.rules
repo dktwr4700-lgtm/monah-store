@@ -97,7 +97,9 @@ service cloud.firestore {
           && request.resource.data.usedBy == null
           && request.resource.data.usedAt == null
           && request.resource.data.keys().hasOnly(['code', 'used', 'usedBy', 'usedAt']);
-        allow update, delete: if isAdmin();
+        allow update: if isAdmin();
+        // صاحب المنتج يقدر يحذف كود من المخزون ما انباع بعد
+        allow delete: if isAdmin() || (ownsProduct(productId) && resource.data.used == false);
       }
     }
 
