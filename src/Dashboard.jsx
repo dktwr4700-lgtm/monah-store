@@ -254,6 +254,24 @@ const styles = `
   .dh-item-action{ min-width:0; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; padding:8px 10px; font-weight:800; line-height:1.45; }
   .dh-sort-actions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:8px; }
   .dh-sort-btn{ min-height:36px; border-radius:10px; font-size:10.5px; }
+  /* كل منتج في بطاقة لحاله: صورته واسمه وسعره فوق، والأزرار الأساسية واضحة، والباقي تحت «خيارات أكثر» */
+  .dh-pcard{ background:#FBFAF7; border:1px solid #E6DFD0; border-radius:18px; padding:14px; margin-bottom:12px; }
+  .dh-pcard:first-child{ border-top:1px solid #E6DFD0; }
+  .dh-pcard-head{ display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+  .dh-pcard-thumb{ width:58px; height:58px; border-radius:14px; object-fit:cover; background:#EFEAE0; flex:none; display:grid; place-items:center; color:#9C6D1F; font-weight:800; font-size:20px; border:1px solid #E6DFD0; }
+  .dh-pcard-info{ min-width:0; flex:1; }
+  .dh-pcard-name{ display:block; font-weight:800; font-size:14.5px; line-height:1.55; color:#0B0B0C; overflow-wrap:anywhere; }
+  .dh-pcard-meta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:5px; }
+  .dh-pcard-price{ color:#9C6D1F; font-weight:800; font-size:13px; font-family:'JetBrains Mono',monospace; }
+  .dh-pcard-chip{ font-size:11px; font-weight:700; padding:2px 9px; border-radius:100px; background:#fff; border:1px solid #E6DFD0; color:#403D35; }
+  .dh-pcard-chip.bad{ color:#B24C3A; border-color:#F0D9D3; background:#FDF4F2; }
+  .dh-pcard-chip.muted{ color:#7A766A; }
+  .dh-pcard .dh-item-link{ background:#fff; }
+  .dh-pcard .dh-item-actions{ margin-top:10px; }
+  .dh-more{ margin-top:8px; }
+  .dh-more > summary{ list-style:none; cursor:pointer; text-align:center; padding:9px; border-radius:12px; border:1px dashed #D9D1BF; font-weight:800; font-size:12px; color:#3D4A66; background:#fff; }
+  .dh-more > summary::-webkit-details-marker{ display:none; }
+  .dh-more[open] > summary{ border-style:solid; }
 
   /* ترتيب موحد للجوال الضيق في كل تبويبات لوحة التاجر */
   .dh-field label,.dh-section-summary span,.dh-title-count,.dh-store-label,.dh-share-sub,.dh-qr-sub,.dh-health-number span,.ds-preview-bar,.ds-preview-tag,.ds-save-status,.cp-scope{ color:#403D35; }
@@ -595,6 +613,7 @@ const DASH_T = {
     edit: "تعديل",
     duplicateAsNew: "نسخ كمنتج جديد",
     addCodesBtn: "إضافة أكواد",
+    moreActions: "خيارات أكثر",
     editCodesTitle: "الأكواد المتوفرة",
     codesLoading: "نحمّل الأكواد…",
     noCodesLeft: "ما في أكواد متوفرة. أضيفي أكواد جديدة تحت.",
@@ -1132,6 +1151,7 @@ const DASH_T = {
     edit: "Edit",
     duplicateAsNew: "Duplicate as new product",
     addCodesBtn: "Add codes",
+    moreActions: "More options",
     editCodesTitle: "Available codes",
     codesLoading: "Loading codes…",
     noCodesLeft: "No codes available. Add new codes below.",
@@ -3512,7 +3532,7 @@ export default function Dashboard() {
               {products.length === 0 && <div className="empty-note">{t.noProductsYet}</div>}
               {products.length > 0 && filteredProducts.length === 0 && <div className="empty-note">{t.noMatchFilter}</div>}
               {orderedProducts.map((p) => (
-                <div className="dh-item" key={p.id}>
+                <div className="dh-item dh-pcard" key={p.id}>
                   {editingId === p.id ? (
                     <div className="dh-edit-form">
                       <div className="dh-field">
@@ -3600,15 +3620,17 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <>
-                      <div className="dh-item-top">
-                        <span className="dh-item-name">{p.name}{p.featured && <span className="dh-featured-tag">{t.featuredTag}</span>}{p.hidden && <span style={{ color: "#7A766A", fontWeight: 400 }}> ({t.hidden})</span>}</span>
-                        <span className="dh-item-price">{p.price} {curr}</span>
-                      </div>
-                      {p.type === "code" && (
-                        <div className="dh-item-stock">
-                          {t.stockLabel} {p.codesCount || 0} {t.codeUnit}{Number(p.codesCount || 0) === 0 && t.outOfStock}
+                      <div className="dh-pcard-head">
+                        {p.images?.[0] ? <img className="dh-pcard-thumb" src={p.images[0]} alt="" /> : <span className="dh-pcard-thumb">{(p.name || "?").trim().charAt(0)}</span>}
+                        <div className="dh-pcard-info">
+                          <span className="dh-pcard-name">{p.name}{p.featured && <span className="dh-featured-tag">{t.featuredTag}</span>}</span>
+                          <div className="dh-pcard-meta">
+                            <span className="dh-pcard-price">{p.price} {curr}</span>
+                            {p.type === "code" && <span className={"dh-pcard-chip" + (Number(p.codesCount || 0) === 0 ? " bad" : "")}>{t.stockLabel} {p.codesCount || 0} {t.codeUnit}{Number(p.codesCount || 0) === 0 && t.outOfStock}</span>}
+                            {p.hidden && <span className="dh-pcard-chip muted">{t.hidden}</span>}
+                          </div>
                         </div>
-                      )}
+                      </div>
                       {p.type === "code" && restockingId === p.id && (
                         <div className="dh-field" style={{ marginTop: 8 }}>
                           <label>{t.pasteNewCodesLabel}</label>
@@ -3628,18 +3650,22 @@ export default function Dashboard() {
                           {copied === "product" + p.id ? t.copiedTiny : t.copyLink}
                         </button>
                       </div>
-                      <button className="dh-ai-btn" onClick={() => generateAdCopy(p)} disabled={adCopyLoadingId === p.id} type="button" style={{ width: "100%", marginTop: 9 }}>
-                        {adCopyLoadingId === p.id ? t.preparingAd : t.writeAdDraft}
-                      </button>
                       {adCopyError && <div className="dh-error" style={{ marginTop: 8, marginBottom: 0 }}>{adCopyError}</div>}
                       {adCopyProductId === p.id && adCopy && <div className="dh-ai-draft"><div className="dh-ai-draft-title">{t.adDraftOnly}</div><p>{adCopy}</p><div className="dh-ai-actions"><button className="dh-ai-btn primary" onClick={copyAdDraft} type="button">{copied === "ad-copy" ? t.copiedText : t.copyTextBtn}</button><button className="dh-ai-btn" onClick={() => { setAdCopy(""); setAdCopyProductId(""); }} type="button">{t.close}</button></div></div>}
                       <div className="dh-item-actions">
-                        <button className="dh-item-action" onClick={() => startEdit(p)} type="button">{t.edit}</button>
-                        {!trialLimitReached && (
-                          <button className="dh-item-action" onClick={() => duplicateProduct(p)} type="button">{t.duplicateAsNew}</button>
-                        )}
+                        <button className="dh-item-action primary" onClick={() => startEdit(p)} type="button" style={p.type === "code" && restockingId !== p.id ? undefined : { gridColumn: "1 / -1" }}>{t.edit}</button>
                         {p.type === "code" && restockingId !== p.id && (
                           <button className="dh-item-action" onClick={() => startRestock(p.id)} type="button">{t.addCodesBtn}</button>
+                        )}
+                      </div>
+                      <details className="dh-more">
+                      <summary>{t.moreActions}</summary>
+                      <div className="dh-item-actions">
+                        <button className="dh-item-action" onClick={() => generateAdCopy(p)} disabled={adCopyLoadingId === p.id} type="button" style={{ gridColumn: "1 / -1" }}>
+                          {adCopyLoadingId === p.id ? t.preparingAd : t.writeAdDraft}
+                        </button>
+                        {!trialLimitReached && (
+                          <button className="dh-item-action" onClick={() => duplicateProduct(p)} type="button">{t.duplicateAsNew}</button>
                         )}
                         <button className="dh-item-action" onClick={() => toggleHidden(p.id, p.hidden)} disabled={togglingHiddenId === p.id} type="button">
                           {togglingHiddenId === p.id ? "..." : (p.hidden ? t.show : t.unhide)}
@@ -3659,6 +3685,7 @@ export default function Dashboard() {
                         <button className="dh-sort-btn" onClick={() => moveProduct(p.id, -1)} type="button">{t.moveUp}</button>
                         <button className="dh-sort-btn" onClick={() => moveProduct(p.id, 1)} type="button">{t.moveDown}</button>
                       </div>
+                      </details>
                     </>
                   )}
                 </div>
