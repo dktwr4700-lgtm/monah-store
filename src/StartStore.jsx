@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { storedReferral } from "./referral.js";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
@@ -209,7 +210,7 @@ export default function StartStore() {
         sessionStorage.removeItem("monah_pending_store_name");
         sessionStorage.removeItem("monah_pending_store_type");
         const idToken = await result.user.getIdToken(true);
-        await signupRequest("register", { storeName: savedStoreName.trim(), storeType: savedStoreType }, idToken, t);
+        await signupRequest("register", { ref: storedReferral(), storeName: savedStoreName.trim(), storeType: savedStoreType }, idToken, t);
         window.location.hash = "dashboard";
         return;
       } catch (redirectError) {
@@ -245,7 +246,7 @@ export default function StartStore() {
         if (!data.unpaid) {
           // تسجيل قديم من قبل التسجيل المجاني: نحوّله لمتجر "غير مفعّل" عشان
           // يقدر يدخل لوحته حتى لو رجع منها بدون ما يدفع.
-          await signupRequest("register", { storeName: data.signup.storeName, storeType: data.signup.storeType }, idToken, t).catch(() => {});
+          await signupRequest("register", { ref: storedReferral(), storeName: data.signup.storeName, storeType: data.signup.storeType }, idToken, t).catch(() => {});
         }
         if (cancelled || submittingRef.current) return;
         if (data.signup?.storeName) setStoreName(data.signup.storeName);
@@ -284,7 +285,7 @@ export default function StartStore() {
         credential = await withTimeout(signInWithEmailAndPassword(auth, email, password), t.loginTimeout);
       }
       const idToken = await credential.user.getIdToken(true);
-      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken, t);
+      await signupRequest("register", { ref: storedReferral(), storeName: storeName.trim(), storeType }, idToken, t);
       window.location.hash = "dashboard";
       return;
     } catch (submitError) {
@@ -316,7 +317,7 @@ export default function StartStore() {
     try {
       const credential = await signInWithPopup(auth, new GoogleAuthProvider());
       const idToken = await credential.user.getIdToken(true);
-      await signupRequest("register", { storeName: storeName.trim(), storeType }, idToken, t);
+      await signupRequest("register", { ref: storedReferral(), storeName: storeName.trim(), storeType }, idToken, t);
       window.location.hash = "dashboard";
       return;
     } catch (popupError) {

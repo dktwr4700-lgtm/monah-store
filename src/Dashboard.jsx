@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { storedReferral } from "./referral.js";
 import { auth, db } from "./firebase.js";
 import { storage } from "./firebase-storage.js";
 import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
@@ -1755,7 +1756,7 @@ export default function Dashboard() {
           // تسجيل قديم (قبل ما يصير التسجيل مجاني) ما كمّل الدفع — نفتح له لوحته
           // كمتجر غير مفعّل بدل ما نقفلها بوجهه.
           if (statusData?.signup?.status === "awaiting_payment" && !cancelled) {
-            await merchantSignupAction("register", { storeName: statusData.signup.storeName, storeType: statusData.signup.storeType });
+            await merchantSignupAction("register", { ref: storedReferral(), storeName: statusData.signup.storeName, storeType: statusData.signup.storeType });
             const retrySnap = await getDoc(doc(db, "sellers", user.uid));
             if (!cancelled && retrySnap.exists()) return applySellerData(retrySnap.data());
           }
