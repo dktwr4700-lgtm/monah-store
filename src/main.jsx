@@ -1,6 +1,9 @@
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import { captureReferral } from "./referral.js";
+
+captureReferral();
 
 const Register = lazy(() => import("./Register.jsx"));
 const Login = lazy(() => import("./Login.jsx"));

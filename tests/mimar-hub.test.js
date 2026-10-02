@@ -144,3 +144,32 @@ describe("التاجر يفعّل الكود", () => {
     expect(r).toMatchObject({ status: 404, error: "الكود غير صحيح." });
   });
 });
+
+describe("روابط وكلاء معمار", () => {
+  async function post(uid, body) {
+    const { res, out } = fakeRes();
+    await signup({ method: "POST", headers: { authorization: `Bearer ${uid}` }, query: {}, body }, res);
+    return { status: out.status, ...out.json };
+  }
+  it("المتجر اللي سجّل من رابط الوكيل ينربط فيه، ودفعاته (بالبطاقة أو كود متجر معمار) تنحسب له وبس مرة", async () => {
+    expect((await post("v1", { action: "register", storeName: "متجر الوكيل", storeType: "files", ref: " hamad " })).status).toBe(200);
+    expect((await post("v2", { action: "register", storeName: "بدون وكيل", storeType: "files", ref: "x!" })).status).toBe(200);
+    expect((await fake.collection("sellers").doc("v1").get()).data().referredBy).toBe("HAMAD");
+    expect((await fake.collection("sellers").doc("v2").get()).data().referredBy).toBeUndefined();
+    // كود من متجر معمار
+    await fake.collection("planCodes").doc("MN-AAAA-CCCC").set({ plan: "basic", used: false, note: "مركز معمار: متجر معمار" });
+    expect((await post("v1", { action: "redeem_plan_code", code: "MN-AAAA-CCCC" })).ok).toBe(true);
+    // كود الوكيل نفسه: ما ينحسب (ربحه أخذه من البيع)
+    await fake.collection("planCodes").doc("MN-AAAA-DDDD").set({ plan: "basic", used: false, agent: "hamad@x.om" });
+    expect((await post("v1", { action: "redeem_plan_code", code: "MN-AAAA-DDDD" })).ok).toBe(true);
+    // دفعة بالبطاقة (تجديد)، ونفس الدفعة مرتين
+    await lib.recordReferralPayment(fake, { uid: "v1", eventId: "RENEW-v1-1", plan: "pro", amount: 10 });
+    await lib.recordReferralPayment(fake, { uid: "v1", eventId: "RENEW-v1-1", plan: "pro", amount: 10 });
+    await lib.recordReferralPayment(fake, { uid: "v2", eventId: "RENEW-v2-1", plan: "basic", amount: 5 });
+    const r = await hub({ query: { action: "referrals", ref: "HAMAD" } });
+    expect(r.signups.map((x) => [x.id, x.name])).toEqual([["v1", "متجر الوكيل"]]);
+    expect(r.events.map((e) => [e.id, e.item, e.amount, e.kind]).sort()).toEqual([["MN-AAAA-CCCC", "basic", 5, "code"], ["RENEW-v1-1", "pro", 10, "card"]]);
+    expect((await hub({ query: { action: "referrals" } })).events).toHaveLength(2);
+    expect((await hub({ query: { action: "referrals", ref: "a b" } })).status).toBe(400);
+  });
+});

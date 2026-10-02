@@ -58,6 +58,7 @@ class DocRef {
   async set(data, opts) { this.db._write(this.path, "set", data, opts); }
   async update(data) { this.db._write(this.path, "update", data); }
   async delete() { this.db._write(this.path, "delete"); }
+  async create(data) { try { this.db._write(this.path, "create", data); } catch (e) { throw Object.assign(e, { code: 6 }); } }
 }
 
 class Query {

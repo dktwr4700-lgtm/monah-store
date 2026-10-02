@@ -1,7 +1,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ompayRequest, ompayChargeSucceeded } from "../lib/ompay-client.js";
-import { PLAN_CODE_ITEMS, PLAN_CODE_PATTERN, PlanCodeError, hubHandler, normalizePlanCode, planCodeResult } from "../lib/mimar-hub.js";
+import { PLAN_CODE_ITEMS, PLAN_CODE_PATTERN, PlanCodeError, cleanRef, hubHandler, normalizePlanCode, planCodeResult, recordReferralPayment } from "../lib/mimar-hub.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
@@ -298,6 +298,7 @@ async function register(req, res) {
   const storeName = cleanText(req.body?.storeName, 80);
   const storeType = STORE_TYPES.has(req.body?.storeType) ? req.body.storeType : "files";
   if (storeName.length < 2) return res.status(400).json({ error: "اكتب اسم المتجر." });
+  const ref = cleanRef(req.body?.ref);
 
   const sellerRef = db.collection("sellers").doc(account.uid);
   const sellerSnap = await sellerRef.get();
@@ -328,6 +329,8 @@ async function register(req, res) {
       createdAt: FieldValue.serverTimestamp(),
       plan: UNPAID_PLAN,
       activeAddOns: [],
+      // جا من رابط وكيل معمار (?r=): المتجر ينربط فيه، وأي دفعة منه بعدين ينحسب للوكيل ربحها
+      ...(ref ? { referredBy: ref } : {}),
     });
     created = true;
   });
@@ -343,6 +346,14 @@ async function status(req, res) {
   const requestSnap = await db.collection("merchantSignups").doc(account.uid).get();
   if (!requestSnap.exists) return res.status(200).json({ activated: false, unpaid, signup: null });
   return res.status(200).json({ activated: false, unpaid, signup: publicSignup(requestSnap.data()) });
+}
+
+// دفعة اشتراك أول مرة: ينحسب لوكيل معمار (لو المتجر جا من رابطه) على سعر الباقة بعد الخصم، بدون الإضافات
+async function recordSignupReferral(uid, request) {
+  const plan = resolvePlan(request.selectedPlan);
+  let discount = 0;
+  if (request.signupCouponCode) discount = Number((await db.collection("signupCoupons").doc(request.signupCouponCode).get().catch(() => null))?.data()?.discountAmount || 0);
+  await recordReferralPayment(db, { uid, eventId: request.ompayReferenceNumber, plan, amount: Math.max(0, PLAN_PRICES[plan] - discount) });
 }
 
 // لو فيه محاولة دفع سابقة على نفس الطلب، نتحقق منها أولًا بدل ما ننشئ شحنة جديدة —
@@ -365,6 +376,7 @@ async function createCardCharge(req, res) {
   if (request.status === "activated") return res.status(200).json({ activated: true });
   if (request.ompayReferenceNumber && await priorChargeSucceeded(request.ompayReferenceNumber, "signup", account.uid)) {
     await activateSeller(account.uid, request);
+    await recordSignupReferral(account.uid, request);
     if (request.signupCouponCode) {
       await db.collection("signupCoupons").doc(request.signupCouponCode).update({ usedCount: FieldValue.increment(1) }).catch(() => {});
     }
@@ -412,6 +424,7 @@ async function verifyCardCharge(req, res) {
     return res.status(200).json({ paid: false, status });
   }
   await activateSeller(account.uid, request);
+  await recordSignupReferral(account.uid, request);
   if (request.signupCouponCode) {
     await db.collection("signupCoupons").doc(request.signupCouponCode).update({ usedCount: FieldValue.increment(1) }).catch(() => {});
   }
@@ -601,6 +614,8 @@ async function createRenewalCharge(req, res) {
 
   if (seller.pendingRenewalReferenceNumber
     && await priorChargeSucceeded(seller.pendingRenewalReferenceNumber, "renew", account.uid)) {
+    const renewedPlan = pendingRenewalPlanFor(seller);
+    await recordReferralPayment(db, { uid: account.uid, eventId: seller.pendingRenewalReferenceNumber, plan: renewedPlan, amount: PLAN_PRICES[renewedPlan] });
     const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
     await sellerRef.update({
       subscriptionExpiresAt,
@@ -647,10 +662,12 @@ async function verifyRenewalCharge(req, res) {
     return res.status(200).json({ paid: false, status });
   }
 
+  const renewedPlan = pendingRenewalPlanFor(seller);
+  await recordReferralPayment(db, { uid: account.uid, eventId: seller.pendingRenewalReferenceNumber, plan: renewedPlan, amount: PLAN_PRICES[renewedPlan] });
   const subscriptionExpiresAt = isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS));
   await sellerRef.update({
     subscriptionExpiresAt,
-    plan: pendingRenewalPlanFor(seller),
+    plan: renewedPlan,
     pendingRenewalReferenceNumber: FieldValue.delete(),
     pendingRenewalPlan: FieldValue.delete(),
   });
@@ -714,6 +731,13 @@ async function redeemPlanCode(req, res) {
         ...(wasUnpaid ? { activatedAt: FieldValue.serverTimestamp() } : {}),
       });
       if (wasUnpaid && requestSnap.exists) transaction.update(requestRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
+      // متجر جا من رابط وكيل معمار وفعّل كود من متجر معمار (مو من وكيل): ينحسب للوكيل ربحه
+      if (seller.referredBy && !codeData.agent) {
+        transaction.set(db.collection("mimarEvents").doc(code), {
+          ref: seller.referredBy, customer: account.uid, customerName: String(seller.storeName || "").slice(0, 60), item: result.plan,
+          amount: PLAN_CODE_ITEMS[result.plan].price, kind: "code", at: FieldValue.serverTimestamp(),
+        });
+      }
       transaction.update(codeRef, { used: true, usedBy: account.uid, usedByEmail: account.email, usedAt: FieldValue.serverTimestamp() });
       return { ...result, wasUnpaid, storeName: seller.storeName, storeType: seller.storeType };
     });
