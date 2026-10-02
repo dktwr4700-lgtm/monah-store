@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ompayRequest, ompayChargeSucceeded } from "../lib/ompay-client.js";
+import { PLAN_CODE_ITEMS, PLAN_CODE_PATTERN, PlanCodeError, hubHandler, normalizePlanCode, planCodeResult } from "../lib/mimar-hub.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
@@ -656,6 +657,82 @@ async function verifyRenewalCharge(req, res) {
   return res.status(200).json({ paid: true, subscriptionExpiresAt });
 }
 
+// كود اشتراك من «مركز معمار» (وكيل أو متجر معمار): يفعّل باقة الكود لشهر، ويضيف الشهر على اللي باقي.
+// الكود يغطي الباقة بس، فلو عند التاجر إضافات مدفوعة نوقف ونسأله أول (confirmDropAddOns).
+const MAX_CODE_FAILS_PER_HOUR = 10;
+
+async function planCodeAttempts(uid) {
+  const ref = db.collection("planCodeAttempts").doc(uid);
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : null;
+  const windowStart = data?.windowStart?.toDate?.() || null;
+  const fresh = !windowStart || Date.now() - windowStart.getTime() > 60 * 60 * 1000;
+  if (!fresh && (data.fails || 0) >= MAX_CODE_FAILS_PER_HOUR) throw new SignupError(429, "محاولات كثيرة. جرّب بعد ساعة.");
+  return {
+    async fail() {
+      if (fresh) await ref.set({ fails: 1, windowStart: FieldValue.serverTimestamp() });
+      else await ref.update({ fails: FieldValue.increment(1) });
+    },
+  };
+}
+
+async function redeemPlanCode(req, res) {
+  const account = await authenticatedAccount(req);
+  const code = normalizePlanCode(req.body?.code);
+  const attempts = await planCodeAttempts(account.uid);
+  if (!PLAN_CODE_PATTERN.test(code)) {
+    await attempts.fail();
+    throw new SignupError(400, "صيغة الكود غلط. اكتبه مثل ما وصلك، مثال: MN-7K4P-92QX");
+  }
+  const confirmDropAddOns = req.body?.confirmDropAddOns === true;
+  const sellerRef = db.collection("sellers").doc(account.uid);
+  const codeRef = db.collection("planCodes").doc(code);
+  const requestRef = db.collection("merchantSignups").doc(account.uid);
+  let outcome;
+  try {
+    outcome = await db.runTransaction(async (transaction) => {
+      const [sellerSnap, codeSnap, requestSnap] = await Promise.all([transaction.get(sellerRef), transaction.get(codeRef), transaction.get(requestRef)]);
+      if (!sellerSnap.exists) throw new SignupError(403, "سجّل متجرك أولًا، وبعدها فعّل الكود.");
+      if (!codeSnap.exists) throw new SignupError(404, "الكود غير صحيح.");
+      const codeData = codeSnap.data();
+      if (codeData.used) throw new SignupError(409, "هذا الكود مستخدم من قبل.");
+      const seller = sellerSnap.data();
+      let result;
+      try {
+        result = planCodeResult(seller, codeData.plan, new Date());
+      } catch (err) {
+        if (err instanceof PlanCodeError) throw new SignupError(err.status, err.message);
+        throw err;
+      }
+      if (result.dropAddOns.length && !confirmDropAddOns) return { needsConfirm: true, dropAddOns: result.dropAddOns };
+      const wasUnpaid = isUnpaidSeller(seller);
+      transaction.update(sellerRef, {
+        plan: result.plan,
+        subscriptionExpiresAt: result.subscriptionExpiresAt,
+        activeAddOns: result.keepAddOns,
+        lastPlanCode: code,
+        ...(wasUnpaid ? { activatedAt: FieldValue.serverTimestamp() } : {}),
+      });
+      if (wasUnpaid && requestSnap.exists) transaction.update(requestRef, { status: "activated", activatedAt: FieldValue.serverTimestamp() });
+      transaction.update(codeRef, { used: true, usedBy: account.uid, usedByEmail: account.email, usedAt: FieldValue.serverTimestamp() });
+      return { ...result, wasUnpaid, storeName: seller.storeName, storeType: seller.storeType };
+    });
+  } catch (err) {
+    if (err instanceof SignupError && (err.code === 404 || err.code === 409)) await attempts.fail();
+    throw err;
+  }
+  if (outcome.needsConfirm) return res.status(200).json({ needsConfirm: true, dropAddOns: outcome.dropAddOns });
+  if (outcome.wasUnpaid) await notifyAdminOfNewSeller({ storeName: outcome.storeName, email: account.email, storeType: outcome.storeType });
+  return res.status(200).json({
+    ok: true,
+    plan: outcome.plan,
+    planName: PLAN_CODE_ITEMS[outcome.plan].name,
+    subscriptionExpiresAt: outcome.subscriptionExpiresAt,
+    activeAddOns: outcome.keepAddOns,
+    droppedAddOns: outcome.dropAddOns,
+  });
+}
+
 // كل نصيحة تُرسل مرة وحدة فقط لكل تاجر (نتتبعها بـ onboardingTipsSent على وثيقة
 // sellers)، وتتحقق من الشرط الفعلي وقت الإرسال (مو بس الوقت المنقضي)، حتى لو
 // التاجر أكمل الخطوة بين تشغيلتين ما توصله نصيحة ما تنفعه. نفس ترتيب الخطوة
@@ -834,6 +911,8 @@ async function sendOnboardingReminders(req, res) {
 }
 
 export default async function handler(req, res) {
+  // ربط «مركز معمار» (من خادم لخادم): هنا بدل ملف مستقل عشان ما نزيد عدد دوال Vercel
+  if (req.query?.hub === "1") return await hubHandler(db, req, res);
   if (req.method === "GET" && req.query?.job === "onboarding_reminders") {
     return await sendOnboardingReminders(req, res);
   }
@@ -857,6 +936,7 @@ export default async function handler(req, res) {
     if (action === "verify_addon_charge") return await verifyAddOnCharge(req, res);
     if (action === "create_renewal_charge") return await createRenewalCharge(req, res);
     if (action === "verify_renewal_charge") return await verifyRenewalCharge(req, res);
+    if (action === "redeem_plan_code") return await redeemPlanCode(req, res);
     return res.status(400).json({ error: "طلب غير واضح." });
   } catch (error) {
     if (error instanceof SignupError) return res.status(error.code).json({ error: error.message });

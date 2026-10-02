@@ -464,6 +464,16 @@ const DASH_T = {
     unpaidLimitTitle: "منتجك الأول جاهز كمسودة",
     unpaidLimitHint: "قبل التفعيل تقدر تجهّز منتج واحد. فعّل متجرك عشان تنشره وتضيف منتجات أكثر.",
     unpaidSubscriptionTitle: "متجرك غير مفعّل بعد",
+    planCodeTitle: "🔑 فعّل اشتراكك بكود",
+    planCodeHint: "عندك كود من وكيل معمار أو من متجر معمار؟ اكتبه هنا ويتفعل اشتراكك على طول.",
+    planCodeActivate: "فعّل",
+    planCodeActivating: "لحظة…",
+    planCodeEmpty: "اكتب الكود أول.",
+    planCodeDone: (name, date) => `✓ تم تفعيل باقة ${name}. اشتراكك شغال لين \u2066${date}\u2069. شكرًا لك!`,
+    planCodeDropConfirm: (names) => `الكود يغطي الباقة بس. إضافاتك المدفوعة (${names}) بتتوقف، وتقدر ترجعها بعدين من هالصفحة. تبي تكمل؟`,
+    planCodeConfirm: "إي، فعّل الكود",
+    planCodeCancel: "لا، خلّها",
+    haveCode: "عندي كود",
     unpaidSubscriptionHint: (price) => `سجّلت مجانًا وتقدر تجهّز متجرك ومنتجك الأول. عشان تنشر وتبيع اختر باقتك وادفع اشتراكك الشهري — تبدأ من ${price} ر.ع.`,
     unpaidStepTitle: "باقي خطوة وحدة: فعّل متجرك",
     unpaidStepText: "منتجك محفوظ كمسودة. فعّل متجرك باختيار باقتك عشان تنشره ويقدر عملاؤك يشترونه.",
@@ -1002,6 +1012,16 @@ const DASH_T = {
     unpaidLimitTitle: "Your first product is ready as a draft",
     unpaidLimitHint: "Before activation you can prepare one product. Activate your store to publish it and add more.",
     unpaidSubscriptionTitle: "Your store isn't activated yet",
+    planCodeTitle: "🔑 Activate with a code",
+    planCodeHint: "Got a code from a Mimar agent or the Mimar store? Enter it here and your subscription activates right away.",
+    planCodeActivate: "Activate",
+    planCodeActivating: "One moment…",
+    planCodeEmpty: "Enter the code first.",
+    planCodeDone: (name, date) => `✓ ${name} plan activated. Your subscription runs until \u2066${date}\u2069. Thank you!`,
+    planCodeDropConfirm: (names) => `The code covers the plan only. Your paid add-ons (${names}) will stop, and you can add them back later from this page. Continue?`,
+    planCodeConfirm: "Yes, activate the code",
+    planCodeCancel: "No, keep them",
+    haveCode: "I have a code",
     unpaidSubscriptionHint: (price) => `You signed up for free and can prepare your store and first product. To publish and sell, choose a plan and pay your monthly subscription — from ${price} OMR.`,
     unpaidStepTitle: "One step left: activate your store",
     unpaidStepText: "Your product is saved as a draft. Activate your store by choosing a plan so you can publish it and customers can buy it.",
@@ -1593,6 +1613,10 @@ export default function Dashboard() {
   const [addOnMessage, setAddOnMessage] = useState("");
   const [renewalBuying, setRenewalBuying] = useState(false);
   const [renewalMessage, setRenewalMessage] = useState("");
+  const [planCodeInput, setPlanCodeInput] = useState("");
+  const [planCodeBusy, setPlanCodeBusy] = useState(false);
+  const [planCodeMessage, setPlanCodeMessage] = useState(null);
+  const [planCodeDrop, setPlanCodeDrop] = useState(null);
 
   // overview: sales
   const [sellerOrders, setSellerOrders] = useState([]);
@@ -2876,6 +2900,73 @@ export default function Dashboard() {
     }
   }
 
+  // كود اشتراك من «مركز معمار»: الخادم يتحقق منه ويفعّل الباقة. لو عنده إضافات مدفوعة يسأله أول.
+  async function redeemPlanCode(confirmDropAddOns = false) {
+    const code = planCodeInput.trim();
+    if (!code) {
+      setPlanCodeMessage({ ok: false, text: t.planCodeEmpty });
+      return;
+    }
+    setPlanCodeBusy(true);
+    setPlanCodeMessage(null);
+    try {
+      const data = await domainSignupRequest("redeem_plan_code", { code, confirmDropAddOns });
+      if (data.needsConfirm) {
+        setPlanCodeDrop(data.dropAddOns || []);
+      } else {
+        setPlanCodeDrop(null);
+        setPlanCodeInput("");
+        setSellerPlan(data.plan);
+        setSubscriptionExpiresAt(data.subscriptionExpiresAt || "");
+        setActiveAddOns(data.activeAddOns || []);
+        const until = new Date(`${data.subscriptionExpiresAt}T00:00:00`).toLocaleDateString(lang === "en" ? "en-GB" : "ar-OM-u-nu-latn", { day: "numeric", month: "long", year: "numeric" });
+        setPlanCodeMessage({ ok: true, text: t.planCodeDone(t.planNames[data.plan] || data.planName, until) });
+      }
+    } catch (err) {
+      setPlanCodeDrop(null);
+      setPlanCodeMessage({ ok: false, text: err.message || t.genericOperationError });
+    }
+    setPlanCodeBusy(false);
+  }
+
+  function addOnTitle(key) {
+    const item = ADD_ON_CATALOG.find((a) => a.key === key);
+    return item ? (lang === "en" ? item.titleEn : item.title) : key;
+  }
+
+  const planCodeCard = (
+    <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F" }}>
+      <div className="dh-title" style={{ marginBottom: 4 }}>{t.planCodeTitle}</div>
+      <div className="dh-hint" style={{ marginBottom: 12 }}>{t.planCodeHint}</div>
+      <form className="dh-field" onSubmit={(event) => { event.preventDefault(); redeemPlanCode(false); }} style={{ display: "flex", gap: 8, marginBottom: 0 }}>
+        <input
+          className="mono"
+          value={planCodeInput}
+          onChange={(event) => { setPlanCodeInput(event.target.value.toUpperCase()); setPlanCodeDrop(null); }}
+          placeholder="MN-XXXX-XXXX"
+          dir="ltr"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={20}
+          style={{ flex: 1, minWidth: 0, textAlign: "center", letterSpacing: 1 }}
+        />
+        <button className="dh-btn" type="submit" disabled={planCodeBusy || Boolean(planCodeDrop)} style={{ width: "auto", flex: "0 0 auto", padding: "11px 22px" }}>{planCodeBusy ? t.planCodeActivating : t.planCodeActivate}</button>
+      </form>
+      {planCodeDrop && (
+        <div style={{ background: "#FFF8E9", borderRadius: 10, padding: "10px 12px", marginTop: 10 }}>
+          <div className="dh-hint" style={{ color: "#7A5A17" }}>{t.planCodeDropConfirm(planCodeDrop.map(addOnTitle).join("، "))}</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button className="dh-btn" type="button" disabled={planCodeBusy} onClick={() => redeemPlanCode(true)} style={{ flex: 1 }}>{t.planCodeConfirm}</button>
+            <button className="dh-item-action" type="button" disabled={planCodeBusy} onClick={() => setPlanCodeDrop(null)} style={{ flex: 1 }}>{t.planCodeCancel}</button>
+          </div>
+        </div>
+      )}
+      {planCodeMessage && (
+        <div className={planCodeMessage.ok ? "dh-success" : "dh-error"} style={{ marginTop: 10, marginBottom: 0 }}>{planCodeMessage.text}</div>
+      )}
+    </div>
+  );
+
   async function deleteCoupon(couponId) {
     setDeletingCouponId(couponId);
     try {
@@ -3191,6 +3282,7 @@ export default function Dashboard() {
         <div className="dh-verify-banner" style={{ background: "#FFF8E9", borderBottomColor: "#EFD9AB", color: "#7A5A17" }}>
           <span>{t.unpaidBanner}</span>
           <button type="button" onClick={goActivateStore}>{t.activateStoreCta}</button>
+          <button type="button" onClick={() => setTab("subscription")}>{t.haveCode}</button>
         </div>
       )}
 
@@ -4279,6 +4371,7 @@ export default function Dashboard() {
               <div className="dh-hint" style={{ marginBottom: 14 }}>{t.unpaidSubscriptionHint(STARTER_MONTHLY_PRICE.toFixed(2))}</div>
               <button className="dh-btn" type="button" style={{ width: "100%" }} onClick={goActivateStore}>{t.activateStoreCta}</button>
             </div>
+            {planCodeCard}
           </>
           );
           return (
@@ -4332,6 +4425,8 @@ export default function Dashboard() {
               </button>
               {renewalMessage && <div className="dh-error" style={{ marginTop: 8 }}>{renewalMessage}</div>}
             </div>
+
+            {planCodeCard}
 
             {!isTrial && upgradeOptionsForPlan(sellerPlan).length > 0 && (
               <div className="dh-card">
