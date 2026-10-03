@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 import MonahAssistant from "./MonahAssistant.jsx";
 
@@ -257,7 +257,7 @@ const START_STORE_URL = "#start-store";
 const STEPS = [
   { n: "01", title: { ar: "اضغط \"افتح متجرك الحين\" وسجّل بياناتك", en: "Click \"Open your store now\" and register" }, desc: { ar: "تكتب اسم متجرك وبريدك الإلكتروني وتختار كلمة مرورك بنفسك — بدون خبرة تقنية.", en: "Enter your store name and email, and choose your own password — no technical experience needed." } },
   { n: "02", title: { ar: "ادخل لوحتك وجهّز متجرك مجانًا", en: "Enter your dashboard and set up for free" }, desc: { ar: "التسجيل مجاني: تجهّز متجرك وتضيف منتجك الأول من \"إضافة منتج\" — ترفع ملفك وتكتب اسمه وسعره ووصفه.", en: "Signing up is free: set up your store and add your first product from \"Add product\" — upload your file and write its name, price, and description." } },
-  { n: "03", title: { ar: "فعّل متجرك لما تنشر", en: "Activate your store when you publish" }, desc: { ar: "لما تكون جاهز تنشر، تختار باقتك وتدفع بالبطاقة — تبدأ من نص ريال شهريًا، ومتجرك ينشر فورًا.", en: "When you're ready to publish, pick a plan and pay by card — from just 0.5 OMR a month — and your store goes live instantly." } },
+  { n: "03", title: { ar: "فعّل متجرك لما تنشر", en: "Activate your store when you publish" }, desc: { ar: "لما تكون جاهز تنشر، تختار باقتك وتدفع بالبطاقة — تبدأ من 5 ر.ع شهريًا، ومتجرك ينشر فورًا.", en: "When you're ready to publish, pick a plan and pay by card — from 5 OMR a month — and your store goes live instantly." } },
   { n: "04", title: { ar: "يصير لمنتجك رابط خاص فيه", en: "Your product gets its own link" }, desc: { ar: "تنسخه وتشاركه بواتساب أو إنستغرام أو أي مكان تحب.", en: "Copy it and share it on WhatsApp, Instagram, or anywhere you like." } },
   { n: "05", title: { ar: "العميل يطلب وأنت تؤكد الاستلام", en: "The buyer orders and you confirm receipt" }, desc: { ar: "يرفع إثبات التحويل، وبعد ما تأكد استلامك المبلغ من لوحتك، يفتح التنزيل له تلقائيًا.", en: "They upload proof of transfer; once you confirm you received the payment from your dashboard, the download unlocks for them automatically." } },
 ];
@@ -329,14 +329,14 @@ const SECTIONS_T = {
     compareMonah: "Monah", compareOther: "منصات تقليدية",
     pricingEyebrow: "الاشتراك", pricingTitle: "ابدأ بسيط، وكبّر متجرك متى احتجت",
     pricingSub: "متجر أساسي يشتغل من أول يوم بسعر واضح، وإضافات تفتح لك مبيعات أسرع وأذكى وقت ما تحتاجها — بدون التزام بأكثر من اللي تختاره.",
-    priceBadge: "ابدأ بمبلغ رمزي", priceName: "جرّب متجرك",
-    priceDesc: "صفحة متجر بهويتك، حتى منتجين، والمشاركة والتتبع — وترقّي لباقة أكبر أي وقت.",
+    priceBadge: "الباقة الأساسية", priceName: "متجرك كامل",
+    priceDesc: `صفحة متجر بهويتك، حتى ${BASE_PRODUCT_LIMIT} منتج، والمشاركة والتتبع — وترقّي لبرو أي وقت.`,
     priceUnit: "ر.ع / شهريًا بعد التفعيل",
     priceFeature1: "✓ لوحة تاجر عربية سهلة", priceFeature2: "✓ صفحة متجر وروابط مشاركة",
     priceFeature3: "✓ تخصيص الاسم والشعار والهوية", priceFeature4: "✓ منتج مجاني وروابط تتبع الزيارات",
     addOnsLabel: "إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:",
     openStore: "افتح متجرك الحين",
-    pricingNote: "التسجيل وتجهيز المتجر مجاني، وتدفع بس لما تنشر منتجاتك. باقة «ابدأ» نص ريال شهريًا (حتى منتجين)، ولو احتجت منتجات أكثر ترقّى للأساسي (5 ر.ع) أو برو (10 ر.ع) بضغطة من لوحتك.",
+    pricingNote: `التسجيل وتجهيز المتجر مجاني، وتدفع بس لما تنشر منتجاتك. الباقة الأساسية ${BASE_MONTHLY_PRICE} ر.ع شهريًا (حتى ${BASE_PRODUCT_LIMIT} منتج)، ولو احتجت أكثر ترقّى لبرو (${PRO_MONTHLY_PRICE} ر.ع) بضغطة من لوحتك.`,
     faqEyebrow: "أسئلة", faqTitle: "أسئلة شائعة",
     finalKicker: "خطوتك القادمة", finalTitle: "خلّ منتجك جاهزًا للمشاركة",
     finalP: "افتح متجرك الآن، ثم رتّب صفحته وخذ رابطك الخاص في مكان واحد وبشكل واضح.",
@@ -354,14 +354,14 @@ const SECTIONS_T = {
     compareMonah: "Monah", compareOther: "Traditional platforms",
     pricingEyebrow: "Subscription", pricingTitle: "Start simple, grow your store whenever you need",
     pricingSub: "A base store that works from day one at a clear price, with add-ons that unlock faster, smarter sales whenever you need them — no commitment beyond what you choose.",
-    priceBadge: "Start for pocket change", priceName: "Try your store",
-    priceDesc: "A store page with your identity, up to two products, sharing, and tracking — upgrade to a bigger plan anytime.",
+    priceBadge: "Basic plan", priceName: "Your full store",
+    priceDesc: `A store page with your identity, up to ${BASE_PRODUCT_LIMIT} products, sharing, and tracking — upgrade to Pro anytime.`,
     priceUnit: "OMR / month after activation",
     priceFeature1: "✓ Easy Arabic seller dashboard", priceFeature2: "✓ A store page with sharing links",
     priceFeature3: "✓ Customize your name, logo, and identity", priceFeature4: "✓ A free product and visit-tracking links",
     addOnsLabel: "Optional add-ons that grow your sales, chosen at signup or later from the seller dashboard:",
     openStore: "Open your store now",
-    pricingNote: "Signing up and setting up your store is free — you only pay when you publish your products. The Starter plan is 0.5 OMR a month (up to 2 products); if you need more products, upgrade to Basic (5 OMR) or Pro (10 OMR) in one tap from your dashboard.",
+    pricingNote: `Signing up and setting up your store is free — you only pay when you publish your products. The Basic plan is ${BASE_MONTHLY_PRICE} OMR a month (up to ${BASE_PRODUCT_LIMIT} products); if you need more, upgrade to Pro (${PRO_MONTHLY_PRICE} OMR) in one tap from your dashboard.`,
     faqEyebrow: "FAQ", faqTitle: "Frequently asked questions",
     finalKicker: "Your next step", finalTitle: "Get your product ready to share",
     finalP: "Open your store now, set up its page, and get your own link in one clear place.",
@@ -579,7 +579,7 @@ export default function App() {
               <div className="price-badge">{st.priceBadge}</div>
               <div className="price-name">{st.priceName}</div>
               <div className="price-desc">{st.priceDesc}</div>
-              <div className="price-value mono">{STARTER_MONTHLY_PRICE}<span>{st.priceUnit}</span></div>
+              <div className="price-value mono">{BASE_MONTHLY_PRICE}<span>{st.priceUnit}</span></div>
               <div className="price-features">
                 <div>{st.priceFeature1}</div>
                 <div>{st.priceFeature2}</div>

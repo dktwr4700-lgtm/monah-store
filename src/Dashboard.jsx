@@ -12,7 +12,7 @@ import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import { watermarkImage } from "./watermarkImage.js";
-import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan, upgradeOptionsForPlan } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan, upgradeOptionsForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 class DebugErrorBoundary extends React.Component {
@@ -849,7 +849,7 @@ const DASH_T = {
     freeTrialBadge: "تجربة مجانية",
     activeBadge: "مفعّل",
     trialSubscriptionHint: "أنت على التجربة المجانية — منتج واحد فقط، بدون حد زمني. رقّي اشتراكك عشان تضيف منتجات بلا حدود وتفتح باقي الميزات (الإضافات، الدومين الخاص، وغيرها).",
-    starterRenewalHint: () => `أنت على باقة "ابدأ": 0.50 ر.ع شهريًا وحتى 2 منتج. تحتاج منتجات أكثر؟ رقّي باقتك من تحت.`,
+    starterRenewalHint: () => `عرض باقة "ابدأ" انتهى. باقتك تكمل عادي لين نهاية اشتراكك، وبعدها تتجدد على الباقة الأساسية بـ${BASE_MONTHLY_PRICE} ر.ع شهريًا وحتى ${BASE_PRODUCT_LIMIT} منتج.`,
     upgradePlanTitle: "رقّي باقتك",
     upgradePlanHint: "الترقية تبدأ فورًا، ويبدأ معها اشتراك جديد لمدة 30 يوم من يوم الدفع (مع إضافاتك المفعّلة).",
     upgradePlanOption: (name, price, limit) => `${name} — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
@@ -1397,7 +1397,7 @@ const DASH_T = {
     freeTrialBadge: "Free trial",
     activeBadge: "Active",
     trialSubscriptionHint: "You're on the free trial — one product only, no time limit. Upgrade your subscription to add unlimited products and unlock the rest of the features (add-ons, custom domain, and more).",
-    starterRenewalHint: () => `You're on the "Starter" plan: 0.50 OMR a month, up to 2 products. Need more products? Upgrade your plan below.`,
+    starterRenewalHint: () => `The "Starter" offer has ended. Your plan keeps running until your subscription ends, then renews on the Basic plan at ${BASE_MONTHLY_PRICE} OMR/month with up to ${BASE_PRODUCT_LIMIT} products.`,
     upgradePlanTitle: "Upgrade your plan",
     upgradePlanHint: "Upgrades apply right away and start a new 30-day subscription from the day you pay (including your active add-ons).",
     upgradePlanOption: (name, price, limit) => `${name} — ${price} OMR/month — up to ${limit} products`,
@@ -3292,7 +3292,7 @@ export default function Dashboard() {
           <div className="dh-card" onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 380, margin: 0, textAlign: "center", borderTop: "3px solid #163F2E" }}>
             {activationPrompt === "saved" && <div style={{ color: "#37724B", fontWeight: 800, fontSize: 12.5, marginBottom: 8 }}>{t.unpaidPromptSaved}</div>}
             <div className="dh-title" style={{ marginBottom: 8 }}>{t.unpaidPromptTitle}</div>
-            <div className="dh-hint" style={{ marginBottom: 16 }}>{t.unpaidPromptText(STARTER_MONTHLY_PRICE.toFixed(2))}</div>
+            <div className="dh-hint" style={{ marginBottom: 16 }}>{t.unpaidPromptText(BASE_MONTHLY_PRICE)}</div>
             <button className="dh-btn" type="button" style={{ width: "100%" }} onClick={goActivateStore}>{t.activateStoreCta}</button>
             <button className="dh-item-action" type="button" style={{ width: "100%", marginTop: 8 }} onClick={() => setActivationPrompt(null)}>{t.unpaidPromptLater}</button>
           </div>
@@ -4360,7 +4360,7 @@ export default function Dashboard() {
 
         {tab === "subscription" && (() => {
           const addOnsMonthlyTotal = activeAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-          const planBasePrice = priceForPlan(sellerPlan);
+          const planBasePrice = renewalPriceForPlan(sellerPlan);
           const monthlyTotal = renewalPriceForPlan(sellerPlan) + addOnsMonthlyTotal;
           const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
           const daysLeft = subscriptionDaysLeft;
@@ -4369,7 +4369,7 @@ export default function Dashboard() {
             <button className="dh-back" type="button" onClick={() => setTab("settings")}>{t.backToSettings}</button>
             <div className="dh-card" style={{ borderTop: "3px solid #9C6D1F" }}>
               <div className="dh-title" style={{ marginBottom: 6 }}>{t.unpaidSubscriptionTitle}</div>
-              <div className="dh-hint" style={{ marginBottom: 14 }}>{t.unpaidSubscriptionHint(STARTER_MONTHLY_PRICE.toFixed(2))}</div>
+              <div className="dh-hint" style={{ marginBottom: 14 }}>{t.unpaidSubscriptionHint(BASE_MONTHLY_PRICE)}</div>
               <button className="dh-btn" type="button" style={{ width: "100%" }} onClick={goActivateStore}>{t.activateStoreCta}</button>
             </div>
             {planCodeCard}

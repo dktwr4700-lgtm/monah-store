@@ -18,14 +18,16 @@ const RESEND_TIMEOUT_MS = 6000;
 const ADMIN_NOTIFY_EMAIL = "k1997551@gmail.com";
 const STORE_TYPES = new Set(["books", "videos", "codes", "files"]);
 const PLAN_PRICES = { starter: STARTER_MONTHLY_PRICE, basic: BASE_MONTHLY_PRICE, pro: PRO_MONTHLY_PRICE };
+// «ابدأ» (0.50 ر.ع، حتى منتجين) كان عرض مؤقت وانتهى: ما ينختار في تسجيل جديد،
+// والمتاجر اللي عليه تكمّل شهرها وتتجدد كأساسي. التجربة القديمة ("trial") تتجدد كأساسي بعد.
 function resolvePlan(value) {
-  if (value === "pro") return "pro";
-  if (value === "starter") return "starter";
-  return "basic";
+  return value === "pro" ? "pro" : "basic";
 }
-// كل باقة تتجدد بنفسها وبسعرها: "ابدأ" (0.50 ر.ع شهريًا، حتى منتجين) باقة
-// دائمة، والتاجر يرقّي بنفسه للأساسي أو برو لما يحتاج منتجات أكثر
-// (upgradePlanFor). التجربة المجانية القديمة ("trial") تتجدد كأساسي.
+// طلب دفع انعمل قبل ما ينتهي العرض: ينفعّل على الباقة اللي دفع عليها فعلًا
+function paidPlan(value) {
+  return value === "starter" ? "starter" : resolvePlan(value);
+}
+// كل باقة تتجدد بنفسها وبسعرها، والتاجر يرقّي بنفسه لما يحتاج منتجات أكثر (upgradePlanFor).
 function renewalPlanFor(plan) {
   return resolvePlan(plan);
 }
@@ -233,7 +235,7 @@ async function activateSeller(uid, request) {
     if (sellerSnap.exists) {
       const existing = sellerSnap.data();
       transaction.update(sellerRef, {
-        plan: resolvePlan(request.selectedPlan),
+        plan: paidPlan(request.selectedPlan),
         subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
         activeAddOns: Array.from(new Set([...(existing.activeAddOns || []), ...cleanAddOnKeys(request.selectedAddOns)])),
         activatedAt: FieldValue.serverTimestamp(),
@@ -247,7 +249,7 @@ async function activateSeller(uid, request) {
       email: request.email,
       storeType: request.storeType,
       createdAt: FieldValue.serverTimestamp(),
-      plan: resolvePlan(request.selectedPlan),
+      plan: paidPlan(request.selectedPlan),
       subscriptionExpiresAt: isoDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_MS)),
       activeAddOns: cleanAddOnKeys(request.selectedAddOns),
     });
@@ -350,7 +352,7 @@ async function status(req, res) {
 
 // دفعة اشتراك أول مرة: ينحسب لوكيل معمار (لو المتجر جا من رابطه) على سعر الباقة بعد الخصم، بدون الإضافات
 async function recordSignupReferral(uid, request) {
-  const plan = resolvePlan(request.selectedPlan);
+  const plan = paidPlan(request.selectedPlan);
   let discount = 0;
   if (request.signupCouponCode) discount = Number((await db.collection("signupCoupons").doc(request.signupCouponCode).get().catch(() => null))?.data()?.discountAmount || 0);
   await recordReferralPayment(db, { uid, eventId: request.ompayReferenceNumber, plan, amount: Math.max(0, PLAN_PRICES[plan] - discount) });
