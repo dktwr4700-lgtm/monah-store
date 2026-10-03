@@ -273,8 +273,10 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const dashboard = await source("src/Dashboard.jsx");
     const catalog = await source("src/subscriptionCatalog.js");
 
-    expect(landing).toContain("ابدأ بمبلغ رمزي");
-    expect(landing).toContain("جرّب متجرك");
+    expect(landing).toContain("الباقة الأساسية");
+    expect(landing).toContain("متجرك كامل");
+    expect(landing).not.toContain("نص ريال");
+    expect(landing).not.toContain("STARTER_MONTHLY_PRICE");
     expect(landing).toContain("التسجيل وتجهيز المتجر مجاني");
     expect(landing).not.toContain("الأكثر طلبًا");
     expect(dashboard).toContain("اشتراك متجرك");
@@ -302,7 +304,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(catalog).not.toContain('key: "giftCards"');
     expect(catalog).not.toContain('key: "upsell"');
     expect(catalog).not.toContain('key: "aiLaunch"');
-    expect(landing).toContain('import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE } from "./subscriptionCatalog.js"');
+    expect(landing).toContain('import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE } from "./subscriptionCatalog.js"');
     expect(landing).toContain("ADD_ON_CATALOG.map((item) =>");
     expect(landing).not.toContain("البيع الرقمي — 2 ر.ع");
   });
@@ -414,7 +416,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
     expect(landing).toContain("يرفع إثبات التحويل");
     expect(landing).toContain("بعد تأكيد التاجر استلام المبلغ");
-    expect(landing).toContain("جرّب متجرك");
+    expect(landing).toContain("متجرك كامل");
     expect(landing).toContain("إضافات اختيارية تكبّر مبيعاتك");
     expect(landing).not.toContain("PACKAGES.map");
     expect(landing).not.toContain("وفّر شهرين");

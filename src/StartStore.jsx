@@ -3,7 +3,7 @@ import { storedReferral } from "./referral.js";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
-import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, STARTER_PRODUCT_LIMIT, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const CTA_WIDTH = 168;
@@ -75,7 +75,6 @@ const ST_T = {
     subscriptionIntro: (price) => `عشان تنشر منتجاتك وتبدأ تبيع، اختر باقتك — تبدأ من ${price} ر.ع شهريًا فقط. تقدر تضيف إضافات اختيارية أو ترقّي باقتك الآن أو لاحقًا من لوحة التاجر.`,
     laterToDashboard: "لاحقًا — رجوع للوحة التاجر",
     choosePlan: "اختر باقتك",
-    starterPlanOption: (price, limit) => `ابدأ — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     basicPlanOption: (price, limit) => `الأساسية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     proPlanOption: (price, limit) => `برو — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
     optionalAddOns: "إضافات اختيارية (تقدر تتخطاها الآن)",
@@ -119,7 +118,6 @@ const ST_T = {
     subscriptionIntro: (price) => `To publish your products and start selling, choose your plan — from just ${price} OMR/month. Add optional add-ons or upgrade your plan now or later from the seller dashboard.`,
     laterToDashboard: "Later — back to the seller dashboard",
     choosePlan: "Choose your plan",
-    starterPlanOption: (price, limit) => `Starter — ${price} OMR/month — up to ${limit} products`,
     basicPlanOption: (price, limit) => `Basic — ${price} OMR/month — up to ${limit} products`,
     proPlanOption: (price, limit) => `Pro — ${price} OMR/month — up to ${limit} products`,
     optionalAddOns: "Optional add-ons (you can skip these for now)",
@@ -172,7 +170,7 @@ export default function StartStore() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [selectedAddOns, setSelectedAddOns] = useState([]);
-  const [selectedPlan, setSelectedPlan] = useState("starter");
+  const [selectedPlan, setSelectedPlan] = useState("basic");
   const [couponCode, setCouponCode] = useState("");
   const [couponChecking, setCouponChecking] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -350,7 +348,7 @@ export default function StartStore() {
   }
 
   const addOnsTotal = selectedAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
-  const planPrice = selectedPlan === "pro" ? PRO_MONTHLY_PRICE : selectedPlan === "starter" ? STARTER_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
+  const planPrice = selectedPlan === "pro" ? PRO_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
   const paymentTotal = Math.max(0.1, planPrice + addOnsTotal - couponDiscount);
 
   async function checkCoupon() {
@@ -440,13 +438,9 @@ export default function StartStore() {
         {step === "payment" && <>
           <div className="invite-title">{t.activateStore}</div>
           {error && <div className="invite-message error">{error}</div>}
-          <p className="invite-text">{t.subscriptionIntro(STARTER_MONTHLY_PRICE.toFixed(2))}</p>
+          <p className="invite-text">{t.subscriptionIntro(BASE_MONTHLY_PRICE.toFixed(2))}</p>
           <div className="invite-field">
             <label>{t.choosePlan}</label>
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
-              <input type="radio" name="plan" checked={selectedPlan === "starter"} onChange={() => setSelectedPlan("starter")} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
-              <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>{t.starterPlanOption(STARTER_MONTHLY_PRICE.toFixed(2), STARTER_PRODUCT_LIMIT)}</span>
-            </label>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
               <input type="radio" name="plan" checked={selectedPlan === "basic"} onChange={() => setSelectedPlan("basic")} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
               <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>{t.basicPlanOption(BASE_MONTHLY_PRICE.toFixed(2), BASE_PRODUCT_LIMIT)}</span>

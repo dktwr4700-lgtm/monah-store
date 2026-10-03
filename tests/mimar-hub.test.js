@@ -77,8 +77,11 @@ describe("ربط مركز معمار", () => {
   });
   it("يعرض الباقات بأسعارها", async () => {
     const r = await hub({ query: { action: "catalog" } });
-    expect(r.catalog.map((c) => c.item)).toEqual(["starter", "basic", "pro"]);
-    expect(r.catalog.map((c) => c.price)).toEqual([0.5, 5, 10]);
+    // «ابدأ» عرض مؤقت انتهى: ما ينباع، بس أكواده القديمة تتفعّل
+    expect(r.catalog.map((c) => c.item)).toEqual(["basic", "pro"]);
+    expect(r.catalog.map((c) => c.price)).toEqual([5, 10]);
+    const old = await hub({ method: "POST", body: { action: "mint", agent: "a@x.om", item: "starter", count: 1, unit: 0.2, batch: "old" } });
+    expect(old.status).toBe(400);
   });
   it("يطلع أكواد لوكيل بدون تكرار الدفعة، وللبيع المباشر لازم يكون معها لمين", async () => {
     const body = { action: "mint", agent: "Agent@X.om", agentName: "حمد", item: "basic", count: 3, unit: 2.5, batch: "b1" };
@@ -171,5 +174,17 @@ describe("روابط وكلاء معمار", () => {
     expect(r.events.map((e) => [e.id, e.item, e.amount, e.kind]).sort()).toEqual([["MN-AAAA-CCCC", "basic", 5, "code"], ["RENEW-v1-1", "pro", 10, "card"]]);
     expect((await hub({ query: { action: "referrals" } })).events).toHaveLength(2);
     expect((await hub({ query: { action: "referrals", ref: "a b" } })).status).toBe(400);
+  });
+});
+
+describe("انتهاء عرض «ابدأ»", () => {
+  it("المتجر اللي على «ابدأ» يتجدد على الأساسي، وما يرقّي إلا لبرو", async () => {
+    const { renewalPlanFor, renewalPriceForPlan, upgradeOptionsForPlan } = await import("../src/subscriptionCatalog.js");
+    expect(renewalPlanFor("starter")).toBe("basic");
+    expect(renewalPriceForPlan("starter")).toBe(5);
+    expect(renewalPriceForPlan("pro")).toBe(10);
+    expect(upgradeOptionsForPlan("starter")).toEqual(["pro"]);
+    expect(upgradeOptionsForPlan("basic")).toEqual(["pro"]);
+    expect(upgradeOptionsForPlan("pro")).toEqual([]);
   });
 });
