@@ -7,6 +7,7 @@ import { isAllowedProof, canSellerConfirmOrder } from "../lib/order-policy.js";
 import { ompayRequest as ompayRequestRaw, ompayChargeSucceeded } from "../lib/ompay-client.js";
 import { paypalRequest as paypalRequestRaw, paypalOrderSucceeded, paypalApproveUrl } from "../lib/paypal-client.js";
 import { monahFacts, MONAH_SIGNUP_URL } from "../lib/monah-knowledge.js";
+import { toText } from "../lib/mail-text.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -160,6 +161,7 @@ async function notifySellerOfProof(order, orderId) {
           to: [sellerEmail],
           subject: `طلب جديد بانتظار تأكيدك${storeName ? " - " + storeName : ""}`,
           html,
+          text: toText(html),
         }),
         signal: controller.signal,
       });
@@ -228,6 +230,7 @@ async function notifySellerOfCardPayment(order, orderId) {
           to: [sellerEmail],
           subject: `دفعة بطاقة جديدة${storeName ? " - " + storeName : ""}`,
           html,
+          text: toText(html),
         }),
         signal: controller.signal,
       });
@@ -293,6 +296,7 @@ async function notifyBuyerOfConfirmation(order, orderId, deliveryToken) {
           to: [buyerEmail],
           subject: `منتجك جاهز للتنزيل${storeName ? " - " + storeName : ""}`,
           html,
+          text: toText(html),
         }),
         signal: controller.signal,
       });

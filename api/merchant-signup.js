@@ -3,6 +3,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ompayRequest, ompayChargeSucceeded } from "../lib/ompay-client.js";
 import { PLAN_CODE_ITEMS, PLAN_CODE_PATTERN, PlanCodeError, cleanRef, hubHandler, normalizePlanCode, planCodeResult, recordReferralPayment } from "../lib/mimar-hub.js";
 import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
+import { toText } from "../lib/mail-text.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 
@@ -199,6 +200,7 @@ async function notifyAdminOfNewSeller(request, kind = "activated") {
           to: [ADMIN_NOTIFY_EMAIL],
           subject,
           html,
+          text: toText(html),
         }),
         signal: controller.signal,
       });
@@ -840,7 +842,7 @@ async function sendTipEmail(seller, step) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
-      body: JSON.stringify({ from: "مُونة <notifications@monah-app.com>", to: [seller.email], subject: step.subject, html }),
+      body: JSON.stringify({ from: "مُونة <notifications@monah-app.com>", to: [seller.email], subject: step.subject, html, text: toText(html) }),
       signal: controller.signal,
     });
     if (!response.ok) {
