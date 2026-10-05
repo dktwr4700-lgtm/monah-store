@@ -3,7 +3,7 @@ import { storedReferral } from "./referral.js";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import useRunawayButton from "./useRunawayButton.js";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_PRODUCT_LIMIT, addOnsCostForPlan, planIncludesAddOn } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const CTA_WIDTH = 168;
@@ -76,7 +76,8 @@ const ST_T = {
     laterToDashboard: "لاحقًا — رجوع للوحة التاجر",
     choosePlan: "اختر باقتك",
     basicPlanOption: (price, limit) => `الأساسية — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
-    proPlanOption: (price, limit) => `برو — ${price} ر.ع شهريًا — حتى ${limit} منتج`,
+    proPlanOption: (price, limit) => `برو — ${price} ر.ع شهريًا — حتى ${limit} منتج + كل الإضافات مشمولة`,
+    includedInPro: "مشمولة في برو",
     optionalAddOns: "إضافات اختيارية (تقدر تتخطاها الآن)",
     perMonth: "ر.ع/شهريًا",
     couponLabel: "كود خصم (اختياري)", couponPlaceholder: "اكتب الكود هنا", checking: "...", check: "تحقق",
@@ -119,7 +120,8 @@ const ST_T = {
     laterToDashboard: "Later — back to the seller dashboard",
     choosePlan: "Choose your plan",
     basicPlanOption: (price, limit) => `Basic — ${price} OMR/month — up to ${limit} products`,
-    proPlanOption: (price, limit) => `Pro — ${price} OMR/month — up to ${limit} products`,
+    proPlanOption: (price, limit) => `Pro — ${price} OMR/month — up to ${limit} products + all add-ons included`,
+    includedInPro: "Included in Pro",
     optionalAddOns: "Optional add-ons (you can skip these for now)",
     perMonth: "OMR/month",
     couponLabel: "Discount code (optional)", couponPlaceholder: "Enter the code here", checking: "...", check: "Check",
@@ -347,7 +349,8 @@ export default function StartStore() {
     setSelectedAddOns((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
   }
 
-  const addOnsTotal = selectedAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
+  // برو يشمل كل الإضافات، فما تنحسب عليه
+  const addOnsTotal = addOnsCostForPlan(selectedPlan, selectedAddOns);
   const planPrice = selectedPlan === "pro" ? PRO_MONTHLY_PRICE : BASE_MONTHLY_PRICE;
   const paymentTotal = Math.max(0.1, planPrice + addOnsTotal - couponDiscount);
 
@@ -452,15 +455,18 @@ export default function StartStore() {
           </div>
           <div className="invite-field">
             <label>{t.optionalAddOns}</label>
-            {ADD_ON_CATALOG.filter((item) => item.key !== "digitalSelling").map((item) => (
-              <label key={item.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: "pointer", fontWeight: 400 }}>
-                <input type="checkbox" checked={selectedAddOns.includes(item.key)} onChange={() => toggleAddOn(item.key)} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
+            {ADD_ON_CATALOG.filter((item) => item.key !== "digitalSelling").map((item) => {
+              const included = planIncludesAddOn(selectedPlan, item.key);
+              return (
+              <label key={item.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, cursor: included ? "default" : "pointer", fontWeight: 400 }}>
+                <input type="checkbox" checked={included || selectedAddOns.includes(item.key)} disabled={included} onChange={() => toggleAddOn(item.key)} style={{ marginTop: 3, width: "auto", flexShrink: 0 }} />
                 <span style={{ fontSize: 12.5, lineHeight: 1.7, flex: 1, minWidth: 0 }}>
-                  <b>{lang === "en" ? item.titleEn : item.title}</b> — <span style={{ color: "#403D35" }}>+{item.price.toFixed(2)} {t.perMonth}</span>
+                  <b>{lang === "en" ? item.titleEn : item.title}</b> — <span style={{ color: included ? "#37724B" : "#403D35", fontWeight: included ? 700 : 400 }}>{included ? t.includedInPro : `+${item.price.toFixed(2)} ${t.perMonth}`}</span>
                   <br /><span style={{ color: "#5A5648" }}>{lang === "en" ? item.descEn : item.desc}</span>
                 </span>
               </label>
-            ))}
+              );
+            })}
           </div>
           <div className="invite-field">
             <label>{t.couponLabel}</label>

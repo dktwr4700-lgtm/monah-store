@@ -2,7 +2,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ompayRequest, ompayChargeSucceeded } from "../lib/ompay-client.js";
 import { PLAN_CODE_ITEMS, PLAN_CODE_PATTERN, PlanCodeError, cleanRef, hubHandler, normalizePlanCode, planCodeResult, recordReferralPayment } from "../lib/mimar-hub.js";
-import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js";
+import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, addOnsCostForPlan } from "../src/subscriptionCatalog.js";
 import { toText } from "../lib/mail-text.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
@@ -90,8 +90,9 @@ function cleanAddOnKeys(value) {
   return Array.from(new Set(requested.filter((key) => valid.has(key))));
 }
 
-function addOnsTotal(keys) {
-  return keys.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
+// سعر الإضافات حسب الباقة: برو تشملها كلها بدون رسوم
+function addOnsTotal(keys, plan) {
+  return addOnsCostForPlan(plan, keys);
 }
 
 async function resolveSignupCoupon(rawCode) {
@@ -392,7 +393,7 @@ async function createCardCharge(req, res) {
   const selectedAddOns = cleanAddOnKeys(req.body?.addOns).filter((key) => key !== "digitalSelling");
   const selectedPlan = resolvePlan(req.body?.plan);
   const { discountAmount, couponCode } = await resolveSignupCoupon(req.body?.couponCode);
-  const rawAmount = PLAN_PRICES[selectedPlan] + addOnsTotal(selectedAddOns);
+  const rawAmount = PLAN_PRICES[selectedPlan] + addOnsTotal(selectedAddOns, selectedPlan);
   const amount = Math.max(0.1, Number((rawAmount - discountAmount).toFixed(2)));
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `SUB-${account.uid}-${Date.now()}`;
@@ -552,7 +553,7 @@ async function createAddOnCharge(req, res) {
   if (newAddOns.includes("digitalSelling") && !seller.paymentGateway?.provider) {
     throw new SignupError(409, "اربط بوابة الدفع الخاصة بك أولًا من الإعدادات قبل تفعيل إضافة البيع الرقمي.");
   }
-  const amount = addOnsTotal(newAddOns);
+  const amount = addOnsTotal(newAddOns, seller.plan);
 
   // "البيع الرقمي" مجاني (جزء من فتح المتجر) — لو كل الإضافات المطلوبة
   // مجانية، نفعّلها فورًا بدون المرور ببوابة الدفع.
@@ -631,7 +632,7 @@ async function createRenewalCharge(req, res) {
   }
 
   const renewalPlan = upgradePlanFor(seller, req.body?.plan);
-  const amount = PLAN_PRICES[renewalPlan] + addOnsTotal(seller.activeAddOns || []);
+  const amount = PLAN_PRICES[renewalPlan] + addOnsTotal(seller.activeAddOns || [], renewalPlan);
 
   const origin = `https://${req.headers.host || "monah-app.com"}`;
   const referenceNumber = `RENEW-${account.uid}-${Date.now()}`;

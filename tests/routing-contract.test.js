@@ -316,7 +316,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
     expect(dashboard).toContain("الهوية والمنتجات والمشاركة وQR والمنتجات المجانية وتتبع الزيارات.");
     expect(dashboard).toContain("مفعّل");
-    expect(dashboard).toContain("activeAddOns.includes(item.key)");
+    expect(dashboard).toContain("enabledAddOns.includes(item.key)");
     expect(dashboard).toContain("toggleAddOnSelection");
     expect(dashboard).toContain('domainSignupRequest("create_addon_charge"');
     expect(dashboard).toContain('domainSignupRequest("create_renewal_charge"');
@@ -334,7 +334,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(signupApi).toContain('action === "create_renewal_charge"');
     expect(signupApi).toContain('action === "verify_renewal_charge"');
     expect(signupApi).toContain("function cleanAddOnKeys(value)");
-    expect(signupApi).toContain("function addOnsTotal(keys)");
+    expect(signupApi).toContain("function addOnsTotal(keys, plan)");
     expect(signupApi).toContain("activeAddOns: cleanAddOnKeys(request.selectedAddOns)");
 
     expect(storePayResult).toContain('addon: "verify_addon_charge"');
@@ -514,7 +514,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     expect(storePayResult).toContain('"verify_card_charge"');
 
     expect(signupApi).toContain("const PLAN_PRICES = { starter: STARTER_MONTHLY_PRICE, basic: BASE_MONTHLY_PRICE, pro: PRO_MONTHLY_PRICE }");
-    expect(signupApi).toContain('import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE } from "../src/subscriptionCatalog.js"');
+    expect(signupApi).toContain('import { ADD_ON_CATALOG, STARTER_MONTHLY_PRICE, BASE_MONTHLY_PRICE, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, addOnsCostForPlan } from "../src/subscriptionCatalog.js"');
     expect(signupApi).toContain("if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) return res.status(409)");
     // التسجيل المجاني: register ينشئ متجر "unpaid"، والدفع الأول يرقّيه — والبيع مقفول لين يدفع.
     expect(signupApi).toContain("plan: UNPAID_PLAN");

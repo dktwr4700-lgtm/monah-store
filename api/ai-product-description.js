@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { effectiveAddOns } from "../src/subscriptionCatalog.js";
 
 if (!getApps().length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
@@ -80,8 +81,9 @@ export default async function handler(req, res) {
   }
 
   const sellerSnap = await db.collection("sellers").doc(uid).get();
-  const activeAddOns = sellerSnap.exists ? sellerSnap.data().activeAddOns : [];
-  if (!Array.isArray(activeAddOns) || !activeAddOns.includes("aiTools")) {
+  const sellerData = sellerSnap.exists ? sellerSnap.data() : {};
+  // مفعّلها بنفسه أو مشمولة في باقته (برو)
+  if (!effectiveAddOns(sellerData.plan, sellerData.activeAddOns).includes("aiTools")) {
     return res.status(403).json({ error: "فعّل إضافة \"أدوات الذكاء\" أولًا من تبويب اشتراك متجرك." });
   }
 

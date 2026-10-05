@@ -12,7 +12,7 @@ import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase
 import { QRCodeSVG } from "qrcode.react";
 import Orders from "./Orders.jsx";
 import { watermarkImage } from "./watermarkImage.js";
-import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan, upgradeOptionsForPlan } from "./subscriptionCatalog.js";
+import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan, renewalPlanFor, upgradeOptionsForPlan, effectiveAddOns, planIncludesAddOn, addOnsCostForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 class DebugErrorBoundary extends React.Component {
@@ -874,6 +874,9 @@ const DASH_T = {
     payAndActivateAddOns: (price) => `ادفع ${price} ر.ع وفعّل الإضافات`,
     activateAddOnsFree: "فعّل الإضافات مجانًا",
     freeBadge: "مجانًا",
+    includedInPro: "مشمولة في برو",
+    proIncludesAllAddOns: "+ كل الإضافات مشمولة بدون رسوم زيادة",
+    proAllAddOnsIncluded: "باقة برو · كل الإضافات مشمولة",
     addOnBillingNote: "لما تفعّل إضافة، تدفع سعرها كاملًا الآن، ثم تدخل ضمن مبلغ تجديدك الشهري القادم تلقائيًا.",
 
     previewTitle: "معاينة — هكذا يشوفها العميل",
@@ -1422,6 +1425,9 @@ const DASH_T = {
     payAndActivateAddOns: (price) => `Pay ${price} OMR and activate the add-ons`,
     activateAddOnsFree: "Activate the add-ons for free",
     freeBadge: "Free",
+    includedInPro: "Included in Pro",
+    proIncludesAllAddOns: "+ every add-on included at no extra cost",
+    proAllAddOnsIncluded: "Pro plan · all add-ons included",
     addOnBillingNote: "When you activate an add-on, you pay its full price now, then it's automatically included in your next monthly renewal amount.",
 
     previewTitle: "Preview — this is what the customer sees",
@@ -1608,6 +1614,8 @@ export default function Dashboard() {
   const [domainBuying, setDomainBuying] = useState(false);
   const [domainMessage, setDomainMessage] = useState("");
   const [activeAddOns, setActiveAddOns] = useState([]);
+  // الإضافات الشغالة فعلًا: اللي فعّلها + اللي تشملها باقته (برو يشمل الكل)
+  const enabledAddOns = effectiveAddOns(sellerPlan, activeAddOns);
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState("");
   const [addOnSelection, setAddOnSelection] = useState([]);
   const [addOnBuying, setAddOnBuying] = useState(false);
@@ -3472,7 +3480,7 @@ export default function Dashboard() {
                 <div className="dh-field">
                   <label>{t.shortDescLabel}</label>
                   <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
-                  {activeAddOns.includes("aiTools") ? (
+                  {enabledAddOns.includes("aiTools") ? (
                     <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft("new")} disabled={descriptionDraftLoading === "new"} style={{ marginTop: 8 }}>
                       {descriptionDraftLoading === "new" ? t.preparingDraft : t.writeDescriptionDraft}
                     </button>
@@ -3643,7 +3651,7 @@ export default function Dashboard() {
                       <div className="dh-field">
                         <label>{t.shortDescLabelShort}</label>
                         <textarea rows="2" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-                        {activeAddOns.includes("aiTools") ? (
+                        {enabledAddOns.includes("aiTools") ? (
                           <button className="dh-ai-btn" type="button" onClick={() => generateDescriptionDraft(p.id, p)} disabled={descriptionDraftLoading === p.id} style={{ marginTop: 8 }}>
                             {descriptionDraftLoading === p.id ? t.preparingDraft : t.writeDescriptionDraft}
                           </button>
@@ -4090,7 +4098,7 @@ export default function Dashboard() {
             <div className="dh-card">
               <div className="dh-title" style={{ marginBottom: 10 }}>{t.whatsappAssistantTitle}</div>
               <p className="dh-hint" style={{ marginBottom: 12 }}>{t.whatsappIntro}</p>
-              {!activeAddOns.includes("whatsappAssistant") && (
+              {!enabledAddOns.includes("whatsappAssistant") && (
                 <div className="dh-hint" style={{ marginBottom: 12, background: "#FFF8E9", borderRadius: 10, padding: "9px 12px" }}>
                   {t.whatsappUpsellPrefix} <button type="button" onClick={() => setTab("subscription")} style={{ background: "none", border: 0, padding: 0, color: "#163F2E", fontWeight: 800, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t.subscriptionLinkLabel}</button> {t.whatsappUpsellSuffix}
                 </div>
@@ -4359,7 +4367,7 @@ export default function Dashboard() {
         )}
 
         {tab === "subscription" && (() => {
-          const addOnsMonthlyTotal = activeAddOns.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
+          const addOnsMonthlyTotal = addOnsCostForPlan(renewalPlanFor(sellerPlan), activeAddOns);
           const planBasePrice = renewalPriceForPlan(sellerPlan);
           const monthlyTotal = renewalPriceForPlan(sellerPlan) + addOnsMonthlyTotal;
           const selectionTotal = addOnSelection.reduce((sum, key) => sum + (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0), 0);
@@ -4417,7 +4425,7 @@ export default function Dashboard() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10, background: "#F7F7F2", borderRadius: 12, padding: "10px 12px" }}>
                 <div>
                   <b style={{ display: "block", fontSize: 12.5 }}>{isTrial ? t.upgradeAmount : t.nextRenewalAmount}</b>
-                  <span className="dh-hint">{t.baseAndActiveAddOns(activeAddOns.length)}</span>
+                  <span className="dh-hint">{sellerPlan === "pro" ? t.proAllAddOnsIncluded : t.baseAndActiveAddOns(activeAddOns.length)}</span>
                 </div>
                 <b className="mono" style={{ color: "#163F2E", whiteSpace: "nowrap" }}>{monthlyTotal.toFixed(2)} {curr}</b>
               </div>
@@ -4434,10 +4442,11 @@ export default function Dashboard() {
                 <div className="dh-title" style={{ marginBottom: 4 }}>{t.upgradePlanTitle}</div>
                 <div className="dh-hint" style={{ marginBottom: 12 }}>{t.upgradePlanHint}</div>
                 {upgradeOptionsForPlan(sellerPlan).map((plan) => {
-                  const upgradeTotal = priceForPlan(plan) + addOnsMonthlyTotal;
+                  const upgradeTotal = priceForPlan(plan) + addOnsCostForPlan(plan, activeAddOns);
                   return (
                     <div key={plan} style={{ background: "#F7F7F2", borderRadius: 12, padding: "12px 13px", marginBottom: 10 }}>
                       <b style={{ display: "block", fontSize: 13 }}>{t.upgradePlanOption(t.planNames[plan], priceForPlan(plan).toFixed(2), productLimitForPlan(plan))}</b>
+                      {plan === "pro" && <span className="dh-hint" style={{ display: "block", marginTop: 4, color: "#37724B", fontWeight: 700 }}>{t.proIncludesAllAddOns}</span>}
                       <button className="dh-btn" type="button" style={{ marginTop: 8, width: "100%" }} disabled={renewalBuying} onClick={() => renewSubscription(plan)}>
                         {renewalBuying ? t.preparingPayment : t.payAndUpgradeTo(t.planNames[plan], upgradeTotal.toFixed(2))}
                       </button>
@@ -4451,7 +4460,8 @@ export default function Dashboard() {
               <div className="dh-card" key={group}>
                 <div className="dh-title" style={{ marginBottom: 8 }}>{lang === "en" ? ADD_ON_CATALOG.find((item) => item.group === group)?.groupEn : group}</div>
                 {ADD_ON_CATALOG.filter((item) => item.group === group).map((item) => {
-                  const isActive = activeAddOns.includes(item.key);
+                  const included = planIncludesAddOn(sellerPlan, item.key);
+                  const isActive = enabledAddOns.includes(item.key);
                   const gatewayLocked = item.key === "digitalSelling" && !isActive && !gatewayConnected;
                   return (
                     <label className="dh-item" key={item.key} style={{ display: "block", cursor: isActive || gatewayLocked ? "default" : "pointer" }}>
@@ -4471,7 +4481,7 @@ export default function Dashboard() {
                             <div className="dh-hint" style={{ marginTop: 3 }}>{lang === "en" ? item.descEn : item.desc}</div>
                           </div>
                         </div>
-                        <b className="dh-item-price">{item.price > 0 ? `+${item.price.toFixed(2)} ${curr}` : t.freeBadge}</b>
+                        <b className="dh-item-price">{included ? t.includedInPro : item.price > 0 ? `+${item.price.toFixed(2)} ${curr}` : t.freeBadge}</b>
                       </div>
                       {gatewayLocked ? (
                         <span style={{ display: "inline-block", marginTop: 6, background: "#F3EBDD", color: "#9C6D1F", borderRadius: 100, padding: "4px 8px", fontSize: 9.5, fontWeight: 800 }}>

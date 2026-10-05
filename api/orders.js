@@ -8,6 +8,7 @@ import { ompayRequest as ompayRequestRaw, ompayChargeSucceeded } from "../lib/om
 import { paypalRequest as paypalRequestRaw, paypalOrderSucceeded, paypalApproveUrl } from "../lib/paypal-client.js";
 import { monahFacts, MONAH_SIGNUP_URL } from "../lib/monah-knowledge.js";
 import { toText } from "../lib/mail-text.js";
+import { effectiveAddOns } from "../src/subscriptionCatalog.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -1315,7 +1316,8 @@ async function handleWhatsappWebhook(req, res) {
         const sellerDoc = sellerSnap.docs[0];
         const seller = { id: sellerDoc.id, ...sellerDoc.data() };
         if (!seller.whatsapp?.enabled || !seller.whatsapp?.accessToken) continue;
-        if (!(seller.activeAddOns || []).includes("whatsappAssistant")) continue;
+        // مفعّلها بنفسه أو مشمولة في باقته (برو)
+        if (!effectiveAddOns(seller.plan, seller.activeAddOns).includes("whatsappAssistant")) continue;
 
         const productsSnap = await db.collection("products").where("ownerId", "==", seller.id).get();
         const products = productsSnap.docs.map((d) => d.data()).filter((p) => !p.hidden && !p.suspended).slice(0, 25);

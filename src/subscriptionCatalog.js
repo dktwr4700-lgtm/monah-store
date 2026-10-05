@@ -47,3 +47,18 @@ export const ADD_ON_CATALOG = [
   { key: "aiTools", group: "أدوات الذكاء", groupEn: "AI tools", title: "أدوات الذكاء", titleEn: "AI tools", price: 1, desc: "وصف منتج جذاب ونص إعلان جاهز خلال ثوانٍ يكتبه لك الذكاء الاصطناعي — تراجعه وتنشره بنفسك.", descEn: "A compelling product description and ready ad copy, written for you by AI within seconds — you review it and publish it yourself.", status: "متاح الآن", ready: true },
   { key: "whatsappAssistant", group: "مساعد واتساب", groupEn: "WhatsApp assistant", title: "مساعد واتساب الذكي", titleEn: "WhatsApp AI assistant", price: 2, desc: "اربط رقم واتساب أعمالك، والمساعد يرد تلقائي على استفسارات عملائك عن منتجاتك وأسعارك ويرسل لهم رابط الشراء — على مدار الساعة. يحتاج حساب WhatsApp Business API خاص بك من Meta.", descEn: "Connect your WhatsApp Business number, and the assistant automatically answers customer questions about your products and prices and sends them the purchase link — around the clock. Requires your own WhatsApp Business API account from Meta.", status: "متاح الآن", ready: true },
 ];
+
+// برو يفتح كل الإضافات المدفوعة بدون أي رسوم زيادة. «البيع الرقمي» مجاني أصلًا
+// ويبقى اختياري لأنه يحتاج بوابة دفع التاجر مربوطة.
+export const PRO_INCLUDED_ADD_ONS = ADD_ON_CATALOG.filter((item) => item.price > 0).map((item) => item.key);
+export function planIncludesAddOn(plan, key) {
+  return plan === "pro" && PRO_INCLUDED_ADD_ONS.includes(key);
+}
+// الإضافات اللي شغالة فعلًا عند التاجر: اللي فعّلها بنفسه + اللي تشملها باقته
+export function effectiveAddOns(plan, activeAddOns) {
+  return Array.from(new Set([...(Array.isArray(activeAddOns) ? activeAddOns : []), ...(plan === "pro" ? PRO_INCLUDED_ADD_ONS : [])]));
+}
+// كم يدفع على الإضافات فوق سعر الباقة: المشمولة في باقته ما تنحسب
+export function addOnsCostForPlan(plan, keys) {
+  return (keys || []).reduce((sum, key) => sum + (planIncludesAddOn(plan, key) ? 0 : (ADD_ON_CATALOG.find((item) => item.key === key)?.price || 0)), 0);
+}
