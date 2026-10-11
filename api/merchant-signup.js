@@ -939,11 +939,78 @@ async function sendOnboardingReminders(req, res) {
   return res.status(200).json({ ok: true, checked: checkedCount, sent: sentCount });
 }
 
+// تذكير التجديد: إيميل للتاجر قبل ما ينتهي اشتراكه بـ 5 أيام، وقبلها بيوم، ويوم الانتهاء.
+// نخزن اللي انرسل على وثيقة التاجر مربوط بتاريخ الانتهاء (renewalReminders)، فلما يجدد
+// ويتغير التاريخ يبدأ العد من جديد تلقائيًا. لو فات يوم ما اشتغل فيه الجدول نرسل الأقرب
+// بس (ما نرسل رسالتين ورا بعض). Vercel Cron يستدعيه يوميًا (vercel.json) بـ CRON_SECRET.
+const RENEWAL_REMINDER_DAYS = [5, 1, 0];
+
+function renewalReminderDue(daysLeft, sent) {
+  if (daysLeft < 0 || daysLeft > RENEWAL_REMINDER_DAYS[0]) return null;
+  const stage = Math.min(...RENEWAL_REMINDER_DAYS.filter((day) => day >= daysLeft));
+  return sent.includes(stage) ? null : stage;
+}
+
+function renewalReminderStep(seller, stage) {
+  const plan = renewalPlanFor(seller.plan);
+  const amount = PLAN_PRICES[plan] + addOnsTotal(seller.activeAddOns || [], plan);
+  const until = new Date(`${seller.subscriptionExpiresAt}T00:00:00Z`).toLocaleDateString("ar-OM-u-nu-latn", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  const price = `<b>${amount.toFixed(2)} ر.ع</b>`;
+  if (stage === 0) {
+    return {
+      subject: "انتهى اشتراك متجرك بمُونة — جدّده عشان يرجع يبيع",
+      heading: "اشتراك متجرك انتهى اليوم",
+      body: `<p>متجرك الحين ما يستقبل طلبات جديدة. منتجاتك وبياناتك كلها محفوظة، وترجع تبيع أول ما تجدد.</p><p>التجديد لشهر كامل: ${price}.</p>`,
+      ctaLabel: "جدّد الحين",
+      ctaHash: "#dashboard/subscription",
+    };
+  }
+  return {
+    subject: stage === 1 ? "اشتراك متجرك ينتهي بكرة" : `باقي ${stage} أيام على نهاية اشتراك متجرك`,
+    heading: stage === 1 ? "اشتراك متجرك ينتهي بكرة" : `اشتراك متجرك ينتهي بعد ${stage} أيام`,
+    body: `<p>اشتراكك بمُونة ساري لين <b>${until}</b>. بعدها يوقف المتجر عن استقبال الطلبات لين تجدد.</p><p>جدّد من الحين وما ينقطع البيع — التجديد لشهر كامل: ${price}.</p>`,
+    ctaLabel: "جدّد اشتراكك",
+    ctaHash: "#dashboard/subscription",
+  };
+}
+
+async function sendRenewalReminders(req, res) {
+  const authHeader = req.headers.authorization || "";
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const today = isoDate(new Date());
+  const horizon = isoDate(new Date(Date.now() + RENEWAL_REMINDER_DAYS[0] * DAY_MS));
+  const snap = await db.collection("sellers")
+    .where("subscriptionExpiresAt", ">=", today)
+    .where("subscriptionExpiresAt", "<=", horizon)
+    .get();
+  let sentCount = 0;
+  for (const doc of snap.docs) {
+    const seller = { id: doc.id, ...doc.data() };
+    if (!seller.email || seller.disabled || isUnpaidSeller(seller)) continue;
+    const daysLeft = Math.round((new Date(`${seller.subscriptionExpiresAt}T00:00:00Z`) - new Date(`${today}T00:00:00Z`)) / DAY_MS);
+    const record = seller.renewalReminders?.expiresAt === seller.subscriptionExpiresAt ? seller.renewalReminders : { sent: [] };
+    const stage = renewalReminderDue(daysLeft, record.sent || []);
+    if (stage === null) continue;
+    const sent = await sendTipEmail(seller, renewalReminderStep(seller, stage));
+    if (!sent) continue;
+    await doc.ref.update({
+      renewalReminders: { expiresAt: seller.subscriptionExpiresAt, sent: RENEWAL_REMINDER_DAYS.filter((day) => day >= stage) },
+    });
+    sentCount++;
+  }
+  return res.status(200).json({ ok: true, checked: snap.size, sent: sentCount });
+}
+
 export default async function handler(req, res) {
   // ربط «مركز معمار» (من خادم لخادم): هنا بدل ملف مستقل عشان ما نزيد عدد دوال Vercel
   if (req.query?.hub === "1") return await hubHandler(db, req, res);
   if (req.method === "GET" && req.query?.job === "onboarding_reminders") {
     return await sendOnboardingReminders(req, res);
+  }
+  if (req.method === "GET" && req.query?.job === "renewal_reminders") {
+    return await sendRenewalReminders(req, res);
   }
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
