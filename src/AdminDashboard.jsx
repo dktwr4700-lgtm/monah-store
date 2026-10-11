@@ -525,8 +525,8 @@ const ADMIN_T = {
 
 // نصوص التصميم الجديد للوحة (القائمة الجانبية وصفحة المتجر)
 const ADMIN_EXTRA_T = {
-  ar: { homeTab: "الرئيسية", sellersSub: "كل المتاجر في مونة. اضغط على أي متجر لعرض تفاصيله وإدارته.", storeCol: "المتجر", statusCol: "الحالة", planCol: "الباقة", expiresCol: "ساري لين", ordersCol: "الطلبات", salesCol: "المبيعات", expiringSoonPill: "قارب ينتهي", settingsTab: "الإعدادات", paymentTab: "الدفع", openStore: "فتح المتجر", productsCount: "المنتجات", confirmedSales: "المبيعات المؤكدة", accountSection: "الاشتراك والحساب", dangerZone: "منطقة الخطر", dangerText: "الحذف نهائي ويشيل المتجر ومنتجاته كلها.", menu: "القائمة", registeredOn: "سجّل" },
-  en: { homeTab: "Overview", sellersSub: "Every store on Monah. Click a store to see and manage its details.", storeCol: "Store", statusCol: "Status", planCol: "Plan", expiresCol: "Valid until", ordersCol: "Orders", salesCol: "Sales", expiringSoonPill: "Expiring soon", settingsTab: "Settings", paymentTab: "Payment", openStore: "Open store", productsCount: "Products", confirmedSales: "Confirmed sales", accountSection: "Subscription & account", dangerZone: "Danger zone", dangerText: "Deleting is permanent and removes the store and all its products.", menu: "Menu", registeredOn: "Joined" },
+  ar: { homeTab: "الرئيسية", sellersSub: "كل المتاجر في مونة. اضغط على أي متجر لعرض تفاصيله وإدارته.", storeCol: "المتجر", statusCol: "الحالة", planCol: "الباقة", expiresCol: "ساري لين", ordersCol: "الطلبات", salesCol: "المبيعات", expiringSoonPill: "قارب ينتهي", settingsTab: "الإعدادات", paymentTab: "الدفع", openStore: "فتح المتجر", productsCount: "المنتجات", confirmedSales: "المبيعات المؤكدة", accountSection: "الاشتراك والحساب", dangerZone: "منطقة الخطر", dangerText: "الحذف نهائي ويشيل المتجر ومنتجاته كلها.", menu: "القائمة", registeredOn: "سجّل", monahCollectTitle: "الدفع بالبطاقة عبر مونة", monahCollectHint: "عملاء هذا المتجر يدفعون بالبطاقة، والفلوس تدخل حساب OmPay حق مونة. ويوصلك إيميل مع كل دفعة باسم المتجر والمبلغ، وتحوّل له مبيعاته كل أسبوع.", monahCollectOn: "مفعّل", monahCollectOff: "غير مفعّل", turnOn: "تفعيل", turnOff: "إيقاف", monahCollected: "دخل حساب مونة", monahPaidOut: "حوّلته له", monahDue: "عليك تحوّل له", markPaidOut: "حوّلت له", confirmPayout: (amount, store) => `تأكد إنك حوّلت ${amount} ر.ع لـ«${store}»؟ بنعلّم كل مبيعاته المستحقة إنها انحوّلت ونرسل له إيميل.`, monahSales: "مبيعات البطاقة عبر مونة", noMonahSales: "ما فيه مبيعات بالبطاقة عبر مونة بعد.", paidOutPill: "انحوّل", duePill: "مستحق", actionFailed: "تعذر تنفيذ العملية الآن." },
+  en: { homeTab: "Overview", sellersSub: "Every store on Monah. Click a store to see and manage its details.", storeCol: "Store", statusCol: "Status", planCol: "Plan", expiresCol: "Valid until", ordersCol: "Orders", salesCol: "Sales", expiringSoonPill: "Expiring soon", settingsTab: "Settings", paymentTab: "Payment", openStore: "Open store", productsCount: "Products", confirmedSales: "Confirmed sales", accountSection: "Subscription & account", dangerZone: "Danger zone", dangerText: "Deleting is permanent and removes the store and all its products.", menu: "Menu", registeredOn: "Joined", monahCollectTitle: "Card payments via Monah", monahCollectHint: "This store's customers pay by card into Monah's OmPay account. You get an email for every payment with the store and amount, and you transfer its sales weekly.", monahCollectOn: "On", monahCollectOff: "Off", turnOn: "Turn on", turnOff: "Turn off", monahCollected: "Collected by Monah", monahPaidOut: "Transferred", monahDue: "Due to store", markPaidOut: "I transferred it", confirmPayout: (amount, store) => `Confirm you transferred ${amount} OMR to "${store}"? All its due sales will be marked as transferred and the seller emailed.`, monahSales: "Card sales via Monah", noMonahSales: "No card sales via Monah yet.", paidOutPill: "Transferred", duePill: "Due", actionFailed: "Could not complete this right now." },
 };
 
 function toMillis(value) {
@@ -592,6 +592,7 @@ export default function AdminDashboard() {
   const [openSellerId, setOpenSellerId] = useState(null);
   const [sellerTab, setSellerTab] = useState("settings");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [monahBusyId, setMonahBusyId] = useState(null);
   const [conversionPeriod, setConversionPeriod] = useState("30");
   const [allProducts, setAllProducts] = useState([]);
   const [allProductsLoading, setAllProductsLoading] = useState(false);
@@ -1022,6 +1023,41 @@ export default function AdminDashboard() {
     setSavingPlanId(null);
   }
 
+  // تشغيل/إيقاف «الدفع بالبطاقة عبر مونة» لمتجر واحد (المالك بس يقدر، وقواعد Firestore تمنع التاجر)
+  async function toggleMonahCollect(seller) {
+    const enabled = !seller.monahCollect?.enabled;
+    setMonahBusyId(seller.id);
+    try {
+      const value = { enabled, changedAt: serverTimestamp(), changedBy: currentUser.email };
+      await updateDoc(doc(db, "sellers", seller.id), { monahCollect: value });
+      setSellers((prev) => prev.map((x) => (x.id === seller.id ? { ...x, monahCollect: { ...value, changedAt: new Date() } } : x)));
+    } catch (e) {
+      console.error(e);
+      window.alert(t.actionFailed);
+    }
+    setMonahBusyId(null);
+  }
+
+  // المالك حوّل للتاجر: الخادم يعلّم مبيعاته المستحقة إنها انحوّلت ويرسل له إيميل
+  async function markMonahPayout(seller, amount) {
+    if (!window.confirm(t.confirmPayout(amount.toFixed(3), seller.storeName || t.noNameFallback))) return;
+    setMonahBusyId(seller.id);
+    try {
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ action: "admin_monah_payout", ownerId: seller.id }),
+      });
+      if (!response.ok) throw new Error("payout failed");
+      await loadOrders();
+    } catch (e) {
+      console.error(e);
+      window.alert(t.actionFailed);
+    }
+    setMonahBusyId(null);
+  }
+
   async function deleteOrder(order) {
     const ok = window.confirm(t.confirmDeleteOrder(order.productName || t.orderFallback));
     if (!ok) return;
@@ -1436,6 +1472,44 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               )}
+
+              {sellerTab === "payment" && (() => {
+                const monahOrders = sellerOrders.filter((o) => o.collectedByMonah && o.status === "confirmed");
+                const sumOf = (list) => list.reduce((sum, o) => sum + Number(o.price || 0), 0);
+                const collected = sumOf(monahOrders);
+                const paidOut = sumOf(monahOrders.filter((o) => o.payoutAt));
+                const due = collected - paidOut;
+                const on = Boolean(s.monahCollect?.enabled);
+                return (
+                  <div className="mo-card mo-cb" style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: 14, border: "1px dashed #C9D7B8", borderRadius: 12, background: "#FAFCF4" }}>
+                      <div style={{ flex: "1 1 260px" }}>
+                        <div className="mo-sec" style={{ margin: 0 }}>{t.monahCollectTitle} <span className={"mo-pill" + (on ? " ok" : "")}>{on ? t.monahCollectOn : t.monahCollectOff}</span></div>
+                        <div style={{ fontSize: 12.5, color: "#6F7A70", marginTop: 4, lineHeight: 1.7 }}>{t.monahCollectHint}</div>
+                      </div>
+                      <button type="button" className={"seller-btn" + (on ? " warn" : "")} style={on ? null : { background: "#163A2B", color: "#fff", border: 0 }} disabled={monahBusyId === s.id} onClick={() => toggleMonahCollect(s)}>{monahBusyId === s.id ? t.savingEllipsis : on ? t.turnOff : t.turnOn}</button>
+                    </div>
+                    {(on || monahOrders.length > 0) && (
+                      <>
+                        <div className="mo-mini" style={{ border: "1px solid #E6E1D3", borderRadius: 12, marginTop: 14 }}>
+                          <div><small>{t.monahCollected}</small><b className="mo-n">{collected.toFixed(3)}</b></div>
+                          <div><small>{t.monahPaidOut}</small><b className="mo-n">{paidOut.toFixed(3)}</b></div>
+                          <div><small>{t.monahDue}</small><b className="mo-n" style={{ color: due > 0 ? "#9A6A16" : undefined }}>{due.toFixed(3)}</b></div>
+                          <div style={{ display: "flex", alignItems: "center" }}><button type="button" className="seller-btn" style={{ background: "#163A2B", color: "#fff", border: 0 }} disabled={due <= 0 || monahBusyId === s.id} onClick={() => markMonahPayout(s, due)}>{t.markPaidOut}</button></div>
+                        </div>
+                        <div className="mo-sec" style={{ marginTop: 16 }}>{t.monahSales}</div>
+                        {monahOrders.length === 0 && <div className="detail-empty">{t.noMonahSales}</div>}
+                        {monahOrders.map((o) => (
+                          <div className="detail-row" key={o.id}>
+                            <span><bdi>{o.productName || t.orderFallback}</bdi> <small style={{ color: "#6F7A70" }}>· <bdi>{o.confirmedAt?.toDate ? o.confirmedAt.toDate().toLocaleDateString(dateLocale) : ""}</bdi></small></span>
+                            <span style={{ display: "flex", gap: 8, alignItems: "center" }}><b className="mo-n">{Number(o.price || 0).toFixed(3)}</b> {curr} <span className={"mo-pill" + (o.payoutAt ? " ok" : " warn")}>{o.payoutAt ? t.paidOutPill : t.duePill}</span></span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
 
               {sellerTab === "payment" && (
                 <div className="mo-card mo-cb">

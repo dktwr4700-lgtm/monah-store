@@ -70,6 +70,8 @@ function sellerPaymentDetails(seller) {
 // الدفع بالبطاقة يحتاج الاثنين معًا: التاجر دافع اشتراك إضافة "البيع الرقمي"،
 // وربط بوابة دفعه الخاصة. أي واحد بدون الثاني ما يكفي.
 function sellerCardPaymentAvailable(seller) {
+  // متجر فعّل له المالك «الدفع بالبطاقة عبر مونة»: الفلوس تدخل حساب OmPay حق مونة وتنحوّل له أسبوعيًا
+  if (seller.monahCollect?.enabled) return true;
   const addOnActive = Array.isArray(seller.activeAddOns) && seller.activeAddOns.includes("digitalSelling");
   return addOnActive && Boolean(seller.paymentGateway?.provider);
 }
@@ -184,7 +186,7 @@ async function notifySellerOfProof(order, orderId) {
 // OmPay — بعكس التحويل اليدوي، هذا الطلب لا يحتاج أي مراجعة أو تأكيد من
 // البائع (فُتح التسليم للعميل تلقائيًا)، فقط نخبره إن مبلغًا دخل حسابه.
 // أفضل-جهد فقط: أي فشل هنا ما يوقف تأكيد الطلب نفسه.
-async function notifySellerOfCardPayment(order, orderId) {
+async function notifySellerOfCardPayment(order, orderId, { viaMonah = false } = {}) {
   if (!RESEND_API_KEY) {
     console.error("notifySellerOfCardPayment: skipped, RESEND_API_KEY is not set in this environment");
     return;
@@ -217,7 +219,7 @@ async function notifySellerOfCardPayment(order, orderId) {
         <h2 style="margin:0 0 12px">دفعة بطاقة جديدة 🎉</h2>
         <p>عميل دفع بالبطاقة لطلب في متجرك${storeName ? ` "${storeName}"` : ""} على مُونة، وتأكدت العملية تلقائيًا عبر بوابة الدفع.</p>
         <p><strong>المنتج:</strong> ${items}</p>
-        <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع — وصل مباشرة لحسابك في بوابة الدفع.</p>
+        <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع — ${viaMonah ? "وصل لحساب مُونة، ونحوّله لك مع مبيعات الأسبوع (بعد رسوم بوابة الدفع)." : "وصل مباشرة لحسابك في بوابة الدفع."}</p>
         <p>فُتح التنزيل للعميل تلقائيًا، ما تحتاجين تراجعين أو تؤكدين شي بنفسك لهذا الطلب.</p>
       </div>`;
     const controller = new AbortController();
@@ -797,6 +799,11 @@ function chargeRedirectUrl(charge) {
 async function sellerGatewayCredentials(ownerId) {
   const sellerSnap = await db.collection("sellers").doc(ownerId).get();
   const seller = sellerSnap.exists ? sellerSnap.data() : {};
+  // استثناء واحد يفعّله المالك بنفسه من لوحة الإدارة: الدفع يمر على بوابة OmPay حق مونة
+  // (مفاتيح الخادم، ما تنحفظ عند التاجر أبدًا)، ومونة تحوّل للتاجر مبيعاته كل أسبوع.
+  if (seller.monahCollect?.enabled) {
+    return { provider: "ompay", platform: true };
+  }
   const gateway = seller.paymentGateway;
   if (!gateway?.provider) {
     throw new OrderError(409, "صاحب المتجر لم يربط بوابة دفع بعد. استخدم التحويل اليدوي.");
@@ -831,7 +838,8 @@ async function createOmpayCharge(order, orderId, orderRef, origin, credentials, 
       if (!result2.alreadyConfirmed) {
         await grantRepeatCoupon(order.ownerId, order.buyerUid);
         await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
-        await notifySellerOfCardPayment(order, orderId);
+        await notifySellerOfCardPayment(order, orderId, { viaMonah: Boolean(credentials.platform) });
+        if (credentials.platform) await notifyAdminOfMonahPayment(order, orderId);
       }
       return { alreadyPaid: true, type: result2.type };
     }
@@ -849,7 +857,7 @@ async function createOmpayCharge(order, orderId, orderRef, origin, credentials, 
   if (!redirectUrl) {
     throw new OrderError(502, "تعذر تجهيز صفحة الدفع الآن. جرب التحويل اليدوي.");
   }
-  await orderRef.update({ ompayReferenceNumber: referenceNumber });
+  await orderRef.update({ ompayReferenceNumber: referenceNumber, ...(credentials.platform ? { collectedByMonah: true } : {}) });
   return { url: redirectUrl };
 }
 
@@ -926,7 +934,8 @@ async function verifyOmpayCharge(order, orderId, orderRef, credentials, account)
   if (!result2.alreadyConfirmed) {
     await grantRepeatCoupon(order.ownerId, order.buyerUid);
     await notifyBuyerOfConfirmation(order, orderId, result2.deliveryToken);
-    await notifySellerOfCardPayment(order, orderId);
+    await notifySellerOfCardPayment(order, orderId, { viaMonah: Boolean(credentials.platform) });
+    if (credentials.platform) await notifyAdminOfMonahPayment(order, orderId);
   }
   return { paid: true, type: result2.type, ownerId: order.ownerId };
 }
@@ -969,6 +978,93 @@ async function verifyCardCharge(req, res, account) {
     ? await verifyPaypalCharge(order, orderId, orderRef, credentials, account)
     : await verifyOmpayCharge(order, orderId, orderRef, credentials, account);
   return res.status(200).json(result);
+}
+
+// ---------- الدفع بالبطاقة عبر مونة (لمتاجر يفعّلها المالك فقط) ----------
+async function sendMonahMail(to, subject, html, tag) {
+  if (!RESEND_API_KEY) {
+    console.error(`${tag}: skipped, RESEND_API_KEY is not set in this environment`);
+    return false;
+  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+      body: JSON.stringify({ from: "مُونة <notifications@monah-app.com>", to: [to], subject, html, text: toText(html) }),
+      signal: controller.signal,
+    });
+    if (!response.ok) console.error(`${tag}: Resend rejected the request`, response.status, await response.text().catch(() => ""));
+    return response.ok;
+  } catch (err) {
+    console.error(`${tag} failed`, err?.message || err);
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// مبيعات المتجر اللي دخلت حساب مونة وما انحوّلت له بعد
+async function monahOutstanding(ownerId) {
+  const snap = await db.collection("orders").where("ownerId", "==", ownerId).where("collectedByMonah", "==", true).get();
+  const due = snap.docs.filter((d) => d.data().status === "confirmed" && !d.data().payoutAt);
+  return { docs: due, amount: due.reduce((sum, d) => sum + Number(d.data().price || 0), 0) };
+}
+
+// إيميل للمالك مع كل دفعة: كم المبلغ ولأي متجر، وكم صار له عندنا
+async function notifyAdminOfMonahPayment(order, orderId) {
+  try {
+    const sellerSnap = await db.collection("sellers").doc(order.ownerId).get();
+    const seller = sellerSnap.exists ? sellerSnap.data() : {};
+    const storeName = cleanText(seller.storeName || seller.name, 80) || "متجر";
+    const items = order.type === "bundle" && Array.isArray(order.productNames) ? order.productNames.join("، ") : (order.productName || "منتج رقمي");
+    const price = Number(order.price || 0);
+    const { amount } = await monahOutstanding(order.ownerId);
+    const html = `
+      <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#163A2B">
+        <h2 style="margin:0 0 12px">دفع جديد عبر مونة</h2>
+        <p><strong>المتجر:</strong> ${storeName}</p>
+        <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع (قبل رسوم OmPay)</p>
+        <p><strong>المنتج:</strong> ${items}</p>
+        <p><strong>رقم العملية في OmPay:</strong> <span dir="ltr">${order.ompayReferenceNumber || "—"}</span></p>
+        <p><strong>رقم الطلب:</strong> <span dir="ltr">${orderId}</span></p>
+        <p style="margin-top:14px;padding:10px 12px;background:#F5F1E6;border-radius:8px">مجموع مبيعات «${storeName}» عندك وما حوّلتها له بعد: <strong>${amount.toFixed(3)} ر.ع</strong></p>
+      </div>`;
+    await sendMonahMail(ADMIN_EMAIL, `دفع جديد عبر مونة: ${storeName} · ${price.toFixed(3)} ر.ع`, html, "notifyAdminOfMonahPayment");
+  } catch (err) {
+    console.error("notifyAdminOfMonahPayment failed", err?.message || err);
+  }
+}
+
+// المالك حوّل للتاجر: نعلّم كل مبيعاته المستحقة إنها انحوّلت، ونرسل له إيميل بالمبلغ
+async function adminMonahPayout(req, res, account) {
+  requireAdmin(account);
+  const ownerId = cleanText(req.body?.ownerId, 128);
+  if (!isValidId(ownerId)) throw new OrderError(400, "المتجر غير محدد.");
+  const { docs, amount } = await monahOutstanding(ownerId);
+  if (!docs.length) return res.status(200).json({ ok: true, count: 0, amount: 0 });
+  const batch = db.batch();
+  docs.forEach((d) => batch.update(d.ref, { payoutAt: FieldValue.serverTimestamp(), payoutBy: account.email }));
+  await batch.commit();
+  try {
+    const [sellerUser, sellerSnap] = await Promise.all([auth.getUser(ownerId).catch(() => null), db.collection("sellers").doc(ownerId).get()]);
+    const seller = sellerSnap.exists ? sellerSnap.data() : {};
+    const to = cleanText(seller.notifyEmail, 160) || sellerUser?.email;
+    if (to) {
+      const html = `
+        <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#163A2B">
+          <h2 style="margin:0 0 12px">حوّلنا لك مبيعاتك ✅</h2>
+          <p>حوّلت لك مُونة مبيعات البطاقة لمتجرك «${cleanText(seller.storeName || seller.name, 80)}».</p>
+          <p><strong>عدد الطلبات:</strong> ${docs.length}</p>
+          <p><strong>مجموع المبيعات:</strong> ${amount.toFixed(3)} ر.ع (يُخصم منها رسوم بوابة الدفع فقط)</p>
+        </div>`;
+      await sendMonahMail(to, "حوّلنا لك مبيعاتك من مُونة", html, "adminMonahPayout");
+    }
+  } catch (err) {
+    console.error("adminMonahPayout mail failed", err?.message || err);
+  }
+  return res.status(200).json({ ok: true, count: docs.length, amount });
 }
 
 async function deleteOrderAsAdmin(req, res, account) {
@@ -1397,6 +1493,7 @@ export default async function handler(req, res) {
     if (action === "create_card_charge") return await createCardCharge(req, res, account);
     if (action === "verify_card_charge") return await verifyCardCharge(req, res, account);
     if (action === "admin_delete_order") return await deleteOrderAsAdmin(req, res, account);
+    if (action === "admin_monah_payout") return await adminMonahPayout(req, res, account);
     if (action === "list_buyer") return await listBuyerOrders(req, res, account);
     if (action === "proof_url") return await proofUrl(req, res, account);
     if (action === "receipt") return await receipt(req, res, account);
