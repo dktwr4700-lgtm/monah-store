@@ -105,6 +105,79 @@ const styles = `
   .invite-link{ display:flex; align-items:center; gap:8px; border:1px solid #D8E5D8; background:#F5F9F4; border-radius:11px; padding:8px 9px; direction:ltr; }.invite-link code{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#22372C; font:10px 'JetBrains Mono',monospace; }.invite-copy{ flex-shrink:0; border:0; border-radius:8px; background:#16233F; color:#fff; padding:7px 10px; font:700 10.5px 'Cairo',sans-serif; cursor:pointer; }
   .invite-row{ background:#FFFFFF; border:1px solid #E4E0D3; border-radius:14px; padding:14px 16px; margin-bottom:10px; }.invite-row-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }.invite-name{ font-weight:800; font-size:14px; }.invite-email{ color:#403D35; font-size:11.5px; margin-top:3px; }.invite-meta{ color:#403D35; font-size:10.5px; margin-top:8px; }.badge-pending{ background:#F3EBDD; color:#8A5B18; }.badge-accepted{ background:#EAF0EB; color:#37724B; }.badge-revoked,.badge-expired{ background:#F6E9E5; color:#A34839; }
   @media (max-width:480px){.admin-wrap{padding:16px 14px 48px}.admin-header{margin-bottom:16px}.admin-tab{padding:8px 12px}.invite-panel,.invite-row{padding:14px}.invite-row-top{gap:8px}.seller-badge{flex-shrink:0}.invite-link{align-items:flex-start}.invite-copy{min-height:34px}}
+  /* التصميم الجديد: قائمة جانبية وجدول وصفحة لكل متجر (نفس ترتيب لوحة شريك، بألوان مونة) */
+  .mo-adm{ display:flex; min-height:100vh; background:#F7F5EE; }
+  .mo-side{ width:240px; flex:none; background:#163A2B; color:#E9EFE6; padding:20px 12px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+  .mo-brand{ display:flex; align-items:center; gap:10px; padding:0 8px 16px; font-family:'Almarai',sans-serif; font-weight:800; font-size:19px; }
+  .mo-brand small{ display:block; font:400 11.5px 'Cairo',sans-serif; color:#A9BDB0; }
+  .mo-brand i{ width:38px; height:38px; border-radius:11px; background:#D6F25B; color:#163A2B; display:grid; place-items:center; font-style:normal; font-weight:800; }
+  .mo-nav{ display:flex; align-items:center; gap:8px; width:100%; padding:10px 12px; border:0; border-radius:10px; background:transparent; color:#D6E2D9; font:600 13.5px 'Cairo',sans-serif; cursor:pointer; text-align:start; }
+  .mo-nav:hover{ background:rgba(255,255,255,.06); }
+  .mo-nav.on{ background:rgba(214,242,91,.15); color:#fff; }
+  .mo-cnt{ margin-inline-start:auto; font-size:11.5px; background:rgba(255,255,255,.12); padding:1px 8px; border-radius:20px; }
+  .mo-cnt.hot{ background:#D6F25B; color:#163A2B; font-weight:800; }
+  .mo-side-foot{ margin-top:auto; padding:14px 8px 0; border-top:1px solid rgba(255,255,255,.12); display:flex; gap:8px; flex-wrap:wrap; }
+  .mo-side-foot .admin-logout,.mo-side-foot .admin-lang{ color:#E9EFE6; border-color:rgba(255,255,255,.25); }
+  .mo-main{ flex:1; min-width:0; }
+  .mo-top{ display:flex; align-items:center; gap:10px; padding:12px 24px; background:#fff; border-bottom:1px solid #E6E1D3; position:sticky; top:0; z-index:5; }
+  .mo-top .admin-search{ margin:0; flex:1; background:#F7F5EE; }
+  .mo-menu{ display:none; border:1px solid #E6E1D3; background:#fff; border-radius:10px; padding:8px 12px; font-size:16px; cursor:pointer; }
+  .mo-scrim{ display:none; }
+  .admin-wrap.mo-page{ max-width:1180px; margin:0; padding:24px; }
+  .mo-h1{ font-family:'Almarai',sans-serif; font-weight:800; font-size:22px; margin-bottom:4px; }
+  .mo-sub{ color:#6F7A70; font-size:13px; margin-bottom:16px; }
+  .mo-chips{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+  .mo-chip{ border:1px solid #E6E1D3; background:#fff; border-radius:30px; padding:6px 14px; font:600 12.5px 'Cairo',sans-serif; cursor:pointer; color:#1B2A22; }
+  .mo-chip.on{ background:#163A2B; color:#fff; border-color:#163A2B; }
+  .mo-chip span{ opacity:.7; margin-inline-start:4px; }
+  .mo-chips select{ padding:7px 10px; border:1px solid #E6E1D3; border-radius:10px; font:12.5px 'Cairo',sans-serif; background:#fff; }
+  .mo-card{ background:#fff; border:1px solid #E6E1D3; border-radius:14px; }
+  .mo-table{ width:100%; border-collapse:collapse; }
+  .mo-table th{ font-size:12px; color:#6F7A70; font-weight:700; text-align:start; padding:11px 14px; border-bottom:1px solid #E6E1D3; white-space:nowrap; }
+  .mo-table td{ padding:11px 14px; border-bottom:1px solid #EFEBDE; font-size:13px; }
+  .mo-table tr:last-child td{ border-bottom:0; }
+  .mo-table tbody tr{ cursor:pointer; } .mo-table tbody tr:hover{ background:#FAF8F2; }
+  .mo-who{ display:flex; align-items:center; gap:10px; }
+  .mo-av{ width:36px; height:36px; border-radius:10px; background:#E5EDD9; color:#163A2B; display:grid; place-items:center; font-weight:800; flex:none; }
+  .mo-who b{ display:block; font-size:13.5px; } .mo-who small{ color:#6F7A70; font-size:12px; }
+  .mo-pill{ display:inline-block; font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:20px; background:#EEF0EA; color:#4F5A52; white-space:nowrap; }
+  .mo-pill.ok{ background:#E3EFE5; color:#2F6B4F; } .mo-pill.warn{ background:#F6EDD9; color:#9A6A16; } .mo-pill.bad{ background:#F6E5E0; color:#B4432F; } .mo-pill.lime{ background:#D6F25B; color:#163A2B; }
+  .mo-n{ font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; }
+  .mo-crumb{ font-size:13px; color:#6F7A70; margin-bottom:12px; } .mo-crumb button{ border:0; background:none; color:#2F6B4F; font:inherit; cursor:pointer; padding:0; }
+  .mo-prof{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:16px; align-items:center; padding:18px; }
+  .mo-prof .mo-av{ width:60px; height:60px; font-size:22px; border-radius:16px; }
+  .mo-prof h2{ font-family:'Almarai',sans-serif; font-size:21px; font-weight:800; overflow-wrap:anywhere; }
+  .mo-meta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; color:#6F7A70; font-size:12.5px; margin-top:5px; }
+  .mo-acts{ display:flex; gap:8px; flex-wrap:wrap; }
+  .mo-mini{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-top:1px solid #E6E1D3; }
+  .mo-mini > div{ padding:12px 18px; border-inline-start:1px solid #E6E1D3; } .mo-mini > div:first-child{ border-inline-start:0; }
+  .mo-mini small{ display:block; color:#6F7A70; font-size:12px; } .mo-mini b{ font-size:17px; }
+  .mo-tabs{ display:flex; gap:2px; border-bottom:1px solid #E6E1D3; margin:18px 0 16px; overflow-x:auto; }
+  .mo-tabs button{ border:0; background:none; padding:10px 14px; font:600 13px 'Cairo',sans-serif; color:#6F7A70; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; }
+  .mo-tabs button.on{ color:#163A2B; border-color:#163A2B; }
+  .mo-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .mo-cb{ padding:18px; }
+  .mo-sec{ font-weight:800; font-size:14px; margin-bottom:6px; }
+  .mo-cb .expiry-row,.mo-cb .plan-row{ margin-top:10px; }
+  .mo-cb .expiry-row label,.mo-cb .plan-row label{ min-width:110px; }
+  .mo-danger{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px; }
+  .mo-danger small{ display:block; color:#6F7A70; font-size:12px; }
+  .admin-page .admin-stat:hover{ border-color:#163A2B; }
+  .admin-page .plan-row button,.admin-page .expiry-row button,.admin-page .lead-mail,.admin-page .invite-create,.admin-page .invite-copy{ background:#163A2B; }
+  .admin-page .admin-tab.active,.admin-page .conv-periods button.active{ background:#163A2B; border-color:#163A2B; }
+  @media (max-width:860px){
+    .mo-side{ position:fixed; inset-block:0; inset-inline-start:0; z-index:30; transform:translateX(105%); transition:transform .2s; }
+    .admin-page[dir="ltr"] .mo-side{ transform:translateX(-105%); }
+    .mo-adm.open .mo-side{ transform:none; }
+    .mo-adm.open .mo-scrim{ display:block; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:20; }
+    .mo-menu{ display:block; }
+    .mo-top{ padding:10px 14px; }
+    .admin-wrap.mo-page{ padding:16px 14px 48px; }
+    .mo-hide-m{ display:none; }
+    .mo-prof{ grid-template-columns:auto minmax(0,1fr); } .mo-prof .mo-acts{ grid-column:1 / -1; }
+    .mo-mini{ grid-template-columns:repeat(2,minmax(0,1fr)); } .mo-mini > div{ border-top:1px solid #E6E1D3; }
+    .mo-grid2{ grid-template-columns:1fr; }
+  }
 `;
 
 const ADMIN_T = {
@@ -450,6 +523,12 @@ const ADMIN_T = {
   },
 };
 
+// نصوص التصميم الجديد للوحة (القائمة الجانبية وصفحة المتجر)
+const ADMIN_EXTRA_T = {
+  ar: { homeTab: "الرئيسية", sellersSub: "كل المتاجر في مونة. اضغط على أي متجر لعرض تفاصيله وإدارته.", storeCol: "المتجر", statusCol: "الحالة", planCol: "الباقة", expiresCol: "ساري لين", ordersCol: "الطلبات", salesCol: "المبيعات", expiringSoonPill: "قارب ينتهي", settingsTab: "الإعدادات", paymentTab: "الدفع", openStore: "فتح المتجر", productsCount: "المنتجات", confirmedSales: "المبيعات المؤكدة", accountSection: "الاشتراك والحساب", dangerZone: "منطقة الخطر", dangerText: "الحذف نهائي ويشيل المتجر ومنتجاته كلها.", menu: "القائمة", registeredOn: "سجّل" },
+  en: { homeTab: "Overview", sellersSub: "Every store on Monah. Click a store to see and manage its details.", storeCol: "Store", statusCol: "Status", planCol: "Plan", expiresCol: "Valid until", ordersCol: "Orders", salesCol: "Sales", expiringSoonPill: "Expiring soon", settingsTab: "Settings", paymentTab: "Payment", openStore: "Open store", productsCount: "Products", confirmedSales: "Confirmed sales", accountSection: "Subscription & account", dangerZone: "Danger zone", dangerText: "Deleting is permanent and removes the store and all its products.", menu: "Menu", registeredOn: "Joined" },
+};
+
 function toMillis(value) {
   if (!value) return 0;
   if (typeof value.toMillis === "function") return value.toMillis();
@@ -459,7 +538,7 @@ function toMillis(value) {
 
 export default function AdminDashboard() {
   const [lang, setLang] = useLang();
-  const t = ADMIN_T[lang];
+  const t = { ...ADMIN_T[lang], ...ADMIN_EXTRA_T[lang] };
   const curr = lang === "ar" ? "ر.ع" : "OMR";
   const dateLocale = lang === "ar" ? "ar" : "en-GB";
 
@@ -508,7 +587,11 @@ export default function AdminDashboard() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState(null);
 
-  const [view, setView] = useState("sellers");
+  const [view, setView] = useState("home");
+  // صفحة المتجر المفتوح (بدل البطاقات الطويلة) والتبويب داخلها، والقائمة على الجوال
+  const [openSellerId, setOpenSellerId] = useState(null);
+  const [sellerTab, setSellerTab] = useState("settings");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [conversionPeriod, setConversionPeriod] = useState("30");
   const [allProducts, setAllProducts] = useState([]);
   const [allProductsLoading, setAllProductsLoading] = useState(false);
@@ -1108,338 +1191,269 @@ export default function AdminDashboard() {
   const pendingOrders = orders.filter((o) => o.status === "awaiting_seller_confirmation");
   const totalSalesVolume = confirmedOrders.reduce((sum, o) => sum + Number(o.price || 0), 0);
 
+  const openSeller = openSellerId ? sellers.find((x) => x.id === openSellerId) || null : null;
+  function sellerStats(seller) {
+    const own = orders.filter((o) => o.ownerId === seller.id);
+    return { orders: own.length, sales: own.filter((o) => o.status === "confirmed").reduce((sum, o) => sum + Number(o.price || 0), 0) };
+  }
+  function initialOf(seller) {
+    return (String(seller.storeName || seller.email || "؟").trim()[0] || "؟").toUpperCase();
+  }
+  function statusPill(seller) {
+    if (seller.disabled) return <span className="mo-pill bad">{t.disabled}</span>;
+    if (isSubscriptionExpired(seller)) return <span className="mo-pill bad">{t.subscriptionExpired}</span>;
+    if (isExpiringSoon(seller)) return <span className="mo-pill warn">{t.expiringSoonPill}</span>;
+    return <span className="mo-pill ok">{t.active}</span>;
+  }
+  function openSellerPage(seller) {
+    setOpenSellerId(seller.id);
+    setSellerTab("settings");
+    if (expandedId !== seller.id) toggleExpand(seller.id);
+    window.scrollTo(0, 0);
+  }
+
   return (
     <div className="admin-page" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <style>{styles}</style>
-      <div className="admin-wrap">
-        <div className="admin-header">
-          <div className="admin-title">{t.adminPanelTitle}</div>
-          <div className="admin-header-actions">
-            <LangToggle lang={lang} onChange={setLang} className="admin-lang" />
-            <button className="admin-logout" onClick={() => signOut(auth)}>
-              {t.logout}
-            </button>
-          </div>
+      <div className={"mo-adm" + (menuOpen ? " open" : "")}>
+      <div className="mo-scrim" onClick={() => setMenuOpen(false)} />
+      <aside className="mo-side">
+        <div className="mo-brand"><i>M</i><div>{lang === "ar" ? "مُونة" : "Monah"}<small>{t.adminPanelTitle}</small></div></div>
+        {[
+          ["home", t.homeTab],
+          ["sellers", t.sellersTab, sellers.length],
+          ["conversion", t.conversionTab, unpaidLeads.length, unpaidLeads.length > 0],
+          ["products", t.allProductsTab, null, false, openProductsView],
+          ["orders", t.allOrdersTab, ordersLoading ? null : pendingOrders.length, pendingOrders.length > 0],
+          ["invites", t.invitesTab, null, false, loadInvites],
+          ["coupons", t.signupCouponsTab, null, false, loadSignupCoupons],
+          ["assistant", t.assistantTab, null, false, loadAssistantQuestions],
+          ["paymentDebug", t.paymentDebugTab, null, false, loadPaymentDebugLogs],
+        ].map(([key, label, count, hot, load]) => (
+          <button key={key} type="button" className={"mo-nav" + (view === key ? " on" : "")} onClick={() => { setOpenSellerId(null); setMenuOpen(false); if (load) load(); if (key !== "products") setView(key); }}>
+            {label}{count != null && <span className={"mo-cnt" + (hot ? " hot" : "")}>{count}</span>}
+          </button>
+        ))}
+        <div className="mo-side-foot">
+          <LangToggle lang={lang} onChange={setLang} className="admin-lang" />
+          <button className="admin-logout" onClick={() => signOut(auth)}>{t.logout}</button>
         </div>
-
-        <div className="admin-stats">
-          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("all"); }}>
-            <b>{sellers.length}</b>
-            <span>{t.totalSellers}</span>
-          </button>
-          <div className="admin-stat">
-            <b>{startPageVisits}</b>
-            <span>{t.startPageVisits}</span>
-          </div>
-          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}>
-            <b>{activeCount}</b>
-            <span>{t.activeAccounts}</span>
-          </button>
-          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("disabled"); }}>
-            <b>{disabledCount}</b>
-            <span>{t.disabledAccounts}</span>
-          </button>
-          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("expiring"); }}>
-            <b>{expiringSoonCount}</b>
-            <span>{t.expiringWithinWeek}</span>
-          </button>
-        </div>
-
-        <div className="admin-stats">
-          <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}>
-            <b>{monthlyRevenue.toFixed(2)} {curr}</b>
-            <span>{t.approxMonthlyRevenue}</span>
-          </button>
-          <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("all"); }}>
-            <b>{ordersLoading ? "…" : orders.length}</b>
-            <span>{t.totalOrders}</span>
-          </button>
-          <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("awaiting_seller_confirmation"); }}>
-            <b>{ordersLoading ? "…" : pendingOrders.length}</b>
-            <span>{t.awaitingSellerConfirmation}</span>
-          </button>
-          <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("confirmed"); }}>
-            <b>{ordersLoading ? "…" : totalSalesVolume.toFixed(2)} {curr}</b>
-            <span>{t.totalConfirmedSales}</span>
-          </button>
-          <button type="button" className="admin-stat" onClick={() => setView("conversion")}>
-            <b>{conversionRate}٪</b>
-            <span>{t.conversionStat}</span>
-          </button>
-        </div>
-
-        <div className="admin-tabs">
-          <button className={"admin-tab" + (view === "sellers" ? " active" : "")} onClick={() => setView("sellers")}>
-            {t.sellersTab}
-          </button>
-          <button className={"admin-tab" + (view === "conversion" ? " active" : "")} onClick={() => setView("conversion")}>
-            {t.conversionTab}
-          </button>
-          <button className={"admin-tab" + (view === "products" ? " active" : "")} onClick={openProductsView}>
-            {t.allProductsTab}
-          </button>
-          <button className={"admin-tab" + (view === "orders" ? " active" : "")} onClick={() => setView("orders")}>
-            {t.allOrdersTab}
-          </button>
-          <button className={"admin-tab" + (view === "invites" ? " active" : "")} onClick={() => { setView("invites"); loadInvites(); }}>
-            {t.invitesTab}
-          </button>
-          <button className={"admin-tab" + (view === "coupons" ? " active" : "")} onClick={() => { setView("coupons"); loadSignupCoupons(); }}>
-            {t.signupCouponsTab}
-          </button>
-          <button className={"admin-tab" + (view === "assistant" ? " active" : "")} onClick={() => { setView("assistant"); loadAssistantQuestions(); }}>
-            {t.assistantTab}
-          </button>
-          <button className={"admin-tab" + (view === "paymentDebug" ? " active" : "")} onClick={() => { setView("paymentDebug"); loadPaymentDebugLogs(); }}>
-            {t.paymentDebugTab}
-          </button>
-        </div>
-
-        {view === "sellers" && (
+      </aside>
+      <div className="mo-main">
+      <header className="mo-top">
+        <button type="button" className="mo-menu" aria-label={t.menu} onClick={() => setMenuOpen(true)}>☰</button>
         <input
           className="admin-search"
           placeholder={t.searchPlaceholder}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setView("sellers"); setOpenSellerId(null); }}
         />
+      </header>
+      <div className="admin-wrap mo-page">
+
+        {view === "home" && (
+          <>
+            <div className="mo-h1">{t.adminPanelTitle}</div>
+            <div className="admin-stats" style={{ marginTop: 12 }}>
+              <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("all"); }}><b>{sellers.length}</b><span>{t.totalSellers}</span></button>
+              <div className="admin-stat"><b>{startPageVisits}</b><span>{t.startPageVisits}</span></div>
+              <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}><b>{activeCount}</b><span>{t.activeAccounts}</span></button>
+              <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("disabled"); }}><b>{disabledCount}</b><span>{t.disabledAccounts}</span></button>
+              <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("expiring"); }}><b>{expiringSoonCount}</b><span>{t.expiringWithinWeek}</span></button>
+            </div>
+            <div className="admin-stats">
+              <button type="button" className="admin-stat" onClick={() => { setView("sellers"); setStatusFilter("active"); }}><b>{monthlyRevenue.toFixed(2)} {curr}</b><span>{t.approxMonthlyRevenue}</span></button>
+              <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("all"); }}><b>{ordersLoading ? "…" : orders.length}</b><span>{t.totalOrders}</span></button>
+              <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("awaiting_seller_confirmation"); }}><b>{ordersLoading ? "…" : pendingOrders.length}</b><span>{t.awaitingSellerConfirmation}</span></button>
+              <button type="button" className="admin-stat" onClick={() => { setView("orders"); setOrderStatusFilter("confirmed"); }}><b>{ordersLoading ? "…" : totalSalesVolume.toFixed(2)} {curr}</b><span>{t.totalConfirmedSales}</span></button>
+              <button type="button" className="admin-stat" onClick={() => setView("conversion")}><b>{conversionRate}٪</b><span>{t.conversionStat}</span></button>
+            </div>
+          </>
         )}
 
-        {view === "sellers" && (
-        <div className="admin-filters">
-          <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}>
-            <option value="all">{t.allPlans}</option>
-            <option value="unpaid">{t.planUnpaid}</option>
-            <option value="trial">{t.planTrial}</option>
-            <option value="starter">{t.planStarter}</option>
-            <option value="basic">{t.planBasic}</option>
-            <option value="pro">{t.planPro}</option>
-            <option value="full">{t.planFull}</option>
-          </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">{t.allStatuses}</option>
-            <option value="active">{t.activeStatus}</option>
-            <option value="disabled">{t.disabledStatus}</option>
-            <option value="expiring">{t.expiringSoonStatus}</option>
-          </select>
-        </div>
+        {view === "sellers" && !openSeller && (
+          <>
+            <div className="mo-h1">{t.sellersTab}</div>
+            <div className="mo-sub">{t.sellersSub}</div>
+            <div className="mo-chips">
+              {[["all", t.allStatuses, sellers.length], ["active", t.activeStatus, activeCount], ["expiring", t.expiringSoonStatus, expiringSoonCount], ["disabled", t.disabledStatus, disabledCount]].map(([key, label, n]) => (
+                <button key={key} type="button" className={"mo-chip" + (statusFilter === key ? " on" : "")} onClick={() => setStatusFilter(key)}>{label}<span>{n}</span></button>
+              ))}
+              <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} aria-label={t.planCol}>
+                <option value="all">{t.allPlans}</option>
+                <option value="unpaid">{t.planUnpaid}</option>
+                <option value="trial">{t.planTrial}</option>
+                <option value="starter">{t.planStarter}</option>
+                <option value="basic">{t.planBasic}</option>
+                <option value="pro">{t.planPro}</option>
+                <option value="full">{t.planFull}</option>
+              </select>
+            </div>
+            {loading && <div className="loading">{t.loadingSellers}</div>}
+            {sellersError && <div className="empty" style={{ color: "#B24C3A" }}>{t.loadSellersError(sellersError)}</div>}
+            {!loading && !sellersError && filtered.length === 0 && <div className="empty">{t.noMatchingSellers}</div>}
+            {!loading && filtered.length > 0 && (
+              <div className="mo-card" style={{ overflowX: "auto" }}>
+                <table className="mo-table">
+                  <thead><tr><th>{t.storeCol}</th><th>{t.statusCol}</th><th>{t.planCol}</th><th className="mo-hide-m">{t.expiresCol}</th><th className="mo-hide-m">{t.ordersCol}</th><th className="mo-hide-m">{t.salesCol}</th></tr></thead>
+                  <tbody>
+                    {filtered.map((s) => {
+                      const st = sellerStats(s);
+                      return (
+                        <tr key={s.id} onClick={() => openSellerPage(s)}>
+                          <td><div className="mo-who"><span className="mo-av">{initialOf(s)}</span><div><b>{s.storeName || t.noNameFallback}</b><small>{s.email}</small></div></div></td>
+                          <td>{statusPill(s)}</td>
+                          <td><span className={"mo-pill" + (s.plan === "pro" || s.plan === "full" ? " lime" : "")}>{planLabel(s.plan)}</span></td>
+                          <td className="mo-hide-m">{s.subscriptionExpiresAt ? new Date(s.subscriptionExpiresAt).toLocaleDateString(dateLocale) : "—"}</td>
+                          <td className="mo-hide-m mo-n">{st.orders}</td>
+                          <td className="mo-hide-m mo-n">{st.sales.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
 
-        {view === "sellers" && loading && <div className="loading">{t.loadingSellers}</div>}
-
-        {view === "sellers" && sellersError && (
-          <div className="empty" style={{ color: "#B24C3A" }}>{t.loadSellersError(sellersError)}</div>
-        )}
-
-        {view === "sellers" && !loading && !sellersError && filtered.length === 0 && (
-          <div className="empty">{t.noMatchingSellers}</div>
-        )}
-
-        {view === "sellers" && !loading &&
-          filtered.map((s) => (
-            <div className="seller-card" key={s.id}>
-              <div className="seller-top" onClick={() => toggleExpand(s.id)}>
-                <div>
-                  <div className="seller-name">{s.storeName || t.noNameFallback}</div>
-                  <div className="seller-email">{s.email}</div>
-                </div>
-                <span className={"seller-badge " + (s.disabled ? "badge-disabled" : "badge-active")}>
-                  {s.disabled ? t.disabled : t.active}
-                </span>
-              </div>
-
-              <div className="seller-meta">
-                <span className="seller-meta-item">
-                  {t.planLabel} <b><span className="seller-badge badge-plan">{planLabel(s.plan)}</span></b>
-                </span>
-                <span className="seller-meta-item">
-                  {t.registrationDate} <b>{s.createdAt ? new Date(toMillis(s.createdAt)).toLocaleDateString(dateLocale) : "—"}</b>
-                </span>
-                {isSubscriptionExpired(s) && (
-                  <span className="seller-badge badge-expired">{t.subscriptionExpired}</span>
-                )}
-                {emailVerifiedMap[s.id] === false && (
-                  <>
-                    <span className="seller-badge badge-expired">{t.emailUnverified}</span>
-                    <button
-                      type="button"
-                      disabled={confirmingEmailId === s.id}
-                      onClick={() => confirmSellerEmailManually(s)}
-                    >
-                      {confirmingEmailId === s.id ? t.savingEllipsis : t.confirmEmailManually}
-                    </button>
-                  </>
-                )}
-                {emailVerifiedMap[s.id] === true && (
-                  <span className="seller-badge badge-active">{t.emailVerified}</span>
-                )}
-              </div>
-
-              <div className="expiry-row">
-                <label htmlFor={`expiry-${s.id}`}>{t.subscriptionValidUntil}</label>
-                <input
-                  id={`expiry-${s.id}`}
-                  type="date"
-                  value={expiryDraftFor(s)}
-                  onChange={(e) =>
-                    setExpiryDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))
-                  }
-                />
-                <button
-                  type="button"
-                  disabled={savingExpiryId === s.id}
-                  onClick={() => saveSubscriptionExpiry(s)}
-                >
-                  {savingExpiryId === s.id ? t.savingEllipsis : t.saveDate}
-                </button>
-              </div>
-
-              <div className="expiry-row">
-                <label htmlFor={`email-${s.id}`}>{t.sellerEmailLabel}</label>
-                <input
-                  id={`email-${s.id}`}
-                  type="email"
-                  value={emailDraftFor(s)}
-                  onChange={(e) =>
-                    setEmailDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))
-                  }
-                />
-                <button
-                  type="button"
-                  disabled={savingEmailId === s.id}
-                  onClick={() => saveSellerEmail(s)}
-                >
-                  {savingEmailId === s.id ? t.savingEllipsis : t.saveEmail}
-                </button>
-              </div>
-              {emailErrors[s.id] && <div className="dh-error">{emailErrors[s.id]}</div>}
-
-              <div className="plan-row">
-                <label htmlFor={`plan-${s.id}`}>{t.planLabel}</label>
-                <select
-                  id={`plan-${s.id}`}
-                  value={planDraftFor(s)}
-                  onChange={(e) => setPlanDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                >
-                  {s.plan && s.plan !== "basic" && <option value={s.plan}>{planLabel(s.plan)}</option>}
-                  <option value="basic">{t.planBasic}</option>
-                </select>
-                <button type="button" disabled={savingPlanId === s.id} onClick={() => savePlan(s)}>
-                  {savingPlanId === s.id ? t.savingEllipsis : t.savePlan}
-                </button>
-              </div>
-
-              <div className="seller-expand-hint" onClick={() => toggleExpand(s.id)}>
-                {expandedId === s.id ? t.hideFullDetails : t.showFullDetails}
-              </div>
-
-              {expandedId === s.id && (
-                <>
-                  <div className="products-box">
-                    <div className="detail-heading">{t.productsHeading}</div>
-                    {productsLoading && !sellerProducts[s.id] && (
-                      <div className="products-loading">{t.loadingProducts}</div>
-                    )}
-                    {sellerProducts[s.id] && sellerProducts[s.id].length === 0 && (
-                      <div className="products-empty">{t.noProductsAdded}</div>
-                    )}
-                    {sellerProducts[s.id] &&
-                      sellerProducts[s.id].map((p) => (
-                        <div className="product-row" key={p.id}>
-                          <div className="product-info">
-                            <div className="product-name">{p.name}</div>
-                            <div className="product-sub">
-                              {p.price} {curr} · {p.category || t.generalCategory} · {p.type === "code" ? t.codeLicense : t.file}
-                            </div>
-                          </div>
-                          <button
-                            className="product-del"
-                            disabled={deletingProductId === p.id}
-                            onClick={() => deleteProduct(s.id, p)}
-                          >
-                            {deletingProductId === p.id ? t.deletingEllipsis : t.delete}
-                          </button>
-                        </div>
-                      ))}
-                  </div>
-
-                  <div className="detail-section">
-                    <div className="detail-heading">{t.lastOrdersHeading}</div>
-                    {orders.filter((o) => o.ownerId === s.id).length === 0 && (
-                      <div className="detail-empty">{t.noOrdersForStore}</div>
-                    )}
-                    {orders
-                      .filter((o) => o.ownerId === s.id)
-                      .slice(0, 15)
-                      .map((o) => (
-                        <div className="detail-row" key={o.id}>
-                          <span>{o.productName || t.orderFallback}</span>
-                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {Number(o.price || 0).toFixed(2)} {curr} · {orderStatusLabel[o.status] || o.status}
-                            <button
-                              type="button"
-                              className="product-del"
-                              disabled={deletingOrderId === o.id}
-                              onClick={() => deleteOrder(o)}
-                            >
-                              {deletingOrderId === o.id ? t.deletingEllipsis : t.delete}
-                            </button>
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-
-                  <div className="detail-section">
-                    <div className="detail-heading">{t.couponsHeading}</div>
-                    {couponsLoading && !sellerCoupons[s.id] && (
-                      <div className="detail-empty">{t.loadingCoupons}</div>
-                    )}
-                    {sellerCoupons[s.id] && sellerCoupons[s.id].length === 0 && (
-                      <div className="detail-empty">{t.noCoupons}</div>
-                    )}
-                    {sellerCoupons[s.id] &&
-                      sellerCoupons[s.id].map((c) => (
-                        <div className="detail-row" key={c.id}>
-                          <span>{c.code}</span>
-                          <span>{t.discountLabel(c.discountPercent)} · {c.active ? t.couponActive : t.couponStopped}</span>
-                        </div>
-                      ))}
-                  </div>
-
-                  <div className="detail-section">
-                    <div className="detail-heading">{t.manualTransferInstructionsHeading}</div>
-                    <div className="detail-empty" style={{ whiteSpace: "pre-line" }}>
-                      {s.paymentInstructions || t.noTransferInstructions}
+        {view === "sellers" && openSeller && (() => {
+          const s = openSeller;
+          const st = sellerStats(s);
+          const sellerOrders = orders.filter((o) => o.ownerId === s.id);
+          return (
+            <>
+              <div className="mo-crumb"><button type="button" onClick={() => setOpenSellerId(null)}>{t.sellersTab}</button> / {s.storeName || t.noNameFallback}</div>
+              <div className="mo-card">
+                <div className="mo-prof">
+                  <span className="mo-av">{initialOf(s)}</span>
+                  <div>
+                    <h2>{s.storeName || t.noNameFallback}</h2>
+                    <div className="mo-meta">
+                      {statusPill(s)}
+                      <span className="mo-pill">{planLabel(s.plan)}</span>
+                      {emailVerifiedMap[s.id] === true && <span>{t.emailVerified} ✓</span>}
+                      {emailVerifiedMap[s.id] === false && <span className="mo-pill bad">{t.emailUnverified}</span>}
+                      <span>{t.registeredOn} <span>{s.createdAt ? new Date(toMillis(s.createdAt)).toLocaleDateString(dateLocale) : "—"}</span></span>
                     </div>
-                    {(s.paymentBankName || s.paymentAccountHolder || s.paymentAccountNumber || s.paymentPhoneNumber) && (
-                      <div className="detail-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                        {s.paymentBankName && <span>{t.bankLabel} {s.paymentBankName}</span>}
-                        {s.paymentAccountHolder && <span>{t.accountHolderLabel} {s.paymentAccountHolder}</span>}
-                        {s.paymentAccountNumber && <span style={{ direction: "ltr" }}>{t.accountNumberLabel} {s.paymentAccountNumber}</span>}
-                        {s.paymentPhoneNumber && <span style={{ direction: "ltr" }}>{t.phoneNumberLabel} {s.paymentPhoneNumber}</span>}
+                  </div>
+                  <div className="mo-acts">
+                    {s.email && <a className="seller-btn" href={`mailto:${s.email}`} style={{ textDecoration: "none" }}>{t.emailSeller}</a>}
+                    <a className="seller-btn" href={`${window.location.origin}/#store/${s.slug || s.id}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>{t.openStore}</a>
+                    <button className="seller-btn warn" disabled={busyId === s.id} onClick={() => toggleDisabled(s)}>{s.disabled ? t.reactivateAccount : t.disableAccount}</button>
+                  </div>
+                </div>
+                <div className="mo-mini">
+                  <div><small>{t.confirmedSales}</small><b className="mo-n">{st.sales.toFixed(2)} {curr}</b></div>
+                  <div><small>{t.ordersCol}</small><b className="mo-n">{st.orders}</b></div>
+                  <div><small>{t.productsCount}</small><b className="mo-n">{sellerProducts[s.id] ? sellerProducts[s.id].length : Number(s.productCount) || 0}</b></div>
+                  <div><small>{t.subscriptionValidUntil.replace(":", "")}</small><b>{s.subscriptionExpiresAt ? new Date(s.subscriptionExpiresAt).toLocaleDateString(dateLocale) : "—"}</b></div>
+                </div>
+              </div>
+
+              <div className="mo-tabs" role="tablist">
+                {[["settings", t.settingsTab], ["products", `${t.productsHeading}${sellerProducts[s.id] ? ` (${sellerProducts[s.id].length})` : ""}`], ["orders", `${t.ordersCol} (${sellerOrders.length})`], ["coupons", t.couponsHeading], ["payment", t.paymentTab]].map(([key, label]) => (
+                  <button key={key} type="button" role="tab" aria-selected={sellerTab === key} className={sellerTab === key ? "on" : ""} onClick={() => setSellerTab(key)}>{label}</button>
+                ))}
+              </div>
+
+              {sellerTab === "settings" && (
+                <>
+                  <div className="mo-card mo-cb">
+                    <div className="mo-sec">{t.accountSection}</div>
+                    <div className="plan-row">
+                      <label htmlFor={`plan-${s.id}`}>{t.planLabel}</label>
+                      <select id={`plan-${s.id}`} value={planDraftFor(s)} onChange={(e) => setPlanDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}>
+                        {s.plan && s.plan !== "basic" && <option value={s.plan}>{planLabel(s.plan)}</option>}
+                        <option value="basic">{t.planBasic}</option>
+                      </select>
+                      <button type="button" disabled={savingPlanId === s.id} onClick={() => savePlan(s)}>{savingPlanId === s.id ? t.savingEllipsis : t.savePlan}</button>
+                    </div>
+                    <div className="expiry-row">
+                      <label htmlFor={`expiry-${s.id}`}>{t.subscriptionValidUntil}</label>
+                      <input id={`expiry-${s.id}`} type="date" value={expiryDraftFor(s)} onChange={(e) => setExpiryDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))} />
+                      <button type="button" disabled={savingExpiryId === s.id} onClick={() => saveSubscriptionExpiry(s)}>{savingExpiryId === s.id ? t.savingEllipsis : t.saveDate}</button>
+                    </div>
+                    <div className="expiry-row">
+                      <label htmlFor={`email-${s.id}`}>{t.sellerEmailLabel}</label>
+                      <input id={`email-${s.id}`} type="email" value={emailDraftFor(s)} onChange={(e) => setEmailDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))} />
+                      <button type="button" disabled={savingEmailId === s.id} onClick={() => saveSellerEmail(s)}>{savingEmailId === s.id ? t.savingEllipsis : t.saveEmail}</button>
+                    </div>
+                    {emailErrors[s.id] && <div className="dh-error">{emailErrors[s.id]}</div>}
+                    {emailVerifiedMap[s.id] === false && (
+                      <div className="expiry-row">
+                        <button type="button" disabled={confirmingEmailId === s.id} onClick={() => confirmSellerEmailManually(s)}>{confirmingEmailId === s.id ? t.savingEllipsis : t.confirmEmailManually}</button>
                       </div>
                     )}
+                  </div>
+                  <div className="mo-card mo-cb mo-danger">
+                    <div><b>{t.dangerZone}</b><small>{t.dangerText}</small></div>
+                    <button className="seller-btn danger" disabled={busyId === s.id} onClick={() => deleteSeller(s)}>{t.deletePermanently}</button>
                   </div>
                 </>
               )}
 
-              <div className="seller-actions">
-                <button
-                  className="seller-btn warn"
-                  disabled={busyId === s.id}
-                  onClick={() => toggleDisabled(s)}
-                >
-                  {s.disabled ? t.reactivateAccount : t.disableAccount}
-                </button>
-                <button
-                  className="seller-btn danger"
-                  disabled={busyId === s.id}
-                  onClick={() => deleteSeller(s)}
-                >
-                  {t.deletePermanently}
-                </button>
-              </div>
-            </div>
-          ))}
+              {sellerTab === "products" && (
+                <div className="mo-card mo-cb">
+                  {productsLoading && !sellerProducts[s.id] && <div className="products-loading">{t.loadingProducts}</div>}
+                  {sellerProducts[s.id] && sellerProducts[s.id].length === 0 && <div className="products-empty">{t.noProductsAdded}</div>}
+                  {sellerProducts[s.id] && sellerProducts[s.id].map((p) => (
+                    <div className="product-row" key={p.id}>
+                      <div className="product-info">
+                        <div className="product-name">{p.name}</div>
+                        <div className="product-sub">{p.price} {curr} · {p.category || t.generalCategory} · {p.type === "code" ? t.codeLicense : t.file}</div>
+                      </div>
+                      <button className="product-del" disabled={deletingProductId === p.id} onClick={() => deleteProduct(s.id, p)}>{deletingProductId === p.id ? t.deletingEllipsis : t.delete}</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {sellerTab === "orders" && (
+                <div className="mo-card mo-cb">
+                  {sellerOrders.length === 0 && <div className="detail-empty">{t.noOrdersForStore}</div>}
+                  {sellerOrders.slice(0, 50).map((o) => (
+                    <div className="detail-row" key={o.id}>
+                      <span>{o.productName || t.orderFallback}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {Number(o.price || 0).toFixed(2)} {curr} · {orderStatusLabel[o.status] || o.status}
+                        <button type="button" className="product-del" disabled={deletingOrderId === o.id} onClick={() => deleteOrder(o)}>{deletingOrderId === o.id ? t.deletingEllipsis : t.delete}</button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {sellerTab === "coupons" && (
+                <div className="mo-card mo-cb">
+                  {couponsLoading && !sellerCoupons[s.id] && <div className="detail-empty">{t.loadingCoupons}</div>}
+                  {sellerCoupons[s.id] && sellerCoupons[s.id].length === 0 && <div className="detail-empty">{t.noCoupons}</div>}
+                  {sellerCoupons[s.id] && sellerCoupons[s.id].map((c) => (
+                    <div className="detail-row" key={c.id}>
+                      <span>{c.code}</span>
+                      <span>{t.discountLabel(c.discountPercent)} · {c.active ? t.couponActive : t.couponStopped}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {sellerTab === "payment" && (
+                <div className="mo-card mo-cb">
+                  <div className="mo-sec">{t.manualTransferInstructionsHeading}</div>
+                  <div className="detail-empty" style={{ whiteSpace: "pre-line" }}>{s.paymentInstructions || t.noTransferInstructions}</div>
+                  {(s.paymentBankName || s.paymentAccountHolder || s.paymentAccountNumber || s.paymentPhoneNumber) && (
+                    <div className="detail-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                      {s.paymentBankName && <span>{t.bankLabel} {s.paymentBankName}</span>}
+                      {s.paymentAccountHolder && <span>{t.accountHolderLabel} {s.paymentAccountHolder}</span>}
+                      {s.paymentAccountNumber && <span style={{ direction: "ltr" }}>{t.accountNumberLabel} {s.paymentAccountNumber}</span>}
+                      {s.paymentPhoneNumber && <span style={{ direction: "ltr" }}>{t.phoneNumberLabel} {s.paymentPhoneNumber}</span>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {view === "conversion" && (
           <>
@@ -1713,6 +1727,8 @@ export default function AdminDashboard() {
             ))}
           </>
         )}
+      </div>
+      </div>
       </div>
     </div>
   );
