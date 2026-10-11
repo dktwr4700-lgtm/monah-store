@@ -1003,11 +1003,63 @@ async function sendRenewalReminders(req, res) {
   return res.status(200).json({ ok: true, checked: snap.size, sent: sentCount });
 }
 
+// تذكير خفيف للي سجّلوا وما فعّلوا: رسالتين بس (بعد يوم، وبعد 3 أيام) وبعدها نسكت.
+// بس للي سجّلوا خلال آخر 14 يوم، عشان التسجيلات القديمة ما توصلها رسائل فجأة.
+// منفصل عن تذكيرات onboarding_reminders (نصايح المنتجات/البيانات) اللي تبقى موقوفة.
+const SIGNUP_NUDGE_WINDOW_DAYS = 14;
+const SIGNUP_NUDGES = [
+  SIGNUP_REMINDER_STEP,
+  {
+    ...SIGNUP_REMINDER_STEP,
+    subject: "متجرك بمُونة بعده ينتظرك",
+    heading: "تذكير أخير: متجرك جاهز للتفعيل",
+    body: `
+    <p>هذي آخر رسالة نرسلها لك بخصوص متجرك.</p>
+    <p>كل اللي جهّزته محفوظ — تختار باقتك وتدفع الاشتراك، ومتجرك يصير جاهز تبيع فيه خلال دقائق.</p>
+  `,
+  },
+];
+
+async function sendSignupReminders(req, res) {
+  const authHeader = req.headers.authorization || "";
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const now = Date.now();
+  let sentCount = 0;
+  const snap = await db.collection("merchantSignups").where("status", "==", "awaiting_payment").get();
+  for (const doc of snap.docs) {
+    const signup = { id: doc.id, ...doc.data() };
+    if (!signup.email || !signup.createdAt?.toDate) continue;
+    const daysSince = (now - signup.createdAt.toDate().getTime()) / DAY_MS;
+    if (daysSince > SIGNUP_NUDGE_WINDOW_DAYS) continue;
+    const sentSoFar = signup.signupRemindersSent || 0;
+    if (!isStepDue(SIGNUP_REMINDER_STEP, sentSoFar, daysSince)) continue;
+    // فعّل بطريق ثاني (دعوة أو كود) والوثيقة بقت على حالتها: نصلّحها وما نرسل
+    const sellerSnap = await db.collection("sellers").doc(signup.id).get();
+    if (sellerSnap.exists && !isUnpaidSeller(sellerSnap.data())) {
+      await doc.ref.update({ status: "activated", activatedAt: FieldValue.serverTimestamp() });
+      continue;
+    }
+    if (sellerSnap.exists && sellerSnap.data().disabled) continue;
+    // لو فاتته الأولى (سجّل قبل ما يشتغل الجدول) نرسل له الأخيرة بس، مو الثنتين ورا بعض
+    const index = daysSince >= SIGNUP_REMINDER_STEP.schedule[1] ? 1 : sentSoFar;
+    const sent = await sendTipEmail(signup, SIGNUP_NUDGES[index]);
+    if (!sent) continue;
+    await doc.ref.update({ signupRemindersSent: index + 1 });
+    sentCount++;
+  }
+  return res.status(200).json({ ok: true, checked: snap.size, sent: sentCount });
+}
+
 export default async function handler(req, res) {
   // ربط «مركز معمار» (من خادم لخادم): هنا بدل ملف مستقل عشان ما نزيد عدد دوال Vercel
   if (req.query?.hub === "1") return await hubHandler(db, req, res);
   if (req.method === "GET" && req.query?.job === "onboarding_reminders") {
     return await sendOnboardingReminders(req, res);
+  }
+  if (req.method === "GET" && req.query?.job === "signup_reminders") {
+    return await sendSignupReminders(req, res);
   }
   if (req.method === "GET" && req.query?.job === "renewal_reminders") {
     return await sendRenewalReminders(req, res);
