@@ -6,7 +6,7 @@ import { ref, uploadBytes } from "firebase/storage";
 const PPO_T = {
   ar: {
     secureSessionError: "تعذر بدء جلسة آمنة للطلب.", genericActionError: "تعذر تنفيذ الطلب الآن.",
-    invalidPhone: "اكتب رقم واتسابك بشكل صحيح.", invalidEmail: "اكتب إيميلك بشكل صحيح، أو اتركه فارغًا.",
+    invalidPhone: "اكتب رقم واتسابك بشكل صحيح.", invalidEmail: "اكتب إيميلك بشكل صحيح، نرسل عليه رابط التنزيل.",
     startOrderError: "تعذر بدء الطلب الآن.",
     invalidProof: "اختر JPG أو PNG أو WEBP أو PDF بحجم أقل من 5 م.ب.",
     cardPayError: "تعذر بدء الدفع بالبطاقة الآن.", chooseProofFirst: "اختر إثبات التحويل أولًا.",
@@ -18,7 +18,7 @@ const PPO_T = {
     notifySeller: "نبّه التاجر الآن عبر واتساب", myOrders: "متابعة طلباتي",
     step1: "1 من 2 · إنشاء الطلب", step1Title: "اكتب رقم واتسابك للطلب",
     step1Copy: "التاجر يرسل لك رابط استلام منتجك على هذا الرقم بعد ما يأكد استلام التحويل. لا تدخل كلمة مرور أو رمز تحقق.",
-    whatsappLabel: "رقم واتساب", emailLabel: "إيميلك (اختياري)", emailPlaceholder: "لاستلام رابط التنزيل تلقائيًا بعد التأكيد",
+    whatsappLabel: "رقم واتساب", emailLabel: "إيميلك", emailPlaceholder: "يوصلك عليه رابط التنزيل بعد التأكيد",
     couponLabel: "كود الخصم (اختياري)", couponPlaceholder: "اتركه فارغًا إذا ما عندك كود",
     back: "رجوع", preparing: "جاري التجهيز...", continueToTransfer: "متابعة للتحويل",
     trialNote: "في نسخة التجربة، متابعة الطلب والتنزيل مرتبطة بهذا الجهاز والمتصفح، وتقدر أيضًا تستلم رابط منتجك على واتساب.",
@@ -37,7 +37,7 @@ const PPO_T = {
   },
   en: {
     secureSessionError: "Couldn't start a secure session for the order.", genericActionError: "Couldn't complete the order right now.",
-    invalidPhone: "Enter a valid WhatsApp number.", invalidEmail: "Enter a valid email, or leave it blank.",
+    invalidPhone: "Enter a valid WhatsApp number.", invalidEmail: "Enter a valid email — we send your download link to it.",
     startOrderError: "Couldn't start the order right now.",
     invalidProof: "Choose a JPG, PNG, WEBP, or PDF under 5 MB.",
     cardPayError: "Couldn't start the card payment right now.", chooseProofFirst: "Choose your proof of transfer first.",
@@ -49,7 +49,7 @@ const PPO_T = {
     notifySeller: "Notify the seller now via WhatsApp", myOrders: "Track my orders",
     step1: "Step 1 of 2 · Create order", step1Title: "Enter your WhatsApp number to order",
     step1Copy: "The seller will send your product link to this number once they confirm the transfer. Never enter a password or verification code.",
-    whatsappLabel: "WhatsApp number", emailLabel: "Your email (optional)", emailPlaceholder: "To get your download link automatically once confirmed",
+    whatsappLabel: "WhatsApp number", emailLabel: "Your email", emailPlaceholder: "Your download link is sent here once confirmed",
     couponLabel: "Discount code (optional)", couponPlaceholder: "Leave blank if you don't have one",
     back: "Back", preparing: "Preparing...", continueToTransfer: "Continue to payment",
     trialNote: "In this trial version, tracking your order and download is tied to this device and browser — you can also receive your product link on WhatsApp.",
@@ -132,7 +132,7 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lan
       return;
     }
     const email = buyerEmail.trim();
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError(t.invalidEmail);
       return;
     }
