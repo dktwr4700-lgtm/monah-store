@@ -9,12 +9,7 @@
 // enters on a shallow pullback into the fast EMA with a confirming
 // close back in the trend's direction.
 //@version=5
-indicator(
-     "Trend Pullback (EMA Stack + ADX)",
-     shorttitle = "TREND-PB",
-     overlay = true,
-     max_lines_count = 500,
-     max_labels_count = 500)
+indicator("Trend Pullback (EMA Stack + ADX)", shorttitle = "TREND-PB", overlay = true, max_lines_count = 500, max_labels_count = 500)
 
 // ─────────────────────────────────────────────────────────────────────────
 // Inputs
