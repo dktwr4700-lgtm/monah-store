@@ -458,7 +458,7 @@ async function createBundleOrder(req, res, account) {
   const buyerEmail = cleanText(req.body?.buyerEmail, 160);
   if (!isValidId(bundleId)) throw new OrderError(400, "رابط الحزمة غير واضح.");
   if (!validPhone(buyerPhone)) throw new OrderError(400, "اكتب رقم واتسابك بشكل صحيح.");
-  if (buyerEmail && !EMAIL_PATTERN.test(buyerEmail)) throw new OrderError(400, "اكتب إيميلك بشكل صحيح.");
+  if (!EMAIL_PATTERN.test(buyerEmail)) throw new OrderError(400, "اكتب إيميلك بشكل صحيح، نرسل عليه رابط التنزيل.");
 
   const bundleSnap = await db.collection("bundles").doc(bundleId).get();
   if (!bundleSnap.exists) throw new OrderError(404, "الحزمة غير موجودة.");
@@ -494,6 +494,8 @@ async function createBundleOrder(req, res, account) {
     .get();
   if (!draftSnap.empty) {
     const existing = draftSnap.docs[0].data();
+    // رقم وإيميل العميل الحاليين يظهرون للتاجر، والسعر لازم يتبع سعر الحزمة الحالي (البطاقة تشحن سعر المسودة)
+    await draftSnap.docs[0].ref.update({ buyerPhone, buyerEmail, price: Number(bundle.price) });
     return res.status(200).json({
       order: {
         id: draftSnap.docs[0].id,
@@ -535,7 +537,7 @@ async function createOrder(req, res, account) {
   const buyerEmail = cleanText(req.body?.buyerEmail, 160);
   if (!isValidId(productId)) throw new OrderError(400, "رابط المنتج غير واضح.");
   if (!validPhone(buyerPhone)) throw new OrderError(400, "اكتب رقم واتسابك بشكل صحيح.");
-  if (buyerEmail && !EMAIL_PATTERN.test(buyerEmail)) throw new OrderError(400, "اكتب إيميلك بشكل صحيح.");
+  if (!EMAIL_PATTERN.test(buyerEmail)) throw new OrderError(400, "اكتب إيميلك بشكل صحيح، نرسل عليه رابط التنزيل.");
 
   const productSnap = await db.collection("products").doc(productId).get();
   if (!productSnap.exists) throw new OrderError(404, "المنتج غير موجود.");
@@ -581,6 +583,9 @@ async function createOrder(req, res, account) {
     // المسودة القديمة: الدفع بالبطاقة يشحن سعر المسودة المحفوظ، مو اللي ينعرض للعميل.
     if ((existing.couponCode || "") !== couponCode || Number(existing.price) !== finalPrice || Number(existing.originalPrice) !== originalPrice) {
       await draftRef.update({ price: finalPrice, originalPrice, couponCode });
+    }
+    if (existing.buyerPhone !== buyerPhone || existing.buyerEmail !== buyerEmail) {
+      await draftRef.update({ buyerPhone, buyerEmail });
     }
     return res.status(200).json({
       order: {

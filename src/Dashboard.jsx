@@ -3430,7 +3430,7 @@ export default function Dashboard() {
                     <span className="dh-item-name">{o.productName}</span>
                     <span className="dh-item-price">{Number(o.price).toFixed(2)} {curr}</span>
                   </div>
-                  <div className="dh-item-stock">{o.buyerPhone}</div>
+                  <div className="dh-item-stock">{o.buyerPhone}{o.buyerEmail && <> · <bdi>{o.buyerEmail}</bdi></>}</div>
                 </div>
               ))}
             </div>

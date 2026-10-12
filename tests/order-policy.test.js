@@ -25,3 +25,17 @@ describe("مسودة الطلب تتبع سعر المنتج الحالي", () =
     expect(orders).toContain('Number(existing.price) !== finalPrice || Number(existing.originalPrice) !== originalPrice');
   });
 });
+
+describe("رقم وإيميل العميل إجباريين ويظهرون للتاجر", () => {
+  it("السيرفر يرفض الطلب بدون إيميل، وصفحة الطلبات تعرضه", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
+    const orders = await read("api/orders.js");
+    expect(orders).not.toContain("if (buyerEmail && !EMAIL_PATTERN.test(buyerEmail))");
+    expect(orders.match(/if \(!EMAIL_PATTERN\.test\(buyerEmail\)\)/g)).toHaveLength(2);
+    const panel = await read("src/ProductOrderPanel.jsx");
+    expect(panel).toContain(`emailLabel: "إيميلك"`);
+    const list = await read("src/Orders.jsx");
+    expect(list).toContain("mailto:${order.buyerEmail}");
+  });
+});
