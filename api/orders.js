@@ -577,8 +577,9 @@ async function createOrder(req, res, account) {
     const draftRef = draftSnap.docs[0].ref;
     const existing = draftSnap.docs[0].data();
     // مسودة من محاولة سابقة كانت موجودة — لو العميل دخل كود خصم مختلف هالمرة (أو
-    // شاله)، لازم نحدّث السعر بدل ما نرجّع نفس المسودة القديمة ونتجاهل الكود الجديد بصمت.
-    if ((existing.couponCode || "") !== couponCode) {
+    // شاله)، أو التاجر غيّر سعر المنتج من بعدها، لازم نحدّث السعر بدل ما نرجّع نفس
+    // المسودة القديمة: الدفع بالبطاقة يشحن سعر المسودة المحفوظ، مو اللي ينعرض للعميل.
+    if ((existing.couponCode || "") !== couponCode || Number(existing.price) !== finalPrice || Number(existing.originalPrice) !== originalPrice) {
       await draftRef.update({ price: finalPrice, originalPrice, couponCode });
     }
     return res.status(200).json({

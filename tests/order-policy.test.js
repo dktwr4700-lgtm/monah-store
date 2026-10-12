@@ -17,3 +17,11 @@ describe("سياسة طلب التحويل", () => {
     expect(canSellerConfirmOrder({ ...readyOrder, status: "draft" }, "seller-1")).toBe(false);
   });
 });
+
+describe("مسودة الطلب تتبع سعر المنتج الحالي", () => {
+  it("تتحدث المسودة لو تغيّر سعر المنتج، عشان البطاقة ما تنشحن بالسعر القديم", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const orders = await readFile(new URL("../api/orders.js", import.meta.url), "utf8");
+    expect(orders).toContain('Number(existing.price) !== finalPrice || Number(existing.originalPrice) !== originalPrice');
+  });
+});
