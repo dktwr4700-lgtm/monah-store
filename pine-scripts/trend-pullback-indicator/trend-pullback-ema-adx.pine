@@ -1,0 +1,189 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation.
+//
+// Trend Pullback (EMA Stack + ADX) — a genuinely different approach from
+// every other indicator in this project: instead of waiting for price to
+// bounce off a fixed level, this follows ongoing momentum. It only
+// considers trades while three EMAs are stacked in trend order AND ADX
+// confirms the trend is actually strong (not a sideways chop), then
+// enters on a shallow pullback into the fast EMA with a confirming
+// close back in the trend's direction.
+//@version=5
+indicator(
+     "Trend Pullback (EMA Stack + ADX)",
+     shorttitle = "TREND-PB",
+     overlay = true,
+     max_lines_count = 500,
+     max_labels_count = 500)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Inputs
+// ─────────────────────────────────────────────────────────────────────────
+grpEma = "EMA Stack"
+emaFastLen = input.int(
+     21, "Fast EMA", minval = 1, group = grpEma)
+emaMidLen = input.int(
+     50, "Mid EMA", minval = 1, group = grpEma)
+emaSlowLen = input.int(
+     200, "Slow EMA", minval = 1, group = grpEma)
+
+grpAdx = "Trend Strength (ADX)"
+adxLen = input.int(
+     14, "ADX / DI Length", minval = 1, group = grpAdx)
+adxSmoothing = input.int(
+     14, "ADX Smoothing", minval = 1, group = grpAdx)
+minADX = input.float(
+     25, "Minimum ADX to Trade", minval = 10, maxval = 50, group = grpAdx)
+
+grpEntry = "Pullback Entry"
+touchToleranceATRMult = input.float(
+     0.15, "Touch Tolerance Around Fast EMA (x ATR)",
+     minval = 0.01, step = 0.05, group = grpEntry)
+atrLen = input.int(
+     14, "ATR Length", minval = 1, group = grpEntry)
+
+grpRisk = "Risk / Signal Timing"
+slBufferATRMult = input.float(
+     0.3, "Stop-Loss Buffer Beyond Signal Bar (x ATR)",
+     minval = 0.05, step = 0.05, group = grpRisk)
+rrRatio = input.float(
+     2.0, "Risk:Reward Ratio", minval = 0.5, step = 0.1, group = grpRisk)
+cooldownBars = input.int(
+     20, "Cooldown Between Signals (bars)", minval = 1, group = grpRisk)
+maxTradesPerDay = input.int(
+     3, "Max Trades Per Day", minval = 1, group = grpRisk)
+tagOffsetBars = input.int(
+     3, "Tag Offset (bars after signal)", minval = 1, group = grpRisk)
+
+grpStyle = "Style"
+colFast = input.color(
+     color.new(#4fc3f7, 0), "Fast EMA Color", group = grpStyle)
+colMid = input.color(
+     color.new(#ffb74d, 0), "Mid EMA Color", group = grpStyle)
+colSlow = input.color(
+     color.new(#9e9e9e, 0), "Slow EMA Color", group = grpStyle)
+colUp = input.color(
+     color.new(color.teal, 0), "Bullish Setup", group = grpStyle)
+colDown = input.color(
+     color.new(color.red, 0), "Bearish Setup", group = grpStyle)
+showTags = input.bool(
+     true, "Show SL / TP Tags on Chart", group = grpStyle)
+
+// ─────────────────────────────────────────────────────────────────────────
+// EMA stack + ADX trend strength
+// ─────────────────────────────────────────────────────────────────────────
+emaFast = ta.ema(close, emaFastLen)
+emaMid = ta.ema(close, emaMidLen)
+emaSlow = ta.ema(close, emaSlowLen)
+
+plot(emaFast, title = "Fast EMA", color = colFast, linewidth = 2)
+plot(emaMid, title = "Mid EMA", color = colMid, linewidth = 1)
+plot(emaSlow, title = "Slow EMA", color = colSlow, linewidth = 1)
+
+[diPlus, diMinus, adxVal] = ta.dmi(adxLen, adxSmoothing)
+trendStrong = adxVal >= minADX
+
+bullStack = emaFast > emaMid and emaMid > emaSlow
+bearStack = emaFast < emaMid and emaMid < emaSlow
+
+trendUp = bullStack and trendStrong
+trendDown = bearStack and trendStrong
+
+// ─────────────────────────────────────────────────────────────────────────
+// Pullback entry — price dips to touch the fast EMA (within tolerance)
+// while the trend is intact, then closes back on the trend side of it.
+// ─────────────────────────────────────────────────────────────────────────
+atrVal = ta.atr(atrLen)
+touchTol = touchToleranceATRMult * atrVal
+slBuf = slBufferATRMult * atrVal
+
+longTouch = trendUp and low <= emaFast + touchTol and close > emaFast
+shortTouch = trendDown and high >= emaFast - touchTol and close < emaFast
+
+var int lastSignalBar = na
+var int dailyTradeCount = 0
+newDay = ta.change(time("D")) != 0
+if newDay
+    dailyTradeCount := 0
+
+canSignal = (na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars)
+     and dailyTradeCount < maxTradesPerDay
+
+longSignal = canSignal and longTouch
+shortSignal = canSignal and shortTouch
+
+if longSignal or shortSignal
+    lastSignalBar := bar_index
+    dailyTradeCount := dailyTradeCount + 1
+
+    isLong = longSignal
+    entryPrice = close
+    stopPrice = isLong ? low - slBuf : high + slBuf
+    riskDist = math.abs(entryPrice - stopPrice)
+    targetPrice = isLong ? entryPrice + riskDist * rrRatio : entryPrice - riskDist * rrRatio
+
+    sideColor = isLong ? colUp : colDown
+    tagBar = bar_index + tagOffsetBars
+
+    sideText = isLong ? "BUY" : "SELL"
+    sideYloc = isLong ? yloc.belowbar : yloc.abovebar
+    sideStyle = isLong ? label.style_label_up : label.style_label_down
+    label.new(
+         bar_index,
+         isLong ? low : high,
+         sideText,
+         yloc = sideYloc,
+         style = sideStyle,
+         color = sideColor,
+         textcolor = color.white,
+         size = size.small)
+
+    if showTags
+        line.new(
+             bar_index, stopPrice, tagBar, stopPrice,
+             color = colDown, style = line.style_dashed, width = 1)
+        line.new(
+             bar_index, targetPrice, tagBar, targetPrice,
+             color = colUp, style = line.style_dashed, width = 1)
+
+        slPriceText = str.tostring(math.round_to_mintick(stopPrice))
+        slText = "🛑 SL " + slPriceText
+        label.new(
+             tagBar, stopPrice, slText,
+             style = label.style_label_left,
+             color = colDown,
+             textcolor = color.white,
+             size = size.small)
+
+        tpPriceText = str.tostring(math.round_to_mintick(targetPrice))
+        tpText = "🎯 TP " + tpPriceText
+        label.new(
+             tagBar, targetPrice, tpText,
+             style = label.style_label_left,
+             color = colUp,
+             textcolor = color.white,
+             size = size.small)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Dashboard — quick read of trend state, same spirit as the SMC panel
+// ─────────────────────────────────────────────────────────────────────────
+var table infoTable = table.new(position.top_right, 2, 3, bgcolor = color.new(#111827, 15), border_width = 1, border_color = #374151)
+
+if barstate.islast
+    trendText = trendUp ? "BULLISH" : trendDown ? "BEARISH" : "NO TREND"
+    trendColor = trendUp ? color.teal : trendDown ? color.red : color.gray
+    table.cell(infoTable, 0, 0, "Trend", text_color = color.white, text_size = size.small, bgcolor = #1f2937)
+    table.cell(infoTable, 1, 0, trendText, text_color = trendColor, text_size = size.small, bgcolor = #1f2937)
+
+    adxText = str.tostring(math.round(adxVal, 1))
+    table.cell(infoTable, 0, 1, "ADX", text_color = color.white, text_size = size.small, bgcolor = #1f2937)
+    table.cell(infoTable, 1, 1, adxText, text_color = trendStrong ? color.teal : color.gray, text_size = size.small, bgcolor = #1f2937)
+
+    stackText = bullStack ? "Aligned Up" : bearStack ? "Aligned Down" : "Mixed"
+    table.cell(infoTable, 0, 2, "EMA Stack", text_color = color.white, text_size = size.small, bgcolor = #1f2937)
+    table.cell(infoTable, 1, 2, stackText, text_color = color.white, text_size = size.small, bgcolor = #1f2937)
+
+alertcondition(longSignal, title = "Trend Pullback Long Signal",
+     message = "Trend Pullback: bullish pullback to fast EMA, trend intact")
+alertcondition(shortSignal, title = "Trend Pullback Short Signal",
+     message = "Trend Pullback: bearish pullback to fast EMA, trend intact")
