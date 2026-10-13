@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>وش تبيع؟ اختبار مونة</title>
+<meta name="description" content="5 أسئلة سريعة تطلع لك فكرة منتج رقمي تقدر تبيعه، وكيف تبدأ فيه.">
+<meta property="og:title" content="ما تعرف وش تبيع؟ اعرف في دقيقة">
+<meta property="og:description" content="اختبار مجاني من مونة يقترح عليك منتجًا رقميًا يناسب شغلك وأسلوبك.">
+<meta property="og:image" content="https://monah-app.com/icon-512.png">
+<link rel="icon" href="/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one question per screen on a cream page, a thin lime progress rail on top, the Monah wordmark as the only chrome. Deliberately single-theme (Monah brand cream). */
+:root {
+  --cream: #F5F1E6;
+  --paper: #FBF8F0;
+  --green: #163A2B;
+  --green-2: #2F6B4F;
+  --lime: #D6F25B;
+  --ink-soft: #4F6357;
+  --line: #E2DCCB;
+  --wa: #25D366;
+  --font: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--cream); color: var(--green); font-family: var(--font); }
+.wrap { max-width: 560px; margin: 0 auto; padding-inline: 18px; padding-block: 18px 40px; min-height: 100%; display: flex; flex-direction: column; gap: 22px; }
+.top { display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 20px; }
+.brand img { width: 32px; height: 32px; border-radius: 9px; }
+.brand { text-decoration: none; color: inherit; }
+.brand i { width: 32px; height: 32px; border-radius: 9px; background: var(--green); color: var(--lime); display: grid; place-items: center; font-style: normal; font-size: 17px; }
+.step { font-size: 14px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.rail { height: 5px; background: var(--line); border-radius: 9px; overflow: hidden; }
+.rail b { display: block; height: 100%; width: 0; background: var(--green-2); border-radius: 9px; transition: width .35s ease; }
+h1 { font-size: clamp(28px, 7vw, 38px); line-height: 1.3; margin: 0; text-wrap: balance; }
+h1 em { font-style: normal; background: linear-gradient(transparent 58%, var(--lime) 58%); }
+.lead { margin: 0; font-size: 17px; line-height: 1.8; color: var(--ink-soft); max-width: 46ch; }
+.opts { display: grid; gap: 10px; }
+.opt { text-align: start; font: 600 17px/1.5 var(--font); color: var(--green); background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 15px 16px; cursor: pointer; transition: border-color .15s, transform .1s; }
+.opt:hover { border-color: var(--green-2); }
+.opt:active { transform: scale(.98); }
+.opt small { display: block; font-weight: 400; font-size: 14px; color: var(--ink-soft); }
+.btn { font: 700 17px var(--font); border: 0; border-radius: 999px; padding: 15px 26px; cursor: pointer; background: var(--green); color: var(--cream); }
+.btn:focus-visible, .opt:focus-visible, .back:focus-visible, .path:focus-visible { outline: 3px solid var(--green-2); outline-offset: 2px; }
+.back { align-self: flex-start; background: none; border: 0; font: 500 15px var(--font); color: var(--ink-soft); cursor: pointer; padding: 4px 0; }
+.hero-note { display: flex; gap: 18px; color: var(--ink-soft); font-size: 14px; flex-wrap: wrap; }
+.result-card { background: var(--green); color: var(--cream); border-radius: 20px; padding: 22px 20px; display: grid; gap: 10px; }
+.result-card .k { color: var(--lime); font-size: 14px; font-weight: 600; }
+.result-card h2 { margin: 0; font-size: clamp(26px, 6.5vw, 32px); line-height: 1.3; }
+.result-card p { margin: 0; line-height: 1.8; color: #D3DDD3; font-size: 16px; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.facts div { background: rgba(245,241,230,.08); border-radius: 12px; padding: 10px 12px; }
+.facts small { display: block; color: #AFC0B3; font-size: 13px; }
+.facts b { font-size: 16px; }
+h3 { margin: 6px 0 0; font-size: 21px; }
+.paths { display: grid; gap: 10px; }
+.path { display: grid; grid-template-columns: 14px 1fr auto; gap: 12px; align-items: center; text-decoration: none; color: var(--green); background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.path:hover { border-color: var(--green-2); }
+.path .d { width: 12px; height: 12px; border-radius: 50%; }
+.path b { display: block; font-size: 16.5px; }
+.path span { display: block; font-size: 14px; color: var(--ink-soft); line-height: 1.6; }
+.path .go { font-size: 14px; font-weight: 700; color: var(--green-2); white-space: nowrap; }
+.fine { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin: 0; }
+@media (prefers-reduced-motion: reduce) { .rail b, .opt { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app" dir="rtl" lang="ar"></div>
+
+<script>
+const WA = "96876630905";
+const Q = [
+  { key: "field", q: "وش شغلك أو مجالك؟", opts: [
+    ["teach", "تعليم", "معلم، أو مدرّس خصوصي، أو طالب متفوق"],
+    ["design", "تصميم", "جرافيك، أو دعوات، أو سوشال ميديا"],
+    ["cook", "طبخ وحلويات", "وصفات البيت والعزايم"],
+    ["fit", "رياضة وصحة", "تمارين، أو تغذية، أو نزول وزن"],
+    ["office", "شغل مكتبي", "إكسل، أو محاسبة، أو إدارة"],
+    ["photo", "تصوير", "جوال أو كاميرا"],
+    ["other", "شي ثاني", "خبرة أو هواية تعرفها زين"],
+  ]},
+  { key: "ask", q: "وش أكثر شي يسألك عنه الناس؟", opts: [
+    ["explain", "يبوني أشرح لهم شي", ""],
+    ["recipe", "يبون نسخة من شي سويته", "وصفة، أو جدول، أو ملف"],
+    ["tips", "يبون نصيحتي ورأيي", ""],
+    ["none", "ما أدري، أول مرة أفكر فيها", ""],
+  ]},
+  { key: "style", q: "كيف ترتاح تقدّم معرفتك؟", opts: [
+    ["write", "بالكتابة", "ملفات ومذكرات"],
+    ["visual", "بالتصميم", "قوالب وجداول"],
+    ["video", "بالفيديو", "أشرح وأنا أسجل"],
+  ]},
+  { key: "time", q: "كم وقت تقدر تعطيه هالأسبوع؟", opts: [
+    ["low", "ساعة أو ساعتين", ""],
+    ["mid", "يوم كامل تقريبًا", ""],
+    ["high", "أكثر من يوم", ""],
+  ]},
+  { key: "who", q: "مين الناس اللي بيشترون منك؟", opts: [
+    ["students", "طلاب وأولياء أمور", ""],
+    ["women", "أمهات وربّات بيوت", ""],
+    ["youth", "شباب وبنات", ""],
+    ["biz", "أصحاب محلات ومشاريع", ""],
+  ]},
+];
+
+const PRODUCTS = {
+  teach:  { write: ["ملخصات ومذكرات PDF", "ملخص فصل واحد لمادة تدرّسها", "1 إلى 3 ر.ع"], visual: ["أوراق عمل جاهزة للطباعة", "10 أوراق عمل لدرس واحد", "1 إلى 2 ر.ع"], video: ["شرح فيديو قصير لدرس صعب", "فيديو 10 دقايق لدرس واحد", "2 إلى 5 ر.ع"] },
+  design: { write: ["دليل «صمّم بنفسك» PDF", "دليل خطوات لتصميم شي واحد", "2 إلى 4 ر.ع"], visual: ["قوالب دعوات وتصاميم جاهزة", "3 قوالب دعوات قابلة للتعديل", "1 إلى 4 ر.ع"], video: ["دورة تصميم قصيرة", "درس فيديو عن أداة وحدة", "5 إلى 15 ر.ع"] },
+  cook:   { write: ["كتيب وصفات PDF", "10 وصفات من أشهر وصفاتك", "1 إلى 3 ر.ع"], visual: ["كتيب وصفات مصوّر", "10 وصفات مع صورها", "2 إلى 4 ر.ع"], video: ["وصفات بالفيديو", "3 فيديوهات لأشهر أطباقك", "3 إلى 8 ر.ع"] },
+  fit:    { write: ["نظام غذائي PDF", "خطة أكل أسبوعين", "2 إلى 5 ر.ع"], visual: ["جدول تمارين 30 يوم", "جدول تمارين شهر للمبتدئين", "2 إلى 4 ر.ع"], video: ["تمارين بالفيديو", "5 فيديوهات تمارين في البيت", "3 إلى 10 ر.ع"] },
+  office: { write: ["دليل عملي PDF", "دليل لمهارة وحدة تتقنها", "2 إلى 4 ر.ع"], visual: ["قوالب إكسل جاهزة", "قالب ميزانية البيت أو فواتير", "1 إلى 3 ر.ع"], video: ["دورة إكسل قصيرة", "3 دروس لأهم الدوال", "5 إلى 15 ر.ع"] },
+  photo:  { write: ["دليل تصوير بالجوال PDF", "10 نصايح تصوير بأمثلة", "1 إلى 3 ر.ع"], visual: ["فلاتر جاهزة للصور", "5 فلاتر بنفس الطابع", "1 إلى 3 ر.ع"], video: ["دورة تصوير قصيرة", "درس فيديو عن الإضاءة", "3 إلى 10 ر.ع"] },
+  other:  { write: ["دليل PDF من خبرتك", "دليل قصير لأكثر سؤال ينسأل لك", "1 إلى 3 ر.ع"], visual: ["قالب أو جدول جاهز", "قالب يحل مشكلة وحدة", "1 إلى 3 ر.ع"], video: ["شرح فيديو لخبرتك", "فيديو 10 دقايق لأهم شي تعرفه", "2 إلى 5 ر.ع"] },
+};
+const WHO = { students: "للطلاب وأولياء الأمور", women: "للأمهات وربّات البيوت", youth: "للشباب والبنات", biz: "لأصحاب المحلات والمشاريع" };
+const TIME = { low: "ساعتين تكفي لنسخة أولى بسيطة. ابدأ صغير.", mid: "يوم واحد يكفي تخلّص منتجك وترفعه.", high: "عندك وقت تسوي منتج كامل، وتجهز معه الثاني." };
+
+let step = 0, answers = {};
+const app = document.getElementById("app");
+const wa = (text) => `https://wa.me/${WA}?text=${encodeURIComponent(text)}`;
+const head = (n) => `
+  <div class="top"><a class="brand" href="/"><img src="/icon-192.png" alt="" width="32" height="32">مونة</a>${n ? `<span class="step">${n} من ${Q.length}</span>` : ""}</div>
+  ${n ? `<div class="rail"><b style="width:${(n - 1) / Q.length * 100}%"></b></div>` : ""}`;
+
+function intro() {
+  app.innerHTML = `${head(0)}
+    <h1>ما تعرف <em>وش تبيع؟</em><br>اعرف في دقيقة.</h1>
+    <p class="lead">5 أسئلة سريعة عن شغلك وأسلوبك، وتطلع لك فكرة منتج رقمي تقدر تبيعه، وكيف تبدأ فيه.</p>
+    <div class="hero-note"><span>⏱ دقيقة وحدة</span><span>✓ بدون تسجيل</span><span>✓ مجاني</span></div>
+    <button class="btn" id="start" type="button">ابدأ الاختبار</button>`;
+  document.getElementById("start").onclick = () => { step = 0; question(); };
+}
+
+function question() {
+  const item = Q[step];
+  app.innerHTML = `${head(step + 1)}
+    ${step ? `<button class="back" type="button" id="back">→ رجوع</button>` : ""}
+    <h1>${item.q}</h1>
+    <div class="opts">${item.opts.map(([v, t, s]) => `<button class="opt" type="button" data-v="${v}">${t}${s ? `<small>${s}</small>` : ""}</button>`).join("")}</div>`;
+  requestAnimationFrame(() => { const b = app.querySelector(".rail b"); if (b) b.style.width = `${(step + 1) / Q.length * 100}%`; });
+  app.querySelectorAll(".opt").forEach((b) => b.onclick = () => {
+    answers[item.key] = b.dataset.v;
+    step++;
+    step < Q.length ? question() : result();
+  });
+  const back = document.getElementById("back");
+  if (back) back.onclick = () => { step--; question(); };
+  window.scrollTo(0, 0);
+}
+
+function result() {
+  const style = answers.ask === "recipe" && answers.style === "write" ? "visual" : answers.style;
+  const [name, first, price] = PRODUCTS[answers.field][style];
+  const who = WHO[answers.who];
+  const msg = (path) => `هلا مونة 👋\nطلعت نتيجتي في الاختبار: ${name} ${who}.\n${path}`;
+  app.innerHTML = `${head(0)}
+    <div class="result-card">
+      <span class="k">منتجك المناسب</span>
+      <h2>${name}</h2>
+      <p>${who}. ${TIME[answers.time]}</p>
+      <div class="facts">
+        <div><small>أول منتج</small><b>${first}</b></div>
+        <div><small>سعر مقترح</small><b>${price}</b></div>
+      </div>
+    </div>
+    <h3>كيف تبدأ؟ اختر اللي يناسبك</h3>
+    <div class="paths">
+      <a class="path" target="_blank" rel="noopener" href="${wa(msg("أبي القالب الجاهز وأسويه بنفسي."))}">
+        <i class="d" style="background:#3FA36B"></i><div><b>أسويه بنفسي بقالب جاهز</b><span>نرسل لك قالب تكتب فيه محتواك بس.</span></div><span class="go">أبي القالب</span></a>
+      <a class="path" target="_blank" rel="noopener" href="${wa(msg("أبي أتعلم الطريقة، أرسلوا لي الدرس الأول."))}">
+        <i class="d" style="background:#E0B83A"></i><div><b>أبي أتعلم الطريقة</b><span>دروس قصيرة، والدرس الأول مجاني.</span></div><span class="go">الدرس الأول</span></a>
+      <a class="path" target="_blank" rel="noopener" href="${wa(msg("ما عندي وقت، أبيكم تسوونه لي."))}">
+        <i class="d" style="background:#7E5BC2"></i><div><b>ما عندي وقت، سوّوه لي</b><span>ترسل لنا محتواك، ونجهز منتجك ومتجرك.</span></div><span class="go">كلّمونا</span></a>
+    </div>
+    <p class="fine">الأزرار تفتح الواتساب برسالة جاهزة فيها نتيجتك. الأسعار اقتراحات تقريبية، وأنت تحدد سعرك.</p>
+    <button class="back" type="button" id="again">↺ أعد الاختبار</button>`;
+  document.getElementById("again").onclick = () => { answers = {}; intro(); };
+  window.scrollTo(0, 0);
+}
+
+intro();
+</script>
+</body>
+</html>
