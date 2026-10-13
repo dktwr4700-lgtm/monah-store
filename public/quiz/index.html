@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>وش تبيع؟ اختبار مونة</title>
-<meta name="description" content="خمسة أسئلة تطلع لك فكرة منتج رقمي تقدر تبيعه، وكيف تبدأ فيه.">
+<meta name="description" content="خمسة أسئلة تطلع لك فكرة منتج رقمي تقدر تبيعه وكيف تبدأ فيه.">
 <meta property="og:title" content="ما تعرف وش تبيع؟">
 <meta property="og:description" content="اختبار مجاني من مونة يقترح عليك منتجًا رقميًا يناسب شغلك وأسلوبك.">
 <meta property="og:image" content="https://monah-app.com/icon-512.png">
@@ -77,20 +77,20 @@ button:focus-visible, a:focus-visible { outline: 2px dashed var(--green-ink); ou
 <script>
 const WA = "96876630905";
 const Q = [
-  { key: "field", q: "وش شغلك، أو المجال اللي تعرفه زين؟", opts: [
-    ["teach", "التعليم", "معلم، أو مدرّس خصوصي، أو طالب متفوق"],
-    ["design", "التصميم", "دعوات، أو سوشال ميديا، أو جرافيك"],
+  { key: "field", q: "وش شغلك أو المجال اللي تعرفه زين؟", opts: [
+    ["teach", "التعليم", "معلم أو مدرّس خصوصي أو طالب متفوق"],
+    ["design", "التصميم", "دعوات أو سوشال ميديا أو جرافيك"],
     ["cook", "الطبخ والحلويات", "وصفات البيت والعزايم"],
-    ["fit", "الرياضة والصحة", "تمارين، أو تغذية"],
-    ["office", "الشغل المكتبي", "إكسل، أو محاسبة، أو إدارة"],
+    ["fit", "الرياضة والصحة", "تمارين أو تغذية"],
+    ["office", "الشغل المكتبي", "إكسل أو محاسبة أو إدارة"],
     ["photo", "التصوير", "بالجوال أو بالكاميرا"],
     ["other", "شي ثاني", "خبرة أو هواية تتقنها"],
   ]},
   { key: "ask", q: "وش أكثر شي يطلبه منك الناس؟", opts: [
     ["explain", "يبوني أشرح لهم", ""],
-    ["recipe", "يبون نسخة من شي سويته", "وصفة، أو جدول، أو ملف"],
+    ["recipe", "يبون نسخة من شي سويته", "وصفة أو جدول أو ملف"],
     ["tips", "يبون رأيي ونصيحتي", ""],
-    ["none", "ما أدري، أول مرة أفكر فيها", ""],
+    ["none", "ما أدري أول مرة أفكر فيها", ""],
   ]},
   { key: "style", q: "كيف ترتاح تقدّم اللي تعرفه؟", opts: [
     ["write", "أكتب", "ملفات ومذكرات"],
@@ -132,10 +132,10 @@ function intro() {
     ${mast()}
     <div class="lead-gap"></div>
     <h1 class="display">ما تعرف<br><span class="mark">وش تبيع؟</span></h1>
-    <p class="prose" style="margin-top:22px">خمسة أسئلة، وتطلع لك فكرة منتج رقمي تقدر تبيعه من اللي تعرفه، وكيف تبدأ فيه.</p>
+    <p class="prose" style="margin-top:22px">خمسة أسئلة وتطلع لك فكرة منتج رقمي تقدر تبيعه من اللي تعرفه وكيف تبدأ فيه.</p>
     <div class="spacer"></div>
     <button class="start" id="start" type="button">ابدأ ←</button>
-    <div class="small">دقيقة وحدة، بدون تسجيل.</div>
+    <div class="small">دقيقة وحدة وبدون تسجيل.</div>
   </div></section>`;
   document.getElementById("start").onclick = () => { step = 0; question(); };
   window.scrollTo(0, 0);
@@ -171,13 +171,13 @@ function result() {
     <div class="lead-gap"></div>
     <div class="label">منتجك</div>
     <h1 class="display"><span class="mark">${name}</span></h1>
-    <p class="prose" style="margin-top:22px">${who}. ابدأ بـ<b>${first}</b>، وبيعه بين <b>${lo}</b> و<b>${hi}</b> تقريبًا. ${TIME[answers.time]}</p>
+    <p class="prose" style="margin-top:22px">${who}. ابدأ بـ<b>${first}</b> وبيعه بين <b>${lo}</b> و<b>${hi}</b> تقريبًا. ${TIME[answers.time]}</p>
     <ol class="ways">
-      <li><a target="_blank" rel="noopener" href="${wa(msg("أبي القالب الجاهز وأسويه بنفسي."))}">أسويه بنفسي<i>←</i></a><p>نرسل لك قالب جاهز، وتكتب فيه محتواك بس.</p></li>
-      <li><a target="_blank" rel="noopener" href="${wa(msg("أبي أتعلم الطريقة، أرسلوا لي الدرس الأول."))}">أتعلم الطريقة<i>←</i></a><p>دروس قصيرة، والأول مجاني.</p></li>
-      <li><a target="_blank" rel="noopener" href="${wa(msg("ما عندي وقت، أبيكم تسوونه لي."))}">سوّوه لي<i>←</i></a><p>ترسل لنا محتواك، ونجهز منتجك ومتجرك.</p></li>
+      <li><a target="_blank" rel="noopener" href="${wa(msg("أبي القالب الجاهز وأسويه بنفسي."))}">أسويه بنفسي<i>←</i></a><p>نرسل لك قالب جاهز وتكتب فيه محتواك بس.</p></li>
+      <li><a target="_blank" rel="noopener" href="${wa(msg("أبي أتعلم الطريقة أرسلوا لي الدرس الأول."))}">أتعلم الطريقة<i>←</i></a><p>دروس قصيرة والأول مجاني.</p></li>
+      <li><a target="_blank" rel="noopener" href="${wa(msg("ما عندي وقت أبيكم تسوونه لي."))}">سوّوه لي<i>←</i></a><p>ترسل لنا محتواك ونجهز منتجك ومتجرك.</p></li>
     </ol>
-    <p class="foot">كل اختيار يفتح الواتساب برسالة فيها نتيجتك. الأسعار تقريبية، وأنت تحدد سعرك.</p>
+    <p class="foot">كل اختيار يفتح الواتساب برسالة فيها نتيجتك. الأسعار تقريبية وأنت تحدد سعرك.</p>
     <button class="again" type="button" id="again">أعد الاختبار</button>
   </div></section>`;
   document.getElementById("again").onclick = () => { answers = {}; intro(); };
