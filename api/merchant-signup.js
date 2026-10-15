@@ -1052,7 +1052,38 @@ async function sendSignupReminders(req, res) {
   return res.status(200).json({ ok: true, checked: snap.size, sent: sentCount });
 }
 
+// أرقام مختصرة لسكرتير صاحب المشروع (قراءة بس، بدون إيميلات أو أرقام). محمي بـ OWNER_STATS_TOKEN.
+async function ownerStats(req, res) {
+  const token = String(process.env.OWNER_STATS_TOKEN || "").trim();
+  if (!token || (req.headers.authorization || "") !== `Bearer ${token}`) return res.status(401).json({ error: "Unauthorized" });
+  const now = Date.now();
+  const ms = (v) => (v?.toDate ? v.toDate().getTime() : typeof v === "number" ? v : 0);
+  const [sellersSnap, signupsSnap, ordersSnap] = await Promise.all([
+    db.collection("sellers").get(),
+    db.collection("merchantSignups").where("createdAt", ">", new Date(now - 30 * DAY_MS)).get(),
+    db.collection("orders").where("createdAt", ">", new Date(now - 30 * DAY_MS)).get(),
+  ]);
+  const sellers = sellersSnap.docs.map((d) => d.data());
+  const today = isoDate(new Date());
+  const inDays = (n) => isoDate(new Date(now + n * DAY_MS));
+  const plans = sellers.reduce((a, x) => ({ ...a, [x.plan || "?"]: (a[x.plan || "?"] || 0) + 1 }), {});
+  const paid = sellers.filter((x) => !isUnpaidSeller(x) && !x.disabled);
+  const signups = signupsSnap.docs.map((d) => d.data());
+  const orders = ordersSnap.docs.map((d) => d.data()).filter((o) => o.status !== "draft");
+  const confirmed = orders.filter((o) => o.status === "confirmed");
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(200).json({
+    sellers: { total: sellers.length, byPlan: plans, paidActive: paid.length, unpaid: plans[UNPAID_PLAN] || 0,
+      expiringIn7Days: paid.filter((x) => x.subscriptionExpiresAt >= today && x.subscriptionExpiresAt <= inDays(7)).map((x) => ({ store: x.storeName || "", expires: x.subscriptionExpiresAt })).slice(0, 15),
+      expired: paid.filter((x) => x.subscriptionExpiresAt && x.subscriptionExpiresAt < today).length },
+    signups: { last24h: signups.filter((x) => ms(x.createdAt) > now - DAY_MS).length, last7d: signups.filter((x) => ms(x.createdAt) > now - 7 * DAY_MS).length, last30d: signups.length },
+    orders30d: { total: orders.length, confirmed: confirmed.length, awaitingSeller: orders.filter((o) => o.status === "awaiting_seller_confirmation").length,
+      confirmedSales: Math.round(confirmed.reduce((sum, o) => sum + (Number(o.price) || 0), 0) * 1000) / 1000 },
+  });
+}
+
 export default async function handler(req, res) {
+  if (req.method === "GET" && req.query?.job === "owner_stats") return await ownerStats(req, res);
   // ربط «مركز معمار» (من خادم لخادم): هنا بدل ملف مستقل عشان ما نزيد عدد دوال Vercel
   if (req.query?.hub === "1") return await hubHandler(db, req, res);
   if (req.method === "GET" && req.query?.job === "onboarding_reminders") {

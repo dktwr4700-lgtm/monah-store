@@ -52,3 +52,14 @@ describe("تذكير المسجلين اللي ما فعّلوا", () => {
     expect(vercel.crons).toContainEqual({ path: "/api/merchant-signup?job=signup_reminders", schedule: "10 5 * * *" });
   });
 });
+
+describe("أرقام سكرتير المالك", () => {
+  it("محمية بكلمة سر منفصلة وما ترجع إيميلات أو أرقام", async () => {
+    const api = await read("api/merchant-signup.js");
+    const fn = api.slice(api.indexOf("async function ownerStats"), api.indexOf("export default async function handler"));
+    expect(fn).toContain("process.env.OWNER_STATS_TOKEN");
+    expect(fn).toContain('!== `Bearer ${token}`');
+    expect(fn).not.toMatch(/email|phone|buyer/i);
+    expect(api).toContain('req.query?.job === "owner_stats") return await ownerStats(req, res)');
+  });
+});
