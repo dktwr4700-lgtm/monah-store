@@ -14,7 +14,7 @@ import Orders from "./Orders.jsx";
 import { watermarkImage } from "./watermarkImage.js";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan, renewalPlanFor, upgradeOptionsForPlan, effectiveAddOns, planIncludesAddOn, addOnsCostForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
-import { cleanOptions, startingPrice, cleanAskLabel, hasOptions, MAX_OPTIONS, MAX_OPTION_NAME, MAX_ASK_LABEL } from "../lib/product-options.js";
+import { cleanOptions, startingPrice, cleanAskLabel, hasOptions, toNumber, MAX_OPTIONS, MAX_OPTION_NAME, MAX_ASK_LABEL } from "../lib/product-options.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -1466,7 +1466,7 @@ const DASH_T = {
 // جدول خيارات المنتج: كل سطر اسم وسعر، مع إضافة وحذف
 function OptionsEditor({ rows, setRows, t }) {
   const set = (i, key, value) => setRows((prev) => prev.map((r, j) => (j === i ? { ...r, [key]: value } : r)));
-  const valid = cleanOptions(rows.map((r) => ({ ...r, price: Number(r.price) })));
+  const valid = cleanOptions(rows.map((r) => ({ ...r, price: toNumber(r.price) })));
   return (
     <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px 36px", gap: 8, fontSize: 11.5, fontWeight: 800, color: "#5A5648" }}>
@@ -1475,7 +1475,7 @@ function OptionsEditor({ rows, setRows, t }) {
       {rows.map((r, i) => (
         <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px 36px", gap: 8, alignItems: "center" }}>
           <input type="text" value={r.name} maxLength={MAX_OPTION_NAME} placeholder={i === 0 ? t.optionNamePlaceholder : ""} onChange={(e) => set(i, "name", e.target.value)} style={{ minWidth: 0 }} />
-          <input type="number" min="0" step="0.001" value={r.price} onChange={(e) => set(i, "price", e.target.value)} style={{ minWidth: 0, direction: "ltr" }} />
+          <input type="text" inputMode="decimal" placeholder="0.000" value={r.price} onChange={(e) => set(i, "price", e.target.value)} style={{ minWidth: 0, direction: "ltr" }} />
           <button type="button" className="dh-item-action" aria-label={t.removeOption} title={t.removeOption} onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))} disabled={rows.length <= 2} style={{ padding: "6px 0" }}>×</button>
         </div>
       ))}
@@ -2021,7 +2021,7 @@ export default function Dashboard() {
     }
 
     const cleanName = name.trim();
-    const options = useOptions && productType !== "code" ? cleanOptions(optionRows.map((r) => ({ ...r, price: Number(r.price) }))) : [];
+    const options = useOptions && productType !== "code" ? cleanOptions(optionRows.map((r) => ({ ...r, price: toNumber(r.price) }))) : [];
     if (useOptions && productType !== "code" && options.length < 2) {
       setError(t.optionsMinError);
       return;
@@ -2218,7 +2218,7 @@ export default function Dashboard() {
     const cleanName = editName.trim();
     const product = products.find((item) => item.id === productId);
     const withOptions = editUseOptions && product?.type !== "code";
-    const options = withOptions ? cleanOptions(editOptionRows.map((r) => ({ ...r, price: Number(r.price) }))) : [];
+    const options = withOptions ? cleanOptions(editOptionRows.map((r) => ({ ...r, price: toNumber(r.price) }))) : [];
     if (withOptions && options.length < 2) {
       setError(t.optionsMinError);
       return;
@@ -4664,7 +4664,7 @@ export default function Dashboard() {
               <div className="pv-card">
                 <div className="pv-price-row">
                   <span style={{ color: "#5A5648", fontSize: 11.5 }}>{t.priceWord}</span>
-                  {(() => { const opts = useOptions && productType !== "code" ? cleanOptions(optionRows.map((r) => ({ ...r, price: Number(r.price) }))) : []; return <><b className="mono" style={{ fontSize: 20 }}>{opts.length ? `${lang === "ar" ? "من" : "From"} ${startingPrice(opts).toFixed(2)}` : price ? Number(price).toFixed(2) : "0.00"} {curr}</b>{opts.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{opts.map((o) => <span key={o.id} style={{ fontSize: 12, border: "1px solid #E7E3D8", borderRadius: 10, padding: "4px 10px" }}>{o.name} · {o.price.toFixed(2)}</span>)}</div>}</>; })()}
+                  {(() => { const opts = useOptions && productType !== "code" ? cleanOptions(optionRows.map((r) => ({ ...r, price: toNumber(r.price) }))) : []; return <><b className="mono" style={{ fontSize: 20 }}>{opts.length ? `${lang === "ar" ? "من" : "From"} ${startingPrice(opts).toFixed(2)}` : price ? Number(price).toFixed(2) : "0.00"} {curr}</b>{opts.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{opts.map((o) => <span key={o.id} style={{ fontSize: 12, border: "1px solid #E7E3D8", borderRadius: 10, padding: "4px 10px" }}>{o.name} · {o.price.toFixed(2)}</span>)}</div>}</>; })()}
                 </div>
                 <div className="pv-desc">{description || t.noExtraDescription}</div>
               </div>

@@ -46,3 +46,10 @@ describe("خيارات المنتج", () => {
     expect(SELLABLE_TYPES).toContain("service");
   });
 });
+
+describe("الأرقام العربية", () => {
+  it("السعر المكتوب بأرقام عربية من كيبورد الجوال ينقبل", () => {
+    const out = cleanOptions([{ name: "أ", price: "٢٫٥" }, { name: "ب", price: "5,5" }]);
+    expect(out.map((o) => o.price)).toEqual([2.5, 5.5]);
+  });
+});
