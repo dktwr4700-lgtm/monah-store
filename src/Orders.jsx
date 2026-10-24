@@ -196,7 +196,8 @@ export default function Orders({ ownerId, onAddProduct, storeName, lang = "ar" }
             {staleDrafts.map((order) => (
               <div key={order.id} className="ord-stalled-row">
                 <div>
-                  <div className="ord-product">{order.productName}</div>
+                  <div className="ord-product">{order.productName}{order.optionName ? ` · ${order.optionName}` : ""}</div>
+            {order.buyerAnswer && <div className="ord-answer" style={{ margin: "6px 0", padding: "8px 11px", borderRadius: 10, background: "#F3EBDD", fontSize: 12.5, lineHeight: 1.7 }}><b>{order.askLabel || "معلومة من المشتري"}:</b> <span style={{ userSelect: "all", fontWeight: 800 }}>{order.buyerAnswer}</span></div>}
                   <div className="ord-meta"><span>{order.buyerPhone}</span>{order.buyerEmail && <span>· <bdi>{order.buyerEmail}</bdi></span>}<span className="ord-date">· {formatDate(order.createdAt, lang)}</span></div>
                 </div>
                 <button className="ord-wa-btn" type="button" onClick={() => nudgeAbandonedOrder(order)}>{t.whatsapp}</button>

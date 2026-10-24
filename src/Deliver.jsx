@@ -29,7 +29,7 @@ const DLV_T = {
     preparingDownload: "جاري تجهيز التنزيل...", downloadProduct: "تنزيل المنتج",
     downloadsRemaining: (left, max) => `تبقّى لك ${left} من ${max} تنزيلات`,
     downloadsUsedUp: (max) => `استخدمت كل تنزيلاتك (${max}). تواصل مع التاجر لو تحتاج نسخة إضافية.`,
-    codeCopied: "تم نسخ الكود", copyCode: "نسخ الكود",
+    codeCopied: "تم نسخ الكود", copyCode: "نسخ الكود", serviceNote: "التاجر استلم طلبك ويجهزه الحين. بيسلمه لك بنفسه وإذا احتاج شي بيتواصل معك.",
     activationNote: "🔒 هذا المنتج يشتغل مباشرة من الموقع — اضغط \"تشغيل الآن\" فوق، ما تحتاج تنزّل أي ملف.",
     viewReceipt: "عرض الفاتورة", orderLinkNote: "هذا الرابط خاص بطلبك، لا تشاركه مع أحد.",
   },
@@ -41,7 +41,7 @@ const DLV_T = {
     preparingDownload: "Preparing download...", downloadProduct: "Download product",
     downloadsRemaining: (left, max) => `${left} of ${max} downloads left`,
     downloadsUsedUp: (max) => `You've used all your downloads (${max}). Contact the seller if you need another copy.`,
-    codeCopied: "Code copied", copyCode: "Copy code",
+    codeCopied: "Code copied", copyCode: "Copy code", serviceNote: "The seller received your order and is preparing it. They will deliver it to you directly and contact you if needed.",
     activationNote: "🔒 This product runs directly from the website — click \"Play now\" above, no file to download.",
     viewReceipt: "View receipt", orderLinkNote: "This link is specific to your order — don't share it with anyone.",
   },
@@ -76,6 +76,7 @@ function DeliveryItem({ item, downloadingId, copiedId, onDownload, onPlay, onCop
             : t.downloadsUsedUp(item.maxDownloads)}
         </div>
       )}
+      {item.service && <div className="dlv-note" style={{ background: "#eaf0eb", color: "#163f2e", borderRadius: 10, padding: "9px 11px", lineHeight: 1.8 }}>{t.serviceNote}</div>}
       {item.licenseCode && (
         <>
           <div className="dlv-code">{item.licenseCode}</div>
@@ -170,7 +171,7 @@ export default function Deliver({ orderId, token }) {
 
         {state === "ready" && order && (
           <article className="dlv-card">
-            <div className="dlv-name">{order.productName}</div>
+            <div className="dlv-name">{order.productName}{order.optionName ? ` · ${order.optionName}` : ""}</div>
             <div className="dlv-price">{Number(order.price || 0).toFixed(2)} {curr}</div>
 
             {order.type === "bundle" ? (

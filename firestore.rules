@@ -75,8 +75,11 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'ownerId', 'name', 'price', 'description', 'category', 'type',
           'filePath', 'codesCount', 'images', 'previewVideoUrl', 'hidden', 'suspended', 'featured', 'sortOrder', 'createdAt',
-          'requiresActivation'
-        ]);
+          'requiresActivation', 'options', 'askBuyer'
+        ])
+        && (!('options' in request.resource.data) || (request.resource.data.options is list && request.resource.data.options.size() <= 12))
+        && (!('askBuyer' in request.resource.data) || (request.resource.data.askBuyer is string && request.resource.data.askBuyer.size() <= 60))
+        && request.resource.data.type in ['file', 'code', 'service'];
       allow update: if isAdmin() || (
         ownsExistingProduct()
         && request.resource.data.ownerId == resource.data.ownerId
@@ -84,8 +87,10 @@ service cloud.firestore {
         && (request.resource.data.price > 0 || resource.data.type == 'file')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'price', 'description', 'category', 'filePath', 'codesCount',
-          'images', 'hidden', 'featured', 'sortOrder', 'requiresActivation'
+          'images', 'hidden', 'featured', 'sortOrder', 'requiresActivation', 'options', 'askBuyer'
         ])
+        && (!('options' in request.resource.data) || (request.resource.data.options is list && request.resource.data.options.size() <= 12))
+        && (!('askBuyer' in request.resource.data) || (request.resource.data.askBuyer is string && request.resource.data.askBuyer.size() <= 60))
         && (request.resource.data.hidden == true || !sellerIsUnpaid())
       );
       allow delete: if ownsExistingProduct() || isAdmin();

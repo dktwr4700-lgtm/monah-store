@@ -19,7 +19,7 @@ const BUY_T = {
     preparingDownload: "جاري تجهيز التنزيل...", downloadProduct: "تنزيل المنتج",
     downloadsRemaining: (left, max) => `تبقّى لك ${left} من ${max} تنزيلات`,
     downloadsUsedUp: (max) => `استخدمت كل تنزيلاتك (${max}). تواصل مع التاجر لو تحتاج نسخة إضافية.`,
-    codeCopied: "تم نسخ الكود", copyCode: "نسخ الكود",
+    codeCopied: "تم نسخ الكود", copyCode: "نسخ الكود", serviceNote: "التاجر استلم طلبك ويجهزه الحين. بيسلمه لك بنفسه وإذا احتاج شي بيتواصل معك.",
     myOrders: "طلباتي",
     noteWithOwner: "هذه الصفحة تعرض طلباتك من هذا المتجر فقط.",
     noteWithoutOwner: "هذه الصفحة تعرض طلبات هذا الجهاز فقط في نسخة التجربة.",
@@ -41,7 +41,7 @@ const BUY_T = {
     preparingDownload: "Preparing download...", downloadProduct: "Download product",
     downloadsRemaining: (left, max) => `${left} of ${max} downloads left`,
     downloadsUsedUp: (max) => `You've used all your downloads (${max}). Contact the seller if you need another copy.`,
-    codeCopied: "Code copied", copyCode: "Copy code",
+    codeCopied: "Code copied", copyCode: "Copy code", serviceNote: "The seller received your order and is preparing it. They will deliver it to you directly and contact you if needed.",
     myOrders: "My orders",
     noteWithOwner: "This page shows your orders from this store only.",
     noteWithoutOwner: "This page shows orders from this device only, in the trial version.",
@@ -94,6 +94,7 @@ function DeliveryItem({ item, downloadingId, copiedId, onDownload, onPlay, onCop
             : t.downloadsUsedUp(item.maxDownloads)}
         </div>
       )}
+      {item.service && <div className="buy-note" style={{ background: "#eaf0eb", color: "#163f2e", borderRadius: 10, padding: "9px 11px", lineHeight: 1.8 }}>{t.serviceNote}</div>}
       {item.licenseCode && (
         <>
           <div className="buy-code">{item.licenseCode}</div>
@@ -245,7 +246,7 @@ export default function Purchases({ ownerId }) {
             <div className="buy-card-top">
               <div>
                 {storeNames[order.ownerId] && <div className="buy-date" style={{ marginTop: 0, marginBottom: 3 }}>{t.fromStore(storeNames[order.ownerId])}</div>}
-                <div className="buy-name">{order.productName}</div>
+                <div className="buy-name">{order.productName}{order.optionName ? ` · ${order.optionName}` : ""}</div>
                 <span className={`buy-status ${order.status === "confirmed" ? "confirmed" : order.status === "awaiting_seller_confirmation" ? "awaiting" : "draft"}`}>{labelFor(order.status, t)}</span>
               </div>
               <div className="buy-price">{Number(order.price || 0).toFixed(2)} {curr}</div>

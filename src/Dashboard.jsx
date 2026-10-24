@@ -14,6 +14,7 @@ import Orders from "./Orders.jsx";
 import { watermarkImage } from "./watermarkImage.js";
 import { ADD_ON_CATALOG, BASE_MONTHLY_PRICE, BASE_PRODUCT_LIMIT, PRO_MONTHLY_PRICE, CUSTOM_DOMAIN_MONTHLY_PRICE, productLimitForPlan, priceForPlan, renewalPriceForPlan, renewalPlanFor, upgradeOptionsForPlan, effectiveAddOns, planIncludesAddOn, addOnsCostForPlan } from "./subscriptionCatalog.js";
 import { useLang, LangToggle } from "./i18n.jsx";
+import { cleanOptions, startingPrice, cleanAskLabel, hasOptions, MAX_OPTIONS, MAX_OPTION_NAME, MAX_ASK_LABEL } from "../lib/product-options.js";
 
 class DebugErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -584,6 +585,17 @@ const DASH_T = {
     productTypeLabel: "نوع المنتج",
     fileType: "ملف",
     codeType: "كود / ترخيص",
+    serviceType: "خدمة",
+    serviceHint: "خدمة تسلمها انت بنفسك بعد الدفع (مثل شحن ألعاب أو تصميم حسب الطلب). ما تحتاج ترفع ملف.",
+    optionsToggle: "المنتج له أكثر من خيار بأسعار مختلفة",
+    optionsHint: "مثل كميات أو مستويات أو مدد. المشتري يختار واحد وسعره يتغير",
+    optionNameLabel: "اسم الخيار", optionPriceLabel: "السعر", addOption: "+ أضف خيار", removeOption: "احذف الخيار",
+    optionNamePlaceholder: "مثلًا: 800 فيبوكس",
+    optionsMinError: "اكتب خيارين على الأقل لكل واحد اسم وسعر.",
+    priceFromOptionsHint: (p) => `السعر يطلع في المتجر «من ${p} ر.ع» (أرخص خيار)`,
+    askBuyerLabel: "سؤال للمشتري قبل الدفع (اختياري)",
+    askBuyerPlaceholder: "مثلًا: اسم حسابك في اللعبة",
+    askBuyerHint: "لو كتبت سؤال، المشتري لازم يجاوبه وجوابه يوصلك مع الطلب",
     productFileLabel: "ملف المنتج",
     fileSecureHint: (mb) => `الملف يُرفع ويُحفظ بشكل محمي. للمنتج المدفوع، يفتح للعميل بعد أن تؤكد استلام التحويل من تبويب الطلبات. الحد الأقصى لحجم الملف ${mb} ميجابايت.`,
     interactiveFileLabel: "ملف يشتغل داخل الموقع فقط (فيديو، لعبة، أو أي محتوى) — يفتح بزر \"تشغيل الآن\" بدل ما يُنزَّل، عشان يشتغل مضمون على أي جهاز وما ينسخه أحد غير المشتري",
@@ -1135,6 +1147,17 @@ const DASH_T = {
     productTypeLabel: "Product type",
     fileType: "File",
     codeType: "Code / license",
+    serviceType: "Service",
+    serviceHint: "A service you deliver yourself after payment (like game top-ups or custom work). No file needed.",
+    optionsToggle: "This product has several options with different prices",
+    optionsHint: "Like quantities, levels or durations. The buyer picks one and the price follows",
+    optionNameLabel: "Option name", optionPriceLabel: "Price", addOption: "+ Add option", removeOption: "Remove option",
+    optionNamePlaceholder: "e.g. 800 V-Bucks",
+    optionsMinError: "Add at least two options, each with a name and a price.",
+    priceFromOptionsHint: (p) => `Shown in the store as "From ${p} OMR" (the cheapest option)`,
+    askBuyerLabel: "Question for the buyer before paying (optional)",
+    askBuyerPlaceholder: "e.g. Your in-game account name",
+    askBuyerHint: "If you add a question, the buyer must answer it and you get the answer with the order",
     productFileLabel: "Product file",
     fileSecureHint: (mb) => `The file is uploaded and stored securely. For a paid product, it opens for the customer after you confirm receiving the transfer from the Orders tab. Maximum file size ${mb} MB.`,
     interactiveFileLabel: "Play-only file (video, game, or any content) — opens with a \"Play now\" button instead of downloading, so it's guaranteed to work on any device and can't be copied by anyone but the buyer",
@@ -1440,6 +1463,31 @@ const DASH_T = {
   },
 };
 
+// جدول خيارات المنتج: كل سطر اسم وسعر، مع إضافة وحذف
+function OptionsEditor({ rows, setRows, t }) {
+  const set = (i, key, value) => setRows((prev) => prev.map((r, j) => (j === i ? { ...r, [key]: value } : r)));
+  const valid = cleanOptions(rows.map((r) => ({ ...r, price: Number(r.price) })));
+  return (
+    <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px 36px", gap: 8, fontSize: 11.5, fontWeight: 800, color: "#5A5648" }}>
+        <span>{t.optionNameLabel}</span><span>{t.optionPriceLabel}</span><span />
+      </div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px 36px", gap: 8, alignItems: "center" }}>
+          <input type="text" value={r.name} maxLength={MAX_OPTION_NAME} placeholder={i === 0 ? t.optionNamePlaceholder : ""} onChange={(e) => set(i, "name", e.target.value)} style={{ minWidth: 0 }} />
+          <input type="number" min="0" step="0.001" value={r.price} onChange={(e) => set(i, "price", e.target.value)} style={{ minWidth: 0, direction: "ltr" }} />
+          <button type="button" className="dh-item-action" aria-label={t.removeOption} title={t.removeOption} onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))} disabled={rows.length <= 2} style={{ padding: "6px 0" }}>×</button>
+        </div>
+      ))}
+      {rows.length < MAX_OPTIONS && <button type="button" className="dh-item-action" onClick={() => setRows((prev) => [...prev, { name: "", price: "" }])}>{t.addOption}</button>}
+      {valid.length >= 2 && <div className="dh-hint">{t.priceFromOptionsHint(startingPrice(valid).toFixed(3))}</div>}
+    </div>
+  );
+}
+
+const emptyOptionRows = () => [{ name: "", price: "" }, { name: "", price: "" }];
+const rowsFromProduct = (p) => (hasOptions(p) ? p.options.map((o) => ({ id: o.id, name: o.name, price: String(o.price) })) : emptyOptionRows());
+
 export default function Dashboard() {
   const [lang, setLang] = useLang();
   const t = DASH_T[lang];
@@ -1476,6 +1524,9 @@ export default function Dashboard() {
   const [fileInputKey, setFileInputKey] = useState(0);
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState("file");
+  const [useOptions, setUseOptions] = useState(false);
+  const [optionRows, setOptionRows] = useState(emptyOptionRows);
+  const [askBuyer, setAskBuyer] = useState("");
   const [requiresActivation, setRequiresActivation] = useState(false);
   const [sellerPlan, setSellerPlan] = useState("basic");
   const [trialProductClaimed, setTrialProductClaimed] = useState(false);
@@ -1493,6 +1544,9 @@ export default function Dashboard() {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editUseOptions, setEditUseOptions] = useState(false);
+  const [editOptionRows, setEditOptionRows] = useState(emptyOptionRows);
+  const [editAskBuyer, setEditAskBuyer] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editRequiresActivation, setEditRequiresActivation] = useState(false);
@@ -1967,7 +2021,13 @@ export default function Dashboard() {
     }
 
     const cleanName = name.trim();
-    const numericPrice = Number(price);
+    const options = useOptions && productType !== "code" ? cleanOptions(optionRows.map((r) => ({ ...r, price: Number(r.price) }))) : [];
+    if (useOptions && productType !== "code" && options.length < 2) {
+      setError(t.optionsMinError);
+      return;
+    }
+    const numericPrice = options.length ? startingPrice(options) : Number(price);
+    const askLabel = cleanAskLabel(askBuyer);
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t.nameAndPriceRequired);
       return;
@@ -1982,9 +2042,9 @@ export default function Dashboard() {
         setError(t.fillNamePriceFile);
         return;
       }
-    } else {
+    } else if (productType === "code") {
       const codesList = codesText.split("\n").map((c) => c.trim()).filter(Boolean);
-      if (!name || !price || codesList.length === 0) {
+      if (!name || !numericPrice || codesList.length === 0) {
         setError(t.fillNamePriceCodes);
         return;
       }
@@ -2010,6 +2070,9 @@ export default function Dashboard() {
         sortOrder: Date.now(),
         createdAt: serverTimestamp(),
         requiresActivation: productType === "file" ? requiresActivation : false,
+        // الحقول الجديدة تنحفظ بس لو التاجر استخدمها
+        ...(options.length ? { options } : {}),
+        ...(askLabel ? { askBuyer: askLabel } : {}),
       });
 
       if (productType === "code" && codesList.length > 0) {
@@ -2063,6 +2126,9 @@ export default function Dashboard() {
       setCodesText("");
       setProductType("file");
       setRequiresActivation(false);
+      setUseOptions(false);
+      setOptionRows(emptyOptionRows());
+      setAskBuyer("");
       setProductImages([]);
       setPreviewVideo("");
 
@@ -2084,6 +2150,9 @@ export default function Dashboard() {
     setEditingId(p.id);
     setEditName(p.name);
     setEditPrice(String(p.price));
+    setEditUseOptions(hasOptions(p));
+    setEditOptionRows(rowsFromProduct(p));
+    setEditAskBuyer(p.askBuyer || "");
     setEditDescription(p.description || "");
     setEditCategory(p.category || "");
     setEditRequiresActivation(Boolean(p.requiresActivation));
@@ -2121,8 +2190,11 @@ export default function Dashboard() {
     setPrice(String(p.price));
     setDescription(p.description || "");
     setCategory(p.category || "");
-    setProductType(p.type === "code" ? "code" : "file");
+    setProductType(p.type === "code" || p.type === "service" ? p.type : "file");
     setRequiresActivation(Boolean(p.requiresActivation));
+    setUseOptions(hasOptions(p));
+    setOptionRows(rowsFromProduct(p).map(({ name, price }) => ({ name, price })));
+    setAskBuyer(p.askBuyer || "");
     setProductImages([]);
     setPreviewVideo("");
     setProductFile(null);
@@ -2141,8 +2213,15 @@ export default function Dashboard() {
 
   async function saveEdit(productId) {
     const cleanName = editName.trim();
-    const numericPrice = Number(editPrice);
     const product = products.find((item) => item.id === productId);
+    const withOptions = editUseOptions && product?.type !== "code";
+    const options = withOptions ? cleanOptions(editOptionRows.map((r) => ({ ...r, price: Number(r.price) }))) : [];
+    if (withOptions && options.length < 2) {
+      setError(t.optionsMinError);
+      return;
+    }
+    const numericPrice = options.length ? startingPrice(options) : Number(editPrice);
+    const askLabel = cleanAskLabel(editAskBuyer);
     if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t.editNameAndPriceRequired);
       return;
@@ -2166,6 +2245,9 @@ export default function Dashboard() {
         images: editImages,
         ...(newCodes.length ? { codesCount: increment(newCodes.length) } : {}),
         ...(product?.type === "file" ? { requiresActivation: editRequiresActivation } : {}),
+        // نكتب الحقول الجديدة بس لو تغيرت عن اللي محفوظ (عشان المنتجات العادية تنحفظ زي قبل)
+        ...(options.length || hasOptions(product) ? { options } : {}),
+        ...(askLabel !== (product?.askBuyer || "") ? { askBuyer: askLabel } : {}),
       });
       await batch.commit();
       setEditingId(null);
@@ -3468,11 +3550,23 @@ export default function Dashboard() {
                   <label>{t.productNameLabel}</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
+                {!(useOptions && productType !== "code") && (
                 <div className="dh-field">
                   <label>{t.priceLabel}</label>
                   <input type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
                   <div className="dh-hint">{t.freeFileHint}</div>
                 </div>
+                )}
+                {productType !== "code" && (
+                <div className="dh-field">
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, cursor: "pointer", fontWeight: 700 }}>
+                    <input type="checkbox" checked={useOptions} onChange={(e) => setUseOptions(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ flex: 1, minWidth: 0 }}>{t.optionsToggle}</span>
+                  </label>
+                  <div className="dh-hint">{t.optionsHint}</div>
+                  {useOptions && <OptionsEditor rows={optionRows} setRows={setOptionRows} t={t} />}
+                </div>
+                )}
                 <div className="dh-field">
                   <label>{t.categoryLabel}</label>
                   <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t.generalCategory} />
@@ -3562,9 +3656,23 @@ export default function Dashboard() {
                     >
                       {t.codeType}
                     </button>
+                    <button
+                      type="button"
+                      className={"dh-type-btn" + (productType === "service" ? " active" : "")}
+                      onClick={() => setProductType("service")}
+                    >
+                      {t.serviceType}
+                    </button>
                   </div>
                 </div>
-                {productType === "file" ? (
+                <div className="dh-field">
+                  <label>{t.askBuyerLabel}</label>
+                  <input type="text" value={askBuyer} maxLength={MAX_ASK_LABEL} onChange={(e) => setAskBuyer(e.target.value)} placeholder={t.askBuyerPlaceholder} />
+                  <div className="dh-hint">{t.askBuyerHint}</div>
+                </div>
+                {productType === "service" ? (
+                  <div className="dh-hint" style={{ marginBottom: 12, background: "#F3EBDD", borderRadius: 10, padding: "9px 12px" }}>{t.serviceHint}</div>
+                ) : productType === "file" ? (
                   <div className="dh-field">
                     <label>{t.productFileLabel}</label>
                     <input key={fileInputKey} type="file" onChange={handleFilePick} />
@@ -3586,7 +3694,7 @@ export default function Dashboard() {
                     <div className="dh-hint">{t.eachCustomerCodeHint}</div>
                   </div>
                 )}
-                <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || price === ""} style={{ width: "100%", marginBottom: 8 }}>
+                <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || (price === "" && !useOptions)} style={{ width: "100%", marginBottom: 8 }}>
                   {t.previewProduct}
                 </button>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -3640,9 +3748,24 @@ export default function Dashboard() {
                         <label>{t.productNameLabel}</label>
                         <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
                       </div>
+                      {!(editUseOptions && p.type !== "code") && (
                       <div className="dh-field">
                         <label>{t.priceLabel}</label>
                         <input type="number" min="0" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+                      </div>
+                      )}
+                      {p.type !== "code" && (
+                      <div className="dh-field">
+                        <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, cursor: "pointer", fontWeight: 700 }}>
+                          <input type="checkbox" checked={editUseOptions} onChange={(e) => setEditUseOptions(e.target.checked)} style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                          <span style={{ flex: 1, minWidth: 0 }}>{t.optionsToggle}</span>
+                        </label>
+                        {editUseOptions && <OptionsEditor rows={editOptionRows} setRows={setEditOptionRows} t={t} />}
+                      </div>
+                      )}
+                      <div className="dh-field">
+                        <label>{t.askBuyerLabel}</label>
+                        <input type="text" value={editAskBuyer} maxLength={MAX_ASK_LABEL} onChange={(e) => setEditAskBuyer(e.target.value)} placeholder={t.askBuyerPlaceholder} />
                       </div>
                       <div className="dh-field">
                         <label>{t.categoryLabelShort}</label>
@@ -3701,7 +3824,7 @@ export default function Dashboard() {
                           <textarea rows="4" value={editNewCodes} onChange={(e) => setEditNewCodes(e.target.value)} placeholder={"CODE-004\nCODE-005"} style={{ direction: "ltr", textAlign: "right", fontFamily: "monospace" }} />
                         </div>
                       )}
-                      {p.type !== "code" && (
+                      {p.type === "file" && (
                         <div className="dh-hint" style={{ marginBottom: 10 }}>
                           {t.editNoteChangeFile}
                         </div>
@@ -3726,7 +3849,7 @@ export default function Dashboard() {
                         <div className="dh-pcard-info">
                           <span className="dh-pcard-name">{p.name}{p.featured && <span className="dh-featured-tag">{t.featuredTag}</span>}</span>
                           <div className="dh-pcard-meta">
-                            <span className="dh-pcard-price">{p.price} {curr}</span>
+                            <span className="dh-pcard-price">{hasOptions(p) ? `${lang === "ar" ? "من" : "From"} ` : ""}{p.price} {curr}</span>
                             {p.type === "code" && <span className={"dh-pcard-chip" + (Number(p.codesCount || 0) === 0 ? " bad" : "")}>{t.stockLabel} {p.codesCount || 0} {t.codeUnit}{Number(p.codesCount || 0) === 0 && t.outOfStock}</span>}
                             {p.hidden && <span className="dh-pcard-chip muted">{t.hidden}</span>}
                           </div>
@@ -4535,7 +4658,7 @@ export default function Dashboard() {
               <div className="pv-card">
                 <div className="pv-price-row">
                   <span style={{ color: "#5A5648", fontSize: 11.5 }}>{t.priceWord}</span>
-                  <b className="mono" style={{ fontSize: 20 }}>{price ? Number(price).toFixed(2) : "0.00"} {curr}</b>
+                  {(() => { const opts = useOptions && productType !== "code" ? cleanOptions(optionRows.map((r) => ({ ...r, price: Number(r.price) }))) : []; return <><b className="mono" style={{ fontSize: 20 }}>{opts.length ? `${lang === "ar" ? "من" : "From"} ${startingPrice(opts).toFixed(2)}` : price ? Number(price).toFixed(2) : "0.00"} {curr}</b>{opts.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{opts.map((o) => <span key={o.id} style={{ fontSize: 12, border: "1px solid #E7E3D8", borderRadius: 10, padding: "4px 10px" }}>{o.name} · {o.price.toFixed(2)}</span>)}</div>}</>; })()}
                 </div>
                 <div className="pv-desc">{description || t.noExtraDescription}</div>
               </div>

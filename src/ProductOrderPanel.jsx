@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { auth, ensureAnonymousAuth } from "./firebase.js";
 import { storage } from "./firebase-storage.js";
 import { ref, uploadBytes } from "firebase/storage";
+import { cleanAskLabel, MAX_ANSWER } from "../lib/product-options.js";
 
 const PPO_T = {
   ar: {
     secureSessionError: "تعذر بدء جلسة آمنة للطلب.", genericActionError: "تعذر تنفيذ الطلب الآن.",
     invalidPhone: "اكتب رقم واتسابك بشكل صحيح.", invalidEmail: "اكتب إيميلك بشكل صحيح، نرسل عليه رابط التنزيل.",
     startOrderError: "تعذر بدء الطلب الآن.",
+    answerRequired: (label) => `اكتب ${label} عشان التاجر يقدر يسلمك طلبك.`, yourChoice: "اختيارك",
     invalidProof: "اختر JPG أو PNG أو WEBP أو PDF بحجم أقل من 5 م.ب.",
     cardPayError: "تعذر بدء الدفع بالبطاقة الآن.", chooseProofFirst: "اختر إثبات التحويل أولًا.",
     uploadProofError: "تعذر رفع الإثبات الآن.",
@@ -63,6 +65,7 @@ const PPO_T = {
     copied: "Copied", copy: "Copy",
     manualTransferNote: "After the manual transfer, upload a photo or PDF as proof. The receipt is only shown to the seller for review.",
     proofLabel: "Proof of transfer", proofChosen: (name) => `Selected: ${name}`,
+    answerRequired: (label) => `Please fill in "${label}" so the seller can deliver your order.`, yourChoice: "Your choice",
     finishLater: "Finish later", uploadingProof: "Uploading proof...", sendProofToSeller: "Send proof to seller",
     manualTransferWarning: "Only submit after completing the transfer. Monah never asks for passwords or verification codes.",
   },
@@ -100,7 +103,7 @@ function notifySellerLink(sellerWhatsapp, itemName) {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
-export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lang = "ar" }) {
+export default function ProductOrderPanel({ product, bundle, option = null, sellerWhatsapp, lang = "ar" }) {
   const t = PPO_T[lang] || PPO_T.ar;
   const curr = lang === "ar" ? "ر.ع" : "OMR";
   const isBundle = Boolean(bundle);
@@ -110,6 +113,8 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lan
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [couponCode, setCouponCode] = useState("");
+  const askLabel = isBundle ? "" : cleanAskLabel(item?.askBuyer);
+  const [buyerAnswer, setBuyerAnswer] = useState("");
   const [order, setOrder] = useState(null);
   const [proofFile, setProofFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -136,12 +141,17 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lan
       setError(t.invalidEmail);
       return;
     }
+    const answer = buyerAnswer.trim();
+    if (askLabel && !answer) {
+      setError(t.answerRequired(askLabel));
+      return;
+    }
     setBusy(true);
     try {
       await ensureAnonymousAuth();
       const payload = isBundle
         ? { bundleId: item.id, buyerPhone: phone, buyerEmail: email }
-        : { productId: item.id, buyerPhone: phone, buyerEmail: email, couponCode: couponCode.trim() };
+        : { productId: item.id, buyerPhone: phone, buyerEmail: email, couponCode: couponCode.trim(), optionId: option?.id || "", buyerAnswer: answer };
       const data = await orderRequest("create", payload, t);
       setOrder(data.order);
     } catch (requestError) {
@@ -226,6 +236,8 @@ export default function ProductOrderPanel({ product, bundle, sellerWhatsapp, lan
         <div className="ppo-copy">{t.step1Copy}</div>
         <div className="ppo-field"><label htmlFor="buyer-phone">{t.whatsappLabel}</label><input id="buyer-phone" type="tel" value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} placeholder="9xxxxxxx" autoComplete="tel" dir="ltr" /></div>
         <div className="ppo-field"><label htmlFor="buyer-email">{t.emailLabel}</label><input id="buyer-email" type="email" value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} placeholder={t.emailPlaceholder} autoComplete="email" dir="ltr" /></div>
+        {option && <div className="ppo-success" style={{ marginTop: 12 }}>{t.yourChoice}: <strong>{option.name}</strong> · {Number(option.price).toFixed(3)} {curr}</div>}
+        {askLabel && <div className="ppo-field"><label htmlFor="buyer-answer">{askLabel}</label><input id="buyer-answer" type="text" value={buyerAnswer} maxLength={MAX_ANSWER} onChange={(event) => setBuyerAnswer(event.target.value)} autoComplete="off" /></div>}
         {!isBundle && <div className="ppo-field"><label htmlFor="coupon-code">{t.couponLabel}</label><input id="coupon-code" type="text" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder={t.couponPlaceholder} /></div>}
         {error && <div className="ppo-error">{error}</div>}
         <div className="ppo-actions"><button type="button" className="ppo-secondary" onClick={() => setOpen(false)} disabled={busy}>{t.back}</button><button type="button" className="ppo-primary" onClick={startOrder} disabled={busy}>{busy ? t.preparing : t.continueToTransfer}</button></div>
