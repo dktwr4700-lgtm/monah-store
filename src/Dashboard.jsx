@@ -2141,7 +2141,9 @@ export default function Dashboard() {
       }
       if (requestedPublish && isUnpaid) setActivationPrompt("saved");
     } catch (err) {
-      setError(t.genericTryAgain);
+      console.error("add product failed", err);
+      // نبين سبب الخطأ الحقيقي (مثل رفض قواعد Firebase) عشان نعرف وش صار
+      setError(`${t.genericTryAgain}${err?.code ? ` (${err.code})` : ""}`);
       setUploadingFile(false);
     }
     setSaving(false);
@@ -2254,7 +2256,8 @@ export default function Dashboard() {
       setEditingId(null);
       setEditNewCodes("");
     } catch (err) {
-      setError(t.saveEditError);
+      console.error("edit product failed", err);
+      setError(`${t.saveEditError}${err?.code ? ` (${err.code})` : ""}`);
     }
     setEditSaving(false);
   }
@@ -3695,6 +3698,7 @@ export default function Dashboard() {
                     <div className="dh-hint">{t.eachCustomerCodeHint}</div>
                   </div>
                 )}
+                {error && <div className="dh-error">{error}</div>}
                 <button className="dh-item-action" type="button" onClick={() => setPreviewOpen(true)} disabled={!name || (price === "" && !useOptions)} style={{ width: "100%", marginBottom: 8 }}>
                   {t.previewProduct}
                 </button>
@@ -3836,6 +3840,7 @@ export default function Dashboard() {
                           <span style={{ flex: 1, minWidth: 0 }}>{t.interactiveFileLabelShort}</span>
                         </label>
                       )}
+                      {error && <div className="dh-error">{error}</div>}
                       <div className="dh-edit-actions">
                         <button className="dh-item-action" onClick={cancelEdit} type="button">{t.cancel}</button>
                         <button className="dh-item-action primary" onClick={() => saveEdit(p.id)} disabled={editSaving} type="button">
