@@ -2028,7 +2028,8 @@ export default function Dashboard() {
     }
     const numericPrice = options.length ? startingPrice(options) : Number(price);
     const askLabel = cleanAskLabel(askBuyer);
-    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
+    // السعر الفاضي مو "مجاني": نطلب من التاجر يكتبه (المجاني لازم يكتب 0 صريح)
+    if (!cleanName || (!options.length && String(price).trim() === "") || !Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t.nameAndPriceRequired);
       return;
     }
@@ -2222,7 +2223,7 @@ export default function Dashboard() {
     }
     const numericPrice = options.length ? startingPrice(options) : Number(editPrice);
     const askLabel = cleanAskLabel(editAskBuyer);
-    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
+    if (!cleanName || (!options.length && String(editPrice).trim() === "") || !Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t.editNameAndPriceRequired);
       return;
     }
