@@ -103,7 +103,7 @@ describe("عقود المسارات العامة في مُونَة", () => {
     const rules = await source("firestore.rules");
     const storageRules = await source("storage.rules");
 
-    expect(productPage).toContain("<ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} lang={lang} />");
+    expect(productPage).toContain("<ProductOrderPanel product={product} option={chosen} sellerWhatsapp={store?.whatsapp} lang={lang} />");
     expect(orderPanel).toContain('orderRequest("submit_proof"');
     expect(orderPanel).toContain("payment-proofs/${auth.currentUser.uid}/${order.id}/");
     expect(orderPanel).toContain("nextFile.size >= MAX_PROOF_BYTES");

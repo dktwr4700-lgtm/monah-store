@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { hasOptions } from "../lib/product-options.js";
 import { db } from "./firebase.js";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { useLang, LangToggle } from "./i18n.jsx";
@@ -242,7 +243,7 @@ export default function StorePage({ sellerId }) {
           <div className="mc-featured-head"><div className="mc-featured-title">{t.sellerPicks}</div><div className="mc-featured-note">{t.sellerPicksSub}</div></div>
           {featuredProducts.map((product) => <a className="mc-featured-card" href={`#product/${product.id}`} key={product.id}>
             <div className="mc-featured-image">{product.images?.[0] ? <img src={product.images[0]} alt="" /> : product.previewVideoUrl ? <video src={product.previewVideoUrl} muted preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <FileIcon />}</div>
-            <div><div className="mc-featured-name">{product.name || t.genericProduct}</div><div className="mc-featured-price">{Number(product.price || 0).toFixed(2)} {curr}</div></div>
+            <div><div className="mc-featured-name">{product.name || t.genericProduct}</div><div className="mc-featured-price">{hasOptions(product) ? (curr === "ر.ع" ? "من " : "From ") : ""}{Number(product.price || 0).toFixed(2)} {curr}</div></div>
             <span className="mc-featured-badge">{t.featured}</span>
           </a>)}
         </section>}
@@ -270,7 +271,7 @@ export default function StorePage({ sellerId }) {
                   <div className="mc-product-type">{product.category || t.genericProduct}</div>
                   <div className="mc-product-name">{product.name || t.genericProduct}</div>
                   <div className="mc-product-desc">{product.description || t.genericDesc}</div>
-                  <span className="mc-price">{Number(product.price || 0).toFixed(2)} {curr}</span>
+                  <span className="mc-price">{hasOptions(product) ? (curr === "ر.ع" ? "من " : "From ") : ""}{Number(product.price || 0).toFixed(2)} {curr}</span>
                   <span className="mc-view">{t.viewProduct}</span>
                 </div>
               </a>)}</div> : <div className="mc-empty"><div className="mc-empty-title">{t.noMatch}</div><div className="mc-empty-sub">{t.noMatchSub}</div><button className="mc-filter" onClick={() => {setSearch(""); setActiveCategory("الكل");}}>{t.showAll}</button></div>}

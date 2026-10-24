@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase.js";
 import ProductOrderPanel from "./ProductOrderPanel.jsx";
+import { hasOptions, startingPrice } from "../lib/product-options.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 const PP_T = {
@@ -23,6 +24,8 @@ const PP_T = {
     imagesCount: (n) => `${n} صورة`, previewReady: "معاينة جاهزة", productView: "عرض المنتج", category: "التصنيف",
     otherFrom: (storeName) => `منتجات أخرى من ${storeName}`, storeFaq: "أسئلة عن المتجر",
     poweredBy: "مدعوم من مُونَة",
+    chooseOption: "اختر", serviceType: "خدمة يسلمها التاجر", fromPrice: "من",
+    servicePaidNote: "التحويل يُراجع يدويًا من التاجر، وبعد تأكيده يسلمك طلبك بنفسه.",
   },
   en: {
     preparing: "Getting product details ready", preparingSub: "One moment while we load the available info.",
@@ -42,6 +45,8 @@ const PP_T = {
     imagesCount: (n) => `${n} images`, previewReady: "Preview ready", productView: "Product view", category: "Category",
     otherFrom: (storeName) => `More products from ${storeName}`, storeFaq: "Store FAQ",
     poweredBy: "Powered by Monah",
+    chooseOption: "Choose", serviceType: "Delivered by the seller", fromPrice: "From",
+    servicePaidNote: "The transfer is reviewed manually by the seller, then they deliver your order themselves.",
   },
 };
 
@@ -50,6 +55,7 @@ const styles = `
 `;
 
 const extraStyles = `
+  .pp-opts-wrap{margin:-6px 0 18px}.pp-opts-label{font-size:12px;font-weight:800;margin-bottom:8px}.pp-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pp-opt{position:relative;text-align:start;border:1.5px solid #e7e3d8;background:#fff;color:#111;border-radius:14px;padding:10px 12px;cursor:pointer;font-family:inherit;transition:border-color .2s,background .2s}.pp-opt b{display:block;font-size:13px}.pp-opt span{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:800;color:var(--pp-brand)}.pp-opt[aria-checked="true"]{border-color:var(--pp-brand);background:#edf3ee}.pp-opt[aria-checked="true"]::after{content:"✓";position:absolute;top:8px;inset-inline-end:10px;width:18px;height:18px;border-radius:50%;background:var(--pp-brand);color:#fff;font-size:11px;display:grid;place-items:center}
   .pp-section{margin-top:22px;background:#fff;border:1px solid #e7e3d8;border-radius:18px;padding:17px}.pp-section-title{font-family:'Almarai',sans-serif;font-size:13px;font-weight:800;color:var(--pp-brand);margin-bottom:10px}.pp-related{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pp-related-card{border:1px solid #eee9df;border-radius:12px;padding:9px;color:#111;text-decoration:none}.pp-related-name{font-size:10.5px;font-weight:800;line-height:1.55}.pp-related-price{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--pp-brand);margin-top:5px}.pp-faq details{border-top:1px solid #eee9df;padding:10px 0}.pp-faq details:first-child{border-top:0}.pp-faq summary{font-size:11px;font-weight:800;cursor:pointer}.pp-faq p{font-size:10.5px;line-height:1.9;color:#525252;margin:7px 0 0}@media(max-width:680px){.pp-related{grid-template-columns:repeat(2,1fr)}}
 `;
 
@@ -75,6 +81,7 @@ export default function ProductPage({ productId }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [activeImage, setActiveImage] = useState(0);
   const [shareStatus, setShareStatus] = useState("");
+  const [optionId, setOptionId] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -141,6 +148,9 @@ export default function ProductPage({ productId }) {
   const name = product?.name || t.genericProduct;
   const category = product?.category || t.genericProduct;
   const isCode = product?.type === "code";
+  const isService = product?.type === "service";
+  const options = hasOptions(product) ? product.options : [];
+  const chosen = options.find((o) => o.id === optionId) || options[0] || null;
   const isFreeFile = Number(product?.price) === 0 && product?.type === "file";
   const storeName = store?.name || t.storeOwner;
   const storeColor = store?.color || "#163f2e";
@@ -188,19 +198,20 @@ export default function ProductPage({ productId }) {
             <span className="pp-category">{category}</span>
             <h1 className="pp-title">{name}</h1>
             <div className="pp-store">{t.fromStore} <strong>{storeName}</strong></div>
-            <div className="pp-price-row"><span className="pp-price-label">{t.displayedPrice}</span><span className="pp-price">{isFreeFile ? t.free : `${Number(product?.price || 0).toFixed(2)} ${curr}`}</span></div>
+            <div className="pp-price-row"><span className="pp-price-label">{t.displayedPrice}</span><span className="pp-price" key={chosen?.id || "p"}>{isFreeFile ? t.free : `${Number(chosen ? chosen.price : product?.price || 0).toFixed(2)} ${curr}`}</span></div>
+            {options.length > 0 && <div className="pp-opts-wrap"><div className="pp-opts-label">{t.chooseOption}</div><div className="pp-opts" role="radiogroup" aria-label={t.chooseOption}>{options.map((o) => <button key={o.id} type="button" role="radio" aria-checked={chosen?.id === o.id} className="pp-opt" onClick={() => setOptionId(o.id)}><b>{o.name}</b><span>{Number(o.price).toFixed(2)} {curr}</span></button>)}</div></div>}
             <div className="pp-description">{product?.description || t.noDescription}</div>
-            {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">{t.getFree}</a> : <ProductOrderPanel product={product} sellerWhatsapp={store?.whatsapp} lang={lang} />}
+            {isFreeFile ? <a className="pp-contact" href={`/api/free-download?productId=${encodeURIComponent(product.id)}`} target="_blank" rel="noopener noreferrer">{t.getFree}</a> : <ProductOrderPanel product={product} option={chosen} sellerWhatsapp={store?.whatsapp} lang={lang} />}
             <div className="pp-actions"><button type="button" className="pp-share" onClick={shareProduct}>{shareStatus || t.shareLink}</button></div>
-            <p className="pp-note">{isFreeFile ? t.freeNote : t.paidNote}</p>
+            <p className="pp-note">{isFreeFile ? t.freeNote : isService ? t.servicePaidNote : t.paidNote}</p>
           </section>
         </div>
         <section className="pp-info" aria-label={t.productInfo}>
-          <div><b>{isCode ? t.codeLicense : t.digitalFile}</b><span>{t.productType}</span></div>
+          <div><b>{isCode ? t.codeLicense : isService ? t.serviceType : t.digitalFile}</b><span>{t.productType}</span></div>
           <div><b>{images.length ? t.imagesCount(images.length) : t.previewReady}</b><span>{t.productView}</span></div>
           <div><b>{category}</b><span>{t.category}</span></div>
         </section>
-        {relatedProducts.length > 0 && <section className="pp-section"><div className="pp-section-title">{t.otherFrom(storeName)}</div><div className="pp-related">{relatedProducts.map((item) => <a className="pp-related-card" href={`#product/${item.id}`} key={item.id}><div className="pp-related-name">{item.name || t.genericProduct}</div><div className="pp-related-price">{Number(item.price || 0).toFixed(2)} {curr}</div></a>)}</div></section>}
+        {relatedProducts.length > 0 && <section className="pp-section"><div className="pp-section-title">{t.otherFrom(storeName)}</div><div className="pp-related">{relatedProducts.map((item) => <a className="pp-related-card" href={`#product/${item.id}`} key={item.id}><div className="pp-related-name">{item.name || t.genericProduct}</div><div className="pp-related-price">{hasOptions(item) ? `${t.fromPrice} ${startingPrice(item.options).toFixed(2)}` : Number(item.price || 0).toFixed(2)} {curr}</div></a>)}</div></section>}
         {storeFaqs.length > 0 && <section className="pp-section pp-faq"><div className="pp-section-title">{t.storeFaq}</div>{storeFaqs.map((faq, index) => <details key={`${faq.question}-${index}`}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</section>}
         <footer className="pp-powered"><a href="/">{t.poweredBy}</a></footer>
       </main>

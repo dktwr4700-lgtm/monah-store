@@ -9,6 +9,7 @@ import { paypalRequest as paypalRequestRaw, paypalOrderSucceeded, paypalApproveU
 import { monahFacts, MONAH_SIGNUP_URL } from "../lib/monah-knowledge.js";
 import { toText } from "../lib/mail-text.js";
 import { effectiveAddOns } from "../src/subscriptionCatalog.js";
+import { SELLABLE_TYPES, hasOptions, pickOption, cleanAnswer, cleanAskLabel } from "../lib/product-options.js";
 
 const STORAGE_BUCKET = "pantry-app-148a7.firebasestorage.app";
 const ADMIN_EMAIL = "k1997551@gmail.com";
@@ -43,6 +44,22 @@ class OrderError extends Error {
 
 function cleanText(value, maxLength) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+// كلام كتبه المشتري أو التاجر داخل إيميل HTML: نهربه عشان ما ينحقن كود
+const escapeHtml = (value) => String(value || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+
+// اسم المنتج في الإيميلات مع الخيار اللي اختاره المشتري (لو فيه)
+function orderItemsText(order) {
+  if (order.type === "bundle" && Array.isArray(order.productNames)) return order.productNames.join("، ");
+  const name = order.productName || "منتج رقمي";
+  return order.optionName ? `${name} (${order.optionName})` : name;
+}
+
+// جواب المشتري على سؤال التاجر (مثل اسم حسابه في اللعبة) كسطر في الإيميل
+function buyerAnswerHtml(order) {
+  if (!order.buyerAnswer) return "";
+  return `<p><strong>${escapeHtml(order.askLabel || "معلومة من المشتري")}:</strong> ${escapeHtml(order.buyerAnswer)}</p>`;
 }
 
 function requireActiveSeller(sellerSnap) {
@@ -141,15 +158,14 @@ async function notifySellerOfProof(order, orderId) {
       return;
     }
     const storeName = cleanText(sellerData.name, 80);
-    const items = order.type === "bundle" && Array.isArray(order.productNames)
-      ? order.productNames.join("، ")
-      : (order.productName || "منتج رقمي");
+    const items = escapeHtml(orderItemsText(order));
     const price = Number(order.price || 0);
     const html = `
       <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
         <h2 style="margin:0 0 12px">طلب جديد بانتظار تأكيدك 🎉</h2>
         <p>عميل رفع إثبات تحويل لطلب في متجرك${storeName ? ` "${storeName}"` : ""} على مُونة.</p>
         <p><strong>المنتج:</strong> ${items}</p>
+        ${buyerAnswerHtml(order)}
         <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع</p>
         <p>ادخلي لوحة التحكم في مونة وراجعي الإيصال لتأكيد الطلب وتسليم المنتج للعميل.</p>
       </div>`;
@@ -210,17 +226,16 @@ async function notifySellerOfCardPayment(order, orderId, { viaMonah = false } = 
       return;
     }
     const storeName = cleanText(sellerData.name, 80);
-    const items = order.type === "bundle" && Array.isArray(order.productNames)
-      ? order.productNames.join("، ")
-      : (order.productName || "منتج رقمي");
+    const items = escapeHtml(orderItemsText(order));
     const price = Number(order.price || 0);
     const html = `
       <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
         <h2 style="margin:0 0 12px">دفعة بطاقة جديدة 🎉</h2>
         <p>عميل دفع بالبطاقة لطلب في متجرك${storeName ? ` "${storeName}"` : ""} على مُونة، وتأكدت العملية تلقائيًا عبر بوابة الدفع.</p>
         <p><strong>المنتج:</strong> ${items}</p>
+        ${buyerAnswerHtml(order)}
         <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع — ${viaMonah ? "وصل لحساب مُونة، ونحوّله لك مع مبيعات الأسبوع (بعد رسوم بوابة الدفع)." : "وصل مباشرة لحسابك في بوابة الدفع."}</p>
-        <p>فُتح التنزيل للعميل تلقائيًا، ما تحتاجين تراجعين أو تؤكدين شي بنفسك لهذا الطلب.</p>
+        <p>${order.type === "service" ? "هذا طلب خدمة: سلّمي المشتري طلبه بنفسك وتواصلي معه على واتساب " + escapeHtml(order.buyerPhone || "") + " لو احتجتي." : "فُتح التنزيل للعميل تلقائيًا، ما تحتاجين تراجعين أو تؤكدين شي بنفسك لهذا الطلب."}</p>
       </div>`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
@@ -273,18 +288,18 @@ async function notifyBuyerOfConfirmation(order, orderId, deliveryToken) {
   try {
     const sellerSnap = await db.collection("sellers").doc(order.ownerId).get();
     const storeName = cleanText(sellerSnap.exists ? sellerSnap.data().name : "", 80);
-    const items = order.type === "bundle" && Array.isArray(order.productNames)
-      ? order.productNames.join("، ")
-      : (order.productName || "منتج رقمي");
+    const items = escapeHtml(orderItemsText(order));
     const price = Number(order.price || 0);
     const deliverUrl = `https://www.monah-app.com/#deliver/${orderId}/${deliveryToken}`;
+    const service = order.type === "service";
     const html = `
       <div dir="rtl" style="font-family:sans-serif;line-height:1.8;color:#16233F">
-        <h2 style="margin:0 0 12px">منتجك جاهز للتنزيل 🎉</h2>
+        <h2 style="margin:0 0 12px">${service ? "تأكد طلبك 🎉" : "منتجك جاهز للتنزيل 🎉"}</h2>
         <p>التاجر${storeName ? ` "${storeName}"` : ""} أكّد استلام مبلغ طلبك على مُونة.</p>
         <p><strong>المنتج:</strong> ${items}</p>
         <p><strong>المبلغ:</strong> ${price.toFixed(3)} ر.ع</p>
-        <p><a href="${deliverUrl}" style="display:inline-block;background:#153A2C;color:#fff;text-decoration:none;padding:12px 22px;border-radius:100px;font-weight:700">تنزيل منتجك</a></p>
+        ${service ? `<p>التاجر يجهز طلبك الحين ويسلمه لك بنفسه. لو احتجت شي تواصل معه.</p>` : ""}
+        <p><a href="${deliverUrl}" style="display:inline-block;background:#153A2C;color:#fff;text-decoration:none;padding:12px 22px;border-radius:100px;font-weight:700">${service ? "تفاصيل طلبك" : "تنزيل منتجك"}</a></p>
         <p style="color:#8A8677;font-size:12.5px">لو الزر ما اشتغل، افتح هذا الرابط: ${deliverUrl}</p>
         <p style="color:#8A8677;font-size:12.5px">⚠️ ما تشوف هذا الإيميل بصندوق الوارد؟ افتح مجلد "الرسائل غير المرغوب فيها/Spam" — ممكن يكون وصل هناك. احفظ هذا الرابط أو اضغط "ليس بريدًا مزعجًا" عشان ترجع له بسهولة وقت ما تحتاجه.</p>
       </div>`;
@@ -297,7 +312,7 @@ async function notifyBuyerOfConfirmation(order, orderId, deliveryToken) {
         body: JSON.stringify({
           from: "مُونة <notifications@monah-app.com>",
           to: [buyerEmail],
-          subject: `منتجك جاهز للتنزيل${storeName ? " - " + storeName : ""}`,
+          subject: `${service ? "تأكد طلبك" : "منتجك جاهز للتنزيل"}${storeName ? " - " + storeName : ""}`,
           html,
           text: toText(html),
         }),
@@ -338,6 +353,8 @@ function requireAdmin(account) {
 }
 
 function unlockView(unlock, confirmed) {
+  // خدمة يسلمها التاجر بنفسه: ما فيه ملف ولا كود ينفتح للمشتري
+  if (unlock?.type === "service") return { downloadReady: false, playReady: false, downloadsRemaining: null, maxDownloads: null, licenseCode: "", service: confirmed };
   const isCode = unlock?.type === "code";
   const isFile = !unlock || !isCode;
   // منتجات "تفاعلية" (ألعاب) تُشغَّل من داخل الموقع بدل ما تُنزَّل. نتعرّف عليها
@@ -378,6 +395,9 @@ function publicOrder(order, id, unlockData, repeatCoupon) {
     proofSubmitted: Boolean(order.proofPath),
     repeatCoupon: confirmed && repeatCoupon ? repeatCoupon : null,
     activationRequiredProductIds: Array.isArray(order.activationRequiredProductIds) ? order.activationRequiredProductIds : [],
+    optionName: order.optionName || "",
+    askLabel: order.askLabel || "",
+    buyerAnswer: order.buyerAnswer || "",
   };
 
   if (order.type === "bundle") {
@@ -396,7 +416,8 @@ function publicOrder(order, id, unlockData, repeatCoupon) {
     };
   }
 
-  return { ...base, type: order.type === "code" ? "code" : "file", ...unlockView(unlockData, confirmed) };
+  const type = order.type === "code" || order.type === "service" ? order.type : "file";
+  return { ...base, type, ...unlockView(type === "service" ? { type: "service" } : unlockData, confirmed) };
 }
 
 async function resolveCoupon(rawCode, productId, ownerId, buyerUid) {
@@ -545,9 +566,18 @@ async function createOrder(req, res, account) {
   if (product.hidden || product.suspended || Number(product.price) <= 0) {
     throw new OrderError(409, "هذا المنتج غير متاح للطلب الآن.");
   }
-  if (product.type !== "file" && product.type !== "code") {
+  if (!SELLABLE_TYPES.includes(product.type)) {
     throw new OrderError(409, "نوع هذا المنتج غير جاهز للطلب الآن.");
   }
+  // المنتج اللي له خيارات: السعر من الخيار اللي اختاره المشتري (من بيانات المنتج نفسه، مو من المتصفح)
+  let option = null;
+  if (hasOptions(product)) {
+    option = pickOption(product, req.body?.optionId);
+    if (!option) throw new OrderError(400, "اختر الخيار اللي تبيه أول.");
+  }
+  const askLabel = cleanAskLabel(product.askBuyer);
+  const buyerAnswer = askLabel ? cleanAnswer(req.body?.buyerAnswer) : "";
+  if (askLabel && !buyerAnswer) throw new OrderError(400, `اكتب ${askLabel} عشان التاجر يقدر يسلمك طلبك.`);
   if (product.type === "file" && !product.filePath) {
     throw new OrderError(409, "ملف المنتج غير جاهز للتسليم الآن.");
   }
@@ -563,7 +593,7 @@ async function createOrder(req, res, account) {
     throw new OrderError(409, "صاحب المتجر لم يضف تعليمات التحويل لهذا المنتج بعد.");
   }
 
-  const originalPrice = Number(product.price);
+  const originalPrice = option ? Number(option.price) : Number(product.price);
   const { discountPercent, couponCode } = await resolveCoupon(req.body?.couponCode, productId, product.ownerId, account.uid);
   const finalPrice = couponCode
     ? Math.max(0.01, Math.round(originalPrice * (1 - discountPercent / 100) * 100) / 100)
@@ -586,6 +616,10 @@ async function createOrder(req, res, account) {
     }
     if (existing.buyerPhone !== buyerPhone || existing.buyerEmail !== buyerEmail) {
       await draftRef.update({ buyerPhone, buyerEmail });
+    }
+    // المشتري رجع وغير الخيار أو الجواب: المسودة تمشي على آخر اختيار
+    if ((existing.optionId || "") !== (option?.id || "") || (existing.buyerAnswer || "") !== buyerAnswer || (existing.askLabel || "") !== askLabel) {
+      await draftRef.update({ optionId: option?.id || "", optionName: option?.name || "", askLabel, buyerAnswer });
     }
     return res.status(200).json({
       order: {
@@ -614,6 +648,10 @@ async function createOrder(req, res, account) {
     price: finalPrice,
     originalPrice,
     couponCode,
+    optionId: option?.id || "",
+    optionName: option?.name || "",
+    askLabel,
+    buyerAnswer,
     type: product.type,
     status: "draft",
     ...paymentDetails,
@@ -673,7 +711,7 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
     if (availableCodes.empty) throw new OrderError(409, "لا توجد أكواد غير مستخدمة لأحد منتجات هذا الطلب الآن.");
     codeDoc = availableCodes.docs[0];
     if (!codeDoc.data().code) throw new OrderError(409, "تعذر تجهيز كود لأحد منتجات هذا الطلب.");
-  } else if (!product.filePath) {
+  } else if (product.type !== "service" && !product.filePath) {
     throw new OrderError(409, "ملف أحد منتجات هذا الطلب غير جاهز للتسليم الآن.");
   }
 
@@ -691,7 +729,7 @@ async function unlockOneProduct(transaction, { productId, buyerUid, buyerPhone, 
         productId,
         orderId,
         ownerId,
-        type: product.type === "code" ? "code" : "file",
+        type: product.type === "code" || product.type === "service" ? product.type : "file",
         downloadCount: 0,
         createdAt: FieldValue.serverTimestamp(),
         expiresAt: Timestamp.fromDate(new Date(Date.now() + (interactive ? INTERACTIVE_UNLOCK_TTL_MS : UNLOCK_TTL_MS))),
