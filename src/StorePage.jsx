@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { hasOptions } from "../lib/product-options.js";
-import { db } from "./firebase.js";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { db } from "./firebase-lite.js";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore/lite";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 // نص الواجهة الثابت فقط (أزرار، تسميات، رسائل حالة) — محتوى التاجر نفسه

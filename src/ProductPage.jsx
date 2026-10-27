@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { db } from "./firebase.js";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore/lite";
+import { db } from "./firebase-lite.js";
 import ProductOrderPanel from "./ProductOrderPanel.jsx";
 import { hasOptions, startingPrice } from "../lib/product-options.js";
 import { useLang, LangToggle } from "./i18n.jsx";
