@@ -26,7 +26,11 @@ describe("عقود المسارات العامة في مُونَة", () => {
 
     expect(store).toContain('where("hidden", "==", false)');
     expect(store).toContain('where("suspended", "==", false)');
-    expect(productPage).toContain("productData.hidden || productData.suspended");
+    expect(productPage).toContain("product.hidden || product.suspended");
+    // سيرفر البيانات العامة يرجع المنشور بس
+    const api = await source("api/link-preview.js");
+    expect(api).toContain('.where("hidden", "==", false).where("suspended", "==", false)');
+    expect(api).toContain("if (product.hidden || product.suspended)");
   });
 
   it("يحافظ على إنشاء المنتج مخفيًا حتى يكتمل رفع ملفه", async () => {
