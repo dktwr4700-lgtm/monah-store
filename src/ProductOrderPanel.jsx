@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import { auth, ensureAnonymousAuth } from "./firebase.js";
-import { storage } from "./firebase-storage.js";
-import { ref, uploadBytes } from "firebase/storage";
+import { auth, ensureAnonymousAuth } from "./firebase-auth.js";
 import { cleanAskLabel, MAX_ANSWER } from "../lib/product-options.js";
 
 const PPO_T = {
@@ -201,6 +199,8 @@ export default function ProductOrderPanel({ product, bundle, option = null, sell
     try {
       const filename = safeName(proofFile.name);
       const proofPath = `payment-proofs/${auth.currentUser.uid}/${order.id}/${Date.now()}_${filename}`;
+      // كود رفع الملفات ما ينحمّل إلا لما المشتري يرفع إثبات التحويل فعلًا
+      const [{ storage }, { ref, uploadBytes }] = await Promise.all([import("./firebase-storage.js"), import("firebase/storage")]);
       await uploadBytes(ref(storage, proofPath), proofFile, { contentType: proofFile.type });
       await orderRequest("submit_proof", { orderId: order.id, proofPath, proofName: filename }, t);
       setComplete(true);
