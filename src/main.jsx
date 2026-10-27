@@ -121,14 +121,42 @@ class ChunkRecoveryBoundary extends React.Component {
   }
 }
 
+// مكان التمرير لكل صفحة: الصفحة الجديدة (مثل منتج) تفتح من فوق،
+// والرجوع لصفحة شفتها (مثل المتجر) يرجعك لنفس المكان اللي كنت فيه
+const scrollPositions = new Map();
+if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+
 function Root() {
   const [hash, setHash] = React.useState(window.location.hash.replace("#", ""));
 
   React.useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash.replace("#", ""));
+    let current = window.location.hash.replace("#", "");
+    const onHashChange = () => {
+      scrollPositions.set(current, window.scrollY);
+      current = window.location.hash.replace("#", "");
+      setHash(current);
+    };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  React.useLayoutEffect(() => {
+    const y = scrollPositions.get(hash) || 0;
+    window.scrollTo(0, y);
+    if (!y) return undefined;
+    // الصفحة ممكن تكمل رسم محتواها (الصور) بعد لحظات، فنعيد المحاولة لين نوصل
+    // أو لين الزبون نفسه يلمس الشاشة ويبدأ يتصفح
+    let stop = false;
+    const cancel = () => { stop = true; };
+    window.addEventListener("touchstart", cancel, { once: true, passive: true });
+    window.addEventListener("wheel", cancel, { once: true, passive: true });
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (stop || Math.abs(window.scrollY - y) < 4 || Date.now() - started > 2000) return clearInterval(timer);
+      window.scrollTo(0, y);
+    }, 60);
+    return () => { clearInterval(timer); window.removeEventListener("touchstart", cancel); window.removeEventListener("wheel", cancel); };
+  }, [hash]);
 
   let page = <App />;
   if (hash === "register") page = <Register />;

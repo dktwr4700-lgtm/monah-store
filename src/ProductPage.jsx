@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore/lite";
-import { db } from "./firebase-lite.js";
-import { recallProduct, rememberProduct } from "./publicCache.js";
+import { recallProduct, rememberProduct, rememberStore, fetchPublic } from "./publicCache.js";
 import ProductOrderPanel from "./ProductOrderPanel.jsx";
 import { hasOptions, startingPrice } from "../lib/product-options.js";
 import { useLang, LangToggle } from "./i18n.jsx";
@@ -86,56 +84,47 @@ export default function ProductPage({ productId }) {
 
   useEffect(() => {
     let cancelled = false;
+    const sortRelated = (list) => list.filter((item) => item.id !== productId).sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0)).slice(0, 3);
     // المنتج محفوظ من صفحة المتجر؟ نعرضه على طول ونحدّثه من وراه
     const remembered = recallProduct(productId);
     if (remembered) {
       setProduct(remembered.product);
       setStore(remembered.store);
-      const related = (remembered.siblings || []).filter((item) => item.id !== productId);
-      related.sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
-      setRelatedProducts(related.slice(0, 3));
+      setRelatedProducts(sortRelated(remembered.siblings || []));
       setActiveImage(0);
       setStatus("ready");
+    }
+    // احتياط لو سيرفرنا ما رد: نقرا من قاعدة البيانات مباشرة (ما تنحمل إلا وقت الحاجة)
+    async function fromFirestore() {
+      const [{ db }, { collection, doc, getDoc, getDocs, query, where }] = await Promise.all([import("./firebase-lite.js"), import("firebase/firestore/lite")]);
+      const snap = await getDoc(doc(db, "products", productId));
+      if (!snap.exists()) return { status: "missing" };
+      const product = { id: snap.id, ...snap.data() };
+      if (product.hidden || product.suspended) return { status: "unavailable" };
+      const [storeSnap, listSnap] = await Promise.all([
+        getDoc(doc(db, "stores", product.ownerId)),
+        getDocs(query(collection(db, "products"), where("ownerId", "==", product.ownerId), where("hidden", "==", false), where("suspended", "==", false))),
+      ]);
+      return { status: "ready", ownerId: product.ownerId, product, store: storeSnap.exists() ? storeSnap.data() : null, products: listSnap.docs.map((d) => ({ id: d.id, ...d.data() })) };
     }
     async function loadProduct() {
       if (!remembered) setStatus("loading");
       try {
-        const productSnap = await getDoc(doc(db, "products", productId));
-        if (!productSnap.exists()) {
-          if (!cancelled) setStatus("missing");
+        let data = await fetchPublic({ productId }).catch(() => null);
+        // لو سيرفرنا ما رد أو قال مو موجود نتأكد من قاعدة البيانات نفسها قبل لا نقول للزبون
+        if (!data || data.status === "missing") data = await fromFirestore();
+        if (cancelled) return;
+        if (data.status !== "ready") {
+          if (!remembered) setStatus(data.status === "unavailable" ? "unavailable" : "missing");
           return;
         }
-        const productData = { id: productSnap.id, ...productSnap.data() };
-        if (productData.hidden || productData.suspended) {
-          if (!cancelled) setStatus("unavailable");
-          return;
-        }
-
-        // المتجر والمنتجات الثانية ننزلهم مع بعض بدل واحد ورا الثاني
-        const loadStore = async () => {
-          if (!productData.ownerId) return null;
-          const directStore = await getDoc(doc(db, "stores", productData.ownerId));
-          if (directStore.exists()) return directStore.data();
-          const matchingStore = await getDocs(query(collection(db, "stores"), where("ownerId", "==", productData.ownerId)));
-          return matchingStore.empty ? null : matchingStore.docs[0].data();
-        };
-        const loadRelated = async () => {
-          if (!productData.ownerId) return [];
-          const relatedSnap = await getDocs(query(collection(db, "products"), where("ownerId", "==", productData.ownerId), where("hidden", "==", false), where("suspended", "==", false)));
-          const related = relatedSnap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== productData.id);
-          related.sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
-          return related;
-        };
-        const [storeData, related] = await Promise.all([loadStore(), loadRelated()]);
-        if (!cancelled) setRelatedProducts(related.slice(0, 3));
-
-        if (!cancelled) {
-          setProduct(productData);
-          setStore(storeData);
-          if (!remembered) setActiveImage(0);
-          setStatus("ready");
-        }
-        rememberProduct(productData, storeData);
+        setProduct(data.product);
+        setStore(data.store);
+        setRelatedProducts(sortRelated(data.products || []));
+        if (!remembered) setActiveImage(0);
+        setStatus("ready");
+        if (data.store) rememberStore([data.ownerId], data);
+        rememberProduct(data.product, data.store);
       } catch (error) {
         console.error("Unable to load product", error);
         if (!cancelled && !remembered) setStatus("missing");

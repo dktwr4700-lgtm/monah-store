@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { hasOptions } from "../lib/product-options.js";
-import { db } from "./firebase-lite.js";
-import { rememberStore, recallStore } from "./publicCache.js";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore/lite";
+import { rememberStore, recallStore, fetchPublic } from "./publicCache.js";
 import { useLang, LangToggle } from "./i18n.jsx";
 
 // نص الواجهة الثابت فقط (أزرار، تسميات، رسائل حالة) — محتوى التاجر نفسه
@@ -132,51 +130,44 @@ export default function StorePage({ sellerId }) {
       setProducts(remembered.products);
       setStatus("ready");
     }
+    // احتياط لو سيرفرنا ما رد: نقرا من قاعدة البيانات مباشرة (ما تنحمل إلا وقت الحاجة)
+    async function fromFirestore() {
+      const [{ db }, { collection, doc, getDoc, getDocs, query, where }] = await Promise.all([import("./firebase-lite.js"), import("firebase/firestore/lite")]);
+      const [directSnap, slugSnap] = await Promise.all([getDoc(doc(db, "stores", sellerId)), getDocs(query(collection(db, "stores"), where("slug", "==", sellerId)))]);
+      const found = directSnap.exists() ? { ownerId: sellerId, store: directSnap.data() } : !slugSnap.empty ? { ownerId: slugSnap.docs[0].id, store: slugSnap.docs[0].data() } : null;
+      if (!found) return { status: "missing" };
+      const productSnap = await getDocs(query(collection(db, "products"), where("ownerId", "==", found.ownerId), where("hidden", "==", false), where("suspended", "==", false)));
+      const list = productSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
+      return { status: "ready", ...found, products: list };
+    }
     async function fetchData() {
       try {
-        let storeData = null;
-        let resolvedOwnerId = sellerId;
-        const directSnap = await getDoc(doc(db, "stores", sellerId));
-        if (directSnap.exists()) {
-          storeData = directSnap.data();
-        } else {
-          const storeQuery = query(collection(db, "stores"), where("slug", "==", sellerId));
-          const storeSnap = await getDocs(storeQuery);
-          if (!storeSnap.empty) {
-            storeData = storeSnap.docs[0].data();
-            resolvedOwnerId = storeSnap.docs[0].id;
-          }
-        }
-        if (!storeData) {
-          setStatus("missing");
+        let data = await fetchPublic({ sellerId }).catch(() => null);
+        // لو سيرفرنا ما رد أو قال مو موجود نتأكد من قاعدة البيانات نفسها قبل لا نقول للزبون
+        if (!data || data.status === "missing") data = await fromFirestore();
+        if (data.status !== "ready") {
+          if (!remembered) setStatus("missing");
           return;
         }
-        setStore(storeData);
-        setOwnerId(resolvedOwnerId);
-        const productQuery = query(
-          collection(db, "products"),
-          where("ownerId", "==", resolvedOwnerId),
-          where("hidden", "==", false),
-          where("suspended", "==", false)
-        );
-        const productSnap = await getDocs(productQuery);
-        const allProducts = productSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
-        allProducts.sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
-        setProducts(allProducts);
-        rememberStore([sellerId, resolvedOwnerId, storeData.slug], { store: storeData, ownerId: resolvedOwnerId, products: allProducts });
+        setStore(data.store);
+        setOwnerId(data.ownerId);
+        setProducts(data.products);
+        setStatus("ready");
+        rememberStore([sellerId], data);
       } catch (error) {
         console.error("Unable to load store", error);
         if (!remembered) setStatus("missing");
-      } finally {
-        setStatus((current) => current === "loading" ? "ready" : current);
       }
     }
     fetchData();
   }, [sellerId]);
 
   const brandColor = store?.color || "#0B0B0C";
-  const brandName = store?.name || "متجر رقمي";
-  const tagline = store?.tagline || "منتجات رقمية جاهزة للتحميل";
+  // وقت التحميل ما نعرض اسم عام مثل «متجر رقمي» عشان ما يبان كأنه متجر ثاني
+  const loadingStore = status === "loading" && !store;
+  const brandName = store?.name || (loadingStore ? "" : "متجر رقمي");
+  const tagline = store?.tagline || (loadingStore ? "" : "منتجات رقمية جاهزة للتحميل");
   const logoUrl = store?.logoUrl;
   const whatsappUrl = safeSocialUrl(store?.whatsapp, "whatsapp");
   const instagramUrl = safeSocialUrl(store?.instagram, "instagram");
@@ -245,7 +236,7 @@ export default function StorePage({ sellerId }) {
         </section>
 
         <section className="mc-assurances" aria-label={t.buyerFeatures}>
-          <div className="mc-assurance"><strong className="mc-mono">{products.length}</strong><span>{t.digitalProducts}</span></div>
+          <div className="mc-assurance"><strong className="mc-mono">{loadingStore ? "…" : products.length}</strong><span>{t.digitalProducts}</span></div>
           <div className="mc-assurance"><strong>{t.organized}</strong><span>{t.organizedSub}</span></div>
           <div className="mc-assurance"><strong>{t.direct}</strong><span>{t.directSub}</span></div>
         </section>
