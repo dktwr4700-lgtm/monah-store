@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { hasOptions } from "../lib/product-options.js";
 import { db } from "./firebase-lite.js";
+import { rememberStore, recallStore } from "./publicCache.js";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore/lite";
 import { useLang, LangToggle } from "./i18n.jsx";
 
@@ -111,10 +112,11 @@ function safeSocialUrl(value, type){
 }
 
 export default function StorePage({ sellerId }) {
-  const [products, setProducts] = useState([]);
-  const [store, setStore] = useState(null);
-  const [ownerId, setOwnerId] = useState(sellerId);
-  const [status, setStatus] = useState("loading");
+  const cached = recallStore(sellerId);
+  const [products, setProducts] = useState(() => cached?.products || []);
+  const [store, setStore] = useState(() => cached?.store || null);
+  const [ownerId, setOwnerId] = useState(() => cached?.ownerId || sellerId);
+  const [status, setStatus] = useState(() => (cached ? "ready" : "loading"));
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("الكل");
   const [lang, setLang] = useLang();
@@ -122,6 +124,14 @@ export default function StorePage({ sellerId }) {
   const curr = lang === "ar" ? "ر.ع" : "OMR";
 
   useEffect(() => {
+    // لو المتجر محفوظ من قبل نعرضه على طول ونحدّثه من وراه
+    const remembered = recallStore(sellerId);
+    if (remembered) {
+      setStore(remembered.store);
+      setOwnerId(remembered.ownerId);
+      setProducts(remembered.products);
+      setStatus("ready");
+    }
     async function fetchData() {
       try {
         let storeData = null;
@@ -153,9 +163,10 @@ export default function StorePage({ sellerId }) {
         const allProducts = productSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
         allProducts.sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
         setProducts(allProducts);
+        rememberStore([sellerId, resolvedOwnerId, storeData.slug], { store: storeData, ownerId: resolvedOwnerId, products: allProducts });
       } catch (error) {
         console.error("Unable to load store", error);
-        setStatus("missing");
+        if (!remembered) setStatus("missing");
       } finally {
         setStatus((current) => current === "loading" ? "ready" : current);
       }

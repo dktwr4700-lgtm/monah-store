@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore/lite";
 import { db } from "./firebase-lite.js";
+import { recallProduct, rememberProduct } from "./publicCache.js";
 import ProductOrderPanel from "./ProductOrderPanel.jsx";
 import { hasOptions, startingPrice } from "../lib/product-options.js";
 import { useLang, LangToggle } from "./i18n.jsx";
@@ -85,8 +86,19 @@ export default function ProductPage({ productId }) {
 
   useEffect(() => {
     let cancelled = false;
+    // المنتج محفوظ من صفحة المتجر؟ نعرضه على طول ونحدّثه من وراه
+    const remembered = recallProduct(productId);
+    if (remembered) {
+      setProduct(remembered.product);
+      setStore(remembered.store);
+      const related = (remembered.siblings || []).filter((item) => item.id !== productId);
+      related.sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
+      setRelatedProducts(related.slice(0, 3));
+      setActiveImage(0);
+      setStatus("ready");
+    }
     async function loadProduct() {
-      setStatus("loading");
+      if (!remembered) setStatus("loading");
       try {
         const productSnap = await getDoc(doc(db, "products", productId));
         if (!productSnap.exists()) {
@@ -99,33 +111,34 @@ export default function ProductPage({ productId }) {
           return;
         }
 
-        let storeData = null;
-        if (productData.ownerId) {
+        // المتجر والمنتجات الثانية ننزلهم مع بعض بدل واحد ورا الثاني
+        const loadStore = async () => {
+          if (!productData.ownerId) return null;
           const directStore = await getDoc(doc(db, "stores", productData.ownerId));
-          if (directStore.exists()) {
-            storeData = directStore.data();
-          } else {
-            const matchingStore = await getDocs(query(collection(db, "stores"), where("ownerId", "==", productData.ownerId)));
-            if (!matchingStore.empty) storeData = matchingStore.docs[0].data();
-          }
-        }
-
-        if (productData.ownerId) {
+          if (directStore.exists()) return directStore.data();
+          const matchingStore = await getDocs(query(collection(db, "stores"), where("ownerId", "==", productData.ownerId)));
+          return matchingStore.empty ? null : matchingStore.docs[0].data();
+        };
+        const loadRelated = async () => {
+          if (!productData.ownerId) return [];
           const relatedSnap = await getDocs(query(collection(db, "products"), where("ownerId", "==", productData.ownerId), where("hidden", "==", false), where("suspended", "==", false)));
           const related = relatedSnap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== productData.id);
           related.sort((a, b) => Number(b.featured) - Number(a.featured) || (a.sortOrder || 0) - (b.sortOrder || 0));
-          if (!cancelled) setRelatedProducts(related.slice(0, 3));
-        }
+          return related;
+        };
+        const [storeData, related] = await Promise.all([loadStore(), loadRelated()]);
+        if (!cancelled) setRelatedProducts(related.slice(0, 3));
 
         if (!cancelled) {
           setProduct(productData);
           setStore(storeData);
-          setActiveImage(0);
+          if (!remembered) setActiveImage(0);
           setStatus("ready");
         }
+        rememberProduct(productData, storeData);
       } catch (error) {
         console.error("Unable to load product", error);
-        if (!cancelled) setStatus("missing");
+        if (!cancelled && !remembered) setStatus("missing");
       }
     }
     if (productId) loadProduct();
