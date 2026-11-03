@@ -55,15 +55,15 @@ if barstate.islast
     label.delete(vwapLabel)
     label.delete(emaLabel)
     if showPrevDay
-        pdhLabel := label.new(bar_index + 2, pdh, "قمة أمس", style = label.style_label_left, color = color.new(color.orange, 75), textcolor = color.orange, size = size.small)
-        pdlLabel := label.new(bar_index + 2, pdl, "قاع أمس", style = label.style_label_left, color = color.new(color.orange, 75), textcolor = color.orange, size = size.small)
+        pdhLabel := label.new(bar_index + 12, pdh, "قمة أمس", style = label.style_label_left, color = color.new(color.orange, 75), textcolor = color.orange, size = size.small)
+        pdlLabel := label.new(bar_index + 12, pdl, "قاع أمس", style = label.style_label_left, color = color.new(color.orange, 75), textcolor = color.orange, size = size.small)
     if showVwap
         vwapLabel := label.new(bar_index + 2, vwapVal, "VWAP", style = label.style_label_left, color = color.new(#e040fb, 75), textcolor = #e040fb, size = size.small)
     emaLabel := label.new(bar_index + 2, ema200, "EMA 200", style = label.style_label_left, color = color.new(emaColor, 75), textcolor = emaColor, size = size.small)
 
 // Bias box — one rule reminder
-var table biasTable = table.new(position.top_right, 1, 1, bgcolor = color.new(#111827, 15), border_width = 1, border_color = #374151)
+var table biasTable = table.new(position.bottom_right, 1, 1, bgcolor = color.new(#111827, 15), border_width = 1, border_color = #374151)
 if barstate.islast
-    biasText = aboveEma ? "فوق EMA 200 ← شراء فقط" : "تحت EMA 200 ← بيع فقط"
+    biasText = aboveEma ? "شراء فقط" : "بيع فقط"
     biasColor = aboveEma ? color.teal : color.red
     table.cell(biasTable, 0, 0, biasText, text_color = biasColor, text_size = size.normal)
