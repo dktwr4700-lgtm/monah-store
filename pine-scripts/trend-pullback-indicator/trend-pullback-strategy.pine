@@ -1,0 +1,83 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation.
+//
+// Strategy (backtest) version of trend-pullback-ema-adx.pine. Same entry
+// rules, but places simulated trades so TradingView's Strategy Tester can
+// report real win rate, net profit and drawdown on historical data.
+//@version=5
+strategy("Trend Pullback Strategy", shorttitle = "TPB-TEST", overlay = true, initial_capital = 10000, default_qty_type = strategy.percent_of_equity, default_qty_value = 10, commission_type = strategy.commission.percent, commission_value = 0.02, slippage = 2, process_orders_on_close = true)
+
+// Inputs
+grpEma = "EMA Stack"
+emaFastLen = input.int(21, "Fast EMA", minval = 1, group = grpEma)
+emaMidLen = input.int(50, "Mid EMA", minval = 1, group = grpEma)
+emaSlowLen = input.int(200, "Slow EMA", minval = 1, group = grpEma)
+
+grpAdx = "Trend Strength (ADX)"
+adxLen = input.int(14, "ADX / DI Length", minval = 1, group = grpAdx)
+adxSmoothing = input.int(14, "ADX Smoothing", minval = 1, group = grpAdx)
+minADX = input.float(25, "Minimum ADX", minval = 10, maxval = 50, group = grpAdx)
+
+grpEntry = "Pullback Entry"
+touchMult = input.float(0.15, "Touch Tolerance (x ATR)", minval = 0.01, step = 0.05, group = grpEntry)
+atrLen = input.int(14, "ATR Length", minval = 1, group = grpEntry)
+
+grpRisk = "Risk"
+slMult = input.float(0.3, "SL Buffer (x ATR)", minval = 0.05, step = 0.05, group = grpRisk)
+rrRatio = input.float(2.0, "Risk:Reward", minval = 0.5, step = 0.1, group = grpRisk)
+cooldownBars = input.int(20, "Cooldown (bars)", minval = 1, group = grpRisk)
+maxTradesPerDay = input.int(3, "Max Trades Per Day", minval = 1, group = grpRisk)
+
+// Trend
+emaFast = ta.ema(close, emaFastLen)
+emaMid = ta.ema(close, emaMidLen)
+emaSlow = ta.ema(close, emaSlowLen)
+
+plot(emaFast, "Fast EMA", color.new(#4fc3f7, 0), 2)
+plot(emaMid, "Mid EMA", color.new(#ffb74d, 0), 1)
+plot(emaSlow, "Slow EMA", color.new(#9e9e9e, 0), 1)
+
+[diPlus, diMinus, adxVal] = ta.dmi(adxLen, adxSmoothing)
+trendStrong = adxVal >= minADX
+
+bullStack = emaFast > emaMid and emaMid > emaSlow
+bearStack = emaFast < emaMid and emaMid < emaSlow
+
+trendUp = bullStack and trendStrong
+trendDown = bearStack and trendStrong
+
+// Pullback entry
+atrVal = ta.atr(atrLen)
+touchTol = touchMult * atrVal
+slBuf = slMult * atrVal
+
+longTouch = trendUp and low <= emaFast + touchTol and close > emaFast
+shortTouch = trendDown and high >= emaFast - touchTol and close < emaFast
+
+var int lastSignalBar = na
+var int dailyTradeCount = 0
+if ta.change(time("D")) != 0
+    dailyTradeCount := 0
+
+isFlat = strategy.position_size == 0
+cooledDown = na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars
+canSignal = isFlat and cooledDown and dailyTradeCount < maxTradesPerDay
+
+longSignal = canSignal and longTouch
+shortSignal = canSignal and shortTouch
+
+if longSignal
+    lastSignalBar := bar_index
+    dailyTradeCount += 1
+    longStop = low - slBuf
+    longTarget = close + (close - longStop) * rrRatio
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Long Exit", "Long", stop = longStop, limit = longTarget)
+
+if shortSignal
+    lastSignalBar := bar_index
+    dailyTradeCount += 1
+    shortStop = high + slBuf
+    shortTarget = close - (shortStop - close) * rrRatio
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Short Exit", "Short", stop = shortStop, limit = shortTarget)
