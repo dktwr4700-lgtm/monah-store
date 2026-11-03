@@ -101,7 +101,7 @@ const styles = `
   section.section{ padding:78px 0; }
   .section-eyebrow{ text-align:center; font-size:11.5px; color:#B9832F; font-weight:700; letter-spacing:.04em; margin-bottom:8px; }
   h2.section-title{ text-align:center; font-family:'Almarai', sans-serif; font-weight:800; font-size:clamp(24px,3vw,32px); margin-bottom:10px; color:#153A2C; }
-  .section-sub{ text-align:center; color:#5A5648; font-size:13.5px; margin-bottom:34px; }
+  .section-sub{ text-align:center; color:#5A5648; font-size:15.5px; line-height:1.9; max-width:760px; margin:0 auto 38px; }
 
   .n-list{ max-width:640px; margin:0 auto; }
   .n-row{ display:flex; align-items:center; gap:16px; padding:18px 4px; border-top:1px solid #EDEAE0; }
@@ -146,23 +146,29 @@ const styles = `
   .common-features{ text-align:center; color:#5A5648; font-size:11.5px; max-width:640px; margin:0 auto 28px; line-height:2; }
   .common-features b{ color:#0B0B0C; }
 
-  .pricing{ display:flex; gap:16px; max-width:920px; margin:0 auto 20px; flex-wrap:wrap; justify-content:center; align-items:stretch; }
-  .price-card{ flex:1; min-width:220px; max-width:280px; background:#FFFFFF; border:1px solid #E5E0D5; border-radius:20px; padding:30px 24px 25px; position:relative; display:flex; flex-direction:column; box-shadow:0 12px 28px rgba(24,44,32,.04); }
-  .price-card.popular{ border:2px solid #153A2C; padding-top:30px; box-shadow:0 18px 36px rgba(21,58,44,.12); transform:translateY(-6px); }
-  .price-badge{ position:absolute; top:-12px; right:22px; background:#B9832F; color:#fff; font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:100px; }
-  .price-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:14.5px; margin-bottom:6px; }
-  .price-desc{ color:#5A5648; font-size:11px; line-height:1.7; margin-bottom:14px; min-height:30px; }
-  .price-value{ display:flex; align-items:baseline; gap:6px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:24px; margin-bottom:4px; }
-  .price-value span{ font-size:11.5px; color:#5A5648; font-family:'Cairo', sans-serif; font-weight:400; }
-  .price-yearly-note{ font-size:10.5px; color:#B9832F; font-weight:700; margin-bottom:14px; padding-bottom:14px; border-bottom:1px dashed #EDEAE0; min-height:14px; }
-  .price-features{ flex:1; }
-  .price-features div{ display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:#3D4A66; line-height:1.6; padding:5px 0; }
-  .price-soon{ margin-top:8px; padding-top:8px; border-top:1px dashed #EDEAE0; }
-  .price-soon-label{ color:#B9832F; font-size:9.5px; font-weight:700; margin-bottom:4px; }
-  .price-soon div{ font-size:10.5px; color:#7A766A; padding:2px 0; }
-  .price-btn{ width:100%; margin-top:18px; padding:12px; border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer; border:1.5px solid #0B0B0C; background:transparent; color:#0B0B0C; display:block; text-align:center; }
+  .pricing{ display:grid; grid-template-columns:minmax(300px,360px) 1fr; gap:22px; max-width:1100px; margin:0 auto 26px; align-items:start; }
+  .price-card{ background:#FFFFFF; border:1px solid #E5E0D5; border-radius:22px; padding:34px 28px 28px; position:relative; display:flex; flex-direction:column; box-shadow:0 12px 28px rgba(24,44,32,.04); }
+  .price-card.popular{ border:2px solid #153A2C; box-shadow:0 18px 36px rgba(21,58,44,.12); position:sticky; top:90px; }
+  .price-badge{ position:absolute; top:-13px; right:24px; background:#B9832F; color:#fff; font-size:12.5px; font-weight:700; padding:6px 14px; border-radius:100px; }
+  .price-name{ font-family:'Almarai', sans-serif; font-weight:800; font-size:22px; margin-bottom:8px; color:#0B0B0C; }
+  .price-desc{ color:#5A5648; font-size:14.5px; line-height:1.8; margin-bottom:18px; }
+  .price-value{ display:flex; align-items:baseline; gap:8px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:44px; line-height:1; margin-bottom:20px; padding-bottom:20px; border-bottom:1px dashed #E5E0D5; color:#153A2C; }
+  .price-value span{ font-size:14px; color:#5A5648; font-family:'Cairo', sans-serif; font-weight:600; }
+  .price-features div{ display:flex; align-items:flex-start; gap:8px; font-size:15.5px; color:#2E3A52; line-height:1.7; padding:6px 0; font-weight:600; }
+  .price-btn{ width:100%; margin-top:22px; padding:15px; border-radius:12px; font-size:16px; font-weight:800; cursor:pointer; border:1.5px solid #0B0B0C; background:transparent; color:#0B0B0C; display:block; text-align:center; text-decoration:none; }
   .price-card.popular .price-btn{ background:#153A2C; color:#fff; border:none; }
-  .pricing-note{ text-align:center; color:#5A5648; font-size:11.5px; max-width:480px; margin:0 auto; line-height:1.8; }
+  .addons-head{ font-family:'Almarai', sans-serif; font-weight:800; font-size:18px; color:#153A2C; margin:4px 4px 6px; }
+  .addons-sub{ color:#5A5648; font-size:14px; line-height:1.8; margin:0 4px 16px; }
+  .addons-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .addon{ background:#FBFAF6; border:1px solid #EDEAE0; border-radius:18px; padding:20px 20px 18px; }
+  .addon-top{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+  .addon-top b{ font-family:'Almarai', sans-serif; font-weight:800; font-size:16px; color:#0B0B0C; }
+  .addon-price{ flex:none; font-size:13px; font-weight:800; padding:4px 11px; border-radius:100px; background:#EAF0EB; color:#153A2C; white-space:nowrap; }
+  .addon-price.free{ background:#F6EBD7; color:#8A5E1C; }
+  .addon p{ color:#4A5060; font-size:14px; line-height:1.85; margin:0; }
+  @media (max-width: 880px){ .pricing{ grid-template-columns:1fr; max-width:560px; } .price-card.popular{ position:relative; top:0; } }
+  @media (max-width: 560px){ .addons-grid{ grid-template-columns:1fr; } .price-value{ font-size:38px; } }
+  .pricing-note{ text-align:center; color:#5A5648; font-size:14px; max-width:720px; margin:0 auto; line-height:1.9; }
 
   .faq{ max-width:640px; margin:0 auto; }
   .faq-item{ border-top:1px solid #EDEAE0; }
@@ -334,7 +340,8 @@ const SECTIONS_T = {
     priceUnit: "ر.ع / شهريًا بعد التفعيل",
     priceFeature1: "✓ لوحة تاجر عربية سهلة", priceFeature2: "✓ صفحة متجر وروابط مشاركة",
     priceFeature3: "✓ تخصيص الاسم والشعار والهوية", priceFeature4: "✓ منتج مجاني وروابط تتبع الزيارات",
-    addOnsLabel: "إضافات اختيارية تكبّر مبيعاتك، تختارها وقت التسجيل أو لاحقًا من لوحة التاجر:",
+    addOnsTitle: "إضافات اختيارية تكبّر مبيعاتك",
+    addOnsLabel: "تختارها وقت التسجيل أو لاحقًا من لوحة التاجر. وفي باقة برو كلها مشمولة.",
     openStore: "افتح متجرك الحين",
     pricingNote: `التسجيل وتجهيز المتجر مجاني، وتدفع بس لما تنشر منتجاتك. الباقة الأساسية ${BASE_MONTHLY_PRICE} ر.ع شهريًا (حتى ${BASE_PRODUCT_LIMIT} منتج)، ولو احتجت أكثر ترقّى لبرو (${PRO_MONTHLY_PRICE} ر.ع) وتنفتح لك كل الإضافات بدون رسوم زيادة.`,
     faqEyebrow: "أسئلة", faqTitle: "أسئلة شائعة",
@@ -359,7 +366,8 @@ const SECTIONS_T = {
     priceUnit: "OMR / month after activation",
     priceFeature1: "✓ Easy Arabic seller dashboard", priceFeature2: "✓ A store page with sharing links",
     priceFeature3: "✓ Customize your name, logo, and identity", priceFeature4: "✓ A free product and visit-tracking links",
-    addOnsLabel: "Optional add-ons that grow your sales, chosen at signup or later from the seller dashboard:",
+    addOnsTitle: "Add-ons that grow your sales",
+    addOnsLabel: "Optional — pick them at signup or later from the seller dashboard. All included in Pro.",
     openStore: "Open your store now",
     pricingNote: `Signing up and setting up your store is free — you only pay when you publish your products. The Basic plan is ${BASE_MONTHLY_PRICE} OMR a month (up to ${BASE_PRODUCT_LIMIT} products); if you need more, upgrade to Pro (${PRO_MONTHLY_PRICE} OMR) and every add-on is included at no extra cost.`,
     faqEyebrow: "FAQ", faqTitle: "Frequently asked questions",
@@ -586,16 +594,22 @@ export default function App() {
                 <div>{st.priceFeature3}</div>
                 <div>{st.priceFeature4}</div>
               </div>
-              <div className="price-soon">
-                <div className="price-soon-label">{st.addOnsLabel}</div>
+              <a className="price-btn" href={START_STORE_URL}>{st.openStore}</a>
+            </div>
+            <div className="addons reveal">
+              <div className="addons-head">{st.addOnsTitle}</div>
+              <div className="addons-sub">{st.addOnsLabel}</div>
+              <div className="addons-grid">
                 {ADD_ON_CATALOG.map((item) => (
-                  <div key={item.key} style={{ marginBottom: 10 }}>
-                    <div>○ <b>{lang === "en" ? item.titleEn : item.title}</b> — {item.price > 0 ? `${item.price} ${lang === "en" ? "OMR" : "ر.ع"}` : (lang === "en" ? "Free" : "مجانًا")}</div>
-                    <div style={{ color: "#5A5648", fontSize: 12, lineHeight: 1.7, marginRight: 16 }}>{lang === "en" ? item.descEn : item.desc}</div>
+                  <div className="addon" key={item.key}>
+                    <div className="addon-top">
+                      <b>{lang === "en" ? item.titleEn : item.title}</b>
+                      <span className={`addon-price${item.price > 0 ? "" : " free"}`}>{item.price > 0 ? `${item.price} ${lang === "en" ? "OMR" : "ر.ع"}` : (lang === "en" ? "Free" : "مجانًا")}</span>
+                    </div>
+                    <p>{lang === "en" ? item.descEn : item.desc}</p>
                   </div>
                 ))}
               </div>
-              <a className="price-btn" href={START_STORE_URL}>{st.openStore}</a>
             </div>
           </div>
           <div className="pricing-note">{st.pricingNote}</div>
