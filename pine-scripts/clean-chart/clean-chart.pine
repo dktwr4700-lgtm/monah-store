@@ -1,0 +1,69 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © monah-store — original implementation.
+//
+// Clean Chart: only the three references a disciplined intraday trader needs.
+// EMA 200 = direction, VWAP = fair value of the day, previous day high/low =
+// the strongest levels of the day. No signals on purpose.
+//@version=5
+indicator("Clean Chart (EMA200 + VWAP + PDH/PDL)", shorttitle = "CLEAN", overlay = true)
+
+// Inputs
+emaLen = input.int(200, "EMA Length", minval = 1)
+showVwap = input.bool(true, "Show VWAP")
+showPrevDay = input.bool(true, "Show Previous Day High / Low")
+showSession = input.bool(true, "Highlight NY Session")
+sessionTime = input.session("0930-1130", "NY Session (New York time)")
+
+newDay = ta.change(time("D")) != 0
+
+// 1) EMA 200 — direction (green = price above = buy only, red = below = sell only)
+ema200 = ta.ema(close, emaLen)
+aboveEma = close > ema200
+emaColor = aboveEma ? color.new(color.teal, 0) : color.new(color.red, 0)
+plot(ema200, "EMA 200", emaColor, 2)
+
+// 2) VWAP — resets every day; falls back to equal weights if the CFD has no volume
+vol = na(volume) or volume == 0 ? 1.0 : volume
+var float sumPV = 0.0
+var float sumV = 0.0
+if newDay
+    sumPV := 0.0
+    sumV := 0.0
+sumPV += hlc3 * vol
+sumV += vol
+vwapVal = sumV > 0 ? sumPV / sumV : na
+plot(showVwap and not newDay ? vwapVal : na, "VWAP", color.new(#e040fb, 0), 2, plot.style_linebr)
+
+// 3) Previous day high / low — fixed for the whole day, no repainting
+pdh = request.security(syminfo.tickerid, "D", high[1], lookahead = barmerge.lookahead_on)
+pdl = request.security(syminfo.tickerid, "D", low[1], lookahead = barmerge.lookahead_on)
+plot(showPrevDay and not newDay ? pdh : na, "Prev Day High", color.new(color.orange, 0), 2, plot.style_linebr)
+plot(showPrevDay and not newDay ? pdl : na, "Prev Day Low", color.new(color.orange, 0), 2, plot.style_linebr)
+
+// NY session background (the only hours to trade)
+inSession = not na(time(timeframe.period, sessionTime, "America/New_York"))
+bgcolor(showSession and inSession ? color.new(color.blue, 90) : na, title = "NY Session")
+
+// Right-edge labels in Arabic
+var label pdhLabel = na
+var label pdlLabel = na
+var label vwapLabel = na
+var label emaLabel = na
+if barstate.islast
+    label.delete(pdhLabel)
+    label.delete(pdlLabel)
+    label.delete(vwapLabel)
+    label.delete(emaLabel)
+    if showPrevDay
+        pdhLabel := label.new(bar_index + 2, pdh, "قمة أمس", style = label.style_label_left, color = color.new(color.orange, 75), textcolor = color.orange, size = size.small)
+        pdlLabel := label.new(bar_index + 2, pdl, "قاع أمس", style = label.style_label_left, color = color.new(color.orange, 75), textcolor = color.orange, size = size.small)
+    if showVwap
+        vwapLabel := label.new(bar_index + 2, vwapVal, "VWAP", style = label.style_label_left, color = color.new(#e040fb, 75), textcolor = #e040fb, size = size.small)
+    emaLabel := label.new(bar_index + 2, ema200, "EMA 200", style = label.style_label_left, color = color.new(emaColor, 75), textcolor = emaColor, size = size.small)
+
+// Bias box — one rule reminder
+var table biasTable = table.new(position.top_right, 1, 1, bgcolor = color.new(#111827, 15), border_width = 1, border_color = #374151)
+if barstate.islast
+    biasText = aboveEma ? "فوق EMA 200 ← شراء فقط" : "تحت EMA 200 ← بيع فقط"
+    biasColor = aboveEma ? color.teal : color.red
+    table.cell(biasTable, 0, 0, biasText, text_color = biasColor, text_size = size.normal)
